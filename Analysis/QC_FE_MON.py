@@ -8,6 +8,9 @@ import numpy as np
 import os, sys, pickle
 from utils import printItem, createDirs, dumpJson, linear_fit, BaseClass
 import matplotlib.pyplot as plt
+import json, statistics
+from scipy.stats import norm
+import pandas as pd
 
 class FE_MON(BaseClass):
     def __init__(self, root_path: str, data_dir: str, output_path: str):
@@ -197,27 +200,229 @@ class FE_MON(BaseClass):
 
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='FE_MON', data_to_dump=oneChipData, indent=4)
 
+class QC_FE_MON_StatAna():
+    def __init__(self, root_path: str, output_path: str):
+        self.root_path = root_path
+        self.output_path = output_path
+        self.output_fig = '/'.join([output_path, 'fig'])
+        try:
+            os.mkdir(self.output_fig)
+        except:
+            pass
+
+    def _FileExist(self, chipdir: str):
+        chipDirExist = os.path.isdir(chipdir)
+        qcMondirExist = os.path.isdir('/'.join([chipdir, 'QC_MON']))
+        feMonFileExist = os.path.isfile('/'.join([chipdir, 'QC_MON/FE_MON.json']))
+        return chipDirExist and qcMondirExist and feMonFileExist
+    
+    def getItems(self):
+        list_chipID = os.listdir(self.root_path)
+        out_dict = dict()
+        i = 0
+        keys = []
+        unit_gain = ''
+        unit_vbgrtemp = ''
+        for chipID in list_chipID:
+            path_to_chipID = '/'.join([self.root_path, chipID])
+            if not self._FileExist(chipdir=path_to_chipID):
+                continue
+            path_to_file = '/'.join([path_to_chipID, 'QC_MON/FE_MON.json'])
+            data = json.load(open(path_to_file))
+            if i==0:
+                keys = [k for k in data.keys() if k!='logs']
+                for key in keys:
+                    out_dict[key] = dict()
+                for key in keys:
+                    if key != 'DAC_meas':
+                        out_dict[key] = {k: np.array([]) for k in data[key].keys() if k!='unit'}
+                        subkeys_noDAC = [k for k in data[key].keys() if k!='unit']
+                        # get the unit vbgr and temperature
+                        if key=='VBGR_Temp':
+                            if len(unit_vbgrtemp)==0:
+                                unit_vbgrtemp = data[key]['unit']
+                        #
+                        for subkey in subkeys_noDAC:
+                            tmpdata = data[key][subkey]
+                            if type(tmpdata)!=str:
+                                out_dict[key][subkey] = np.append(out_dict[key][subkey], tmpdata)
+                    else:
+                        configs = data[key].keys()
+                        out_dict[key] = {cfg: dict() for cfg in configs}
+                        for cfg in configs:
+                            subkeys = [k for k in data[key][cfg].keys() if (k!='data' and k!='DAC' and k!='unit_of_gain')]
+                            # get the unit of gain
+                            if len(unit_gain)==0:
+                                unit_gain = data[key][cfg]['unit_of_gain']
+                            out_dict[key][cfg] = {subkey: np.array([]) for subkey in subkeys}
+                            for subkey in subkeys:
+                                tmpdata = data[key][cfg][subkey]
+                                out_dict[key][cfg][subkey] = np.append(out_dict[key][cfg][subkey], tmpdata)
+            else:
+                for key in keys:
+                    if key != 'DAC_meas':
+                        subkeys_noDAC = list(out_dict[key].keys())
+                        for subkey in subkeys_noDAC:
+                            tmpdata = data[key][subkey]
+                            if type(tmpdata)!=str:
+                                out_dict[key][subkey] = np.append(out_dict[key][subkey], tmpdata)
+                    else:
+                        configs = out_dict[key].keys()
+                        for cfg in configs:
+                            subkeys = out_dict[key][cfg].keys()
+                            for subkey in subkeys:
+                                tmpdata = data[key][cfg][subkey]
+                                out_dict[key][cfg][subkey] = np.append(out_dict[key][cfg][subkey], tmpdata)
+                # print(out_dict)
+                # sys.exit()
+            i += 1
+        # keys[1] = 'DAC_meas'
+        # testSubkey = list(out_dict[keys[1]].keys())[1]
+        # print(len(out_dict[keys[1]][testSubkey]))
+        # plt.figure()
+        # plt.hist(out_dict[keys[1]][testSubkey]['INL'], bins=284)
+        # plt.xlabel('_'.join([keys[1], testSubkey]))
+        # # plt.xlim([1500, 1575])
+        # plt.show()
+        return out_dict, unit_gain, unit_vbgrtemp
+
+    def run_Ana(self):
+        ##############################################################
+        print('FE MONITORING Statistical analysis...')
+        ##############################################################
+        keys = ['BL', 'VBGR_Temp', 'DAC_meas']
+        data, unit_gain, unit_vbgrtemp = self.getItems()
+        # print(data[keys[0]].keys())
+        # print(unit_gain, unit_vbgrtemp)
+
+        items = []
+        configurations = []
+        means = []
+        stdevs = []
+        for key in keys:
+            # The case of DAC_meas is different because we have the configuration information in that case
+            if key!='DAC_meas':
+                subkeys = list(data[key].keys())
+                for subkey in subkeys:
+                    tmpdata = data[key][subkey]
+                    median = statistics.median(tmpdata)
+                    std = statistics.stdev(tmpdata)
+                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                    # make the distribution symmetric
+                    dmean_min = np.abs(median-xmin)
+                    dmean_max = np.abs(median-xmax)
+                    dmin = dmean_min
+                    if dmin > dmean_max:
+                        dmin = dmean_max
+                    pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
+                    tmpdata = np.delete(np.array(tmpdata), pmins)
+                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                    median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                    for _ in range(10):
+                        if xmin < median-3*std:
+                            posMin = np.where(tmpdata==xmin)[0]
+                            # del tmpdata[posMin]
+                            tmpdata = np.delete(np.array(tmpdata), posMin)
+                        if xmax > median+3*std:
+                            posMax = np.where(tmpdata==xmax)[0]
+                            # del tmpdata[posMax]
+                            tmpdata = np.delete(np.array(tmpdata), posMax)
+
+                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                    median, std = np.round(median, 4), np.round(std, 4)
+                    items.append(key)
+                    configurations.append(subkey)
+                    means.append(median)
+                    stdevs.append(std)
+                    x = np.linspace(xmin, xmax, len(tmpdata))
+                    p = norm.pdf(x, median, std)
+                    plt.figure()
+                    plt.hist(tmpdata, bins=len(tmpdata)//128, density=True)
+                    unit = ''
+                    if key=='VBGR_Temp':
+                        unit = unit_vbgrtemp
+                    plt.plot(x, p, 'r', label='mean = {} {}, std = {} {}'.format(median, unit, std, unit))
+                    plt.xlabel('-'.join([key, subkey]));plt.ylabel('#')
+                    # plt.show()
+                    plt.legend()
+                    plt.savefig('/'.join([self.output_fig, 'QC_FE_MON_{}_{}.png'.format(key, subkey)]))
+                    plt.close()
+                    # plt.figure()
+                    # plt.hist(tmpdata, bins=len(tmpdata)//128)
+                    # plt.show()
+                    # sys.exit()
+            else:
+                configs = list(data[key].keys())
+                for cfg in configs:
+                    subkeys = list(data[key][cfg].keys())
+                    for subkey in subkeys:
+                        tmpdata = data[key][cfg][subkey]
+                        median = statistics.median(tmpdata)
+                        std = statistics.stdev(tmpdata)
+                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                        for _ in range(10):
+                            if xmin < median-3*std:
+                                posMin = np.where(tmpdata==xmin)[0]
+                                # del tmpdata[posMin]
+                                tmpdata = np.delete(np.array(tmpdata), posMin)
+                            if xmax > median+3*std:
+                                posMax = np.where(tmpdata==xmax)[0]
+                                # del tmpdata[posMax]
+                                tmpdata = np.delete(np.array(tmpdata), posMax)
+
+                            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                        median, std = np.round(median, 4), np.round(std, 4)
+
+                        items.append(key)
+                        configurations.append('-'.join([cfg, subkey]))
+                        means.append(median)
+                        stdevs.append(std)
+                        
+                        x = np.linspace(xmin, xmax, len(tmpdata))
+                        p = norm.pdf(x, median, std)
+                        plt.figure()
+                        plt.hist(tmpdata, bins=len(tmpdata)//32, density=True)
+                        unit = ''
+                        if subkey=='GAIN':
+                            unit = unit_gain
+                        plt.plot(x, p, 'r', label='mean = {} {}, std = {} {}'.format(median, unit, std, unit))
+                        plt.xlabel('-'.join([key, cfg, subkey]));plt.ylabel('#')
+                        # plt.show()
+                        plt.legend()
+                        plt.savefig('/'.join([self.output_fig, 'QC_FE_MON_{}_{}_{}.png'.format(key, cfg, subkey)]))
+                        plt.close()
+        OUTPUT_DF = pd.DataFrame({'testItem': items, 'cfg': configurations, 'mean': means, 'std': stdevs})
+        OUTPUT_DF.to_csv('/'.join([self.output_path, 'StatAna_FE_MON.csv']), index=False)
+
+
+
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
 
     # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
     # root_path = '../../B010T0004'
-    root_path='/media/radofana/New Volume'
-    parent_dir = ['/'.join([root_path, d]) for d in os.listdir(root_path) if 'B0' in d]
-    for p in parent_dir:
-        # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
-        list_data_dir = [dir for dir in os.listdir(p) if (os.path.isdir('/'.join([p, dir]))) and (dir!='images')]
-        for data_dir in list_data_dir:
-            # we expect 13 elements in a folder
-            subfolder = '/'.join([p, data_dir])
-            subsubfolder = os.listdir(subfolder)[0]
-            newsubfolder = '/'.join([subfolder, subsubfolder])
-            lfiles_testItems = os.listdir(newsubfolder)
-            if len(lfiles_testItems)==13:
-                # fe_Mon = FE_MON(root_path=root_path, data_dir=data_dir, output_path=output_path)
-                fe_Mon = FE_MON(root_path=p, data_dir=data_dir, output_path=output_path)
-                fe_Mon.decodeFE_MON()
-                # sys.exit()
-            else:
-                print(len(lfiles_testItems))
+    # root_path='/media/radofana/New Volume'
+    # parent_dir = ['/'.join([root_path, d]) for d in os.listdir(root_path) if 'B0' in d]
+    # for p in parent_dir:
+    #     # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
+    #     list_data_dir = [dir for dir in os.listdir(p) if (os.path.isdir('/'.join([p, dir]))) and (dir!='images')]
+    #     for data_dir in list_data_dir:
+    #         # we expect 13 elements in a folder
+    #         subfolder = '/'.join([p, data_dir])
+    #         subsubfolder = os.listdir(subfolder)[0]
+    #         newsubfolder = '/'.join([subfolder, subsubfolder])
+    #         lfiles_testItems = os.listdir(newsubfolder)
+    #         if len(lfiles_testItems)==13:
+    #             # fe_Mon = FE_MON(root_path=root_path, data_dir=data_dir, output_path=output_path)
+    #             fe_Mon = FE_MON(root_path=p, data_dir=data_dir, output_path=output_path)
+    #             fe_Mon.decodeFE_MON()
+    #             # sys.exit()
+    #         else:
+    #             print(len(lfiles_testItems))
+    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    output_path = '../../Analysis'
+    femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
+    femon_stat.run_Ana()
