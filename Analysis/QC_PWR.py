@@ -535,13 +535,13 @@ class QC_PWR_StatAna():
             xmin, xmax = np.min(v), np.max(v)
             # Get rid of values outside of the 3sigma range
             for i in range(10):
-                posMax = np.where(v==xmax)[0]
-                posMin = np.where(v==xmin)[0]
                 if xmax > mean+3*std:
+                    posMax = np.where(v==xmax)[0]
                     del v[posMax[0]]
                     # for j in posMax:
                     #     del v[j]
                 if xmin < mean-3*std:
+                    posMin = np.where(v==xmin)[0]
                     del v[posMin[0]]
                     # for j in posMin:
                     #     del v[j]
@@ -612,12 +612,12 @@ if __name__ =='__main__':
     #     sys.exit()
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        pwr_ana = QC_PWR_analysis(root_path=root_path, chipID=chipID, output_path=output_path)
-        pwr_ana.runAnalysis()
+    # list_chipID = os.listdir(root_path)
+    # for chipID in list_chipID:
+    #     pwr_ana = QC_PWR_analysis(root_path=root_path, chipID=chipID, output_path=output_path)
+    #     pwr_ana.runAnalysis()
     #     # pwr_ana.Mean_ChResp_ana(BL='900mV')
     #     # sys.exit()
-    # pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
-    # # pwr_ana_stat.getItem(item='I')
-    # pwr_ana_stat.run_Ana()
+    pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
+    # pwr_ana_stat.getItem(item='I')
+    pwr_ana_stat.run_Ana()
