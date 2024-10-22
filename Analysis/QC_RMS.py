@@ -4,10 +4,12 @@
 #   Analyze the data in QC_RMS.bin
 ############################################################################################
 
-import os, sys, pickle
+import os, sys, pickle, json, statistics
+from scipy.stats import norm
 import numpy as np
 from utils import dumpJson, createDirs, decodeRawData, printItem, LArASIC_ana, BaseClass
 import matplotlib.pyplot as plt
+import pandas as pd
 
 class RMS(BaseClass):
     def __init__(self, root_path: str, data_dir: str, output_path: str):
@@ -89,12 +91,136 @@ class RMS(BaseClass):
                     pedrms_dict[config][key] = out_dict[FE_ID][config][key]
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='RMS_Noise', data_to_dump=pedrms_dict)
 
+class RMS_StatAna():
+    def __init__(self, root_path: str, output_path: str):
+        self.root_path = root_path
+        self.output_path = output_path
+        self.output_fig = '/'.join([output_path, 'fig'])
+        try:
+            os.mkdir(self.output_fig)
+        except:
+            pass
+        
+    def _FileExist(self, chipDir:str):
+        chipDirExist = os.path.isdir(chipDir)
+        qcMondirExist = os.path.isdir('/'.join([chipDir, 'QC_RMS']))
+        feMonFileExist = os.path.isfile('/'.join([chipDir, 'QC_RMS/RMS_Noise.json']))
+        return chipDirExist and qcMondirExist and feMonFileExist
+    
+    def getItems(self):
+        list_chipID = os.listdir(self.root_path)
+        cfg_map = dict()
+        i = 0
+        out_dict = dict()
+        keys = []
+        for chipID in list_chipID:
+            path_to_chip = '/'.join([self.root_path, chipID])
+            if not self._FileExist(chipDir=path_to_chip):
+                continue
+            path_to_file = '/'.join([path_to_chip, 'QC_RMS/RMS_Noise.json'])
+            data = json.load(open(path_to_file))
+            if i==0:
+                keys = [k for k in data.keys() if k!='logs']
+                # get configurations
+                for key in keys:
+                    cfg_map[key] = data[key]['CFG']
+                    out_dict[key] = {'pedestal': np.array([]), 'rms': np.array([])}
+            for key in keys:
+                out_dict[key]['pedestal'] = np.append(out_dict[key]['pedestal'], data[key]['pedestal'])
+                out_dict[key]['rms'] = np.append(out_dict[key]['rms'], data[key]['rms'])
+            i += 1
+        return out_dict, cfg_map
+
+    def run_Ana(self):
+        ######################################
+        print("QC RMS statistical analysis....")
+        ######################################
+        data, configurations = self.getItems()
+        cfg_list = []
+        mean_ped, std_ped = [], []
+        mean_rms, std_rms = [], []
+        for cfg in configurations.keys():
+            print('CFG = {}...'.format(cfg))
+            # Pedestal
+            tmpdata = data[cfg]['pedestal']
+            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+            for _ in range(100):
+                if xmin < median-3*std:
+                    posMin = np.where(tmpdata==xmin)[0]
+                    # del tmpdata[posMin]
+                    tmpdata = np.delete(np.array(tmpdata), posMin)
+                if xmax > median+3*std:
+                    posMax = np.where(tmpdata==xmax)[0]
+                    # del tmpdata[posMax]
+                    tmpdata = np.delete(np.array(tmpdata), posMax)
+
+                xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+            median, std = np.round(median, 4), np.round(std, 4)
+
+            # cfg_list.append(cfg)
+            mean_ped.append(median)
+            std_ped.append(std)
+            # print(median, std)
+
+            x = np.linspace(xmin, xmax, len(tmpdata))
+            p = norm.pdf(x, median, std)
+            plt.figure()
+            plt.hist(tmpdata, bins=len(tmpdata)//128, density=True)
+            plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
+            plt.xlabel('-'.join(['Pedestal', cfg]));plt.ylabel('#')
+            plt.legend()
+            plt.savefig('/'.join([self.output_fig, 'QC_RMS_Pedestal_{}.png'.format(cfg)]))
+            plt.close()
+            # sys.exit()
+            #
+            # RMS
+            tmpdata = data[cfg]['rms']
+            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+            for _ in range(350):
+                if xmin < median-3*std:
+                    posMin = np.where(tmpdata==xmin)[0]
+                    # del tmpdata[posMin]
+                    tmpdata = np.delete(np.array(tmpdata), posMin)
+                if xmax > median+3*std:
+                    posMax = np.where(tmpdata==xmax)[0]
+                    # del tmpdata[posMax]
+                    tmpdata = np.delete(np.array(tmpdata), posMax)
+
+                xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+            median, std = np.round(median, 4), np.round(std, 4)
+
+            cfg_list.append(cfg)
+            mean_rms.append(median)
+            std_rms.append(std)
+            
+            x = np.linspace(xmin, xmax, len(tmpdata))
+            p = norm.pdf(x, median, std)
+            plt.figure()
+            plt.hist(tmpdata, bins=len(tmpdata)//128, density=True)
+            plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
+            plt.xlabel('-'.join(['RMS', cfg]));plt.ylabel('#')
+            plt.legend()
+            plt.savefig('/'.join([self.output_fig, 'QC_RMS_RMS_{}.png'.format(cfg)]))
+            plt.close()
+
+        OUTPUT_DF = pd.DataFrame({'cfg': cfg_list, 'mean_pedestal': mean_ped, 'std_pedestal': std_ped, 'mean_rms': mean_rms, 'std_rms': std_rms})
+        OUTPUT_DF.to_csv('/'.join([self.output_path, 'StatAna_RMS.csv']), index=False)
+        pd.DataFrame(configurations).to_csv('/'.join([self.output_path, 'QC_RMS_CONFIG_MAP.csv']))
+
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
-    root_path = '../../B010T0004'
-    list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
-    for i, data_dir in enumerate(list_data_dir):
-        rms = RMS(root_path=root_path, data_dir=data_dir, output_path=output_path)
-        rms.decodeRMS()
+    # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
+    # root_path = '../../B010T0004'
+    # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
+    # for i, data_dir in enumerate(list_data_dir):
+    #     rms = RMS(root_path=root_path, data_dir=data_dir, output_path=output_path)
+    #     rms.decodeRMS()
+    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    output_path = '../../Analysis'
+    rms_stat = RMS_StatAna(root_path=root_path, output_path=output_path)
+    rms_stat.run_Ana()
