@@ -308,17 +308,17 @@ class QC_FE_MON_StatAna():
                     median = statistics.median(tmpdata)
                     std = statistics.stdev(tmpdata)
                     xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    # make the distribution symmetric
-                    dmean_min = np.abs(median-xmin)
-                    dmean_max = np.abs(median-xmax)
-                    dmin = dmean_min
-                    if dmin > dmean_max:
-                        dmin = dmean_max
-                    pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
-                    tmpdata = np.delete(np.array(tmpdata), pmins)
-                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    for _ in range(10):
+                    # # make the distribution symmetric
+                    # dmean_min = np.abs(median-xmin)
+                    # dmean_max = np.abs(median-xmax)
+                    # dmin = dmean_min
+                    # if dmin > dmean_max:
+                    #     dmin = dmean_max
+                    # pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
+                    # tmpdata = np.delete(np.array(tmpdata), pmins)
+                    # xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                    # median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                    for _ in range(100):
                         if xmin < median-3*std:
                             posMin = np.where(tmpdata==xmin)[0]
                             # del tmpdata[posMin]
@@ -338,10 +338,13 @@ class QC_FE_MON_StatAna():
                     x = np.linspace(xmin, xmax, len(tmpdata))
                     p = norm.pdf(x, median, std)
                     plt.figure()
-                    plt.hist(tmpdata, bins=len(tmpdata)//128, density=True)
+                    Nbins = len(tmpdata)//256
                     unit = ''
                     if key=='VBGR_Temp':
                         unit = unit_vbgrtemp
+                        Nbins = len(tmpdata)//16
+                    plt.hist(tmpdata, bins=Nbins, density=True)
+                    
                     plt.plot(x, p, 'r', label='mean = {} {}, std = {} {}'.format(median, unit, std, unit))
                     plt.xlabel('-'.join([key, subkey]));plt.ylabel('#')
                     # plt.show()
@@ -361,7 +364,7 @@ class QC_FE_MON_StatAna():
                         median = statistics.median(tmpdata)
                         std = statistics.stdev(tmpdata)
                         xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        for _ in range(10):
+                        for _ in range(100):
                             if xmin < median-3*std:
                                 posMin = np.where(tmpdata==xmin)[0]
                                 # del tmpdata[posMin]
@@ -383,7 +386,7 @@ class QC_FE_MON_StatAna():
                         x = np.linspace(xmin, xmax, len(tmpdata))
                         p = norm.pdf(x, median, std)
                         plt.figure()
-                        plt.hist(tmpdata, bins=len(tmpdata)//32, density=True)
+                        plt.hist(tmpdata, bins=len(tmpdata)//64, density=True)
                         unit = ''
                         if subkey=='GAIN':
                             unit = unit_gain
