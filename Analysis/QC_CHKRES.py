@@ -223,12 +223,13 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                 elif group=='SLKS':
                     # config = '\n'.join([cfg_info['SNC'], cfg_info['SLKH'], cfg_info['SLK']])
                     config = cfg_info['SLKH'] * cfg_info['SLK']
-                chipData[config] = {'mean': meanValue, 'std': stdValue, 'min': minValue, 'max': maxValue}
+                chipData[config] = {'mean': meanValue, 'std': stdValue, 'min': minValue, 'max': maxValue, 'cfg_info': cfg_info}
         configs = chipData.keys()
         meanValues = [d['mean'] for key, d in chipData.items()]
         stdValues = [d['std'] for key, d in chipData.items()]
         minValues = [d['min'] for key, d in chipData.items()]
         maxValues = [d['max'] for key, d in chipData.items()]
+        cfgs_dict = [d['cfg_info'] for key, d in chipData.items()]
         # plt.figure(figsize=(8, 8))
         if group=='GAINs':
             # print(configs)
@@ -260,7 +261,7 @@ class QC_CHKRES_Ana(BaseClass_Ana):
             maxs = [max200, max900]
             #______ return the data if returnData==True______
             if returnData:
-                return xticks, means, stds, mins, maxs
+                return xticks, means, stds, mins, maxs, cfgs_dict
             else:
                 plt.figure(figsize=(8, 8))
                 range_to_scan = []
@@ -285,7 +286,7 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                 configs = sorted(list(configs))
             #______ return the data if returnData==True______
             if returnData:
-                return configs, meanValues, stdValue, minValues, maxValues
+                return configs, meanValues, stdValue, minValues, maxValues, cfgs_dict
             else:
                 plt.figure(figsize=(8, 8))
                 plt.errorbar(x=configs, y=meanValues, yerr=stdValues, capsize=4, label='Mean of {}'.format(item_to_plot), elinewidth=1.5)
@@ -345,7 +346,10 @@ class QC_CHKRES_Ana(BaseClass_Ana):
         # print(out_dict)
         for item in items:
             for group in groups:
-                configs, means, stds, mins, maxs = self.ChResp_ana(item_to_plot=item, group=group, returnData=True)
+                configs, means, stds, mins, maxs, cfgs_dict = self.ChResp_ana(item_to_plot=item, group=group, returnData=True)
+                print(configs)
+                print(cfgs_dict)
+                sys.exit()
                 out_dict[group][item] = {c: dict() for c in configs}
                 
                 if group=='GAINs':
@@ -359,6 +363,7 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                         out_dict[group][item][c]['min'] = mins[i]
                         out_dict[group][item][c]['max'] = maxs[i]
         # print(out_dict)
+        # sys.exit()
         return out_dict
 
 
@@ -373,7 +378,9 @@ class QC_CHKRES_StatAna():
             pass
         # THIS LINE NEEDS TO BE MODIFIED --> Find a better way to get the structure of the json file automatically
         self.chkdata_toy = {'GAINs': {'pedestal': {'4.7': {'mean': {'200mV': 920.0535, '900mV': 8723.2227}, 'min': {'200mV': 761.4332, '900mV': 8617.5559}, 'max': {'200mV': 1108.3855, '900mV': 8826.7037}}, '7.8': {'mean': {'200mV': 984.7076, '900mV': 8791.0025}, 'min': {'200mV': 826.057, '900mV': 8685.8425}, 'max': {'200mV': 1171.1404, '900mV': 8897.9679}}, '14': {'mean': {'200mV': 1116.7686, '900mV': 8931.4033}, 'min': {'200mV': 961.4979, '900mV': 8824.759}, 'max': {'200mV': 1300.3047, '900mV': 9043.0753}}, '25': {'mean': {'200mV': 1340.1492, '900mV': 9166.9446}, 'min': {'200mV': 1185.6007, '900mV': 9057.4761}, 'max': {'200mV': 1514.5733, '900mV': 9281.407}}}, 'rms': {'4.7': {'mean': {'200mV': 4.6696, '900mV': 4.7128}, 'min': {'200mV': 4.2797, '900mV': 4.2253}, 'max': {'200mV': 5.0279, '900mV': 5.2124}}, '7.8': {'mean': {'200mV': 7.3023, '900mV': 7.2306}, 'min': {'200mV': 6.6742, '900mV': 6.456}, 'max': {'200mV': 8.1935, '900mV': 7.963}}, '14': {'mean': {'200mV': 12.6979, '900mV': 12.9429}, 'min': {'200mV': 11.3092, '900mV': 11.7697}, 'max': {'200mV': 14.1517, '900mV': 14.4354}}, '25': {'mean': {'200mV': 22.7148, '900mV': 22.6192}, 'min': {'200mV': 18.8299, '900mV': 19.1871}, 'max': {'200mV': 26.8888, '900mV': 26.4137}}}, 'pospeak': {'4.7': {'mean': {'200mV': 3193.134, '900mV': 3274.3554}, 'min': {'200mV': 2761.7161, '900mV': 3186.8646}, 'max': {'200mV': 3253.5668, '900mV': 3312.3322}}, '7.8': {'mean': {'200mV': 4148.7768, '900mV': 4228.06}, 'min': {'200mV': 3779.7961, '900mV': 4120.1223}, 'max': {'200mV': 4210.443, '900mV': 4269.8196}}, '14': {'mean': {'200mV': 4203.2939, '900mV': 4275.0967}, 'min': {'200mV': 3956.6253, '900mV': 4172.9517}, 'max': {'200mV': 4259.7521, '900mV': 4330.0932}}, '25': {'mean': {'200mV': 4276.1008, '900mV': 4353.0346}, 'min': {'200mV': 4106.7747, '900mV': 4243.2496}, 'max': {'200mV': 4333.6218, '900mV': 4409.7394}}}, 'negpeak': {'4.7': {'mean': {'200mV': 920.0535, '900mV': 3264.254}, 'min': {'200mV': 761.4332, '900mV': 3026.6354}, 'max': {'200mV': 1108.3855, '900mV': 3307.9178}}, '7.8': {'mean': {'200mV': 984.7076, '900mV': 4224.815}, 'min': {'200mV': 826.057, '900mV': 4026.5444}, 'max': {'200mV': 1171.1404, '900mV': 4277.6942}}, '14': {'mean': {'200mV': 1116.7686, '900mV': 4277.4971}, 'min': {'200mV': 961.4979, '900mV': 4140.7983}, 'max': {'200mV': 1300.3047, '900mV': 4334.1568}}, '25': {'mean': {'200mV': 1340.1492, '900mV': 4362.1946}, 'min': {'200mV': 1185.6007, '900mV': 4259.4706}, 'max': {'200mV': 1514.5733, '900mV': 4422.9604}}}}, 'OUTPUT': {'pedestal': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 8917.833, 'min': 8811.4033, 'max': 9026.0783}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 8765.595, 'min': 8647.3767, 'max': 8858.0942}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 8783.0081, 'min': 8687.8206, 'max': 8875.1222}}, 'rms': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 12.9223, 'min': 11.5787, 'max': 14.929}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 13.2322, 'min': 11.6834, 'max': 14.8552}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 12.7703, 'min': 11.6407, 'max': 15.3885}}, 'pospeak': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 4279.1045, 'min': 4162.4816, 'max': 4326.8397}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 4385.2487, 'min': 4292.1999, 'max': 4425.2744}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 4328.32, 'min': 4295.3213, 'max': 4367.7248}}, 'negpeak': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 4285.083, 'min': 4131.8517, 'max': 4334.2154}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 4399.2044, 'min': 4277.0102, 'max': 4446.4614}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 4464.68, 'min': 4418.1787, 'max': 4526.5252}}}, 'BL': {'pedestal': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 8925.9726, 'min': 8820.9019, 'max': 9034.7863}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 1112.1438, 'min': 956.8159, 'max': 1296.2411}}, 'rms': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 12.7781, 'min': 11.4768, 'max': 14.1009}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 12.4046, 'min': 11.4699, 'max': 14.5145}}, 'pospeak': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 4277.2774, 'min': 4169.3895, 'max': 4322.2863}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 4203.0749, 'min': 3956.9595, 'max': 4263.4341}}, 'negpeak': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 4279.5039, 'min': 4129.8605, 'max': 4335.1366}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 1112.1438, 'min': 956.8159, 'max': 1296.2411}}}, 'TP': {'pedestal': {0.5: {'mean': 8694.7244, 'min': 8590.512, 'max': 8796.9825}, 1.0: {'mean': 8769.0665, 'min': 8663.2963, 'max': 8873.2017}, 2: {'mean': 8913.0714, 'min': 8807.7834, 'max': 9020.7699}, 3: {'mean': 9058.2681, 'min': 8953.8225, 'max': 9169.9924}}, 'rms': {0.5: {'mean': 11.6278, 'min': 11.0525, 'max': 12.5184}, 1.0: {'mean': 11.7596, 'min': 10.8947, 'max': 12.6109}, 2: {'mean': 12.3655, 'min': 11.2181, 'max': 13.2762}, 3: {'mean': 14.2321, 'min': 12.5532, 'max': 17.3397}}, 'pospeak': {0.5: {'mean': 3474.0673, 'min': 3367.489, 'max': 3521.4585}, 1.0: {'mean': 4130.6679, 'min': 4002.3059, 'max': 4178.7866}, 2: {'mean': 4278.6786, 'min': 4170.2014, 'max': 4327.7293}, 3: {'mean': 4289.2631, 'min': 4172.703, 'max': 4336.5276}}, 'negpeak': {0.5: {'mean': 3333.0577, 'min': 3152.8444, 'max': 3379.9383}, 1.0: {'mean': 4106.2071, 'min': 3929.6941, 'max': 4171.4634}, 2: {'mean': 4280.3839, 'min': 4128.4653, 'max': 4335.1151}, 3: {'mean': 4295.2994, 'min': 4183.297, 'max': 4336.7003}}}, 'SLKS': {'pedestal': {100: {'mean': 8740.8038, 'min': 8636.862, 'max': 8843.2177}, 500: {'mean': 8916.2093, 'min': 8808.6837, 'max': 9027.261}, 1000: {'mean': 9088.254, 'min': 8983.9484, 'max': 9202.2339}, 5000: {'mean': 11032.9986, 'min': 10929.6243, 'max': 11220.9052}}, 'rms': {100: {'mean': 12.5143, 'min': 11.1642, 'max': 14.5457}, 500: {'mean': 12.8407, 'min': 11.6557, 'max': 15.4567}, 1000: {'mean': 12.8509, 'min': 11.9001, 'max': 14.1173}, 5000: {'mean': 15.7395, 'min': 13.7845, 'max': 18.2684}}, 'pospeak': {100: {'mean': 4269.6962, 'min': 4037.5465, 'max': 4332.5828}, 500: {'mean': 4275.0876, 'min': 4169.616, 'max': 4327.9026}, 1000: {'mean': 4266.9752, 'min': 3997.7634, 'max': 4327.8913}, 5000: {'mean': 4248.5014, 'min': 3944.4107, 'max': 4317.3849}}, 'negpeak': {100: {'mean': 4265.8819, 'min': 3963.4535, 'max': 4330.6672}, 500: {'mean': 4277.2405, 'min': 4132.884, 'max': 4333.0974}, 1000: {'mean': 4280.3998, 'min': 4058.57, 'max': 4332.7753}, 5000: {'mean': 4277.3944, 'min': 3938.256, 'max': 4341.4135}}}}
-    
+        # dumpJson(output_path=self.output_path, output_name='chkdata_toy', data_to_dump=self.chkdata_toy)
+        # sys.exit()
+
     def getItems(self):
         list_chipID = os.listdir(self.root_path)
         # chipID_toy = list_chipID[0]
@@ -448,6 +455,7 @@ class QC_CHKRES_StatAna():
         return out_dict
 
     def run_Ana(self):
+        ## Use CFG_info to get the configuration from the analyzed data
         OUTPUT_DF = pd.DataFrame()
         #******************************
         data_dict = self.getItems()
@@ -468,30 +476,44 @@ class QC_CHKRES_StatAna():
                     tmpdata = gainData[group][asicGain][BL]
                     Nbins = int(len(tmpdata)/2)
                     xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    mean, std = statistics.mean(tmpdata), statistics.stdev(tmpdata)
+                    median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                    # make the distribution symmetric
+                    dmean_min = np.abs(median-xmin)
+                    dmean_max = np.abs(median-xmax)
+                    dmin = dmean_min
+                    if dmin > dmean_max:
+                        dmin = dmean_max
+                    pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
+                    tmpdata = np.delete(np.array(tmpdata), pmins)
+                    #
+                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                    median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
                     for _ in range(10):
-                        if xmin < mean-3*std:
-                            posMin = np.where(tmpdata==xmin)[0][0]
-                            del tmpdata[posMin]
-                        if xmax > mean+3*std:
-                            posMax = np.where(tmpdata==xmax)[0][0]
-                            del tmpdata[posMax]
+                        if xmin < median-3*std:
+                            posMin = np.where(tmpdata==xmin)[0]
+                            # del tmpdata[posMin]
+                            tmpdata = np.delete(np.array(tmpdata), posMin)
+                        if xmax > median+3*std:
+                            posMax = np.where(tmpdata==xmax)[0]
+                            # del tmpdata[posMax]
+                            tmpdata = np.delete(np.array(tmpdata), posMax)
+
                         xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        mean, std = statistics.mean(tmpdata), statistics.stdev(tmpdata)
-                    mean, std = np.round(mean, 4), np.round(std, 4)
+                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                    median, std = np.round(median, 4), np.round(std, 4)
                     # fill the lists
                     testItem_list.append('GAIN')
                     group_list.append(group)
                     asicgain_list.append(asicGain)
                     bl_list.append(BL)
-                    mean_list.append(mean)
+                    mean_list.append(median)
                     std_list.append(std)
                     #
                     x = np.linspace(xmin, xmax, len(tmpdata))
-                    p = norm.pdf(x, mean, std)
+                    p = norm.pdf(x, median, std)
                     plt.figure()
                     plt.hist(tmpdata, bins=Nbins, density=True)
-                    plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(mean, std))
+                    plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
                     plt.xlabel(group);plt.ylabel('#')
                     # plt.show()
                     plt.legend()
@@ -516,9 +538,6 @@ class QC_CHKRES_StatAna():
                         BL = ''
                         filename = '_'.join(['QC_CHKRES', '{}_{}_{}'.format(item, group, asicItem)])
                         if '\n' in filename:
-                            # print(asicItem)
-                            # print(filename)
-                            # sys.exit()
                             tmpASICitem = '_'.join(asicItem.split('\n'))
                             BL = group.split('\n')[0]
                             filename = '_'.join(['QC_CHKRES', item, group, tmpASICitem])
@@ -526,30 +545,56 @@ class QC_CHKRES_StatAna():
                         tmpdata = ItemData[group][asicItem]
                         Nbins = int(len(tmpdata)/2)
                         xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        mean, std = statistics.mean(tmpdata), statistics.stdev(tmpdata)
+                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                        # make the distribution symmetric
+                        dmean_min = np.abs(median-xmin)
+                        dmean_max = np.abs(median-xmax)
+                        dmin = dmean_min
+                        if dmin > dmean_max:
+                            dmin = dmean_max
+                        pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
+                        tmpdata = np.delete(np.array(tmpdata), pmins)
+                        #
+                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
                         for _ in range(10):
-                            if xmin < mean-3*std:
-                                posMin = np.where(tmpdata==xmin)[0][0]
-                                del tmpdata[posMin]
-                            if xmax > mean+3*std:
-                                posMax = np.where(tmpdata==xmax)[0][0]
-                                del tmpdata[posMax]
+                            if xmin < median-3*std:
+                                posMin = np.where(tmpdata<=xmin)[0]
+                                # del tmpdata[posMin]
+                                tmpdata = np.delete(np.array(tmpdata), posMin)
+                            
+                            if xmax > median+std:
+                                posMax = np.where(tmpdata==xmax)[0]
+                                # del tmpdata[posMax]
+                                tmpdata = np.delete(np.array(tmpdata), posMax)
                             xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                            mean, std = statistics.mean(tmpdata), statistics.stdev(tmpdata)
-                        mean, std = np.round(mean, 4), np.round(std, 4)
+                            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                        median, std = np.round(median, 4), np.round(std, 4)
+                        if item in ['OUTPUT', 'BL']:
+                            tmp = asicItem.split('\n')
+                            asicItem = '_'.join(tmp[1:])
+                            BL = tmp[0]
+                            # asicItem_list.append(asicItem)
+                            # bl_list.append(BL)
+                        elif item in ['SLKS', 'TP']:
+                            ## the configured baseline should be in the script used for data collection
+                            # asicItem_list.append(asicItem)
+                            # bl_list.append(BL)
+                            # BL = "200mV"
+                            pass
                         # fill the lists
                         testItem_list.append(item)
                         group_list.append(group)
                         asicItem_list.append(asicItem)
                         bl_list.append(BL)
-                        mean_list.append(mean)
+                        mean_list.append(median)
                         std_list.append(std)
                         #
                         x = np.linspace(xmin, xmax, len(tmpdata))
-                        p = norm.pdf(x, mean, std)
+                        p = norm.pdf(x, median, std)
                         plt.figure()
                         plt.hist(tmpdata, bins=Nbins, density=True)
-                        plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(mean, std))
+                        plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
                         plt.xlabel(group);plt.ylabel('#')
                         # plt.show()
                         plt.legend()
@@ -573,11 +618,11 @@ if __name__ == "__main__":
     #********************************************************
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-        chk_res.makePlots()
+    # list_chipID = os.listdir(root_path)
+    # for chipID in list_chipID:
+    #     chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+    #     chk_res.makePlots()
     #     # chk_res.extractData()
     # #     break
-    # chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
-    # chkres_stat.run_Ana()
+    chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
+    chkres_stat.run_Ana()
