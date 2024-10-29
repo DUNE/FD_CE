@@ -157,6 +157,9 @@ class QC_PWR(BaseClass):
         return outdata
 
 class QC_PWR_analysis(BaseClass_Ana):
+    '''
+        This class is written to analyze the decoded data for each ASIC.
+    '''
     def __init__(self, root_path: str, chipID: str, output_path: str):
         self.item = 'QC_PWR'
         super().__init__(root_path=root_path, chipID=chipID, item=self.item, output_path=output_path)
@@ -441,7 +444,7 @@ class QC_PWR_StatAna():
             # print("MEAN = {}, STD = {}".format(mean, std))
             xmin, xmax = np.min(v), np.max(v)
             # Get rid of values outside of the 3sigma range
-            for i in range(1):
+            for i in range(50):
                 posMax = np.where(v==xmax)[0]
                 posMin = np.where(v==xmin)[0]
                 if xmax > mean+3*std:
@@ -460,7 +463,7 @@ class QC_PWR_StatAna():
             x = np.linspace(xmin, xmax, len(v))
             p = norm.pdf(x, mean, std)
             plt.figure()
-            plt.hist(v, bins=int(len(v)/2), density=True)
+            plt.hist(v, bins=int(len(v)//32), density=True)
             plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(mean, std))
             plt.xlabel('{}_VDDA ({})'.format(item, unit));plt.ylabel('#')
             # plt.show()
@@ -488,7 +491,7 @@ class QC_PWR_StatAna():
             # print("MEAN = {}, STD = {}".format(mean, std))
             xmin, xmax = np.min(v), np.max(v)
             # Get rid of values outside of the 3sigma range
-            for i in range(10):
+            for i in range(50):
                 posMax = np.where(v==xmax)[0]
                 posMin = np.where(v==xmin)[0]
                 if xmax > mean+3*std:
@@ -506,7 +509,7 @@ class QC_PWR_StatAna():
             x = np.linspace(xmin, xmax, len(v))
             p = norm.pdf(x, mean, std)
             plt.figure()
-            plt.hist(v, bins=int(len(v)/2), density=True)
+            plt.hist(v, bins=int(len(v)//32), density=True)
             plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(mean, std))
             plt.xlabel('{}_VDDO ({})'.format(item, unit));plt.ylabel('#')
             # plt.show()
@@ -534,7 +537,7 @@ class QC_PWR_StatAna():
             # print("MEAN = {}, STD = {}".format(mean, std))
             xmin, xmax = np.min(v), np.max(v)
             # Get rid of values outside of the 3sigma range
-            for i in range(10):
+            for i in range(50):
                 if xmax > mean+3*std:
                     posMax = np.where(v==xmax)[0]
                     del v[posMax[0]]
@@ -552,7 +555,7 @@ class QC_PWR_StatAna():
             x = np.linspace(xmin, xmax, len(v))
             p = norm.pdf(x, mean, std)
             plt.figure()
-            plt.hist(v, bins=int(len(v)/2), density=True)
+            plt.hist(v, bins=int(len(v)//32), density=True)
             plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(mean, std))
             plt.xlabel('{}_VDDP ({})'.format(item, unit));plt.ylabel('#')
             # plt.show()
