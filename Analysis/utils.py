@@ -365,7 +365,7 @@ class BaseClass_Ana:
         try:
             self.filename = [f for f in os.listdir('/'.join([self.root_path, self.chipID, self.item_to_ana])) if '.json' in f][0]
         except:
-            print('No file {}.json for chip = {}'.format(self.item_to_ana, chipID))
+            print('No file .json for chip = {}'.format(chipID))
             self.ERROR = True
             return
         self.data, self.params = self.read_json()
