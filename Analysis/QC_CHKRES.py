@@ -347,9 +347,9 @@ class QC_CHKRES_Ana(BaseClass_Ana):
         for item in items:
             for group in groups:
                 configs, means, stds, mins, maxs, cfgs_dict = self.ChResp_ana(item_to_plot=item, group=group, returnData=True)
-                print(configs)
-                print(cfgs_dict)
-                sys.exit()
+                # print(configs)
+                # print(cfgs_dict)
+                # sys.exit()
                 out_dict[group][item] = {c: dict() for c in configs}
                 
                 if group=='GAINs':
@@ -474,21 +474,21 @@ class QC_CHKRES_StatAna():
                 for BL in BLs:
                     filename = '_'.join(['QC_CHKRES', 'GAIN', group, asicGain, BL])
                     tmpdata = gainData[group][asicGain][BL]
-                    Nbins = int(len(tmpdata)/2)
+                    Nbins = int(len(tmpdata)//32)
                     xmin, xmax = np.min(tmpdata), np.max(tmpdata)
                     median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
                     # make the distribution symmetric
-                    dmean_min = np.abs(median-xmin)
-                    dmean_max = np.abs(median-xmax)
-                    dmin = dmean_min
-                    if dmin > dmean_max:
-                        dmin = dmean_max
-                    pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
-                    tmpdata = np.delete(np.array(tmpdata), pmins)
-                    #
-                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    for _ in range(10):
+                    # dmean_min = np.abs(median-xmin)
+                    # dmean_max = np.abs(median-xmax)
+                    # dmin = dmean_min
+                    # if dmin > dmean_max:
+                    #     dmin = dmean_max
+                    # pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
+                    # tmpdata = np.delete(np.array(tmpdata), pmins)
+                    # #
+                    # xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                    # median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                    for _ in range(75):
                         if xmin < median-3*std:
                             posMin = np.where(tmpdata==xmin)[0]
                             # del tmpdata[posMin]
@@ -543,21 +543,21 @@ class QC_CHKRES_StatAna():
                             filename = '_'.join(['QC_CHKRES', item, group, tmpASICitem])
 
                         tmpdata = ItemData[group][asicItem]
-                        Nbins = int(len(tmpdata)/2)
+                        Nbins = int(len(tmpdata)//32)
                         xmin, xmax = np.min(tmpdata), np.max(tmpdata)
                         median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
                         # make the distribution symmetric
-                        dmean_min = np.abs(median-xmin)
-                        dmean_max = np.abs(median-xmax)
-                        dmin = dmean_min
-                        if dmin > dmean_max:
-                            dmin = dmean_max
-                        pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
-                        tmpdata = np.delete(np.array(tmpdata), pmins)
+                        # dmean_min = np.abs(median-xmin)
+                        # dmean_max = np.abs(median-xmax)
+                        # dmin = dmean_min
+                        # if dmin > dmean_max:
+                        #     dmin = dmean_max
+                        # pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
+                        # tmpdata = np.delete(np.array(tmpdata), pmins)
                         #
-                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                        for _ in range(10):
+                        # xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+                        # median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+                        for _ in range(75):
                             if xmin < median-3*std:
                                 posMin = np.where(tmpdata<=xmin)[0]
                                 # del tmpdata[posMin]
