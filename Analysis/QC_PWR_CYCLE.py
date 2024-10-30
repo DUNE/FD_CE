@@ -202,8 +202,10 @@ class PWR_CYCLE_statAna():
         for _ in range(10):
             posmin = np.where(data < xmin)[0]
             posmax = np.where(data > xmax)[0]
-            data = np.delete(data, posmin)
-            data = np.delete(data, posmax)
+            # data = np.delete(data, posmin)
+            # data = np.delete(data, posmax)
+            pos = np.concatenate((posmin, posmax))
+            data = np.delete(data, pos)
             std = statistics.stdev(data)
             median = statistics.median(data)
             xmin = median - 3*std
@@ -212,7 +214,7 @@ class PWR_CYCLE_statAna():
         median = np.round(median, 4)
         return data, median, std
 
-    def savePlotDistribution(self, array, filename, mean, std, xtitle, saveFig=False):
+    def savePlotDistribution(self, array, filename, mean, std, xtitle, saveFig=True):
         if saveFig:
             plt.figure()
             plt.hist(array, bins=len(array)//16, label='mean = {}, std = {}'.format(mean, std))
@@ -308,7 +310,7 @@ class PWR_CYCLE_statAna():
             ## VDDA
             tmpdata = allI_vdda[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vdda_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vdda_cycle{}'.format(icycle), mean=median, std=std, xtitle='I_VDDA_cycle{}'.format(icycle))
             output_ana['testItem'].append('I')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('VDDA')
@@ -317,7 +319,7 @@ class PWR_CYCLE_statAna():
             ## VDDO
             tmpdata = allI_vddo[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vddo_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vddo_cycle{}'.format(icycle), mean=median, std=std, xtitle='I_VDDA_cycle{}'.format(icycle))
             output_ana['testItem'].append('I')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('VDDO')
@@ -326,8 +328,8 @@ class PWR_CYCLE_statAna():
             ## VDDP
             tmpdata = allV_vddp[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vddp_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
-            output_ana['testItem'].append('V')
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vddp_cycle{}'.format(icycle), mean=median, std=std, xtitle='I_VDDA_cycle{}'.format(icycle))
+            output_ana['testItem'].append('I')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('VDDP')
             output_ana['mean'].append(median)
@@ -336,7 +338,7 @@ class PWR_CYCLE_statAna():
             ## VDDA
             tmpdata = allP_vdda[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_power_vdda_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_power_vdda_cycle{}'.format(icycle), mean=median, std=std, xtitle='P_VDDA_cycle{}'.format(icycle))
             output_ana['testItem'].append('P')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('VDDA')
@@ -345,7 +347,7 @@ class PWR_CYCLE_statAna():
             ## VDDO
             tmpdata = allP_vddo[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_power_vddo_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_power_vddo_cycle{}'.format(icycle), mean=median, std=std, xtitle='P_VDDA_cycle{}'.format(icycle))
             output_ana['testItem'].append('P')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('VDDO')
@@ -364,7 +366,7 @@ class PWR_CYCLE_statAna():
             # Pedestals
             tmpdata = all_pedestals[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_pedestal_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_pedestal_cycle{}'.format(icycle), mean=median, std=std, xtitle='pedestal_cycle{}'.format(icycle))
             output_ana['testItem'].append('pedestal')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('n/a')
@@ -373,7 +375,7 @@ class PWR_CYCLE_statAna():
             # rms
             tmpdata = all_rms[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_rms_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_rms_cycle{}'.format(icycle), mean=median, std=std, xtitle='rms_cycle{}'.format(icycle))
             output_ana['testItem'].append('rms')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('n/a')
@@ -382,7 +384,7 @@ class PWR_CYCLE_statAna():
             # positive peak
             tmpdata = all_pospeaks[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_pospeak_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_pospeak_cycle{}'.format(icycle), mean=median, std=std, xtitle='posPeak_cycle{}'.format(icycle))
             output_ana['testItem'].append('pospeak')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('n/a')
@@ -391,7 +393,7 @@ class PWR_CYCLE_statAna():
             # negative peak
             tmpdata = all_negpeaks[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
-            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_negpeak_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
+            self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_negpeak_cycle{}'.format(icycle), mean=median, std=std, xtitle='negPeak_cycle{}'.format(icycle))
             output_ana['testItem'].append('negpeak')
             output_ana['Cycle'].append(icycle)
             output_ana['vdd_cfgs'].append('n/a')
