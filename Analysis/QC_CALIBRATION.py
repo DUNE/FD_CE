@@ -4,12 +4,13 @@
 #   Analyze the calibration data: QC_CALI_ASICDAC.bin, QC_CALI_DATDAC.bin, and QC_CALI_DIRECT.bin
 ############################################################################################
 
-import os, sys
-import numpy as np
+import os, sys, statistics
+import numpy as np, pandas as pd
 from utils import printItem, createDirs, dumpJson, linear_fit, LArASIC_ana, decodeRawData, BaseClass #, getPulse
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from utils import BaseClass_Ana
+from scipy.stats import norm
 
 class QC_CALI(BaseClass):
     '''
@@ -236,17 +237,34 @@ class QC_CALI_Ana(BaseClass_Ana):
         except OSError:
             pass
         print(self.output_dir)
-        # print(self.params)
-        # self.getmeanData(BL="SNC1", item="posAmp")
-        # self.getmeanData(BL="SNC0", item="posAmp")
-        # dac, chns, allchdacdata = self.getDataperDAC(BL='SNC0', item="posAmp", DAC=4)
-        # self.getDAClist(BL='SNC1')
-        # self.Amp_vs_CH()
-        # self.Amp_vs_DAC()
-        # self.INL_vs_CH()
-        # self.makeplots()
-        # sys.exit()
-    
+
+    def getItem_forStatAna(self):
+        '''
+            Idea I want to implement in this function:
+            - concatenate the data for the 16-channels corresponding to each DAC value
+        '''
+        BLs = ['SNC0', 'SNC1']
+        outdata = {BL: dict() for BL in BLs}
+        for BL in BLs:
+            data = self.data[BL]
+            DAClist = self.getDAClist(BL=BL)
+            tmp_out = {'DAC': DAClist, 
+                        'pedestal': [np.array([]) for _ in range(len(DAClist))],
+                        'posAmp': [np.array([]) for _ in range(len(DAClist))],
+                        'negAmp': [np.array([]) for _ in range(len(DAClist))]
+                      }
+            for ich in range(16):
+                # for i, d in enumerate(data['CH{}'.format(ich)]):
+                chdata = data['CH{}'.format(ich)]
+                for idac, dac in enumerate(DAClist):
+                    tmpdata = chdata[idac] 
+                    tmp_out['pedestal'][idac] = np.append(tmp_out['pedestal'][idac], tmpdata['pedestal'])
+                    tmp_out['posAmp'][idac] = np.append(tmp_out['posAmp'][idac], tmpdata['posAmp'])
+                    tmp_out['negAmp'][idac] = np.append(tmp_out['negAmp'][idac], tmpdata['negAmp'])
+            
+            outdata[BL] = tmp_out
+        return outdata
+
     def getDAClist(self, BL: str):
         data = self.data[BL]
         DAClist = []
@@ -381,26 +399,160 @@ class QC_CALI_Ana(BaseClass_Ana):
                 plt.close()
 
     def makeplots(self):
-        self.Amp_vs_CH()
-        self.Amp_vs_DAC()
-        self.INL_vs_CH()
+        if self.ERROR:
+            return
+        # self.Amp_vs_CH()
+        # self.Amp_vs_DAC()
+        # self.INL_vs_CH()
+        self.getItem_forStatAna()
 
-def StatAna_cali(root_path: str, list_chipID: list):
-    BLs = ['SNC0', 'SNC1']
-    items_to_ana = ['posAmp', 'negAmp']
-    allINLs = np.array([])
+# def StatAna_cali(root_path: str, list_chipID: list):
+#     BLs = ['SNC0', 'SNC1']
+#     items_to_ana = ['posAmp', 'negAmp']
+#     allINLs = np.array([])
+#     for chipID in list_chipID:
+#         ana_cali = QC_CALI_Ana(root_path=root_path, output_path='', chipID=chipID, CALI_item='QC_CALI_ASICDAC')
+#         if ana_cali.ERROR:
+#             continue
+#         INLs = ana_cali.getINL(BL=BLs[0], item=items_to_ana[1])
+#         val = list(INLs.values())
+#         allINLs = np.concatenate((allINLs, np.array(val)))
+#     plt.figure()
+#     mean = np.round(np.mean(allINLs), 4)
+#     std = np.round(np.std(allINLs), 4)
+#     plt.hist(allINLs, bins=100, label='mean = {}, std = {}'.format(mean, std))
+#     plt.legend()
+#     plt.show()
+#     # print(alldata)
+
+def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', saveDist=False):
+    def plot_distribution(array, xtitle, output_path_fig, figname):
+        xmin, xmax = np.min(array), np.max(array)
+        mean, std = np.round(statistics.median(array), 4), np.round(statistics.stdev(array), 4)
+        x = np.linspace(xmin, xmax, len(array))
+        p = norm.pdf(x, mean, std)
+        Nbins = len(array)//32
+        plt.figure()
+        plt.hist(array, bins=Nbins, density=True)
+        plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(mean, std))
+        plt.xlabel(xtitle);plt.ylabel('#')
+        plt.legend()
+        plt.savefig('/'.join([output_path_fig, figname + '.png']))
+        plt.close()
+
+    outdata = dict()
+    output_path_fig = '/'.join([output_path, 'fig'])
+    list_chipID = os.listdir(root_path)
+    firstData = True
+    BLs = []
+    DACs = [[], []]
     for chipID in list_chipID:
-        ana_cali = QC_CALI_Ana(root_path=root_path, output_path='', chipID=chipID, CALI_item='QC_CALI_ASICDAC')
-        INLs = ana_cali.getINL(BL=BLs[0], item=items_to_ana[1])
-        val = list(INLs.values())
-        allINLs = np.concatenate((allINLs, np.array(val)))
-    plt.figure()
-    mean = np.round(np.mean(allINLs), 4)
-    std = np.round(np.std(allINLs), 4)
-    plt.hist(allINLs, bins=100, label='mean = {}, std = {}'.format(mean, std))
-    plt.legend()
-    plt.show()
-    # print(alldata)
+        ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
+        if ana_cali.ERROR:
+            continue
+        chipdata = ana_cali.getItem_forStatAna()
+        if firstData:
+            outdata = chipdata
+            BLs = list(outdata.keys())
+            DACs = [list(outdata[bl]['DAC']) for bl in BLs]
+        else:
+            for ibl, bl in enumerate(BLs):
+                for idac, dac in enumerate(DACs[ibl]):
+                    outdata[bl]['pedestal'][idac] = np.concatenate((outdata[bl]['pedestal'][idac], chipdata[bl]['pedestal'][idac]))
+                    outdata[bl]['posAmp'][idac] = np.concatenate((outdata[bl]['posAmp'][idac], chipdata[bl]['posAmp'][idac]))
+                    outdata[bl]['negAmp'][idac] = np.concatenate((outdata[bl]['negAmp'][idac], chipdata[bl]['negAmp'][idac]))
+        firstData = False
+    # all the data are stored in one dictionary now
+    # testItems = [] # pedestal, posAmp, negAmp
+    # BLs = [] # SNC0, SNC1
+    # DACs = [] # 0, 4, 8, ....
+    # means = []
+    # stdevs = []
+    out_dict = {'testItem': [], 'BL': [], 'DAC': [], 'mean': [], 'std': []}
+    for ibl, bl in enumerate(outdata.keys()):
+        bldata = outdata[bl]
+        # print(bldata.keys())
+        # print(len(bldata['pedestal'][0]))
+        # print(bldata['DAC'])
+        for idac, dac in enumerate(bldata['DAC']):
+            pedestal = bldata['pedestal'][idac]
+            posAmp = bldata['posAmp'][idac]
+            negAmp = bldata['negAmp'][idac]
+            # pedestal
+            pedmean = statistics.median(pedestal)
+            pedstd = statistics.stdev(pedestal)
+            pedmin, pedmax = pedmean-3*pedstd, pedmean+3*pedstd
+            # posAmp
+            posAmpmean = statistics.median(posAmp)
+            posAmpstd = statistics.stdev(posAmp)
+            posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
+            # negAmp
+            negAmpmean = statistics.median(negAmp)
+            negAmpstd = statistics.stdev(negAmp)
+            negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
+            for _ in range(10):
+                # pedestal
+                posmin = np.where(pedestal < pedmin)[0]
+                posmax = np.where(pedestal > pedmax)[0]
+                pos = np.concatenate((posmin, posmax))
+                pedestal = np.delete(pedestal, pos)
+                pedmean = statistics.median(pedestal)
+                pedstd = statistics.stdev(pedestal)
+                pedmin, pedmax = pedmean-3*pedstd, pedmean+3*pedstd
+                # posAmp
+                posmin = np.where(posAmp < posAmpmin)[0]
+                posmax = np.where(posAmp > posAmpmax)[0]
+                pos = np.concatenate((posmin, posmax))
+                posAmp = np.delete(posAmp, pos)
+                posAmpmean = statistics.median(posAmp)
+                posAmpstd = statistics.stdev(posAmp)
+                posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
+                # negAmp
+                posmin = np.where(negAmp < negAmpmin)[0]
+                posmax = np.where(negAmp > negAmpmax)[0]
+                pos = np.concatenate((posmin, posmax))
+                negAmp = np.delete(negAmp, pos)
+                negAmpmean = statistics.median(negAmp)
+                negAmpstd = statistics.stdev(negAmp)
+                negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
+            if saveDist:
+                plot_distribution(array=pedestal, xtitle='pedestal', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'pedestal', bl, str(dac)]))
+                plot_distribution(array=posAmp, xtitle='posAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'posAmp', bl, str(dac)]))
+                plot_distribution(array=negAmp, xtitle='negAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'negAmp', bl, str(dac)]))
+            
+            # pedestal
+            out_dict['testItem'].append('pedestal')
+            out_dict['BL'].append(bl)
+            out_dict['DAC'].append(dac)
+            out_dict['mean'].append(pedmean)
+            out_dict['std'].append(pedstd)
+            # posAmp
+            out_dict['testItem'].append('posAmp')
+            out_dict['BL'].append(bl)
+            out_dict['DAC'].append(dac)
+            out_dict['mean'].append(posAmpmean)
+            out_dict['std'].append(posAmpstd)
+            # negAmp
+            out_dict['testItem'].append('negAmp')
+            out_dict['BL'].append(bl)
+            out_dict['DAC'].append(dac)
+            out_dict['mean'].append(negAmpmean)
+            out_dict['std'].append(negAmpstd)
+
+    for key in out_dict.keys():
+        print(len(out_dict[key]))
+    out_df = pd.DataFrame(out_dict).sort_values(by=['testItem', 'BL'])
+    # print(out_df.head())
+    out_df.to_csv('/'.join([output_path, cali_item + '.csv']))
+
+
+    # plt.figure()
+    # for idac, dac in enumerate(DACs[1]):
+    #     plt.hist(outdata['SNC1']['posAmp'][idac], bins=50, alpha=0.5, label='DAC = {}'.format(dac))
+    #     # break
+    # plt.legend()
+    # plt.show()
+    # sys.exit()
 
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
@@ -424,7 +576,7 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item='QC_CALI_ASICDAC_47')
-        ana_cali.makeplots()
-    # StatAna_cali(root_path=root_path, list_chipID=list_chipID)
+    # for chipID in list_chipID:
+    #     ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item='QC_CALI_ASICDAC_47')
+    #     ana_cali.makeplots()
+    StatAna_cali(root_path=root_path, output_path=output_path, cali_item='QC_CALI_DIRECT', saveDist=True)
