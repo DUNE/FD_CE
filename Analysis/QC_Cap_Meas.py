@@ -166,14 +166,15 @@ class QC_Cap_Meas(BaseClass):
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
     # root_path = '../../B010T0004/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/'
-    output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    output_path = '../../Analyzed_for_capmeas'
     root_path = '../../B010T0004'
     list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
     # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
     for i, data_dir in enumerate(list_data_dir):
         # if i==1:
             print(data_dir)
-            cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=False)
+            cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
             decodedData = cap.decode()
             cap.saveData(decodedData=decodedData)
             # sys.exit()
