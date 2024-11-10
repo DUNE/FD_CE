@@ -6,8 +6,11 @@
 
 import os, sys
 import numpy as np
+import pandas as pd
 from utils import printItem, createDirs, dumpJson, linear_fit, LArASIC_ana, decodeRawData, BaseClass #, getMaxAmpIndices, getMinAmpIndices, getPulse
 import matplotlib.pyplot as plt
+from utils import BaseClass_Ana
+from scipy.stats import norm
 
 class QC_Cap_Meas(BaseClass):
     def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False):
@@ -21,9 +24,12 @@ class QC_Cap_Meas(BaseClass):
     def getCFG(self):
         CFG = {}
         tmpOptions = []
+        # print(self.params)
+        # print('\n\n')
         for param in self.params:
             s = param.split('_')
             tmpOptions.append(s[-1])
+        # print(tmpOptions,'\n\n')
         options = []
         for o in tmpOptions:
             if o not in options:
@@ -161,20 +167,154 @@ class QC_Cap_Meas(BaseClass):
         # sys.exit()
                         # chipdata[c][fechn][bl] = 
         # add option to plot waveform
+    
+    def decode_CapMeas(self):
+        if self.ERROR:
+            return
+        decodedData = self.decode()
+        self.saveData(decodedData=decodedData)
 
+class QC_Cap_Meas_Ana(BaseClass_Ana):
+    def __init__(self, root_path: str, output_path: str, chipID: str):
+        self.item = 'QC_Cap_Meas'
+        super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
+        self.output_dir = '/'.join([output_path, chipID, self.item])
+        try:
+            os.mkdir('/'.join([output_path, chipID]))
+        except OSError:
+            pass
+        try:
+            os.mkdir(self.output_dir)
+        except OSError:
+            pass
+        self.ratioCap = []
+        # this is hard coded because the keys and filename do not have them
+        config = {
+            'BL': '200mV',
+            'peakTime': '3us',
+            'gain': '4.7mV/fC'
+        }
+        self.config = dict(config)
+
+    def getRatioCapacitance(self):
+        chn_list = list(self.data['INPUT'].keys())
+        # print(chn_list)
+        ratioC = []
+        for chn in chn_list:
+            chn_ref = self.data['INPUT'][chn]
+            chn_cali = self.data['CALI'][chn]
+            # reference
+            vref = [float(v.split('m')[0]) for v in chn_ref.keys()]
+            imin_vref, imax_vref = np.argmin(vref), np.argmax(vref)
+            delta_vref = vref[imax_vref] - vref[imin_vref]
+            refmax = str(int(vref[imax_vref])) + 'mV'
+            refmin = str(int(vref[imin_vref])) + 'mV'
+            Aref = chn_ref[refmax]['ppeak'] - chn_ref[refmin]['ppeak']
+            Cref = (Aref/delta_vref)*0.185
+
+            # cali
+            vcali = [float(v.split('m')[0]) for v in chn_cali.keys()]
+            imin_vcali, imax_vcali = np.argmin(vcali), np.argmax(vcali)
+            delta_vcali = vcali[imax_vcali] - vcali[imin_vcali]
+            icalimax, icalimin = str(int(vcali[imax_vcali])) + 'mV', '0'+str(int(vcali[imin_vcali])) + 'mV'
+            Acali = chn_cali[icalimax]['ppeak'] - chn_cali[icalimin]['ppeak']
+            Ccali = (Acali/delta_vcali)
+            
+            ratio = Ccali/Cref
+            # ratio = Cref/Ccali
+            # print(ratio)
+            # print(chn_cali)
+            # sys.exit()
+            # print(np.argmax(vref), vref[np.argmax(vref)])
+            ##
+            ## NOTE ABOUT THIS IS ON MY IPAD : notes from the chat with Shanshan
+            ratioC.append(ratio)
+        self.ratioCap = ratioC
+        return np.array(ratioC)
+    
+    def plotRatioCap(self):
+        plt.figure()
+        plt.plot(self.ratioCap, '--.', markersize=12)
+        plt.xlabel('CH')
+        plt.ylabel('Capacitance (pF)')
+        plt.ylim([0.0, 1.5])
+        plt.grid(True)
+        # plt.show()
+        # sys.exit()
+        plt.savefig('/'.join([self.output_dir, self.item + '_' + self.chipID + '.png']))
+        plt.close()
+
+    def run_Ana(self):
+        plt.figure()
+        plt.plot(self.ratioCap)
+        plt.show()
+        
+def Cap_stat_ana(root_path: str, list_chipID: list, output_path: str, savefig=False):
+    ############################# QUESTION RELATED TO THIS #####################
+    # Do we want to save the mean, std in a separate csv file ?
+    # as far as I know, we only have one configuration for this measurement so
+    # so the csv file will be extremely small in size
+    # --> Probably the answer to this is yes, we want to save these information 
+    # in a csv file no matter the size
+    ############################################################################
+    ratio_caps = np.array([])
+    config = dict()
+    firstData = True
+    for chipID in list_chipID:
+        cap = QC_Cap_Meas_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+        if cap.ERROR:
+            continue
+        tmpratiocap = cap.getRatioCapacitance()
+        if savefig:
+            cap.plotRatioCap()
+        if firstData:
+            ratio_caps = tmpratiocap
+            config = cap.config
+            firstData = False
+        else:
+            ratio_caps = np.concatenate((ratio_caps, tmpratiocap))
+        # cap.plotRatioCap()
+    x = np.linspace(np.min(ratio_caps), np.max(ratio_caps), len(ratio_caps))
+    mean, std = np.median(ratio_caps), np.std(ratio_caps)
+    p = norm.pdf(x, mean, std)
+    plt.figure()
+    plt.hist(ratio_caps, bins=100, density=True, label='mean = {}, std = {}'.format(np.round(mean,4), np.round(std,4)))
+    plt.plot(x, p)
+    plt.xlabel('Capacitance (pF)');plt.ylabel('#')
+    plt.legend()
+    # plt.show()
+    plt.savefig('/'.join([output_path, 'fig', 'QC_Cap_Meas.png']))
+    plt.close()
+    #
+    # save Config, Mean, and std in csv file
+    config['meanCap'] = np.round(mean, 4)
+    config['stdCap'] = np.round(std, 4)
+    print(config)
+    df = pd.DataFrame({'item': ['Capacitance'], 'BL': [config['BL']], 'peakTime': [config['peakTime']], 'gain': [config['gain']],
+                 'meanCap (pF)': [config['meanCap']], 'stdCap (pF)': [config['stdCap']]})
+    df.to_csv('/'.join([output_path, 'QC_Cap_Meas.csv']), index=False)
+    print(ratio_caps)
 
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
     # root_path = '../../B010T0004/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/'
     # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analyzed_for_capmeas'
-    root_path = '../../B010T0004'
-    list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
-    # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
-    for i, data_dir in enumerate(list_data_dir):
-        # if i==1:
-            print(data_dir)
-            cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
-            decodedData = cap.decode()
-            cap.saveData(decodedData=decodedData)
-            # sys.exit()
+    # output_path = '../../Analyzed_for_capmeas'
+    # root_path = '../../B010T0004'
+    # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
+    # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
+    # for i, data_dir in enumerate(list_data_dir):
+    #     # if i==1:
+    #         print(data_dir)
+    #         cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
+    #         decodedData = cap.decode()
+    #         cap.saveData(decodedData=decodedData)
+    #         # sys.exit()
+    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    output_path = '../../Analysis'
+    list_chipID = os.listdir(root_path)
+    # for chipID in list_chipID:
+    #     m = QC_Cap_Meas_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+    #     m.run_Ana()
+    #     sys.exit()
+    Cap_stat_ana(root_path=root_path, output_path=output_path, list_chipID=list_chipID)
