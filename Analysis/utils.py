@@ -65,16 +65,60 @@ def linear_fit(x: list, y: list):
         inputs: x and y
         outputs: slope, yintercept, peakinl
     '''
-    # fit = np.polyfit(x, y, 1)
-    # slope, yintercept = fit[0], fit[1]
-    fit = sm.OLS(y, sm.add_constant(x)).fit()
-    slope = fit.params[1]
-    yintercept = fit.params[0]
+
+    slope, yintercept = np.polyfit(x, y, 1)
     y_fit = np.array(x) * slope + yintercept
     delta_y = np.abs(np.array(y) - y_fit)
     inl = delta_y / (np.max(y) - np.min(y))
     peakinl = np.max(inl)
     return slope, yintercept, peakinl
+
+def gain_inl(x: list, y: list, item=''):
+    x = list(x)
+    y = list(y)
+    i0 = 0
+    i1 = 4
+    istart = 5
+    iend = len(x)
+    stepsize = 1
+    # if 'ASICDAC' not in item:
+    #     plt.figure()
+    #     plt.plot(x, y)
+    #     plt.show()
+    #     sys.exit()
+    #     i0 = -5
+    #     i1 = -1
+    #     istart = -4
+    #     iend = -len(x)-1
+    #     stepsize = -1
+    slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
+    ypred = slope * np.array(x) + yintercept
+    for i in range(istart, iend, stepsize):
+        # dy, tmp_inl = 0., 0.
+        i1 = i
+        dy = np.abs(y[i1]-ypred[i1])
+        tmp_inl = (dy / np.abs(y[i1-1]-y[i0]))*100
+        # if 'ASICDAC' in item:
+        #     i1 = i
+        #     dy = np.abs(y[i1]-ypred[i1])
+        #     tmp_inl = (dy / np.abs(y[i1-1]-y[i0]))*100
+        # else: # This case need to be corrected because I swapped the axes so that I have charge vs Amplitude
+        #     i0 = i
+        #     dy = np.abs(y[i0] - ypred[i0])
+        #     tmp_inl = (dy / np.abs(y[i0+1] - y[i1]))*100
+        if tmp_inl > 1:
+            break
+        else:
+            slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
+            ypred = slope * np.array(x) + yintercept
+    delta_y = np.abs(np.array(y[i0:i1]) - ypred[i0:i1])
+    inl = delta_y / (np.max(y[i0:i1]) - np.min(y[i0:i1]))
+    peakinl = np.max(inl)
+    # linRange = [x[i0], x[i1]]
+    linRange = [y[i0], y[i1]]
+    if 'ASICDAC' not in item:
+        linRange = [y[i1], y[i0]]
+    return slope, yintercept, peakinl, linRange
 
 def createDirs(logs_dict: dict, output_dir: str):
     for ife in range(8):
