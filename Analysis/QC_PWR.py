@@ -266,6 +266,40 @@ class QC_PWR_analysis(BaseClass_Ana):
         V_list = [('VDDA', V_vdda), ('VDDO', V_vddo), ('VDDP', V_vddp)]
         I_list = [('VDDA', I_vdda), ('VDDO', I_vddo), ('VDDP', I_vddp)]
         P_list = [('VDDA', P_vdda), ('VDDO', P_vddo), ('VDDP', P_vddp), ('Total Power', P_total)]
+        # print(I_list)
+        # sys.exit()
+        #
+        outdata = {'testItem': [], 'cfgs': [], 'vdd_cfgs': [], 'value': []}
+        for i in range(len(V_list)):
+            Vvdd_cfg = V_list[i][0]
+            v_item = 'V (V/LArASIC)'
+            Vvdd_meas = V_list[i][1]['data']
+            for key, val in Vvdd_meas.items():
+                outdata['testItem'].append(v_item)
+                outdata['cfgs'].append(key)
+                outdata['vdd_cfgs'].append(Vvdd_cfg)
+                outdata['value'].append(val)
+            #
+            Pvdd_cfg = P_list[i][0]
+            P_item = 'P (mW/LArASIC)'
+            Pvdd_meas = P_list[i][1]['data']
+            for key, val in Pvdd_meas.items():
+                outdata['testItem'].append(P_item)
+                outdata['cfgs'].append(key)
+                outdata['vdd_cfgs'].append(Pvdd_cfg)
+                outdata['value'].append(val)
+            #
+            Ivdd_cfg = I_list[i][0]
+            I_item = 'I (mA/LArASIC)'
+            Ivdd_meas = I_list[i][1]['data']
+            for key, val in Ivdd_meas.items():
+                outdata['testItem'].append(I_item)
+                outdata['cfgs'].append(key)
+                outdata['vdd_cfgs'].append(Ivdd_cfg)
+                outdata['value'].append(val)
+        out_df = pd.DataFrame(outdata)
+        out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
+        # Generate plots
         self.plot_PWR(data_dict_list=V_list, xlabel='Configurations', ylabel='Voltage ({}/LArASIC)'.format(V_vdda['unit']), item_to_plot='Voltage')
         self.plot_PWR(data_dict_list=I_list, xlabel='Configurations', ylabel='Current ({}/LArASIC)'.format(I_vdda['unit']), item_to_plot='Current')
         self.plot_PWR(data_dict_list=P_list, xlabel='Configurations', ylabel='Power ({}/LArASIC)'.format(P_vdda['unit']), item_to_plot='Power')
@@ -368,11 +402,11 @@ class QC_PWR_analysis(BaseClass_Ana):
         if self.ERROR:
             return
         self.PWR_consumption_ana()
-        chresp_items = ['pedestal', 'rms']
-        for item_to_plot in chresp_items:
-            self.ChResp_ana(item_to_plot=item_to_plot)
-        for BL in ['200mV', '900mV']:
-            self.Mean_ChResp_ana(BL=BL)
+        # chresp_items = ['pedestal', 'rms']
+        # for item_to_plot in chresp_items:
+        #     self.ChResp_ana(item_to_plot=item_to_plot)
+        # for BL in ['200mV', '900mV']:
+        #     self.Mean_ChResp_ana(BL=BL)
 
 from scipy.stats import norm
 import statistics
@@ -615,12 +649,12 @@ if __name__ =='__main__':
     #     sys.exit()
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    # list_chipID = os.listdir(root_path)
-    # for chipID in list_chipID:
-    #     pwr_ana = QC_PWR_analysis(root_path=root_path, chipID=chipID, output_path=output_path)
-    #     pwr_ana.runAnalysis()
-    #     # pwr_ana.Mean_ChResp_ana(BL='900mV')
-    #     # sys.exit()
-    pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
-    # pwr_ana_stat.getItem(item='I')
-    pwr_ana_stat.run_Ana()
+    list_chipID = os.listdir(root_path)
+    for chipID in list_chipID:
+        pwr_ana = QC_PWR_analysis(root_path=root_path, chipID=chipID, output_path=output_path)
+        pwr_ana.runAnalysis()
+        # pwr_ana.Mean_ChResp_ana(BL='900mV')
+        # sys.exit()
+    # pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
+    # # pwr_ana_stat.getItem(item='I')
+    # pwr_ana_stat.run_Ana()

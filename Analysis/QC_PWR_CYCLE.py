@@ -112,11 +112,12 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
     def __init__(self, root_path: str, chipID: str, output_path: str):
         self.item = 'QC_PWR_CYCLE'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
-        self.output_dir = '/'.join([output_path, self.item])
+        self.output_dir = '/'.join([output_path, chipID, self.item])
         try:
             os.makedirs(self.output_dir)
         except OSError:
             pass
+        self.units = {'V': 'V', 'I': 'mA', 'P': 'mW'}
     
     def get_IVP(self, param='V', forStat=False):
         if forStat:
@@ -166,22 +167,51 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
         else:
             # Get mean values for each cycle
             # Plot mean values vs. cycle number
-            pass
+            cycle_data = {}
+            for cycle in self.params:
+                Ncycle = int(cycle.split('_')[1])
+                data = np.array(self.data[cycle][item])
+                mean = np.round(np.mean(data), 4)
+                std = np.round(np.std(data), 4)
+                cycle_data[cycle: {'{}_mean'.format(item): mean, '{}_std'.format(item): std}]
+            return cycle_data
+
+    def plot_cycle_vs_item(self, data_dict, item='', vdd_cfg=''):
+        plt.figure()
+        plt.plot(data_dict['cycle'], data_dict[item], '--.', markersize=10)
+        plt.xlabel('Cycle')
+        plt.ylabel(item + ' ({})'.format(self.units[item]))
+        plt.savefig('/'.join([self.output_dir, self.item + '_' + item +'_{}.png'.format(vdd_cfg)]))
+        plt.close()
+
+    def create_dfItem(self, param='V', generatePlots=False):
+        vdda, vddp, vddo = self.get_IVP(param=param, forStat=False)
+        if generatePlots:
+            self.plot_cycle_vs_item(data_dict=vdda, item=param, vdd_cfg='VDDA')
+            self.plot_cycle_vs_item(data_dict=vddo, item=param, vdd_cfg='VDDO')
+            self.plot_cycle_vs_item(data_dict=vddp, item=param, vdd_cfg='VDDP')
+        out_dict = {'testItem': [], 'Cycle': [], 'vdd_cfgs': [], 'value': []}
+        key_val = {'VDDA': vdda, 'VDDO': vddo, 'VDDP': vddp}
+        for key, val in key_val.items():
+            data = val
+            for icycle in data['cycle']:
+                out_dict['testItem'].append(param +' ({})'.format(self.units[param]))
+                out_dict['Cycle'].append(icycle)
+                out_dict['vdd_cfgs'].append(key)
+                out_dict['value'].append(data[param][icycle])
+        out_df = pd.DataFrame(out_dict)
+        return out_df
 
     def run_Ana(self):
         if self.ERROR:
             return
-        vdda, vddp, vddo = self.get_IVP(param='V', forStat=True)
-        print(vdda.shape)
-        sys.exit()
-        # plt.figure()
-        # plt.plot(vdda['cycle'], vdda['P'], label='VDDA')
-        # plt.plot(vddp['cycle'], vddp['P'], label='VDDP')
-        # plt.plot(vddo['cycle'], vddo['P'], label='VDDO')
-        # plt.legend()
-        # plt.show()
-        # sys.exit()
-        # self.get_wfdata(forStat=True, item='rms')
+
+        out_df = pd.DataFrame({'testItem': [], 'Cycle': [], 'vdd_cfgs': [], 'value': []})
+        for param in ['V', 'I', 'P']:
+            param_df = self.create_dfItem(param=param, generatePlots=True)
+            out_df = pd.concat([out_df, param_df], axis=0)
+        out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
+        
 
 class PWR_CYCLE_statAna():
     def __init__(self, root_path: str, output_path: str):
@@ -421,12 +451,12 @@ if __name__ == '__main__':
     #         pwr_c.decode_PwrCycle()
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    # list_chipID = os.listdir(root_path)
-    # for chipID in list_chipID:
-    #     print(chipID)
-    #     pwrcyclea_ana = PWR_CYCLE_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-    #     pwrcyclea_ana.run_Ana()
+    list_chipID = os.listdir(root_path)
+    for chipID in list_chipID:
+        print(chipID)
+        pwrcyclea_ana = PWR_CYCLE_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+        pwrcyclea_ana.run_Ana()
     #     # pwr_ana.Mean_ChResp_ana(BL='900mV')
     #     # sys.exit()
-    stat = PWR_CYCLE_statAna(root_path=root_path, output_path=output_path)
-    stat.run_Ana()
+    # stat = PWR_CYCLE_statAna(root_path=root_path, output_path=output_path)
+    # stat.run_Ana()
