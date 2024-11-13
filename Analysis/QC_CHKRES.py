@@ -366,6 +366,26 @@ class QC_CHKRES_Ana(BaseClass_Ana):
         # sys.exit()
         return out_dict
 
+    def run_Ana(self):
+        if self.ERROR:
+            return
+        data = self.extractData()
+        testItems = list(data.keys())
+        features = list(data[testItems[0]].keys())
+        # print(testItems)
+        # print(features)
+        # print(list(data[testItems[4]][features[0]].keys()))
+        for testItem in testItems:
+            for  feature in features:
+                tmpdata = data[testItem][feature]
+                configs = list(tmpdata.keys())
+                for _cfg in configs:
+                    cfg = _cfg
+                    BL = ''
+                    print(testItem, feature, _cfg)
+                    print(tmpdata[_cfg])
+                    if testItem in ['']
+        sys.exit()
 
 class QC_CHKRES_StatAna():
     def __init__(self, root_path: str, output_path: str):
@@ -618,11 +638,12 @@ if __name__ == "__main__":
     #********************************************************
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    # list_chipID = os.listdir(root_path)
-    # for chipID in list_chipID:
-    #     chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+    list_chipID = os.listdir(root_path)
+    for chipID in list_chipID:
+        chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+        chk_res.run_Ana()
     #     chk_res.makePlots()
     #     # chk_res.extractData()
     # #     break
-    chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
-    chkres_stat.run_Ana()
+    # chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
+    # chkres_stat.run_Ana()
