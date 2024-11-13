@@ -346,7 +346,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
         command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
         result=subrun(command, timeout = 60)
         if result != None:
-            print ("WIB folder {} is deleted!".format(dfirdel))
+            print ("WIB folder {} is deleted!".format(fdirdel))
    
     #if True:
     if QC_TST_EN:

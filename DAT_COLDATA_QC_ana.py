@@ -455,6 +455,19 @@ def dat_cd_qc_ana(fdir="/."):
                 fembs = cfgdata[0]
                 rawdata = cfgdata[1]
                 chns, rmss, peds, pkps, pkns, wfs, wfsf = data_ana(fembs, rawdata)
+                #show_flg=True
+                #if show_flg:
+                #    import matplotlib.pyplot as plt
+                #    plt.rcParams.update({'font.size': 8})
+                #    fig = plt.figure(figsize=(12,8))
+                #    plt_log(plt,fig, logsd, onekey, data)
+                #    plt_subplot(plt, fembs, rawdata)
+                #    plt.tight_layout( rect=[0.05, 0.05, 0.95, 0.95])
+                #    plt.plot()
+                #    plt.savefig( fp[0:-4] + "_" + onekey + ".png")
+                #    plt.close()
+
+
                 if "U1" in onekey:
                     for chn in chns:
                         chip = chn//16
@@ -500,7 +513,7 @@ def dat_cd_qc_ana(fdir="/."):
                   
     if 3 in tms:
         print ("-------------------------------------------------------------------------")
-        print ("3: COLDATA power consumption measurement  ")
+        print ("3: COLDATA power cycling measurement  ")
         fp = fdir + "QC_PWR_CYCLE" + ".bin"
         if os.path.isfile(fp):
             with open(fp, 'rb') as fn:
@@ -521,20 +534,19 @@ def dat_cd_qc_ana(fdir="/."):
             pwr_meas = cfgdata[5]
 
 
-            pass_flag = ana_cdpwr(pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69])
-            chns, rmss, peds, pkps, pkns, wfs, wfsf = data_ana(fembs, rawdata)
-            for chn in chns:
-                if chn%16 < 8:
-                    pass_flg = peds[chn] == 0x2af3
-                else:
-                    pass_flg = peds[chn] == 0x48d
-                if not pass_flg:
-                    break
-
+            pass_flg = ana_cdpwr(pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69])
             if pass_flg:
-                print (Fore.GREEN + onekey + "  : PASS")
+                print (Fore.GREEN + onekey + " Power Consumption: PASS")
             else:
-                print(Fore.RED + onekey + " : Fail")
+                print(Fore.RED + onekey + " Power Consumption: Fail")
+
+            chns, rmss, peds, pkps, pkns, wfs, wfsf = data_ana(fembs, rawdata)
+            failflg = ana_res(fembs, rawdata, par=[2500,5000], rmsr=[5,25], pedr=[8000,10000] )
+            
+            if failflg:
+                print(Fore.RED + onekey + " Pulse Response: Fail")
+            else:
+                print (Fore.GREEN + onekey + " Pulse Response: PASS")
    
             show_flg=True
             if show_flg:
@@ -842,7 +854,7 @@ if __name__=="__main__":
     fsubdir = "RT_CD_031702417_031752417"
     #fsubdir = "RT_CD_000000001_000000002"
     #fsubdir = "RT_CD_000000003_000000006"
-    froot = os.getcwd() + "\\tmp_data\\"
+    froot = "D:\\DAT_CD_QC\\Tested\\Time_20241015212203_DUT_1000_2000\\"
     fdir = froot + fsubdir + "\\"
     dat_cd_qc_ana(fdir=fdir)
 

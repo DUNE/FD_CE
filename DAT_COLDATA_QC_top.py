@@ -268,6 +268,7 @@ if 3 in tms:
         cseti = ci%8
         adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=2,asicdac=0x10)
         cfg_info = dat.dat_fe_qc_cfg(adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac)
+
         if cseti == 0:
             val = 0x20    
             dat.femb_i2c_wrchk(dat.fembs[0], 0x2, 0x5, 0x41, val)
