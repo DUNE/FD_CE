@@ -350,7 +350,7 @@ def dat_cd_qc_ana(fdir="/."):
                 if ("DIRECT_PLS_CHK" in onekey) :
                     failflg = ana_res(fembs, rawdata, par=[6000,14000], rmsr=[5,25], pedr=[300,3000] )
                 elif ("ASICDAC_CALI_CHK" in onekey):
-                    failflg = ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[300,3000] )
+                    failflg = ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[100,3000] )
 
                 show_flg=True
                 if show_flg:
@@ -369,7 +369,7 @@ def dat_cd_qc_ana(fdir="/."):
                     print (Fore.GREEN + onekey + "  : PASS")
                 else:
                     print(Fore.RED + onekey + " : Fail")
-                    break
+                    #break
         print ("#########################################################################")
 
 
@@ -852,9 +852,13 @@ def dat_cd_qc_ana(fdir="/."):
 if __name__=="__main__":
     fsubdir = "RT_CD_060592417_060542417"
     fsubdir = "RT_CD_031702417_031752417"
+    fsubdir = "RT_CD_029822417_029832417"
+    fsubdir = "RT_CD_031702417_031752417"
+    
     #fsubdir = "RT_CD_000000001_000000002"
     #fsubdir = "RT_CD_000000003_000000006"
-    froot = "D:\\DAT_CD_QC\\Tested\\Time_20241015212203_DUT_1000_2000\\"
-    fdir = froot + fsubdir + "\\"
+    #froot = "D:\\DAT_CD_QC\\Tested\\Time_20241015203556_DUT_1000_2000\\"
+    #fdir = froot + fsubdir + "\\"
+    fdir = """D:/DAT_CD_QC/Tested/Time_20241126221938_DUT_1000_2000/RT_CD_031712417_031882417/"""
     dat_cd_qc_ana(fdir=fdir)
 

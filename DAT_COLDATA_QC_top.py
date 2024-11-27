@@ -73,9 +73,30 @@ if dat.rev == 0:
 if dat.rev == 1:
     if 'RT' in logs['env']:
         dat.fe_cali_vref = 1.090
+        if dat_sn  == 7:
+            dat.fe_cali_vref = 1.193 #DAT_SN=7
+        if dat_sn  == 8:
+            dat.fe_cali_vref = 1.185 #DAT_SN=8
     else:
         dat.fe_cali_vref = 1.030 #DAT_SN=3
 Vref = dat.fe_cali_vref
+
+#iii = 0
+#dat.cdpoke(0, 0xC, 0, dat.DAT_EXT_PULSE_CNTL, 1)  
+#dat.cdpoke(0, 0xC, 0, dat.DAT_FE_CMN_SEL, 7)        
+#while True:
+#    #val = float(input ("v = "))
+#    iii = iii + 1
+#    val = (iii%20)/10
+#    valint = int(val*65536/dat.ADCVREF)
+#    dat.dat_set_dac(val=valint, fe_cal=0)
+#    time.sleep(2)
+#iii = 0
+#while True:
+#    #kkk = iii%2
+#    kkk = int(input ("v = "))
+#    dat.cdpoke(0, 0xC, 0, dat.DAT_EXT_PULSE_CNTL, kkk)  
+#    time.sleep(5)
 
 #if 100 in tms : #100 is only for itemed testing with power operation 
 if True:

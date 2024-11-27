@@ -360,15 +360,20 @@ class DAT_CFGS(WIB_CFGS):
     def dat_cd_order_swap(self, femb_id):
         datad = {}
 
+        ####U1 (left) as primary
+        print("Set U1 (left) as primary")        
+        self.cd_sel = 0
+        self.femb_i2c_wrchk(femb_id, 0xC, 0, self.DAT_CD_CONFIG, 0x00)
+
+        self.femb_cd_rst()       
+        self.adcs_paras = self.adcs_paras_init
+        self.femb_cfg(femb_id)
+
         self.adcs_paras =  self.adcs_paras_init       
         # set adc pattern 
         for adc_no in range(8):
             self.adcs_paras[adc_no][8] = 2        
        
-        ####U1 (left) as primary
-        print("Set U1 (left) as primary")        
-        self.cd_sel = 0
-        self.femb_i2c_wrchk(femb_id, 0xC, 0, self.DAT_CD_CONFIG, 0x00)
 
         print("Configuring U1 Left with LVDS")
         self.i2cerror = False #clear old errors
@@ -400,6 +405,16 @@ class DAT_CFGS(WIB_CFGS):
         print("Set U2 (right) as primary")
         self.cd_sel = 1
         self.femb_i2c_wrchk(femb_id, 0xC, 0, self.DAT_CD_CONFIG, 0x01) 
+
+        self.femb_cd_rst()       
+        self.adcs_paras = self.adcs_paras_init
+        self.femb_cfg(femb_id)
+
+        self.adcs_paras =  self.adcs_paras_init       
+        # set adc pattern 
+        for adc_no in range(8):
+            self.adcs_paras[adc_no][8] = 2        
+       
 
         print("Configuring U2 Right with LVDS")
         self.i2cerror = False #clear old errors
