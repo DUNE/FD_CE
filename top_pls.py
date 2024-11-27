@@ -46,7 +46,7 @@ if True:
     #Configur Coldata, ColdADC, and LArASIC parameters. 
     #Here Coldata uses default setting in the script (not the ASIC default register values)
     #ColdADC configuraiton
-        sdd = 0
+        sdd = 1
         chk.adcs_paras = [ # c_id, data_fmt(0x89), diff_en(0x84), sdc_en(0x80), vrefp, vrefn, vcmo, vcmi, autocali
                             [0x4, 0x08, sdd, 0, 0xDF, 0x33, 0x89, 0x67, 0],
                             [0x5, 0x08, sdd, 0, 0xDF, 0x33, 0x89, 0x67, 0],
@@ -59,52 +59,26 @@ if True:
                           ]
     
     #LArASIC register configuration
-        chk.set_fe_board(sts=1, snc=1,sg0=0, sg1=0, st0=0, st1=0, swdac=2, sdd=sdd,dac=0x00 )
-        adac_pls_en = 0 #enable LArASIC interal calibraiton pulser
+        chk.set_fe_board(sts=1, snc=1,sg0=0, sg1=0, st0=0, st1=0, swdac=1, sdd=sdd,dac=0x20 )
+        adac_pls_en = 1 #enable LArASIC interal calibraiton pulser
         cfg_paras_rec.append( (femb_id, copy.deepcopy(chk.adcs_paras), copy.deepcopy(chk.regs_int8), adac_pls_en) )
     #step 3
-        chk.femb_cfg(femb_id, adac_pls_en )
+        if True:
+            chk.femb_cfg(femb_id, adac_pls_en )
 
 chk.data_align(fembs)
+
 time.sleep(0.5)
-
-#for x in range(12):
-chk.wib_pls_gen(fembs=[]) #disable
-
-chk.wib_cali_dac(dacvol=0)
-dac0_sel= 0
-dac1_sel= 0
-dac2_sel= 0
-dac3_sel= 0
-chk.wib_mon_switches(dac0_sel=dac0_sel, dac1_sel=dac1_sel,dac2_sel=dac2_sel,dac3_sel=dac3_sel,mon_vs_pulse_sel=1, inj_cal_pulse=0)
-chk.femb_cd_gpio(femb_id=femb_id, cd1_0x26 = 0x00,cd1_0x27 = 0x1f, cd2_0x26 = 0x00,cd2_0x27 = 0x1f)
-#chk.wib_pls_gen(fembs=[]) #disable
-x = int(input ("pluse amplitude from signal generator : mV"))
-
-time.sleep(2)
-
 
 ####################FEMBs Data taking################################
 rawdata = chk.spybuf_trig(fembs=fembs, num_samples=sample_N, trig_cmd=0) #returns list of size 1
-
 
 pwr_meas = chk.get_sensors()
 #
 if save:
     fdir = "./tmp_data/"
     ts = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-    fp = fdir + "P5_%04dmV_"%x + ts  + ".bin"
+    fp = fdir + "Raw_" + ts  + ".bin"
     with open(fp, 'wb') as fn:
         pickle.dump( [rawdata, pwr_meas, cfg_paras_rec], fn)
 
-#chk.wib_pls_gen(fembs=fembs, cp_period=cp_period, cp_phase=16, cp_high_time=cp_high_time)
-#rawdata = chk.spybuf_trig(fembs=fembs, num_samples=sample_N, trig_cmd=0) #returns list of size 1
-#pwr_meas = chk.get_sensors()
-##
-#if save:
-#    fdir = "./tmp_data/"
-#    ts = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-#    fp = fdir + "Raw_" + ts  + ".bin"
-#    with open(fp, 'wb') as fn:
-#        pickle.dump( [rawdata, pwr_meas, cfg_paras_rec], fn)
-#
