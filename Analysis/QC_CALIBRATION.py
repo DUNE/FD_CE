@@ -281,7 +281,8 @@ class QC_CALI_Ana(BaseClass_Ana):
                         'posAmp': [np.array([]) for _ in range(len(DAClist))],
                         'negAmp': [np.array([]) for _ in range(len(DAClist))]
                       }
-            BL_INL = self.getINL(BL=BL, item='posAmp', returnGain=True, generatePlot=generatePlot)
+            BL_INL_posAmp = self.getINL(BL=BL, item='posAmp', returnGain=True, generatePlot=generatePlot)
+            BL_INL_negAmp = self.getINL(BL=BL, item='negAmp', returnGain=True, generatePlot=generatePlot)
             for ich in range(16):
                 # for i, d in enumerate(data['CH{}'.format(ich)]):
                 chdata = data['CH{}'.format(ich)]
@@ -291,7 +292,9 @@ class QC_CALI_Ana(BaseClass_Ana):
                     tmp_out['posAmp'][idac] = np.append(tmp_out['posAmp'][idac], tmpdata['posAmp'])
                     tmp_out['negAmp'][idac] = np.append(tmp_out['negAmp'][idac], tmpdata['negAmp'])
             
-            outdata[BL] = {'data': tmp_out, 'inl': BL_INL[0], 'gain': BL_INL[1], 'linRange' : BL_INL[2]} # units : inl*100 in %, gain in fC/ADC bit, linRange in fC
+            posAmp_inl_linrange = {'inl': BL_INL_posAmp[0], 'gain': BL_INL_posAmp[1], 'linRange' : BL_INL_posAmp[2]}
+            negAmp_inl_linrange = {'inl': BL_INL_negAmp[0], 'gain': BL_INL_negAmp[1], 'linRange' : BL_INL_negAmp[2]}
+            outdata[BL] = {'data': tmp_out, 'posAmp_INL': posAmp_inl_linrange, 'negAmp_INL' : negAmp_inl_linrange} # units : inl*100 in %, gain in fC/ADC bit, linRange in fC
         return outdata
 
     def getDAClist(self, BL: str):
@@ -414,7 +417,7 @@ class QC_CALI_Ana(BaseClass_Ana):
             # gain = gain * self.CalibCap / np.power(10., -12)
             # print(chargeLinRange, gain)
             # sys.exit()
-            INLs[chn] = inl # *100 = ...%
+            INLs[chn] = inl # need to  multiply by 100  to get %
             GAINs[chn] = slope
             linearity_range[chn] = linRange
         if returnGain:
@@ -475,7 +478,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         # self.Amp_vs_DAC()
         self.INL_vs_CH()
         
-    def run_Ana(self, generatePlots=False):
+    def run_Ana(self, generatePlots=False, path_to_statAna=''):
         if self.ERROR:
             return
         if generatePlots:
@@ -497,6 +500,41 @@ class QC_CALI_Ana(BaseClass_Ana):
                     out_dict['maxCharge (fC)'].append(linRanges[ich][1])
         out_df = pd.DataFrame(out_dict)
         out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
+        #
+        # get statistical analysis file
+        cali_statAna_df = pd.read_csv(path_to_statAna)
+        ## Append statAna to the result for one chip
+        measItems = cali_statAna_df['measItem'].unique()
+        # for val in measItems:
+        #     tmp_stat = cali_statAna_df[cali_statAna_df['measItem']==val].copy().reset_index().drop('index', axis=1)
+        #     # tmp_out_dict = {'item': out_df['item'], 'BL': out_df['BL'], val+'_stat_mean': np.zeros(len(out_df['item'])), val+'_stat_std': np.zeros(len(out_df['item']))}
+        #     # for i, v in enumerate(tmp_out_dict['item']):
+        #     #     for j in tmp_stat.index:
+        #     #     sys.exit()
+        #     for i in tmp_stat.index:
+        #         k = (out_df['item']==tmp_stat.iloc[i]['BL']) & (out_df['item']==tmp_stat.iloc[i]['item'])
+        #         print(k)
+        #         tmp_df = out_df[k]
+        #         print(tmp_df)
+        #         sys.exit()
+        #     print(tmp_stat)
+        #     sys.exit()
+            # m = np.zeros((len(out_df['item'])))
+            # s = np.zeros((len(out_df['item'])))
+            # tmp_stat = cali_statAna_df[cali_statAna_df['measItem']==val].copy().reset_index().drop('index', axis=1)
+            # for j, v in enumerate(tmp_stat['measItem']):
+            #     for i in range(len(out_df['item'])):
+            #         match = (out_df.iloc[i]['item']==tmp_stat.iloc[j]['item']) & (out_df.iloc[i]['BL']==tmp_stat.iloc[j]['BL'])
+            #         if match:
+            #             m[i] = tmp_stat.iloc[j]['mean']
+            #             s[i] = tmp_stat.iloc[j]['std']
+            
+            # out_df[val+'_stat_mean'] = m
+            # out_df[val+'_stat_std'] = s
+                    
+        
+        print(measItems)
+        sys.exit()
 
 def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', saveDist=False):
     def plot_distribution(array, xtitle, output_path_fig, figname):
@@ -514,7 +552,10 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
         plt.close()
 
     outdata = dict()
-    processed_data = {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}} # to save the gain and inl
+    # processed_data = {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}} # to save the gain and inl
+    processed_data = {'posAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge' : []}},
+                    'negAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge' : []}}
+                    }
     output_path_fig = '/'.join([output_path, 'fig'])
     list_chipID = os.listdir(root_path)
     firstData = True
@@ -525,34 +566,42 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
         if ana_cali.ERROR:
             continue
         chipdata = ana_cali.getItem_forStatAna(generatePlot=False)
+        # print('---------------- HERE ------------------')
+        # print(chipdata)
+        # sys.exit()
         if firstData:
             # outdata = chipdata
             # print(chipdata)
             BLs = list(chipdata.keys())
             for BL in BLs:
                 outdata[BL] = {key: val for key, val in chipdata[BL]['data'].items()}
-                processed_data[BL]['INL'] = np.array([v for i, v in chipdata[BL]['inl'].items()])
-                processed_data[BL]['GAIN'] = np.array([v for i, v in chipdata[BL]['gain'].items()])
-                processed_data[BL]['minCharge (fC)'] = np.array([v[0] for i, v in chipdata[BL]['linRange'].items()])
-                processed_data[BL]['maxCharge (fC)'] = np.array([v[1] for i, v in chipdata[BL]['linRange'].items()])
+                for k in ['posAmp', 'negAmp']:
+                    key = k+'_INL'
+                    processed_data[k][BL]['INL'] = np.array([v for i, v in chipdata[BL][key]['inl'].items()])
+                    processed_data[k][BL]['GAIN'] = np.array([v for i, v in chipdata[BL][key]['gain'].items()])
+                    processed_data[k][BL]['minCharge'] = np.array([v[0] for i, v in chipdata[BL][key]['linRange'].items()])
+                    processed_data[k][BL]['maxCharge'] = np.array([v[1] for i, v in chipdata[BL][key]['linRange'].items()])
             DACs = [list(outdata[bl]['DAC']) for bl in BLs]
+            firstData = False
             # print(processed_data)
             # sys.exit()
         else:
             for ibl, bl in enumerate(BLs):
-                inls = np.array([v for v in chipdata[bl]['inl'].values()])
-                gains = np.array([v for v in chipdata[bl]['gain'].values()])
-                maxCharges = np.array([v[1] for v in chipdata[bl]['linRange'].values()])
-                minCharges = np.array([v[0] for v in chipdata[bl]['linRange'].values()])
-                processed_data[bl]['INL'] = np.concatenate((processed_data[bl]['INL'], inls))
-                processed_data[bl]['GAIN'] = np.concatenate((processed_data[bl]['GAIN'], gains))
-                processed_data[bl]['minCharge (fC)'] = np.concatenate((processed_data[bl]['minCharge (fC)'], minCharges))
-                processed_data[bl]['maxCharge (fC)'] = np.concatenate((processed_data[bl]['maxCharge (fC)'], maxCharges))
+                for k in ['posAmp', 'negAmp']:
+                    key = k+'_INL'
+                    inls = np.array([v for v in chipdata[bl][key]['inl'].values()])
+                    gains = np.array([v for v in chipdata[bl][key]['gain'].values()])
+                    maxCharges = np.array([v[1] for v in chipdata[bl][key]['linRange'].values()])
+                    minCharges = np.array([v[0] for v in chipdata[bl][key]['linRange'].values()])
+                    processed_data[k][bl]['INL'] = np.concatenate((processed_data[k][bl]['INL'], inls))
+                    processed_data[k][bl]['GAIN'] = np.concatenate((processed_data[k][bl]['GAIN'], gains))
+                    processed_data[k][bl]['minCharge'] = np.concatenate((processed_data[k][bl]['minCharge'], minCharges))
+                    processed_data[k][bl]['maxCharge'] = np.concatenate((processed_data[k][bl]['maxCharge'], maxCharges))
                 for idac, dac in enumerate(DACs[ibl]):
                     outdata[bl]['pedestal'][idac] = np.concatenate((outdata[bl]['pedestal'][idac], chipdata[bl]['data']['pedestal'][idac]))
                     outdata[bl]['posAmp'][idac] = np.concatenate((outdata[bl]['posAmp'][idac], chipdata[bl]['data']['posAmp'][idac]))
                     outdata[bl]['negAmp'][idac] = np.concatenate((outdata[bl]['negAmp'][idac], chipdata[bl]['data']['negAmp'][idac]))
-        firstData = False
+        # firstData = False
     
     # print(processed_data['SNC0']['GAIN'])
     # plt.figure()
@@ -636,8 +685,8 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
             out_dict['mean'].append(negAmpmean)
             out_dict['std'].append(negAmpstd)
 
-    for key in out_dict.keys():
-        print(len(out_dict[key]))
+    # for key in out_dict.keys():
+    #     print(len(out_dict[key]))
     out_df = pd.DataFrame(out_dict).sort_values(by=['testItem', 'BL'])
     # print(out_df.head())
     out_df.to_csv('/'.join([output_path, cali_item + '.csv']))
@@ -647,32 +696,56 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
     # BLs = []
     # means = []
     # stds = []
-    processed_data_dict = {'BL': [], 'testItem': [], 'mean': [], 'std': []}
-    unit_gain = 'fC / ADC bit'
-    print(processed_data.keys())
-    for bl in processed_data.keys():
-        bldata = processed_data[bl]
-        for item, d in bldata.items():
-            median, std = statistics.median(d), statistics.stdev(d)
-            xmin, xmax = median - 3*std, median+3*std
-            for _ in range(10):
-                posmin = np.where(d<xmin)[0]
-                posmax = np.where(d>xmax)[0]
-                pos = np.concatenate((posmin, posmax))
-                d = np.delete(d, pos)
-                median, std = statistics.median(d), statistics.stdev(d)
+    # processed_data = {'posAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}},
+    #                 'negAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}}
+    #                 }
+    # processed_data_dict = {'BL': [], 'testItem': [], 'mean': [], 'std': []}
+    # processed_data_dict = {'item': [], 'BL': [], 'gain (fC/ADC bit)': [], 'std gain (fC/ADC bit)': [], 'INL (%)': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}
+    processed_data_dict = {'item': [], 'BL': [], 'measItem': [], 'unit': [], 'mean': [], 'std' : []}
+    # unit_gain = 'fC/ADC bit'
+    unit = ''
+    for keyItem in processed_data.keys():
+        itemData = processed_data[keyItem]
+        for bl in itemData.keys():
+            bldata = itemData[bl]
+            for key, val in bldata.items():
+                median, std = statistics.median(val), statistics.stdev(val)
                 xmin, xmax = median - 3*std, median+3*std
-            if saveDist:
-                plot_distribution(array=d, xtitle='{} {}'.format(bl, item), output_path_fig=output_path_fig, figname='_'.join([cali_item, item, bl]))
-            if cali_item in ['QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
-                unit_gain = 'fC / ADC bit'
-            if item=='GAIN':
-                item += ' ({})'.format(unit_gain)
-            print(median, std)
-            processed_data_dict['testItem'].append(item)
-            processed_data_dict['BL'].append(bl)
-            processed_data_dict['mean'].append(np.round(median, 6))
-            processed_data_dict['std'].append(np.round(std,6))
+                for _ in range(10):
+                    posmin = np.where(val<xmin)[0]
+                    posmax = np.where(val>xmax)[0]
+                    pos = np.concatenate((posmin, posmax))
+                    val = np.delete(val, pos)
+                    median, std = statistics.median(val), statistics.stdev(val)
+                    xmin, xmax = median - 3*std, median+3*std
+                if saveDist:
+                    plot_distribution(array=d, xtitle='{} {} {}'.format(keyItem, bl, key), output_path_fig=output_path_fig, figname='_'.join([cali_item, keyItem, bl, key]))
+                outKEY = ''
+                processed_data_dict['item'].append(keyItem)
+                processed_data_dict['BL'].append(bl)
+                if key=='INL':
+                    unit = '%'
+                    outKEY = key
+                    # processed_data_dict[outKEY].append(np.round(median*100, 4))
+                elif key=='GAIN':
+                    outKEY = 'gain'
+                    unit = 'fC/ADC bit'
+                    # processed_data_dict[outKEY].append(np.round(median, 4))
+                    # processed_data_dict['std {}'.format(outKEY)].append(np.round(std, 4))
+                else:
+                    outKEY = key
+                    unit = 'fC'
+                    # processed_data_dict[outKEY].append(np.round(median, 4))
+                processed_data_dict['measItem'].append(outKEY)
+                if key=='INL':
+                    processed_data_dict['mean'].append(np.round(median*100, 4))
+                    processed_data_dict['std'].append(np.round(std, 4))
+                    processed_data_dict['unit'].append(unit)
+                else:
+                    processed_data_dict['mean'].append(np.round(median, 4))
+                    processed_data_dict['std'].append(np.round(std, 4))
+                    processed_data_dict['unit'].append(unit)
+
     processed_data_df = pd.DataFrame(processed_data_dict)
     processed_data_df.to_csv('/'.join([output_path, cali_item + '_GAIN_INL.csv']), index=False)
 
@@ -698,11 +771,11 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
+    calib_item = ['QC_CALI_ASICDAC']#, 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
     for chipID in list_chipID:
         # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
         for cali_item in calib_item:
             ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
-            ana_cali.run_Ana(generatePlots=True)
-    for cali_item in calib_item:
-        StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
+            ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+    # for cali_item in calib_item:
+    #     StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
