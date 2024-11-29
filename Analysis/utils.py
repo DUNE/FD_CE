@@ -354,6 +354,9 @@ class BaseClass:
             self.raw_data = pickle.load(fn)
         # self.raw_data = raw_data
         self.logs_dict = self.raw_data['logs']
+        self.logs_dict['position'] = {'on Tray': dict(),
+                                      'on DAT' : dict()
+                                      }
         self.params = [key for key in self.raw_data.keys() if key!='logs']
         self.__openLog__()
         createDirs(logs_dict=self.logs_dict, output_dir=output_path)
@@ -371,7 +374,7 @@ class BaseClass:
                     os.mkdir(dir)
                 except OSError:
                     pass
-    
+
     def __openLog__(self):
         # Update the internal logs of each test item -> Use the timestamp as an ID for each FE ASIC
         if 'QC.log' not in os.listdir(self.input_dir):
@@ -381,8 +384,36 @@ class BaseClass:
             logs = pickle.load(f)
         RTS_IDs = logs['RTS_IDs']
         for tmts, place in RTS_IDs.items():
-            self.logs_dict['FE{}'.format(place[1])] = tmts
+            FE = 'FE{}'.format(place[1])
+            self.logs_dict[FE] = tmts
             self.logs_dict['ADC{}'.format(place[1])] = tmts
+            self.logs_dict['position']['on Tray'][FE] = place[0]
+            self.logs_dict['position']['on DAT'][FE] = place[1]
+
+    # def get_Info_logs(self):
+    #     logs = {
+    #                 # "item_name" : self.item,
+    #                 "RTS_timestamp" : [self.logs_dict['FE{}'.format(ichip)] for ichip in range(8)],
+    #                 'Test Site' : self.logs_dict['testsite'],
+    #                 'RTS_Property_ID' : 'BNL',
+    #                 'RTS chamber' : 1,
+    #                 'DAT_ID' : self.logs_dict['DAT_SN'],
+    #                 'DAT rev' : self.logs_dict['DAT_Revision'],
+    #                 'Tester' : self.logs_dict['tester'],
+    #                 'DUT' : self.logs_dict['DUT'],
+    #                 'Tray ID' : self.logs_dict['TrayID'],
+    #                 'SN' : '',
+    #                 'DUT_location_on_tray' : self.logs_dict['position']['on Tray'],
+    #                 'DUT_location_on_DAT' : self.logs_dict['position']['on DAT'],
+    #                 'Chip_Mezzanine_1_in_use' : 'ADC_XXX_XXX',
+    #                 'Chip_Mezzanine_2_in_use' : 'CD_XXXX_XXXX',
+    #                 "date": self.logs_dict['date'],
+    #                 "env": self.logs_dict['env'],
+    #                 "note": self.logs_dict['note'],
+    #                 "DAT_SN": self.logs_dict['DAT_SN'],
+    #                 "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
+    #             }
+    #     return logs
 
 #_______BASE_CLASS_for_ANALYSIS_of_the_decoded_data________________
 class BaseClass_Ana:
