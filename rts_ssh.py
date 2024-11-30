@@ -117,7 +117,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
     #[0, 1, 2, 3, 4,5,61, 62, 63, 64, 7,8, 9]
     tms_items = {}
     if "FE" in duttype:
-        tms_items[0 ] = "\033[96m 0 : Initilization checkout (not selectable for itemized test item) \033[0m"
+        tms_items[0 ] = "\033[96m 0 : Initilization checkout (not selectable for itemized test item)  \033[0m"
         tms_items[1 ] = "\033[96m 1 : FE power consumption measurement  \033[0m"
         tms_items[2 ] = "\033[96m 2 : FE response measurement checkout  \033[0m" 
         tms_items[3 ] = "\033[96m 3 : FE monitoring measurement  \033[0m"
@@ -227,7 +227,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
             return None
    
     if QC_TST_EN:
-        print ("later use pyqt to pop out a configuration windows")
+        #print ("later use pyqt to pop out a configuration windows")
         #input ("anykey to continue now")
         print (datetime.datetime.utcnow(), " : load configuration file from PC")
     
