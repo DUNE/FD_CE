@@ -357,11 +357,13 @@ if 4 in tms:
 
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=2)
+    dat.spybuf_trig(fembs=dat.fembs, num_samples=1, trig_cmd=0, fastchk=True, synctries=2) #will return False if data not synced
     
     for pll_band in range(0x00, 0x3f + 1):
         print("PLL band",hex(pll_band))
         dat.femb_i2c_wrchk(dat.fembs[0], 0x2, 0x5, 0x41, pll_band)
         dat.femb_i2c_wrchk(dat.fembs[0], 0x3, 0x5, 0x41, pll_band)
+
         mon_datas = dat.dat_cd_mons(mon_type=0x04)
         
         datad['CD1_locked'][pll_band ] = mon_datas["MON_LOCK"][1][0] 

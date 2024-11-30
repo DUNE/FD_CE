@@ -242,23 +242,23 @@ def dat_initchk(fdir="/."):
             bads0 = []
             bads1 = []
             if ("DIRECT_PLS_CHK" in onekey) :
-                bads0 = ana_res2(fembs, rawdata, par=[7000,12000], rmsr=[3,30], pedr=[500,2000] , period=512)
+                bads0 = ana_res2(fembs, rawdata, par=[7000,12000], rmsr=[3,30], pedr=[500,3000] , period=512)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
             if ("ASICDAC_CALI_CHK" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[7000,10000], rmsr=[3,25], pedr=[100,2000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[7000,10000], rmsr=[3,25], pedr=[100,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.60,1.8], cdda=[40,60], cddp=[25,35], cddo=[5,15])
             if ("ASICDAC_47mV_CHK" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,25], pedr=[400,2000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,25], pedr=[400,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
 
             if ("DIRECT_PLS_RMS" in onekey) :
-                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[500,2000] , period=512)
+                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[500,3000] , period=512)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
             if ("ASICDAC_CALI_RMS" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[100,2000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[100,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.60,1.8], cdda=[40,60], cddp=[25,35], cddo=[5,15])
             if ("ASICDAC_47mV_RMS" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[400,2000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[400,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
             #print('Bads0 = {} \t Bads1 = {}'.format(bads0, bads1))
 

@@ -8,6 +8,7 @@ import os
 from DAT_read_cfg import dat_read_cfg
 from DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
+from DAT_COLDATA_QC_ana import QC_ANA 
 just_fix_windows_console()
 
 wibip = "192.168.121.123"
@@ -195,7 +196,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
             print ("FAIL!")
             return None
    
-    if QC_TST_EN:
+    if QC_TST_EN and (duttype=="ADC"):
+
         print (datetime.datetime.utcnow(), " : Load WIB bin file(it takes < 30s)" )
         command = ["ssh", wibhost, "fpgautil -b /boot/wib_top_0506.bin"]
         result=subrun(command, timeout = 30)
@@ -264,7 +266,15 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
     
     if QC_TST_EN:
         print (datetime.datetime.utcnow(), " : Start DUT (%s) QC.(takes < 1200s)"%DUT)
-        for testid in tms:
+        tmsi = 0
+        qc = QC_ANA()
+        retry_fi = 0
+        #for testid in tms:
+        while True:
+            if tmsi >= len(tms):
+                break
+            
+            testid = tms[tmsi]
         #for testid in [0]:
             print (datetime.datetime.utcnow(), " : New Test Item Starts, please wait...")
             print (tms_items[testid])
@@ -342,6 +352,35 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                         print ("WIB folder {} is deleted!".format(dfirdel))
                     return (QCstatus, bads)
 
+            if duttype == "CD":
+                qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
+                keys = list(qc.qc_stats.keys())
+                for onekey in keys:
+                    if "PASS" not in qc.qc_stats[onekey]:
+                        retry_fi = retry_fi  +1
+                        break
+                if retry_fi == 1:
+                    tmsi = tmsi
+                    continue
+                elif retry_fi >=2:
+                    QCstatus = "Fail"
+                    bads = [0, 1]
+
+                    if len(bads) > 0 :
+                        if logs['New_chips']:
+                            fp = logs['pc_raw_dir'] + "QC.log"
+                            with open(fp, 'wb') as fn:
+                                pickle.dump(logs, fn)
+                        fdirdel = logs['wib_raw_dir']
+                        command = ["rm", "-rf",fdirdel] 
+                        result=subrun(command, timeout = None)
+                        if result != None:
+                            print ("WIB folder {} is deleted!".format(dfirdel))
+                        return (QCstatus, bads)
+                else:
+                    tmsi = tmsi + 1
+                    retry_fi = 0
+
         fdirdel = logs['wib_raw_dir']
         command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
         result=subrun(command, timeout = 60)
@@ -363,8 +402,21 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 pickle.dump(logs, fn)
     
 #    print ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+#    if duttype == "CD":
+#        from DAT_COLDATA_QC_ana import QC_ANA 
+#        qc = QC_ANA()
+#        qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=logs['TestIDs'])
+#        
+#        keys = list(qc.qc_stats.keys())
+#        QCstatus = "PASS"
+#        bads = []
+#        for onekey in keys:
+#            if "PASS" not in qc.qc_stats[onekey]:
+#                print (qc.qc_stats[onekey])
+#                QCstatus = "FAIL"
+#                bads = [0,1]
+#    else:
 #    print ("LArASIC QC analysis script from Rado will add here")
-#    print ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
     QCstatus = "PASS"
     bads = []
     #chip_passed = [0,1,2,3,4,5,6,7]
