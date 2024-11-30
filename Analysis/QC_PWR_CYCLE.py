@@ -4,7 +4,7 @@
 #   Analyze the data in QC_PWR_CYCLE.bin
 ############################################################################################
 
-import os, pickle, sys, statistics, pandas as pd
+import os, pickle, sys, statistics, pandas as pd, csv
 import numpy as np
 import matplotlib.pyplot as plt
 from utils import createDirs, printItem, decodeRawData, dumpJson, LArASIC_ana, BaseClass
@@ -13,6 +13,7 @@ from utils import BaseClass_Ana
 class PWR_CYCLE(BaseClass):
     def __init__(self, root_path: str, data_dir: str, output_path: str):
         printItem('FE power cycling')
+        self.item = 'QC_PWR_CYCLE'
         super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_PWR_CYCLE.bin', tms=4)
         if self.ERROR:
             return
@@ -83,14 +84,34 @@ class PWR_CYCLE(BaseClass):
         if self.ERROR:
             return
         N_pwrcycle = 8
-        logs = {
-            "date": self.logs_dict['date'],
-            "testsite": self.logs_dict['testsite'],
-            "env": self.logs_dict['env'],
-            "note": self.logs_dict['note'],
-            "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
-        }
-        PwrCycle_data = {self.logs_dict['FE{}'.format(ichip)]: {"logs": logs} for ichip in range(8)}
+        PwrCycle_data = {self.logs_dict['FE{}'.format(ichip)]: {} for ichip in range(8)}
+        for ichip in range(8):
+            PwrCycle_data[self.logs_dict['FE{}'.format(ichip)]]['logs'] = {
+                    "item_name" : self.item,
+                    "RTS_timestamp" : self.logs_dict['FE{}'.format(ichip)],
+                    'Test Site' : self.logs_dict['testsite'],
+                    'RTS_Property_ID' : 'BNL001',
+                    'RTS chamber' : 1,
+                    'DAT_ID' : self.logs_dict['DAT_SN'],
+                    'DAT rev' : self.logs_dict['DAT_Revision'],
+                    'Tester' : self.logs_dict['tester'],
+                    'DUT' : self.logs_dict['DUT'],
+                    # 'Tray ID' : self.logs_dict['TrayID'],
+                    'Tray ID' : [d for d in self.input_dir.split('/') if 'B0' in d][0],
+                    'SN' : '',
+                    'DUT_location_on_tray' : self.logs_dict['position']['on Tray']['FE{}'.format(ichip)],
+                    'DUT_location_on_DAT' : self.logs_dict['position']['on DAT']['FE{}'.format(ichip)],
+                    'Chip_Mezzanine_1_in_use' : 'ADC_XXX_XXX',
+                    'Chip_Mezzanine_2_in_use' : 'CD_XXXX_XXXX',
+                    "date": self.logs_dict['date'],
+                    "env": self.logs_dict['env'],
+                    "note": self.logs_dict['note'],
+                    "DAT_SN": self.logs_dict['DAT_SN'],
+                    "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
+                }
+            # tray_id = [d for d in self.input_dir.split('/') if 'B0' in d][0]
+            # print(tray_id)
+        # PwrCycle_data = {self.logs_dict['FE{}'.format(ichip)]: {"logs": logs} for ichip in range(8)}
         for ipcycle in range(N_pwrcycle):
             # if ipcycle==4:
             pwr_cycle_N = 'PwrCycle_{}'.format(ipcycle)
@@ -111,6 +132,7 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
     '''
     def __init__(self, root_path: str, chipID: str, output_path: str):
         self.item = 'QC_PWR_CYCLE'
+        self.tms = '04'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
         self.output_dir = '/'.join([output_path, chipID, self.item])
         try:
@@ -170,10 +192,14 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
             cycle_data = {}
             for cycle in self.params:
                 Ncycle = int(cycle.split('_')[1])
+                # print(self.data[cycle][item])
+                # print(self.data)
+                # sys.exit()
                 data = np.array(self.data[cycle][item])
-                mean = np.round(np.mean(data), 4)
-                std = np.round(np.std(data), 4)
-                cycle_data[cycle: {'{}_mean'.format(item): mean, '{}_std'.format(item): std}]
+                # mean = np.round(np.mean(data), 4)
+                # std = np.round(np.std(data), 4)
+                # cycle_data[cycle] = {'{}_mean'.format(item): mean, '{}_std'.format(item): std}
+                cycle_data[cycle] = {'CH{}'.format(ichn) : data[ichn] for ichn in range(len(data))}
             return cycle_data
 
     def plot_cycle_vs_item(self, data_dict, item='', vdd_cfg=''):
@@ -184,7 +210,7 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
         plt.savefig('/'.join([self.output_dir, self.item + '_' + item +'_{}.png'.format(vdd_cfg)]))
         plt.close()
 
-    def create_dfItem(self, param='V', generatePlots=False):
+    def create_dfItem_PWR(self, param='V', generatePlots=False):
         vdda, vddp, vddo = self.get_IVP(param=param, forStat=False)
         if generatePlots:
             self.plot_cycle_vs_item(data_dict=vdda, item=param, vdd_cfg='VDDA')
@@ -195,23 +221,128 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
         for key, val in key_val.items():
             data = val
             for icycle in data['cycle']:
-                out_dict['testItem'].append(param +' ({})'.format(self.units[param]))
+                out_dict['testItem'].append(param)# +' ({})'.format(self.units[param]))
                 out_dict['Cycle'].append(icycle)
                 out_dict['vdd_cfgs'].append(key)
                 out_dict['value'].append(data[param][icycle])
         out_df = pd.DataFrame(out_dict)
         return out_df
+    
+    def create_dfItem_wf(self, param='pedestal'):
+        data_wf = self.get_wfdata(item=param, forStat=False)
+        out_dict = {'testItem': [], 'Cycle': [], 'vdd_cfgs' : [], 'CH' : [], 'value' : []}
+        for cycle, data in data_wf.items():
+            icycle = int(cycle.split('_')[1])
+            for ichn in range(len(data)):
+                out_dict['testItem'].append(param)
+                out_dict['Cycle'].append(icycle)
+                out_dict['vdd_cfgs'].append('n/a')
+                out_dict['CH'].append(ichn)
+                out_dict['value'].append(data['CH{}'.format(ichn)])
+        out_df = pd.DataFrame(out_dict)
+        return out_df
 
-    def run_Ana(self):
+    def run_Ana(self, path_to_statAna=''):
         if self.ERROR:
             return
-
-        out_df = pd.DataFrame({'testItem': [], 'Cycle': [], 'vdd_cfgs': [], 'value': []})
-        for param in ['V', 'I', 'P']:
-            param_df = self.create_dfItem(param=param, generatePlots=True)
-            out_df = pd.concat([out_df, param_df], axis=0)
-        out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
         
+        print('0============0', self.chipID)
+        pwrcycle_stat_ana_df = pd.read_csv(path_to_statAna)
+        pwr_stat_ana_df = pwrcycle_stat_ana_df[pwrcycle_stat_ana_df['vdd_cfgs'].isna()==False].copy().reset_index()
+        pwr_stat_ana_df.drop('index', axis=1, inplace=True)
+        tmpchresp_stat_ana_df = pwrcycle_stat_ana_df[pwrcycle_stat_ana_df['vdd_cfgs'].isna()==True].copy().reset_index()
+        tmpchresp_stat_ana_df.drop('index', axis=1, inplace=True)
+        
+        # include channel number in chresp_stat_ana_df
+        # each item in the statistical analysis corresponds to the reference value for 16 channels
+        chresp_stat_ana = {'testItem' : [], 'Cycle': [], 'CH': [], 'mean': [], 'std': []}
+        for iitem in range(len(tmpchresp_stat_ana_df['testItem'])):
+            tmpdata = tmpchresp_stat_ana_df.iloc[iitem]
+            for ichn in range(16):
+                chresp_stat_ana['testItem'].append(tmpdata['testItem'])
+                chresp_stat_ana['Cycle'].append(tmpdata['Cycle'])
+                # chresp_stat_ana['vdd_cfgs'].append(tmpdata['vdd_cfgs'])
+                chresp_stat_ana['CH'].append(ichn)
+                chresp_stat_ana['mean'].append(tmpdata['mean'])
+                chresp_stat_ana['std'].append(tmpdata['std'])
+        chresp_stat_ana_df = pd.DataFrame(chresp_stat_ana)
+        # print(chresp_stat_ana_df)
+        # sys.exit()
+
+        pwr_out_df = pd.DataFrame({'testItem': [], 'Cycle': [], 'vdd_cfgs': [], 'value': []})
+        for param in ['V', 'I', 'P']:
+            param_df = self.create_dfItem_PWR(param=param, generatePlots=True)
+            pwr_out_df = pd.concat([pwr_out_df, param_df], axis=0)
+        pwr_out_df.reset_index().drop('index',axis=1, inplace=True)
+        comp_pwrSat_pwrChip_df = pd.merge(pwr_out_df, pwr_stat_ana_df, on=['testItem', 'Cycle', 'vdd_cfgs'], how='outer')
+        comp_pwrSat_pwrChip_df['QC_result']= (comp_pwrSat_pwrChip_df['value']> (comp_pwrSat_pwrChip_df['mean']-3*comp_pwrSat_pwrChip_df['std'])) & (comp_pwrSat_pwrChip_df['value'] < (comp_pwrSat_pwrChip_df['mean']+3*comp_pwrSat_pwrChip_df['std']))
+        pwr_qc_results = comp_pwrSat_pwrChip_df[['testItem', 'Cycle', 'vdd_cfgs', 'value', 'QC_result']].copy().reset_index().drop('index', axis=1)
+        pwr_qc_results['Cycle'] = pwr_qc_results['Cycle'].astype(int)
+        # print(comp_pwrSat_pwrChip_df[comp_pwrSat_pwrChip_df['QC_result']==False])
+        # sys.exit()
+        chresp_out_df = pd.DataFrame({'testItem' : [], 'Cycle': [], 'CH': [], 'value': []})
+        for param in ['pedestal', 'rms', 'negpeak', 'pospeak']:
+            param_df = self.create_dfItem_wf(param=param).drop('vdd_cfgs', axis=1).copy()
+            chresp_out_df = pd.concat([chresp_out_df, param_df], axis=0)
+        # chresp_out_df.reset_index().drop('index', axis=1, inplace=True)
+        comp_chrespStat_chrespChip_df = pd.merge(chresp_stat_ana_df, chresp_out_df, on=['testItem', 'Cycle', 'CH'], how='outer')
+        comp_chrespStat_chrespChip_df['QC_result']= (comp_chrespStat_chrespChip_df['value']> (comp_chrespStat_chrespChip_df['mean']-3*comp_chrespStat_chrespChip_df['std'])) & (comp_chrespStat_chrespChip_df['value'] < (comp_chrespStat_chrespChip_df['mean']+3*comp_chrespStat_chrespChip_df['std']))
+        # print(comp_chrespStat_chrespChip_df)
+        # sys.exit()
+        chresp_qc_results = comp_chrespStat_chrespChip_df[['testItem', 'Cycle','CH', 'value', 'QC_result']]
+        
+
+        cycles = chresp_qc_results['Cycle'].unique()
+        results_cycles = []
+        for icycle in cycles:
+            tmpdata_pwr = pwr_qc_results[pwr_qc_results['Cycle']==icycle].copy().reset_index().drop('index',axis=1)
+            tmpdata_chresp = chresp_qc_results[chresp_qc_results['Cycle']==icycle].copy().reset_index().drop('index', axis=1)
+            cycle_pwr_qc_result = ''
+            cycle_chresp_qc_result = ''
+            # print(tmpdata_pwr['QC_result'])
+            if False in list(tmpdata_pwr['QC_result']):
+                cycle_pwr_qc_result = 'FAILED'
+            else:
+                cycle_pwr_qc_result = 'PASSED'
+            if False in list(tmpdata_chresp['QC_result']):
+                cycle_chresp_qc_result = 'FAILED'
+            else:
+                cycle_chresp_qc_result = 'PASSED'
+            
+            # power
+            pwr_params = []
+            for i in range(len(tmpdata_pwr)):
+                param = '_'.join([tmpdata_pwr.iloc[i]['vdd_cfgs'], tmpdata_pwr.iloc[i]['testItem']]) #, tmpdata_pwr.iloc[i]['testItem'].split(' ')[0] ])
+                pwr_params.append('{} = {}'.format(param, tmpdata_pwr.iloc[i]['value']))
+            # ch resp
+            ch_results = [] # = [(posAmp=, negAmp=, rms=, ped=)]
+            for ichn in range(16):
+                CH = 'CH{}'.format(ichn)
+                posAmp = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='pospeak')]['value']
+                negAmp = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='negpeak')]['value']
+                ped = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='pedestal')]['value']
+                rms = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='rms')]['value']
+                # print(float(posAmp), float(negAmp), float(ped), float(rms), CH)
+                ch_results.append(("{}=(ped={};rms={};posAmp={};negAmp={})".format(CH, ped.iloc[0], rms.iloc[0], posAmp.iloc[0], negAmp.iloc[0])))  
+            # print(cycle_pwr_qc_result, pwr_params)      
+            # print(cycle_chresp_qc_result, ch_results)
+
+            overall_result = ''
+            if 'FAILED' in [cycle_pwr_qc_result, cycle_chresp_qc_result]:
+                overall_result = 'FAILED'
+            else:
+                overall_result = 'PASSED'
+            results_cycles.append(['Test_{}_Power_cycle'.format(self.tms), 'Cycle_{}'.format(icycle), overall_result] + pwr_params + ch_results)
+        # sys.exit()
+        with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+            csvwriter = csv.writer(csvfile, delimiter=',')
+            csvwriter.writerows(results_cycles)
+        # print(self.data['logs'])
+        # sys.exit()
+        # print(pwr_qc_result)
+        # print(self.chipID)
+        # sys.exit()
+        return results_cycles, self.data['logs']
 
 class PWR_CYCLE_statAna():
     def __init__(self, root_path: str, output_path: str):
@@ -290,7 +421,7 @@ class PWR_CYCLE_statAna():
             p_vdda, p_vddp, p_vddo = onechipData.get_IVP(param='P', forStat=True)
             for i in range(len(p_vdda)):
                 allP_vdda[i].append(p_vdda[i])
-                allP_vddp[i].append(p_vdda[i])
+                allP_vddp[i].append(p_vddp[i])
                 allP_vddo[i].append(p_vddo[i])
             # pedestal
             pedestals = onechipData.get_wfdata(item='pedestal', forStat=True)
@@ -356,7 +487,7 @@ class PWR_CYCLE_statAna():
             output_ana['mean'].append(median)
             output_ana['std'].append(std)
             ## VDDP
-            tmpdata = allV_vddp[icycle]
+            tmpdata = allI_vddp[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
             self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_current_vddp_cycle{}'.format(icycle), mean=median, std=std, xtitle='I_VDDA_cycle{}'.format(icycle))
             output_ana['testItem'].append('I')
@@ -384,6 +515,7 @@ class PWR_CYCLE_statAna():
             output_ana['mean'].append(median)
             output_ana['std'].append(std)
             ## VDDP
+            tmpdata = np.array([])
             tmpdata = allP_vddp[icycle]
             outdata, median, std = self.cleanDistribution(array=tmpdata)
             self.savePlotDistribution(array=outdata, filename='QC_PWR_CYCLE_power_vddp_cycle{}'.format(icycle), mean=median, std=std, xtitle='V_VDDA_cycle{}'.format(icycle))
@@ -442,20 +574,23 @@ class PWR_CYCLE_statAna():
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
     # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
+    # # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
     # root_path = '../../B010T0004'
     # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
     # for i, data_dir in enumerate(list_data_dir):
-    #     # if i==0:
+    # #     # if i==0:
     #         pwr_c = PWR_CYCLE(root_path=root_path, data_dir=data_dir, output_path=output_path)
     #         pwr_c.decode_PwrCycle()
+    #         print(pwr_c.logs_dict)
+    #         sys.exit()
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
     for chipID in list_chipID:
         print(chipID)
         pwrcyclea_ana = PWR_CYCLE_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-        pwrcyclea_ana.run_Ana()
+        pwrcyclea_ana.run_Ana(path_to_statAna='/'.join([output_path, 'StatAnaPWR_CYCLE.csv']))
+        sys.exit()
     #     # pwr_ana.Mean_ChResp_ana(BL='900mV')
     #     # sys.exit()
     # stat = PWR_CYCLE_statAna(root_path=root_path, output_path=output_path)

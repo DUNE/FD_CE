@@ -384,7 +384,7 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                     BL = ''
                     print(testItem, feature, _cfg)
                     print(tmpdata[_cfg])
-                    if testItem in ['']
+                    # if testItem in ['']
         sys.exit()
 
 class QC_CHKRES_StatAna():

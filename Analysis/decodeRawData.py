@@ -84,18 +84,18 @@ if __name__ == '__main__':
                 # # Initialization checkout
                 # init_chk = QC_INIT_CHECK(root_path=root_path, data_dir=data_dir, output_dir=output_path)
                 # init_chk.decode_INIT_CHK(generateQCresult=False, generatePlots=False)
-                # # # Power consumption measurement
-                # qc_pwr = QC_PWR(root_path=root_path, data_dir=data_dir, output_dir=output_path)
-                # qc_pwr.decode_FE_PWR()
+                # # Power consumption measurement
+                qc_pwr = QC_PWR(root_path=root_path, data_dir=data_dir, output_dir=output_path)
+                qc_pwr.decode_FE_PWR()
                 # # # Channel response checkout
                 # qc_checkres = QC_CHKRES(root_path=root_path, data_dir=data_dir, output_dir=output_path)
                 # qc_checkres.decode_CHKRES()
                 # # # FE monitoring
                 # fe_mon = FE_MON(root_path=root_path, data_dir=data_dir, output_path=output_path)
                 # fe_mon.decodeFE_MON()
-                # # # Power cycling
-                # pwr_cycle = PWR_CYCLE(root_path=root_path, data_dir=data_dir, output_path=output_path)
-                # pwr_cycle.decode_PwrCycle()
+                # # Power cycling
+                pwr_cycle = PWR_CYCLE(root_path=root_path, data_dir=data_dir, output_path=output_path)
+                pwr_cycle.decode_PwrCycle()
                 # # # RMS noise
                 # rms = RMS(root_path=root_path, data_dir=data_dir, output_path=output_path)
                 # rms.decodeRMS()
@@ -111,5 +111,5 @@ if __name__ == '__main__':
                 # direct_cali = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=63, QC_filename='QC_CALI_DIRECT.bin', generateWf=False)
                 # direct_cali.runASICDAC_cali(saveWfData=False)
                 # ## Calibration capacitor measurement
-                cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
-                cap.decode_CapMeas()
+                # cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
+                # cap.decode_CapMeas()
