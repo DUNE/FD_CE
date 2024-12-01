@@ -36,16 +36,16 @@ def dat_chk_cfgfile(fcfg = "./asic_info.csv", duttype='FE' ):
                 tmp = tmp[:-1]
                 logs[tmp[0]] = tmp[1]
 
-        if False:
+        if True:
             print ("Tester  :  ", "\033[91m {} \033[0m".format(logs['tester']))
-            #csvfile = input ("\033[92m Is tester updated? (Y/N) : \033[0m" )
+            csvfile = input ("\033[96m Is tester updated? (Y/N) : \033[95m" )
             if ("Y" in csvfile) or ("y" in csvfile):
                 pass
             else:
                 #input ("click ENTER after you modify and save asic_info.csv.")
                 #continue
                 return False
-            print ("Test Site  :     ", logs['testsite'])
+            print ("\033[0m Test Site  :     ", logs['testsite'])
             print ("Enviroment :     ", logs['env'])
             print ("DAT SN     :     ", logs['DAT_SN'])
             print ("DAT_on_WIB_slot: ", logs['DAT_on_WIB_slot'])
@@ -71,8 +71,7 @@ def dat_chk_cfgfile(fcfg = "./asic_info.csv", duttype='FE' ):
                 print ("\033[92m LArASIC5  : {} \033[0m".format(logs['FE5']))
                 print ("\033[92m LArASIC6  : {} \033[0m".format(logs['FE6']))
                 print ("\033[92m LArASIC7  : {} \033[0m".format(logs['FE7']))
-            #csvfile = input ("\033[95m Is asic_info.csv updated? (Y/N) : \033[0m" )
-            csvfile = "Y"
+            csvfile = input ("\033[95m Is asic_info.csv updated? (Y/N) : \033[0m" )
             if ("Y" in csvfile) or ("y" in csvfile):
                 pass
             else:

@@ -153,13 +153,14 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
         #print ("Please update chip serial numbers")
         #command = ["notepad.exe", logs['PC_WRCFG_FN']]
         #result=subrun(command, timeout = None, check=False)
-        from DAT_chk_cfgfile import dat_chk_cfgfile
-        pf= dat_chk_cfgfile(fcfg = logs['PC_WRCFG_FN'], duttype=duttype )
-        if pf:
-            logs['New_chips'] = True
-            logs['TestIDs'] = tms
+        #from DAT_chk_cfgfile import dat_chk_cfgfile
+        #pf= dat_chk_cfgfile(fcfg = logs['PC_WRCFG_FN'], duttype=duttype )
+        #if pf:
+        logs['New_chips'] = True
+        logs['TestIDs'] = tms
     
-    if QC_TST_EN:
+    #if QC_TST_EN:
+    if False:
         print (datetime.datetime.utcnow(), " : Check if WIB is pingable (it takes < 60s)" )
         timeout = 10 
         command = ["ping", wibip]
@@ -353,6 +354,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                     return (QCstatus, bads)
 
             if duttype == "CD":
+                qc.qc_stats = {}
                 qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
                 keys = list(qc.qc_stats.keys())
                 for onekey in keys:
@@ -402,19 +404,6 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 pickle.dump(logs, fn)
     
 #    print ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-#    if duttype == "CD":
-#        from DAT_COLDATA_QC_ana import QC_ANA 
-#        qc = QC_ANA()
-#        qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=logs['TestIDs'])
-#        
-#        keys = list(qc.qc_stats.keys())
-#        QCstatus = "PASS"
-#        bads = []
-#        for onekey in keys:
-#            if "PASS" not in qc.qc_stats[onekey]:
-#                print (qc.qc_stats[onekey])
-#                QCstatus = "FAIL"
-#                bads = [0,1]
 #    else:
 #    print ("LArASIC QC analysis script from Rado will add here")
     QCstatus = "PASS"

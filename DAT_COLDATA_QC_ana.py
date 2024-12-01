@@ -50,7 +50,7 @@ class QC_ANA():
     def plt_log(self, plt,fig, logsd, onekey, data):
         fig.suptitle("Test Result of " + onekey, weight ="bold", fontsize = 12)
         lkeys = list(logsd)
-        keys_tmp = ['date', 'ytester', 'testsite', 'env', 'CD0', 'CD1']
+        keys_tmp = ['date', 'tester', 'testsite', 'env', 'CD0', 'CD1']
         for i in range(len(keys_tmp)):
             loginfo ="{} : {}".format(keys_tmp[i], data["logs"][keys_tmp[i]])
             if i == 0:

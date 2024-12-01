@@ -9,6 +9,7 @@ from DAT_read_cfg import dat_read_cfg
 import filecmp
 from colorama import just_fix_windows_console
 just_fix_windows_console()
+from DAT_chk_cfgfile import dat_chk_cfgfile
 #import colorama
 #from colorama import Fore, Back
 #colorama.init(autoreset=True)
@@ -20,6 +21,7 @@ wibhost = "root@{}".format(wibip)
 from rts_ssh import subrun
 from rts_ssh import rts_ssh
 from rts_ssh import DAT_power_off
+
 ####### Input test information #######
 #Red = '\033[91m'
 #Green = '\033[92m'
@@ -121,9 +123,9 @@ while True:#
         if "Done" in result.stdout:
             print ("\033[0m ", datetime.datetime.utcnow(), "\033[92m  : SUCCESS!  \033[0m")
         else:
-            print ("\033[91m " + "FAIL!")
+            print ("\033[91m " + "FAIL!" +"\033[0m")
             print (result.stdout)
-            print ("\033[91m " + "Exit anyway")
+            print ("\033[91m " + "Exit anyway" +"\033[0m")
             exit()
 
 if True:
@@ -141,7 +143,6 @@ if True:
         print ("\033[93m Please update chip serial numbers"+ "\033[0m")
         command = ["notepad.exe", pc_wrcfg_fn]
         result=subrun(command, timeout = None, check=False)
-        from DAT_chk_cfgfile import dat_chk_cfgfile
         pf= dat_chk_cfgfile(fcfg = pc_wrcfg_fn, duttype=duttype )
         if pf:
             break
@@ -174,8 +175,8 @@ if True:
     if result:
         print ("\033[0m " , datetime.datetime.utcnow(), "\033[92m  : SUCCESS!  \033[0m")
     else:
-        print ("\033[91m " + "FAIL!")
-        print ("\033[91m " + "Exit anyway")
+        print ("\033[91m " + "FAIL!" +"\033[0m")
+        print ("\033[91m " + "Exit anyway" +"\033[0m")
         exit()
 
 now = datetime.datetime.utcnow()
@@ -187,22 +188,22 @@ QCstatus, badchips = DAT_QC(rootdir, dut_skt, duttype)
 
 if "PASS" in QCstatus :
     print (QCstatus)
-    print ("\033[92m " + "Well done, please move chips back to tray.")
+    print ("\033[92m " + "Well done, please move chips back to tray." +"\033[0m")
 elif ("Code#E001" in QCstatus) or ("Terminate" in QCstatus) :
     print (QCstatus, badchips)
     DAT_power_off()
-    print ("\033[93m " + "Please contact the tech coordinator")
+    print ("\033[93m " + "Please contact the tech coordinator" +"\033[0m")
 elif "Code#" in QCstatus:
     DAT_power_off()
     print (QCstatus, badchips)
     if len(badchips) > 0:
         for bc in badchips:
-            print ("\033[93m " + "chip%d (1-8) is bad, please move it to bad tray and replace it with a new chip"%(bc+1))
+            print ("\033[93m " + "chip%d (1-8) is bad, please move it to bad tray and replace it with a new chip"%(bc+1) +"\033[0m")
             while True:
                 ytstr = input ("\033[95m " + "Replace (y/n?): ")
                 if "Y" in ytstr or "y" in ytstr:
                     break
-        print ("\033[93m " +"please restart the test script")
+        print ("\033[93m " +"please restart the test script" +"\033[0m" )
     else:
-        print ("\033[93m " +"Please contact the tech coordinator")
+        print ("\033[93m " +"Please contact the tech coordinator" +"\033[0m")
     
