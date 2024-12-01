@@ -16,10 +16,12 @@ mv ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
 You now can log in WIB without typing password. If it doesn’t, reboot the WIB and try again. 
 
 
-# 2. Run ssh_LArASIC.py on PC side
+# 2. COLDATA QC by placing COLDATA chips manually (Windows version, Anaconda package for python3 is recommended)
+PC side
 ```
-python ssh_LArASIC.py
+python .\Manual_DAT_top.py
 ```
+Follow the step by step instruction to conduct COLDATA QC testing. 
 
 
 
