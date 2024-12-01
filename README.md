@@ -25,7 +25,7 @@ reboot
 You now can log in WIB without typing password. 
 
 
-# 2. COLDATA QC by placing COLDATA chips manually (Windows version, Anaconda package for python3 is recommended)
+# COLDATA QC by placing COLDATA chips manually (Windows version, Anaconda package for python3 is recommended)
 PC side
 ```
 python .\Manual_DAT_top.py
