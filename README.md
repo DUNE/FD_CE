@@ -19,6 +19,7 @@ scp $/.ssh/id_rsa.pub root@192.168.121.123/.ssh/
 WIB side (ssh to WIB):
 ```
 mv ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
+reboot
 ```
 
 You now can log in WIB without typing password. If it doesn’t, reboot the WIB and try again. 
