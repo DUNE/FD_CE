@@ -22,7 +22,7 @@ mv ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys
 reboot
 ```
 
-You now can log in WIB without typing password. If it doesn’t, reboot the WIB and try again. 
+You now can log in WIB without typing password. 
 
 
 # 2. COLDATA QC by placing COLDATA chips manually (Windows version, Anaconda package for python3 is recommended)
