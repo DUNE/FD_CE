@@ -275,7 +275,7 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
             pwr_out_df = pd.concat([pwr_out_df, param_df], axis=0)
         pwr_out_df.reset_index().drop('index',axis=1, inplace=True)
         comp_pwrSat_pwrChip_df = pd.merge(pwr_out_df, pwr_stat_ana_df, on=['testItem', 'Cycle', 'vdd_cfgs'], how='outer')
-        comp_pwrSat_pwrChip_df['QC_result']= (comp_pwrSat_pwrChip_df['value']> (comp_pwrSat_pwrChip_df['mean']-3*comp_pwrSat_pwrChip_df['std'])) & (comp_pwrSat_pwrChip_df['value'] < (comp_pwrSat_pwrChip_df['mean']+3*comp_pwrSat_pwrChip_df['std']))
+        comp_pwrSat_pwrChip_df['QC_result']= (comp_pwrSat_pwrChip_df['value']>= (comp_pwrSat_pwrChip_df['mean']-3*comp_pwrSat_pwrChip_df['std'])) & (comp_pwrSat_pwrChip_df['value'] <= (comp_pwrSat_pwrChip_df['mean']+3*comp_pwrSat_pwrChip_df['std']))
         pwr_qc_results = comp_pwrSat_pwrChip_df[['testItem', 'Cycle', 'vdd_cfgs', 'value', 'QC_result']].copy().reset_index().drop('index', axis=1)
         pwr_qc_results['Cycle'] = pwr_qc_results['Cycle'].astype(int)
         # print(comp_pwrSat_pwrChip_df[comp_pwrSat_pwrChip_df['QC_result']==False])
@@ -286,7 +286,7 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
             chresp_out_df = pd.concat([chresp_out_df, param_df], axis=0)
         # chresp_out_df.reset_index().drop('index', axis=1, inplace=True)
         comp_chrespStat_chrespChip_df = pd.merge(chresp_stat_ana_df, chresp_out_df, on=['testItem', 'Cycle', 'CH'], how='outer')
-        comp_chrespStat_chrespChip_df['QC_result']= (comp_chrespStat_chrespChip_df['value']> (comp_chrespStat_chrespChip_df['mean']-3*comp_chrespStat_chrespChip_df['std'])) & (comp_chrespStat_chrespChip_df['value'] < (comp_chrespStat_chrespChip_df['mean']+3*comp_chrespStat_chrespChip_df['std']))
+        comp_chrespStat_chrespChip_df['QC_result']= (comp_chrespStat_chrespChip_df['value']>= (comp_chrespStat_chrespChip_df['mean']-3*comp_chrespStat_chrespChip_df['std'])) & (comp_chrespStat_chrespChip_df['value'] <= (comp_chrespStat_chrespChip_df['mean']+3*comp_chrespStat_chrespChip_df['std']))
         # print(comp_chrespStat_chrespChip_df)
         # sys.exit()
         chresp_qc_results = comp_chrespStat_chrespChip_df[['testItem', 'Cycle','CH', 'value', 'QC_result']]

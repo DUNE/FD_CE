@@ -485,13 +485,13 @@ class QC_PWR_analysis(BaseClass_Ana):
         # print(pwr_stat_ana_df)
         # print(pwr_df)
         pwr_out_df = pd.merge(pwr_stat_ana_df[pwr_item_cond], pwr_df, on=['testItem', 'cfgs', 'cfg_item'], how='outer')
-        pwr_out_df['QC_result']= (pwr_out_df['value']> (pwr_out_df['mean']-3*pwr_out_df['std'])) & (pwr_out_df['value'] < (pwr_out_df['mean']+3*pwr_out_df['std']))
+        pwr_out_df['QC_result']= (pwr_out_df['value']>= (pwr_out_df['mean']-3*pwr_out_df['std'])) & (pwr_out_df['value'] <= (pwr_out_df['mean']+3*pwr_out_df['std']))
         pwr_qc_result = pwr_out_df[['testItem', 'cfgs', 'cfg_item','value', 'QC_result']]
         # Channel response
         chresp_out_df = pd.merge(pd.DataFrame(chresp_stat_modified), chresp_df, on=['testItem', 'cfgs', 'cfg_item', 'chn'], how='outer')
         # print(pd.DataFrame(chresp_stat_modified))
         # print(chresp_df)
-        chresp_out_df['QC_result'] = (chresp_out_df['value']> (chresp_out_df['mean']-3*chresp_out_df['std'])) & (chresp_out_df['value'] < (chresp_out_df['mean']+3*chresp_out_df['std']))
+        chresp_out_df['QC_result'] = (chresp_out_df['value']>= (chresp_out_df['mean']-3*chresp_out_df['std'])) & (chresp_out_df['value'] <= (chresp_out_df['mean']+3*chresp_out_df['std']))
         chresp_qc_result = chresp_out_df[['testItem', 'cfgs', 'cfg_item', 'chn', 'value', 'QC_result']]
         # print(chresp_qc_result)
         # sys.exit()
