@@ -499,41 +499,65 @@ class QC_CALI_Ana(BaseClass_Ana):
                     out_dict['minCharge (fC)'].append(linRanges[ich][0])
                     out_dict['maxCharge (fC)'].append(linRanges[ich][1])
         out_df = pd.DataFrame(out_dict)
-        out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
+        # out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
         #
         # get statistical analysis file
         cali_statAna_df = pd.read_csv(path_to_statAna)
         ## Append statAna to the result for one chip
         measItems = cali_statAna_df['measItem'].unique()
-        # for val in measItems:
-        #     tmp_stat = cali_statAna_df[cali_statAna_df['measItem']==val].copy().reset_index().drop('index', axis=1)
-        #     # tmp_out_dict = {'item': out_df['item'], 'BL': out_df['BL'], val+'_stat_mean': np.zeros(len(out_df['item'])), val+'_stat_std': np.zeros(len(out_df['item']))}
-        #     # for i, v in enumerate(tmp_out_dict['item']):
-        #     #     for j in tmp_stat.index:
-        #     #     sys.exit()
-        #     for i in tmp_stat.index:
-        #         k = (out_df['item']==tmp_stat.iloc[i]['BL']) & (out_df['item']==tmp_stat.iloc[i]['item'])
-        #         print(k)
-        #         tmp_df = out_df[k]
-        #         print(tmp_df)
-        #         sys.exit()
-        #     print(tmp_stat)
-        #     sys.exit()
-            # m = np.zeros((len(out_df['item'])))
-            # s = np.zeros((len(out_df['item'])))
-            # tmp_stat = cali_statAna_df[cali_statAna_df['measItem']==val].copy().reset_index().drop('index', axis=1)
-            # for j, v in enumerate(tmp_stat['measItem']):
-            #     for i in range(len(out_df['item'])):
-            #         match = (out_df.iloc[i]['item']==tmp_stat.iloc[j]['item']) & (out_df.iloc[i]['BL']==tmp_stat.iloc[j]['BL'])
-            #         if match:
-            #             m[i] = tmp_stat.iloc[j]['mean']
-            #             s[i] = tmp_stat.iloc[j]['std']
-            
-            # out_df[val+'_stat_mean'] = m
-            # out_df[val+'_stat_std'] = s
-                    
         
-        print(measItems)
+        # print(cali_statAna_df[cali_statAna_df['measItem']=='INL'])
+        tmp_out_df = pd.DataFrame()
+        for i in range(len(measItems)):
+            tmp_df = cali_statAna_df[cali_statAna_df['measItem']==measItems[i]].copy().reset_index().drop('index', axis=1)
+            # print(tmp_df)
+            if i==0:
+                tmp_out_df = tmp_df[['item', 'BL', 'mean', 'std']].copy()
+            else:
+                tmp_out_df = pd.merge(tmp_out_df, tmp_df[['item', 'BL', 'mean', 'std']], on=['item', 'BL'], how='outer')
+            tmp_out_df.rename(columns={'mean': 'mean_{}'.format(measItems[i]), 'std': 'std_{}'.format(measItems[i])}, inplace=True)
+
+        cali_statAna_new_df = {key: [] for key in tmp_out_df.keys()}
+        cali_statAna_new_df['ch'] = []
+        for i, val in enumerate(tmp_out_df['item']):
+            for ich in range(16):
+                for measItem in tmp_out_df.keys():
+                        cali_statAna_new_df[measItem].append(tmp_out_df.iloc[i][measItem])
+                cali_statAna_new_df['ch'].append(ich)
+        cali_statAna_new_df = pd.DataFrame(cali_statAna_new_df)
+
+        combined_df = pd.merge(out_df, cali_statAna_new_df, on=['item', 'BL', 'ch'], how='outer')
+        keys_combined = combined_df.keys()
+        result_qc_df = pd.DataFrame()
+        for i, measItem in enumerate(measItems):
+            k = [key for key in keys_combined if measItem in key] 
+            tmp = combined_df[['item', 'BL', 'ch']+k].copy().reset_index().drop('index', axis=1)
+            keyval = [t for t in k if ('mean' not in t) & ('std' not in t)][0]
+            tmp.rename(columns={keyval: 'value', 'mean_{}'.format(measItem): 'mean', 'std_{}'.format(measItem): 'std'}, inplace=True)
+            if measItem=='INL': # we accept ASIC with worstINL < 1% (double-check with Shanshan)
+                tmp['QC_result'] = (tmp['value'] < 1)
+            else:
+                tmp['QC_result']= (tmp['value']>= (tmp['mean']-3*tmp['std'])) & (tmp['value'] <= (tmp['mean']+3*tmp['std']))
+            tmp.drop(['mean', 'std'], axis=1, inplace=True)
+            tmp.rename(columns={'value': keyval, 'QC_result': 'QC_result_{}'.format(measItem)}, inplace=True)
+            if i==0:
+                result_qc_df = tmp.copy().reset_index().drop('index', axis=1)
+            else:
+                result_qc_df = pd.merge(result_qc_df, tmp, on=['item', 'BL', 'ch'], how='outer')
+        # drop the case where item==negAmp and BL=SNC1. We expect a non-linear behavior when it comes to the negative amplitude of the baseline 200mV
+        posAmp_df = result_qc_df[result_qc_df['item']=='posAmp'].copy().reset_index().drop('index', axis=1)
+        negAmp_df = result_qc_df[result_qc_df['item']=='negAmp'].copy()
+        SNC0_negAmp_df = negAmp_df[negAmp_df['BL']=='SNC0'].copy().reset_index().drop('index', axis=1)
+        out_df = pd.concat([posAmp_df, SNC0_negAmp_df], axis=0).reset_index().drop('index', axis=1)
+        out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
+        ##
+        ## Generate the summary of the QC
+        qc_res_cols = [c for c in out_df.columns if 'QC_result' in c]
+        overall_result = 'PASSED'
+        for c in qc_res_cols:
+            if False in out_df[c]:
+                overall_result = 'FAILED'
+        ## Format file to list
         sys.exit()
 
 def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', saveDist=False):
