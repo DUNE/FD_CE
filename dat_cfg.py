@@ -44,51 +44,61 @@ class DAT_CFGS(WIB_CFGS):
         print ("Initilization checkout")
         self.wib_fw()
         print ("Turn off all power rails for FEMBs")
-        self.femb_cd_rst()
-        self.femb_powering([])
+        for femb_off_id in range(4):
+            self.femb_power_en_ctrl(femb_id=femb_off_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
+            print ("FEMB%d is off"%femb_off_id)
+        time.sleep(2)
+
         self.data_align_flg = False
         self.data_align_pwron_flg = True
-        time.sleep(2)
         
         #set FEMB voltages
         self.fembs_vol_set(vfe=4.0, vcd=4.0, vadc=4.0)
-        #power on FEMBs
-        self.femb_powering(self.fembs)
+
+        #power on FEMBs in safe mode
+        init_ok, pwr_meas  = self.femb_safe_powering(self.fembs)
+
+        if not init_ok: #unexpected large current
+            return pwr_meas, None, False
+
         self.data_align_flg = False
         self.data_align_pwron_flg = True
 
-        #pwr_ongoing_f = True
-        for i in range(30):
+        for femb_id in self.fembs:
             pwr_ongoing_f = True
-            for femb_id in self.fembs:
+            for i in range(10):
                 ver_id = self.cdpeek(femb_id, 0xC, 0, 0xF4) 
                 year_l = self.cdpeek(femb_id, 0xC, 0, 0xF9) 
                 year_h = self.cdpeek(femb_id, 0xC, 0, 0xFA)
-                print ("DAT", hex(ver_id), hex(year_h), hex(year_l))
+                #print ("DAT", hex(ver_id), hex(year_h), hex(year_l))
                 if (ver_id == 0x2B) and (year_h == 0x20) and (year_l == 0x24):
+                    init_ok = True
+                    break
+                else:
                     pwr_ongoing_f = False
-            if (not pwr_ongoing_f) and i > 20:
-                init_f = True
-            else:
-                init_f = False
+                if (not pwr_ongoing_f) and i > 7:
+                    init_ok = False
+                    break
+                time.sleep(1)
+            if not init_ok:
                 break
-            time.sleep(1)
 
         pwr_meas = None
         link_mask = None
 
-        if not init_f:
-            init_f = not self.dat_fpga_reset()
+        if init_ok:
+            init_ok = self.dat_fpga_reset()
 
-        if not init_f: 
+        if init_ok: 
             self.cdpoke(0, 0xC, 0, self.DAT_CD_AMON_SEL, self.cd_sel)    
             self.femb_cd_rst()
             for femb_id in self.fembs:
                self.femb_cd_fc_act(femb_id, act_cmd="rst_adcs")
                self.femb_cd_fc_act(femb_id, act_cmd="rst_larasics")
                self.femb_cd_fc_act(femb_id, act_cmd="rst_larasic_spi")
-            pwr_meas, init_f = self.wib_pwr_on_dat_chk()
+            pwr_meas, init_ok = self.wib_pwr_on_dat_chk()
 
+        if init_ok: 
             link_mask=self.wib_femb_link_en(self.fembs)
             for femb_no in self.fembs:
                 if (0xf<<(femb_no*4))&link_mask == 0:
@@ -99,84 +109,66 @@ class DAT_CFGS(WIB_CFGS):
                     self.femb_cd_fc_act(femb_no, act_cmd="rst_larasics")
                     self.femb_cd_fc_act(femb_no, act_cmd="rst_larasic_spi")
                 else:
-                    init_f = True
+                    init_ok = False
                     print ("\033[91m" + "FEMB%d, HS links are broken, 0x%H"%(femb_no, link_mask)+ "\033[0m")
                     print ("\033[91m" + "Turn DAT off!"+ "\033[0m")
                     self.femb_powering([])
                     self.data_align_flg = False
                     self.data_align_pwron_flg = True
-        return pwr_meas, link_mask, init_f
+        return pwr_meas, link_mask, init_ok
 
-    def wib_pwr_on_dat_chk(self, fullon_chk=True):
+    def wib_pwr_on_dat_chk(self):
         pwr_meas = self.get_sensors()
         for key in pwr_meas:
             if "FEMB%d"%self.dat_on_wibslot in key:
-                init_f = False
-                if fullon_chk:
-                    print (key, ":", pwr_meas[key])
-                    if "BIAS_V" in key:
-                        if pwr_meas[key] < 4.5:
-                            init_f = True
-                    if "DC2DC0_V" in key:
-                        if pwr_meas[key] < 3.5:
-                            init_f = True
-                    if "DC2DC1_V" in key:
-                        if pwr_meas[key] < 3.5:
-                            init_f = True
-                    if "DC2DC2_V" in key:
-                        if pwr_meas[key] < 3.5:
-                            init_f = True
-#                   if "DC3DC3_V" in key: #not use
-#                       if pwr_meas[key] < 3.5:
-#                           init_f = True
+                init_ok = True
+                print (key, ":", pwr_meas[key])
+                if "BIAS_V" in key:
+                    if pwr_meas[key] < 4.5:
+                        init_ok = False
+                if "DC2DC0_V" in key:
+                    if pwr_meas[key] < 3.5:
+                        init_ok = False
+                if "DC2DC1_V" in key:
+                    if pwr_meas[key] < 3.5:
+                        init_ok = False
+                if "DC2DC2_V" in key:
+                    if pwr_meas[key] < 3.5:
+                        init_ok = False
+#               if "DC3DC3_V" in key: #not use
+#                   if pwr_meas[key] < 3.5:
+#                        init_ok = False
         
-                    if "BIAS_I" in key:
-                        if pwr_meas[key] > 0.1:
-                            init_f = True
-                    if "DC2DC0_I" in key:
-                        if (pwr_meas[key] < 0.2) or (pwr_meas[key] > 1.0) :
-                            init_f = True
-                    if "DC2DC1_I" in key:
-                        if (pwr_meas[key] < 0.2) or (pwr_meas[key] > 1.0) :
-                            init_f = True
-                    if "DC2DC2_I" in key:
-                        if (pwr_meas[key] < 1) or (pwr_meas[key] > 2.5) :
-                            init_f = True
-#                    if "DC3DC3_I" in key: #not use
-#                        if pwr_meas[key] > 1:
-#                        init_f = True
-                else:
-                    if "BIAS_I" in key:
-                        if pwr_meas[key] > 0.1:
-                            init_f = True
-                    if "DC2DC0_I" in key:
-                        if  pwr_meas[key] > 0.6 :
-                            init_f = True
-                    if "DC2DC1_I" in key:
-                        if pwr_meas[key] > 1.0 :
-                            init_f = True
-                    if "DC2DC2_I" in key:
-                        if pwr_meas[key] > 2.5 :
-                            print (key, pwr_meas[key] )
-                            init_f = True
-#                    if "DC3DC3_I" in key: #not use
-#                        if pwr_meas[key] > 1:
-#                        init_f = True
-
-                if init_f:
+                if "BIAS_I" in key:
+                    if pwr_meas[key] > 0.1:
+                        init_ok = False
+                if "DC2DC0_I" in key:
+                    if (pwr_meas[key] < 0.2) or (pwr_meas[key] > 0.8) :
+                        init_ok = False
+                if "DC2DC1_I" in key:
+                    if (pwr_meas[key] < 0.2) or (pwr_meas[key] > 0.8) :
+                        init_ok = False
+                if "DC2DC2_I" in key:
+                    if (pwr_meas[key] < 1) or (pwr_meas[key] > 1.8) :
+                        init_ok = False
+#                if "DC3DC3_I" in key: #not use
+#                    if pwr_meas[key] > 1:
+#                    init_ok = True
+#                    init_ok = False
+                if not init_ok:
                     print ("\033[91m" + "DAT power consumption @ (power on) is not right, please contact tech coordinator!"+ "\033[0m")
                     print ("\033[91m" + "Turn DAT off!"+ "\033[0m")
                     self.femb_powering([])
                     self.data_align_flg = False
                     self.data_align_pwron_flg = True
-                    return pwr_meas, init_f
-        return pwr_meas, init_f
+                    return pwr_meas, init_ok
+        return pwr_meas, init_ok
 
 
     def dat_pwroff_chk(self, env='RT'):
         self.femb_powering([])
         while True:
-            init_f = False
+            init_ok = False
             pwr_meas = self.get_sensors()
             time.sleep(0.1)
             pwr_meas = self.get_sensors()
@@ -184,49 +176,49 @@ class DAT_CFGS(WIB_CFGS):
                 if "FEMB%d"%self.dat_on_wibslot in key:
                     if "BIAS_V" in key:
                         if pwr_meas[key] > 2.0:
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC0_V" in key:
                         if pwr_meas[key] > 0.5:
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC1_V" in key:
                         if pwr_meas[key] > 0.5:
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC2_V" in key:
                         if pwr_meas[key] > 0.5:
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
 #                    if "DC3DC3_V" in key:
 #                        if pwr_meas[key] > 0.5:
-#                            init_f = True
+#                            init_ok = True
             
                     if "BIAS_I" in key:
                         if pwr_meas[key] > 0.05:
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC0_I" in key:
                         if (pwr_meas[key] > 0.05) :
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC1_I" in key:
                         if (pwr_meas[key] > 0.05) :
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC2_I" in key:
                         if (pwr_meas[key] > 0.05) :
-                            init_f = True
+                            init_ok = True
                             print (key, ":", pwr_meas[key])
 #                    if "DC3DC3_I" in key:
 #                        if (pwr_meas[key] > 0.05) :
-#                            init_f = True
+#                            init_ok = True
                     if 'RT' in env or 'rt' in env:
-                        init_f = False
-            if init_f:
+                        init_ok = False
+            if init_ok:
                 print ("Wait 2 seconds, not yet completely shut down...")
                 time.sleep(2)
-            if not init_f:
+            if not init_ok:
                 print ("DAT is off...")
                 break
         
@@ -480,11 +472,6 @@ class DAT_CFGS(WIB_CFGS):
         
     def dat_cd_fast_cmd_chk(self, femb_id):
         datad = {}
-        #self.femb_powering([])
-        #time.sleep(3)
-        #self.femb_powering(fembs=[femb_id])
-        #time.sleep(5)
-
         #FC_ACT: EDGE_SYNC
         datad['FC_ACT_Pre_EDGE_SYNC'] = "FAIL" #synced
         for i in range(3):

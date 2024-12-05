@@ -118,22 +118,19 @@ if True:
 
 ####### Init check information #######
 if 10 in tms:
-    print ("Turn DAT on and wait 5 seconds")
+    print ("Turn DAT on ")
     tt.append(time.time())
-    #set FEMB voltages
-    dat.fembs_vol_set(vfe=4.0, vcd=4.0, vadc=4.0)
-    dat.femb_powering([dat.dat_on_wibslot])
-    dat.data_align_pwron_flg = True
-    time.sleep(5)
+    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
+    tt.append(time.time())
     print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 0 in tms:
     print ("Init check after chips are installed")
     datad = {}
-    pwr_meas, link_mask, init_f = dat.wib_pwr_on_dat()
+    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
     datad["WIB_PWR"] = pwr_meas
     datad["WIB_LINK"] = link_mask
-    if init_f:
+    if not init_ok:
         datad["FE_Fail"] = []
         datad["ADC_Fail"] = [] 
         datad["CD_Fail"] = [0,1]
@@ -177,10 +174,12 @@ if 0 in tms:
     datad['logs'] = logs
     print ("QCstatus:", datad["QCstatus"])
 
-    dat.femb_cd_rst()
-    adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
-    cfg_info = dat.dat_adc_qc_cfg(autocali=0)
-    dat.femb_cd_rst()
+    if init_ok:
+        #back to default
+        dat.femb_cd_rst()
+        adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
+        cfg_info = dat.dat_adc_qc_cfg(autocali=0)
+        dat.femb_cd_rst()
 
     fp = fdir + "QC_INIT_CHK" + ".bin"
     with open(fp, 'wb') as fn:
@@ -238,6 +237,7 @@ if 1 in tms:
     spi_config = dat.femb_fe_cfg(femb_id = dat.fembs[0])
     datad["SPI_config"] = spi_config    
 
+    #default all settings
     dat.femb_cd_rst()
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=0)
@@ -261,6 +261,7 @@ if 2 in tms:
     swapdata = dat.dat_cd_order_swap(femb_id = dat.fembs[0])
     datad.update(swapdata)
     
+    #back to default
     dat.femb_cd_rst()
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=0)
@@ -330,6 +331,7 @@ if 3 in tms:
     
         datad["PC%d_"%cseti+key] = [dat.fembs, rawdata, cfg_info, fes_pwr_info, adcs_pwr_info, cds_pwr_info]
     
+    #back to default
     dat.femb_cd_rst()
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=0)
@@ -355,6 +357,7 @@ if 4 in tms:
     datad['CD2_locked'] = [None for i in range(0x40)]
     datad['CD_data'] = [None for i in range(0x40)]
 
+    #default all settings
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=2)
     dat.spybuf_trig(fembs=dat.fembs, num_samples=1, trig_cmd=0, fastchk=True, synctries=2) #will return False if data not synced
@@ -379,6 +382,7 @@ if 4 in tms:
     dat.femb_i2c_wrchk(dat.fembs[0], 0x2, 0x5, 0x41, 0x20)
     dat.femb_i2c_wrchk(dat.fembs[0], 0x3, 0x5, 0x41, 0x20)    
 
+    #back to default
     dat.femb_cd_rst()
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=0)
@@ -402,6 +406,7 @@ if 5 in tms:
     fastcmd_data = dat.dat_cd_fast_cmd_chk(dat.fembs[0])
     datad.update(fastcmd_data)    
     
+    #back to default
     dat.femb_cd_rst()       
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
     cfg_info = dat.dat_adc_qc_cfg(autocali=0)

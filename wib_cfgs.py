@@ -221,14 +221,109 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         self.femb_power_config(2,  vfe, vcd, vadc)
         self.femb_power_config(3,  vfe, vcd, vadc)
 
+    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=0.8,dc1_ilim=0.8, dc2_ilim=1.8):
+        if len(fembs) > 0:
+            ##debugging
+            #for femb_id in fembs:
+            #    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=1 )
+            #    time.sleep(10)
+            #    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
+            #    time.sleep(5)
+
+            self.all_femb_bias_ctrl(enable=1 )
+            for femb_id in fembs:
+                t0 = time.time()
+                print ("FEMB%d is being turned on"%femb_id)
+                #for vadc_en in [0,1]:
+                #for vfe_en in [0,1]:
+                #for vcd_en in [0,1]:
+                for bias_en in [0]:
+                    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
+                    time.sleep(1)
+                    pwr_meas = self.get_sensors(sensors="FEMB%d"%femb_id)
+
+                    ##debugging
+                    #t1 = time.time()
+                    #iiiis = []
+                    #for key in pwr_meas:
+                    #    if "_I" in key:
+                    #        iiiis.append(pwr_meas[key])
+                    #print (t1-t0, iiiis)
+
+                for bias_en in [1]:
+                    #print ("bias_en", bias_en)
+                    #print ("vfe_en", vfe_en)
+                    #print ("vcd_en", vcd_en)
+                    #print ("vadc_en", vadc_en)
+                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=vadc_en, bias_en=1 )
+                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=vfe_en, vcd_en=1, vadc_en=1, bias_en=1 )
+                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=vcd_en, vadc_en=1, bias_en=1 )
+                    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
+                    t1 = time.time()
+                    i = 0
+                    while True:
+                        init_ok = True
+                        pwr_meas = self.get_sensors(sensors="FEMB%d"%femb_id) #takes ~50ms
+
+                        ##debugging
+                        #t1 = time.time()
+                        #iiiis = []
+                        #for key in pwr_meas:
+                        #    if "_I" in key:
+                        #        iiiis.append(pwr_meas[key])
+                        #print (t1-t0, iiiis)
+                        #i = i + 1
+                        #if i > 100:
+                        #    break
+                        #continue
+
+                        for key in pwr_meas:
+                            if "BIAS_I" in key:
+                                if pwr_meas[key] > bias_ilim:
+                                    init_ok = False
+                            if "DC2DC0_I" in key:
+                                if  pwr_meas[key] > dc0_ilim :
+                                    init_ok = False
+                            if "DC2DC1_I" in key:
+                                if pwr_meas[key] > dc1_ilim :
+                                    init_ok = False
+                            if "DC2DC2_I" in key:
+                                if pwr_meas[key] > dc2_ilim :
+                                    init_ok = False
+                            if not init_ok:
+                                break
+
+                        t1 = time.time()
+                        if not init_ok:
+                            print (key, pwr_meas[key] )
+                            i = i + 1
+                            if i >= 5 : #~200ms
+                                print ("\033[91m" + "FEMB/DAT power consumption @ (power on) is not right, please contact tech coordinator!"+ "\033[0m")
+                                print ("\033[91m" + "Turn FEMB/DAT off!"+ "\033[0m")
+                                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
+                                return init_ok, pwr_meas
+                            else:
+                                print ("\033[93m" + "Warning...detect large current during DAT/FEMB powering on, measure again..."+ "\033[0m")
+                        elif (t1-t0 ) > 3:
+                            print ("Currents of FEMB%d are in the safe range"%femb_id)
+                            break
+                        else:
+                            time.sleep(0.1)
+            #debugging
+            #self.femb_powering()
+            #exit()
+        return True, pwr_meas
+
     def femb_powering(self, fembs = []):
         if len(fembs) > 0:
             self.all_femb_bias_ctrl(enable=1 )
 
             for femb_id in fembs:
-                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=1 )
-                print ("FEMB%d is on"%femb_id)
+                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=0 )
                 time.sleep(1)
+                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=1 )
+                time.sleep(0.1)
+                print ("FEMB%d is on"%femb_id)
             fembs_off = []
             for i in range(4):
                 if i not in fembs:
@@ -267,27 +362,27 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         #print ("Power configuration measurement is not ready yet...")
         #return None
 
-    def femb_powering_single(self, femb_id, act):
-        if act=='on':
-            self.all_femb_bias_ctrl(enable=1 )
-
-            self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=1 )
-            time.sleep(1)
-            print ("FEMB%d is on"%femb_id)
-            
-            #enable WIB data link
-            #fembs=[femb_id]
-            #self.wib_femb_link_en(fembs)
-            #time.sleep(0.1)
-            #self.wib_timing_wrap()
-
-            #self.femb_cd_rst()
-
-        if act=='off':
-            self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=1, bias_en=0 )
-            time.sleep(2)
-            self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
-            print ("FEMB%d is off"%femb_id)
+#    def femb_powering_single(self, femb_id, act):
+#        if act=='on':
+#            self.all_femb_bias_ctrl(enable=1 )
+#
+#            self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=1 )
+#            time.sleep(1)
+#            print ("FEMB%d is on"%femb_id)
+#            
+#            #enable WIB data link
+#            #fembs=[femb_id]
+#            #self.wib_femb_link_en(fembs)
+#            #time.sleep(0.1)
+#            #self.wib_timing_wrap()
+#
+#            #self.femb_cd_rst()
+#
+#        if act=='off':
+#            self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=1, bias_en=0 )
+#            time.sleep(2)
+#            self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
+#            print ("FEMB%d is off"%femb_id)
             time.sleep(1)
 
     def en_ref10MHz(self, ref_en = False):

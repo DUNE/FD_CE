@@ -412,7 +412,7 @@ bool femb_power_en_ctrl(int femb_id, uint8_t dc2dco1, uint8_t dc2dco2, uint8_t d
     i2cwrite(bus, i2c_addr, i2c_reg, reg_val);
 	int rd_val;	
     rd_val = i2cread(bus, i2c_addr, i2c_reg);
-    usleep(100000);
+    //usleep(100000);
     //printf ("%x, %x\n", reg_val, rd_val);
     if (rd_val != reg_val) {return false;}
     else {return true;}
