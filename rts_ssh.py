@@ -382,6 +382,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 else:
                     tmsi = tmsi + 1
                     retry_fi = 0
+            else:
+                tmsi = tmsi + 1
 
         fdirdel = logs['wib_raw_dir']
         command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 

@@ -155,7 +155,7 @@ if True:
                 print ("\033[91m please restart the test script \033[0m")
                 exit()
 
-if True:
+if False: #included in rts_ssh.py 
     #print ("later use pyqt to pop out a configuration windows")
     print ("\033[0m " , datetime.datetime.utcnow(), " : load configuration file from PC")
 

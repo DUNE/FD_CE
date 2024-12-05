@@ -232,7 +232,6 @@ def dat_initchk(fdir="/."):
             if "DIRECT_" in onekey or "ASICDAC_" in onekey :
                 vkeys.append(onekey)
         for onekey in vkeys:
-            #print (onekey)
             cfgdata = data[onekey]
             fembs = cfgdata[0]
             rawdata = cfgdata[1]
@@ -247,9 +246,16 @@ def dat_initchk(fdir="/."):
             if ("ASICDAC_CALI_CHK" in onekey):
                 bads0 = ana_res2(fembs, rawdata, par=[7000,10000], rmsr=[3,25], pedr=[100,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.60,1.8], cdda=[40,60], cddp=[25,35], cddo=[5,15])
-            if ("ASICDAC_47mV_CHK" in onekey):
+            if ("ASICDAC_47mV_CHK" in onekey) and ("ASICDAC_47mV_CHK_x10" not in onekey) and ("ASICDAC_47mV_CHK_x18" not in onekey):
                 bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,25], pedr=[400,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
+            if ("ASICDAC_47mV_CHK_x10" in onekey):
+                bads0 = ana_res2(fembs, rawdata, par=[2000,4000], rmsr=[2,25], pedr=[400,3000] , period=500)
+                bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
+            if ("ASICDAC_47mV_CHK_x18" in onekey):
+                bads0 = ana_res2(fembs, rawdata, par=[3500,5500], rmsr=[2,25], pedr=[400,3000] , period=500)
+                bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
+
 
             if ("DIRECT_PLS_RMS" in onekey) :
                 bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[500,3000] , period=512)
@@ -260,7 +266,7 @@ def dat_initchk(fdir="/."):
             if ("ASICDAC_47mV_RMS" in onekey):
                 bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[400,3000] , period=500)
                 bads1 = ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
-            #print('Bads0 = {} \t Bads1 = {}'.format(bads0, bads1))
+            print(onekey, 'Bads0 = {} \t Bads1 = {}'.format(bads0, bads1))
 
             for badchip in bads0:
                 if badchip not in bads:
@@ -275,18 +281,10 @@ def dat_initchk(fdir="/."):
             return "PASS", []
 
 if __name__=="__main__":
-    # fdir = "D:/DAT_LArASIC_QC//B010T0004/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000/"
-    fdir = "../B010T0004/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000/"
-    fdir = "./tmp_data/RT_FE_027000948_027001170_027001237_027001247_027001146_027001104_027001152_027001236/"
-    fdir = "D:/DAT_LArASIC_QC/Tested/Time_20240731191508_DUT_1000_2000_3000_4000_5000_6000_7000_8000/RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/"
-    fdir = "D:/DAT_LArASIC_QC/Tested/Time_20240801184549_DUT_1000_2000_3000_4000_5000_6000_7000_8000/LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/"
-    fdir = "./tmp_data/LN_FE_002000001_002000002_002000003_002000004_002000005_002000006_002000007_002000008/"
-    fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/RT_FE_002000001_002000002_002000003_002000004_002000005_002000006_002000007_002000008/"
-    fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/RT_FE_003000001_003000002_003000003_003000004_003000005_003000006_003000007_003000008/"
-    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20240807183343_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_401000001_401000002_401000003_401000004_401000005_401000006_401000007_401000008/'''
-    fdir = '''D:/DAT_LArASIC_QC/Tested/Time_20240816185815_DUT_1000_2000_3000_4000_5000_6000_7000_8000/RT_FE_031000001_031000002_031000003_031000004_031000005_031000006_031000007_031000008/'''
-    fdir = '''D:\DAT_CD_QC\Tested\Time_20241015202741_DUT_1000_2000\RT_CD_031702417_031752417/'''
+    #fdir = '''D:\DAT_CD_QC\Tested\Time_20241015202741_DUT_1000_2000\RT_CD_031702417_031752417/'''
+    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20241205140938_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
     QCstatus, bads = dat_initchk(fdir)
     print (QCstatus)
     print (bads)
+
 

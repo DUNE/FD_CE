@@ -40,7 +40,7 @@ class DAT_CFGS(WIB_CFGS):
         self.rev = 1 #0 old revison, 1 new revision
         self.fe_cali_vref = 1.090 
 
-    def wib_pwr_on_dat(self):
+    def wib_pwr_on_dat(self, vfe=4.0, vcd=4.0, vadc=4.0):
         print ("Initilization checkout")
         self.wib_fw()
         print ("Turn off all power rails for FEMBs")
@@ -53,16 +53,13 @@ class DAT_CFGS(WIB_CFGS):
         self.data_align_pwron_flg = True
         
         #set FEMB voltages
-        self.fembs_vol_set(vfe=4.0, vcd=4.0, vadc=4.0)
+        self.fembs_vol_set(vfe=vfe, vcd=vcd, vadc=vadc)
 
         #power on FEMBs in safe mode
         init_ok, pwr_meas  = self.femb_safe_powering(self.fembs)
 
         if not init_ok: #unexpected large current
             return pwr_meas, None, False
-
-        self.data_align_flg = False
-        self.data_align_pwron_flg = True
 
         for femb_id in self.fembs:
             pwr_ongoing_f = True

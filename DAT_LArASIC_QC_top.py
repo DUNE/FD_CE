@@ -76,10 +76,13 @@ if dat.rev == 0:
 if dat.rev == 1:
     if 'RT' in logs['env']:
         dat.fe_cali_vref = 1.090
+        if dat_sn  == 7:
+            dat.fe_cali_vref = 1.193 #DAT_SN=7
+        if dat_sn  == 8:
+            dat.fe_cali_vref = 1.185 #DAT_SN=8
     else:
         dat.fe_cali_vref = 1.030 #DAT_SN=3
 Vref = dat.fe_cali_vref
-print (dat.fe_cali_vref)
         
 
 #if 100 in tms : #100 is only for itemed testing with power operation 
@@ -105,10 +108,8 @@ if 10 in tms:
     print ("Turn DAT on and wait 5 seconds")
     tt.append(time.time())
     #set FEMB voltages
-    dat.fembs_vol_set(vfe=4.0, vcd=4.0, vadc=4.0)
-    dat.femb_powering([dat.dat_on_wibslot])
-    dat.data_align_pwron_flg = True
-    time.sleep(5)
+    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
+    tt.append(time.time())
     print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 0 in tms:
