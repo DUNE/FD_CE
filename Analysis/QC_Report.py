@@ -14,6 +14,7 @@ from datetime import datetime
 # Import analysis classes
 from QC_PWR import QC_PWR_analysis
 from QC_PWR_CYCLE import PWR_CYCLE_Ana
+from QC_CALIBRATION import QC_CALI_Ana
 
 class QC_Report():
     def __init__(self, root_path: str, output_path: str, chipID: str):
@@ -43,9 +44,17 @@ class QC_Report():
         # sys.exit()
         return pwrcycle_data #, logs
 
+    def get_QC_CALI(self, cali_item='QC_CALI_ASICDAC'):
+        ana_cali = QC_CALI_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID, CALI_item=cali_item)
+        cali_data = ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([self.output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+        return cali_data # re-run the decoding so that the logs can be updated
+
     def generate_summary_csv(self):
         pwr_data = self.get_QC_PWR()
         pwr_cycle_data = self.get_QC_PWR_CYCLE()
+        cali_data = []
+        for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
+            cali_data += self.get_QC_CALI(cali_item=cali_item)
 
         month_day_year = '_'.join(self.logs_dict['date'].split('_')[:3])
         header = [#[self.logs_dict['item_name'], self.logs_dict['env']],
@@ -72,6 +81,8 @@ class QC_Report():
         for d in pwr_data:
             csv_data_rows.append(d)
         for d in pwr_cycle_data:
+            csv_data_rows.append(d)
+        for d in cali_data:
             csv_data_rows.append(d)
         print(csv_data_rows)
         with open('test.csv', 'w') as f:
