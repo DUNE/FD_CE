@@ -265,6 +265,11 @@ class QC_CALI_Ana(BaseClass_Ana):
         }
         self.unit_MonGain = 'mV/DAC bit'
         self.CalibCap = 1.85*1E-13 # the calibration capacitance with ASICDAC is 185 fF = 0.185 pF
+        self.tms = {'CALI_ASICDAC': 61,
+                    'CALI_DATDAC': 62,
+                    'CALI_DIRECT': 63,
+                    'CALI_ASICDAC_47': 64}['_'.join(CALI_item.split('_')[1:])]
+        
 
     def getItem_forStatAna(self, generatePlot=False):
         '''
@@ -557,8 +562,54 @@ class QC_CALI_Ana(BaseClass_Ana):
         for c in qc_res_cols:
             if False in out_df[c]:
                 overall_result = 'FAILED'
+        print(overall_result)
+        print(out_df)
+        print(out_df.columns)
         ## Format file to list
-        sys.exit()
+        # 1st column: Test_{self.tms}_{cali_name}
+        # 2nd column: {BL}_{item}
+        # starting from 3rd column: ch0=(worstINL=xxx;gain=xxx;maxCharge=xxx;minCharge=xxx), ch1=(....), ....
+        print(len(out_df['item'])//16)
+        posAmp_df = out_df[out_df['item']=='posAmp']
+        negAmp_df = out_df[out_df['item']=='negAmp']
+        result_in_list = []
+        for item in ['posAmp', 'negAmp']:
+            tmp_df = pd.DataFrame()
+            BLs = []
+            if item=='posAmp':
+                tmp_df = out_df[out_df['item']=='posAmp']
+                BLs = ['SNC0', 'SNC1']
+            elif item=='negAmp':
+                tmp_df = out_df[out_df['item']=='negAmp']
+                BLs = ['SNC0']
+            for BL in BLs:
+                result_Amp_bl = []
+                bl_df = tmp_df[tmp_df['BL']==BL].copy().reset_index().drop('index', axis=1)
+                result_Amp_bl.append('Test_{}_{}'.format(self.tms, self.item))
+                item_cfg_result = 'PASSED'
+                for c in qc_res_cols:
+                    if False in bl_df[c]:
+                        item_cfg_result = 'FAILED'
+                        break
+                __BL = ''
+                if BL=='SNC0':
+                    __BL = '900mV'
+                elif BL=='SNC1':
+                    __BL = '200mV'
+                result_Amp_bl.append('_'.join([__BL, item]))
+                result_Amp_bl.append(item_cfg_result)
+
+                for ich, ch in enumerate(bl_df['ch']):
+                    gain = bl_df.iloc[ich]['gain (fC/ADC bit)']
+                    worstINL = bl_df.iloc[ich]['worstINL (%)']
+                    minCharge = bl_df.iloc[ich]['minCharge (fC)']
+                    maxCharge = bl_df.iloc[ich]['maxCharge (fC)']
+                    result_Amp_bl.append("ch{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
+                result_in_list.append(result_Amp_bl)
+        print(len(result_in_list))
+        print(result_in_list)
+        # sys.exit()
+        return result_in_list
 
 def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', saveDist=False):
     def plot_distribution(array, xtitle, output_path_fig, figname):
@@ -795,11 +846,11 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_ASICDAC']#, 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
-    for chipID in list_chipID:
-        # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
-        for cali_item in calib_item:
-            ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
-            ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
-    # for cali_item in calib_item:
-    #     StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
+    calib_item = ['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    # for chipID in list_chipID:
+    #     # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
+    #     for cali_item in calib_item:
+    #         ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
+    #         ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+    for cali_item in calib_item:
+        StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
