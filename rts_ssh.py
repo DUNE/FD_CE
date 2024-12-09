@@ -337,7 +337,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 print ("FAIL!")
                 return None
 
-            if testid == 0: #checkout
+            if (testid == 0):
                 print ("Run quick analysis...")
                 QCstatus, bads = dat_initchk(fdir=logs['pc_raw_dir'])
 
@@ -347,7 +347,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                         with open(fp, 'wb') as fn:
                             pickle.dump(logs, fn)
                     fdirdel = logs['wib_raw_dir']
-                    command = ["rm", "-rf",fdirdel] 
+                    #command = ["rm", "-rf",fdirdel] 
+                    command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
                     result=subrun(command, timeout = None)
                     if result != None:
                         print ("WIB folder {} is deleted!".format(dfirdel))
@@ -374,7 +375,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                             with open(fp, 'wb') as fn:
                                 pickle.dump(logs, fn)
                         fdirdel = logs['wib_raw_dir']
-                        command = ["rm", "-rf",fdirdel] 
+                        command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
                         result=subrun(command, timeout = None)
                         if result != None:
                             print ("WIB folder {} is deleted!".format(dfirdel))

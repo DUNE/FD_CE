@@ -63,7 +63,8 @@ class QC_ANA():
             fig.text(x, y, loginfo, fontsize=10)
     
     #Todo change default V & C ranges
-    def ana_cdpwr(self, pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69]): #v2p5 = [2.4, 2.6], v1p2 = [1.1, 1.3], ca2p5=[15,25], cd1p2=[0,5], cio=[20,35], cd2p5 = [20,35]):
+    #def ana_cdpwr(self, pwr_meas, vddfe =[1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69]):
+    def ana_cdpwr(self, pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [20, 25], cddio = [60, 75]):
         kpwrs = list(pwr_meas.keys())
     
         vddas = []
@@ -94,15 +95,16 @@ class QC_ANA():
             if "VDDIO" in kpwrs[i]:
                 vddios.append(pwr_meas[kpwrs[i]][0])
                 cddios.append(pwr_meas[kpwrs[i]][1])
+            #print (kpwrs[i], pwr_meas[kpwrs[i]][0], pwr_meas[kpwrs[i]][1])
       
-        show_flg=True
+        pass_flg = False
         if all(v1p1[0] <= item <= v1p1[1] for item in vddas) and all(cdda[0] <= item <= cdda[1] for item in cddas) :
             if all(vddfe[0] <= item <= vddfe[1] for item in fe_vddas) and all(cddfe[0] <= item <= cddfe[1] for item in fe_cddas) :
                 if all(v1p1[0] <= item <= v1p1[1] for item in vddcores) and all(cddcore[0] <= item <= cddcore[1] for item in cddcores) :
                     if all(v1p1[0] <= item <= v1p1[1] for item in vddds) and all(cddd[0] <= item <= cddd[1] for item in cddds) :
                         if all(vddio[0] <= item <= vddio[1] for item in vddios) and all(cddio[0] <= item <= cddio[1] for item in cddios) : 
-                            show_flg = False
-        return show_flg
+                            pass_flg = True
+        return pass_flg
     
     
     def plt_cdpwr(self, plt, pwr_meas):
@@ -221,13 +223,13 @@ class QC_ANA():
     
     def ana_res(self, fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[500,3000] ):
         chns, rmss, peds, pkps, pkns, wfs, wfsf = self.data_ana(fembs, rawdata)
-        show_flg=True
+        fail_flg=True
         amps = np.array(pkps) - np.array(peds)
         if all(item > par[0] for item in amps) and all(item < par[1] for item in amps) :
             if all(item > rmsr[0] for item in rmss) and all(item < rmsr[1] for item in rmss) :
                 if all(item > pedr[0] for item in peds) and all(item < pedr[1] for item in peds) :
-                    show_flg = False
-        return show_flg
+                    fail_flg = False
+        return fail_flg
     
     
     def plt_subplot(self, plt, fembs, rawdata ):
@@ -324,8 +326,7 @@ class QC_ANA():
                     elif ("ASICDAC_CALI_CHK" in onekey):
                         failflg = self.ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[100,3000] )
     
-                    show_flg=True
-                    if show_flg:
+                    if True:
                         import matplotlib.pyplot as plt
                         plt.rcParams.update({'font.size': 8})
                         fig = plt.figure(figsize=(12,8))
@@ -433,8 +434,7 @@ class QC_ANA():
                     fembs = cfgdata[0]
                     rawdata = cfgdata[1]
                     chns, rmss, peds, pkps, pkns, wfs, wfsf = self.data_ana(fembs, rawdata)
-                    show_flg=True
-                    if show_flg:
+                    if True:
                         import matplotlib.pyplot as plt
                         plt.rcParams.update({'font.size': 8})
                         fig = plt.figure(figsize=(12,8))
@@ -515,7 +515,13 @@ class QC_ANA():
                 pwr_meas = cfgdata[5]
     
     
-                pass_flg = self.ana_cdpwr(pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69])
+                if "CUR_0x0" in onekey:
+                    pass_flg = self.ana_cdpwr(pwr_meas, cddio = [25, 35])
+                elif "CUR_0x2" in onekey:
+                    pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                else:
+                    pass_flg = self.ana_cdpwr(pwr_meas, cddio = [60, 75])
+
                 if pass_flg:
                     print (Fore.GREEN + onekey + " Power Consumption: PASS")
                     self.qc_stats[onekey+"_Power"] ="PASS"
@@ -533,8 +539,7 @@ class QC_ANA():
                     print (Fore.GREEN + onekey + " Pulse Response: PASS")
                     self.qc_stats[onekey+"_PLS"] ="PASS"
        
-                show_flg=True
-                if show_flg:
+                if True:
                     import matplotlib.pyplot as plt
                     plt.rcParams.update({'font.size': 8})
                     fig = plt.figure(figsize=(12,8))
@@ -745,9 +750,34 @@ class QC_ANA():
                     fembs = data[onekey][0]
                     rawdata = data[onekey][1]
                     pwr_meas =  data[onekey][3]
-    
-                    pass_flag = self.ana_cdpwr(pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69])
+   
+                    if "CUR_0" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [25, 35])
+                    elif "CUR_1" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                    elif "CUR_2" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                    elif "CUR_3" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [55, 65])
+                    elif "CUR_4" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                    elif "CUR_5" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [55, 65])
+                    elif "CUR_6" in onekey:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [55, 65])
+                    else:
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [60, 75])
+
+
+                    if pass_flg:
+                        print (Fore.GREEN + onekey + " Power Consumption: PASS")
+                        self.qc_stats[onekey] ="PASS"
+                    else:
+                        print(Fore.RED + onekey + " Power Consumption: Fail")
+                        self.qc_stats[onekey] ="FAIL"
+
                     chns, rmss, peds, pkps, pkns, wfs, wfsf = self.data_ana(fembs, rawdata)
+
                     for chn in chns:
                         if chn%16 < 8:
                             pass_flg = peds[chn] == 0x2af3
@@ -757,14 +787,13 @@ class QC_ANA():
                             break
     
                     if pass_flg:
-                        print (Fore.GREEN + onekey + "  : PASS")
+                        print (Fore.GREEN + onekey + " Pulse Response: PASS")
                         self.qc_stats[onekey] ="PASS"
                     else:
-                        print(Fore.RED + onekey + " : Fail")
+                        print(Fore.RED + onekey + " Pulse Response: Fail")
                         self.qc_stats[onekey] ="FAIL"
        
-                    show_flg=True
-                    if show_flg:
+                    if True:
                         import matplotlib.pyplot as plt
                         plt.rcParams.update({'font.size': 8})
                         fig = plt.figure(figsize=(12,8))
@@ -812,7 +841,7 @@ if __name__=="__main__":
     #froot = "D:\\DAT_CD_QC\\Tested\\Time_20241015203556_DUT_1000_2000\\"
     #fdir = froot + fsubdir + "\\"
 
-    fdir = """D:\DAT_CD_QC\Tested\Time_20241129194703_DUT_1000_2000\RT_CD_031712417_031882417/"""
+    fdir = """D:\DAT_CD_QC\RT_CD_031672417_031862417/"""
 
     evl = input ("Analyze all test items? (Y/N) : " )
     if ("Y" in evl) or ("y" in evl):

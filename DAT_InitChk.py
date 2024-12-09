@@ -203,6 +203,56 @@ def ana_fepwr2(pwr_meas, vin=[1.7,1.9], cdda=[15,25], cddp=[20,35], cddo=[0,5]):
                     print ("C VPPP", chip, cddps[chip], cddp[0], cddp[1])
     return bads
 
+def ana_cdpwr2(pwr_meas, vin=[1.7,1.9], cdda=[15,25], cddp=[20,35], cddo=[0,5]):
+    bads = []
+    kpwrs = list(pwr_meas.keys())
+
+    vddas = []
+    vddos = []
+    vddps = []
+    cddas = []
+    cddos = []
+    cddps = []
+
+    for i in range(len(kpwrs)):
+        chip = int(kpwrs[i][2])
+        if "VDDA" in kpwrs[i]:
+            vddas.append(pwr_meas[kpwrs[i]][0])
+            cddas.append(pwr_meas[kpwrs[i]][1])
+            if not ((vddas[chip] >= vin[0] )  and (vddas[chip] <= vin[1] ) ):
+                if chip not in bads:
+                    bads.append(chip)
+                    print ("v VDDA", chip, vddas[chip], vin[0], vin[1])
+            if not ((cddas[chip] >= cdda[0] ) and (cddas[chip] <= cdda[1] )) :
+                if chip not in bads:
+                    bads.append(chip)
+                    print ("C VDDA", chip, cddas[chip], cdda[0], cdda[1])
+
+        if "VDDO" in kpwrs[i]:
+            vddos.append(pwr_meas[kpwrs[i]][0])
+            cddos.append(pwr_meas[kpwrs[i]][1])
+            if not ((vddos[chip] >= vin[0] )  and (vddos[chip] <= vin[1] ) ):
+                if chip not in bads:
+                    bads.append(chip)
+                    print ("v VDDO", chip, vddos[chip], vin[0], vin[1])
+            if not ((cddos[chip] >= cddo[0] ) and (cddos[chip] <= cddo[1] )) :
+                if chip not in bads:
+                    bads.append(chip)
+                    print ("C VDDO", chip, cddos[chip], cddo[0], cddo[1])
+
+        if "VPPP" in kpwrs[i]:
+            vddps.append(pwr_meas[kpwrs[i]][0])
+            cddps.append(pwr_meas[kpwrs[i]][1])
+            if not ((vddps[chip] >= vin[0] )  and (vddps[chip] <= vin[1] ) ):
+                if chip not in bads:
+                    bads.append(chip)
+                    print ("v VPPP", chip, vddps[chip], vin[0], vin[1])
+            if not ((cddps[chip] >= cddp[0] ) and (cddps[chip] <= cddp[1] )) :
+                if chip not in bads:
+                    bads.append(chip)
+                    print ("C VPPP", chip, cddps[chip], cddp[0], cddp[1])
+    return bads
+
 
 def dat_initchk(fdir="/."):
     fp = fdir + "QC_INIT_CHK" + ".bin"
@@ -223,8 +273,8 @@ def dat_initchk(fdir="/."):
         return QCstatus, sorted(data["FE_Fail"])
     if "Code#E005" in QCstatus:
         return QCstatus, sorted(data["FE_Fail"])
-    if "Code#W004" in QCstatus:
 
+    if "Code#W004" in QCstatus:
         bads = []
         datakeys = list(data.keys())
         vkeys = []
@@ -274,16 +324,29 @@ def dat_initchk(fdir="/."):
             for badchip in bads1:
                 if badchip not in bads:
                     bads.append(badchip)
-
         if len(bads) > 0 :
             return QCstatus, sorted(bads)
         else:
             return "PASS", []
 
+    if "Code#E101" in QCstatus:
+        return QCstatus, sorted(data["CD_Fail"])
+    if "Code#E102" in QCstatus:
+        return QCstatus, sorted(data["CD_Fail"])
+#    if "Code#W103" in QCstatus:
+#        return QCstatus, sorted(data["CD_Fail"])
+    if "Code#E005" in QCstatus:
+        return QCstatus, sorted(data["CD_Fail"])
+    if "Code#W104" in QCstatus:
+        return "PASS", []
+
+
 if __name__=="__main__":
     #fdir = '''D:\DAT_CD_QC\Tested\Time_20241015202741_DUT_1000_2000\RT_CD_031702417_031752417/'''
     fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20241205140938_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
-    QCstatus, bads = dat_initchk(fdir)
+    fdir = '''D:/DAT_CD_QC/Tested/Time_20241205160750_DUT_1000_2000/RT_CD_031712417_031882417/'''
+    QCstatus, bads = dat_initchk(fdir=fdir)
+
     print (QCstatus)
     print (bads)
 

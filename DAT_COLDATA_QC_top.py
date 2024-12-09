@@ -64,7 +64,6 @@ dat_sn = int(logsd["DAT_SN"])
 
 logs.update(logsd)
 
-
 if dat.rev == 0:
     if dat_sn  == 1:
         dat.fe_cali_vref = 1.583
@@ -134,7 +133,7 @@ if 0 in tms:
         datad["FE_Fail"] = []
         datad["ADC_Fail"] = [] 
         datad["CD_Fail"] = [0,1]
-        datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
+        datad["QCstatus"] = "Code#E101(COLDATA): large current or HS link error when DAT is powered on"
     else:
         fes_pwr_info = dat.fe_pwr_meas()
         datad["FE_PWRON"] = fes_pwr_info
@@ -145,7 +144,7 @@ if 0 in tms:
         warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
 
         if warn_flg:
-            datad["QCstatus"] = "Code#E002: Large current of some ASIC chips is observed"
+            datad["QCstatus"] = "Code#E102(COLDATA): Large current of some ASIC chips is observed"
             datad["FE_Fail"] = febads
             datad["ADC_Fail"] = adcbads
             datad["CD_Fail"] = cdbads
@@ -156,11 +155,11 @@ if 0 in tms:
                 datad["FE_Fail"] = febads
                 datad["ADC_Fail"] = adcbads
                 datad["CD_Fail"] = cdbads
-                datad["QCstatus"] = "Code#W003: COLDATA POR is not default, can be ignored"
+                datad["QCstatus"] = "Code#W103(COLDATA): COLDATA POR is not default, can be ignored"
             else:
                 chkdata = dat.dat_asic_chk(duts=logsd['DUT'])
                 if chkdata == False:
-                    datad["QCstatus"] = "Code#E005: Can't Configurate DAT"
+                    datad["QCstatus"] = "Code#E105(COLDATA): Can't Configurate DAT"
                     febads = []
                     adcbads = []
                     cdbads = []
@@ -170,7 +169,7 @@ if 0 in tms:
                     print ("CD_Fail(0-1):", datad["CD_Fail"])
                 else:
                     datad.update(chkdata)
-                    datad["QCstatus"] = "Code#W004: To be anlyze at PC side"
+                    datad["QCstatus"] = "Code#W104(COLDATA): To be anlyze at PC side"
     datad['logs'] = logs
     print ("QCstatus:", datad["QCstatus"])
 
