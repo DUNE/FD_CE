@@ -20,7 +20,6 @@ class DAT_CFGS(WIB_CFGS):
         self.cd_sel = 0
         self.dat_on_wibslot = 0
         self.fembs = [self.dat_on_wibslot]
-        self.data_align_flg = False
         self.data_align_pwron_flg = True
 
         #MUX (SN74LV405AD)
@@ -38,25 +37,24 @@ class DAT_CFGS(WIB_CFGS):
         self.ADCVREF = 2.5
         self.gen_rm = 'TCPIP0::192.168.121.201::inst0::INSTR'
         self.rev = 1 #0 old revison, 1 new revision
+        self.dat_sn=1
         self.fe_cali_vref = 1.090 
 
     def wib_pwr_on_dat(self, vfe=4.0, vcd=4.0, vadc=4.0):
         print ("Initilization checkout")
-        self.wib_fw()
+        #self.wib_fw()
         print ("Turn off all power rails for FEMBs")
         for femb_off_id in range(4):
             self.femb_power_en_ctrl(femb_id=femb_off_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
             print ("FEMB%d is off"%femb_off_id)
         time.sleep(2)
 
-        self.data_align_flg = False
-        self.data_align_pwron_flg = True
-        
         #set FEMB voltages
         self.fembs_vol_set(vfe=vfe, vcd=vcd, vadc=vadc)
 
         #power on FEMBs in safe mode
         init_ok, pwr_meas  = self.femb_safe_powering(self.fembs)
+        self.data_align_pwron_flg = True
 
         if not init_ok: #unexpected large current
             return pwr_meas, None, False
@@ -100,8 +98,6 @@ class DAT_CFGS(WIB_CFGS):
             for femb_no in self.fembs:
                 if (0xf<<(femb_no*4))&link_mask == 0:
                     print ("HS links are good")
-                    self.data_align_flg = False
-                    self.data_align_pwron_flg = True
                     self.femb_cd_fc_act(femb_no, act_cmd="rst_adcs")
                     self.femb_cd_fc_act(femb_no, act_cmd="rst_larasics")
                     self.femb_cd_fc_act(femb_no, act_cmd="rst_larasic_spi")
@@ -110,8 +106,6 @@ class DAT_CFGS(WIB_CFGS):
                     print ("\033[91m" + "FEMB%d, HS links are broken, 0x%H"%(femb_no, link_mask)+ "\033[0m")
                     print ("\033[91m" + "Turn DAT off!"+ "\033[0m")
                     self.femb_powering([])
-                    self.data_align_flg = False
-                    self.data_align_pwron_flg = True
         return pwr_meas, link_mask, init_ok
 
     def wib_pwr_on_dat_chk(self):
@@ -156,7 +150,6 @@ class DAT_CFGS(WIB_CFGS):
                     print ("\033[91m" + "DAT power consumption @ (power on) is not right, please contact tech coordinator!"+ "\033[0m")
                     print ("\033[91m" + "Turn DAT off!"+ "\033[0m")
                     self.femb_powering([])
-                    self.data_align_flg = False
                     self.data_align_pwron_flg = True
                     return pwr_meas, init_ok
         return pwr_meas, init_ok
@@ -164,6 +157,7 @@ class DAT_CFGS(WIB_CFGS):
 
     def dat_pwroff_chk(self, env='RT'):
         self.femb_powering([])
+        self.data_align_pwron_flg = True
         while True:
             init_ok = False
             pwr_meas = self.get_sensors()
@@ -734,7 +728,6 @@ class DAT_CFGS(WIB_CFGS):
         if warn_flg:
             print ("\033[91m" + "please check before restart"+ "\033[0m")
             self.femb_powering([])
-            self.data_align_flg = False
         return warn_flg, febads, adcbads, cdbads
 
     def asic_init_por(self, duts=["FE", "ADC", "CD"]): #check status after power on
@@ -755,16 +748,11 @@ class DAT_CFGS(WIB_CFGS):
                     febads.append(fe)
 
         if "ADC" in duts:
-            print ("To be developped")
-            self.dat_adc_qc_cfg()
-            time.sleep(0.2)
             datad_mons = self.dat_adc_mons(femb_id = self.dat_on_wibslot, mon_type=0x3c)  
             warn_flg, adcbads = self.adc_refv_chk(datad_mons)
 
             if not warn_flg:
                 warn_flg, adcbads = self.femb_adc_chkreg(self.dat_on_wibslot)
-        exit()
-
         if "CD" in duts:
             regerrflg = self.femb_cd_chkreg(femb_id = self.dat_on_wibslot)
             if regerrflg is not False:
@@ -778,7 +766,6 @@ class DAT_CFGS(WIB_CFGS):
         if warn_flg:
             print ("\033[91m" + "please check before restart"+ "\033[0m")
             self.femb_powering([])
-            self.data_align_flg = False
         return warn_flg, febads, adcbads, cdbads
 
     def dat_adc_qc_cfg(self,data_fmt=0x08, sha_cs=0, ibuf_cs=0, vrefp=0xDF, vrefn=0x33, vcmo=0x89, vcmi=0x67, autocali=1, adac_pls_en=0):
@@ -803,12 +790,11 @@ class DAT_CFGS(WIB_CFGS):
             if not self.femb_cfg(femb_id, adac_pls_en ):
                 return False
         if self.data_align_pwron_flg == True:
-            self.data_align(self.fembs)
-            self.data_align_pwron_flg = False
-            time.sleep(0.1)
-        if self.data_align_flg != True:
-            self.data_align(self.fembs)
-            self.data_align_flg = False
+            if not self.data_align(self.fembs):
+                return False
+            else:
+                self.data_align_pwron_flg = False
+                time.sleep(0.1)
         return cfg_paras_rec
 
     def dat_adc_qc_refdacs(self, femb_id=0 ):
@@ -992,12 +978,10 @@ class DAT_CFGS(WIB_CFGS):
 
             self.sddflg=sdd
         if self.data_align_pwron_flg == True:
-            self.data_align(self.fembs)
+            if not self.data_align(self.fembs):
+                return False
             self.data_align_pwron_flg = False
             time.sleep(0.1)
-        if self.data_align_flg != True:
-            self.data_align(self.fembs)
-            self.data_align_flg = False
 
         print ("Wait %d seconds for FEMB configruation is stable..."%self.fedly)
         time.sleep(self.fedly)
@@ -1364,7 +1348,6 @@ class DAT_CFGS(WIB_CFGS):
             rdv = self.cdpeek(0, 0xC, 0, self.DAT_FPGA_RST)  
             if rdv == 0x00:
                 print ("DAT FPGA is reset")
-                self.data_align_flg = False
                 return True
             else:
                 time.sleep(1)
@@ -1943,7 +1926,7 @@ class DAT_CFGS(WIB_CFGS):
         else:
             return True
 
-    def adc_refv_chk(self,datad):
+    def adc_refv_chk(self,datad ):
         adcbads = []
         dkeys = list(datad.keys())
         err_high = 1.15
@@ -1966,11 +1949,14 @@ class DAT_CFGS(WIB_CFGS):
                 vnom = vcmo_nom            
 
             for chipno in range(8):
+                if (self.rev==1) and (self.dat_sn==7) and (chipno ==2): #bypass chipno2 on Rev1_SN7
+                    print ("monitoring on DAT rev#1SN7 for ColdADC chip(0-7)#2 is dysfunctional, ignore!")
+                    continue
                 data = datad[onekey][1][chipno]
                 if (vnom*err_low < data) and (data < vnom*err_high):
                     pass
                 else:
-                    print ("Warning: {} is out of range of {} mV: {}".format(onekey, vnom, data))
+                    print ("Warning: {} of chip(0-8)#{} is out of range of {} mV: {}".format(onekey, chipno, vnom, data))
                     if chipno not in adcbads:
                         adcbads.append(chipno)
                     warn_flg = True

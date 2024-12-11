@@ -5,13 +5,12 @@ import pickle
 import copy
 import time, datetime, random, statistics    
 import os
+from DAT_read_cfg import dat_read_cfg
 from dat_cfg import DAT_CFGS
-from DAT_user_input import dat_user_input
 import argparse
-                
-dat =  DAT_CFGS()
-dat.rev = 1
 
+dat =  DAT_CFGS()
+froot = "/home/root/BNL_CE_WIB_SW_QC/tmp_data/"
 ####### Input test information #######
 #Red = '\033[91m'
 #Green = '\033[92m'
@@ -49,44 +48,86 @@ wib_time = datetime.datetime.now().strftime("%m-%d-%Y %H:%M:%S")
 tt = []
 tt.append(time.time())
 
-if 0 in tms:
-    while True:
-        print ("\033[92m WIB time: " + wib_time + " \033[0m")
-        wibtimechk=input("\033[95m Is time of WIB current ? (Y/N):  \033[0m")
-        if ("Y" in wibtimechk) or ("y" in wibtimechk):
-            break
-        else:
-            print ("Please follow these steps to reset WIB time")
-            print ("(Windows PC only) open Powershell, type in: ")
-            print ("""\033[91m  $cdate = get-date  \033[0m""")
-            print ("""\033[91m  $wibdate = "date -s '$cdate'"  \033[0m""")
-            print ("""\033[91m  ssh root@192.168.121.123  $wibdate  \033[0m""")
-            print ("""\033[91m  password: fpga  \033[0m""")
-            print ("Restart this script...")
-            exit()
-    itemized_flg = False
-else:
-    itemx = input ("""\033[92m Test item# {}, Y/N? : \033[0m""".format(tms) )
-    if ("Y" in itemx) or ("y" in itemx):
-        pass
-    else:
-        print ("\033[91m Exit, please re-choose and restart...\033[0m")
-        exit()
-    itemized_flg = True
-
 logs = {}
-logsd, fdir =  dat_user_input(infile_mode=True,  froot = "./tmp_data/",  itemized_flg=itemized_flg)
+logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = froot)
 
-#to be change later sgao 04/19/24
-itemized_flg = False
-if itemized_flg:
-    if not os.path.exists(fdir):
-        print ("\033[91m Please perform a full test instead of the itemized tests, exit anyway\033[0m")
-        exit()
+if not os.path.exists(fdir):
+    try:
+        os.makedirs(fdir)
+    except OSError:
+        print ("Error to create folder %s"%fdir)
+        sys.exit()
 
 dat.DAT_on_WIBslot = int(logsd["DAT_on_WIB_slot"])
 fembs = [dat.DAT_on_WIBslot] 
 dat.fembs = fembs
+dat.rev = int(logsd["DAT_Revision"])
+dat_sn = int(logsd["DAT_SN"])
+dat.dat_sn = dat_sn
+
+logs.update(logsd)
+
+print (logs)
+exit()
+
+if dat.rev == 0:
+    if dat_sn  == 1:
+        dat.fe_cali_vref = 1.583
+    if dat_sn  == 2:
+        dat.fe_cali_vref = 1.5738
+if dat.rev == 1:
+    if 'RT' in logs['env']:
+        dat.fe_cali_vref = 1.090
+        if dat_sn  == 7:
+            dat.fe_cali_vref = 1.193 #DAT_SN=7
+        if dat_sn  == 8:
+            dat.fe_cali_vref = 1.185 #DAT_SN=8
+    else:
+        dat.fe_cali_vref = 1.030 #DAT_SN=3
+Vref = dat.fe_cali_vref
+
+#while True:
+#    dat.dat_adc_mons(femb_id = dat.dat_on_wibslot, mon_type=0x3c)  
+#    time.sleep(0.1)
+#exit()
+
+#if 0 in tms:
+#    while True:
+#        print ("\033[92m WIB time: " + wib_time + " \033[0m")
+#        wibtimechk=input("\033[95m Is time of WIB current ? (Y/N):  \033[0m")
+#        if ("Y" in wibtimechk) or ("y" in wibtimechk):
+#            break
+#        else:
+#            print ("Please follow these steps to reset WIB time")
+#            print ("(Windows PC only) open Powershell, type in: ")
+#            print ("""\033[91m  $cdate = get-date  \033[0m""")
+#            print ("""\033[91m  $wibdate = "date -s '$cdate'"  \033[0m""")
+#            print ("""\033[91m  ssh root@192.168.121.123  $wibdate  \033[0m""")
+#            print ("""\033[91m  password: fpga  \033[0m""")
+#            print ("Restart this script...")
+#            exit()
+#    itemized_flg = False
+#else:
+#    itemx = input ("""\033[92m Test item# {}, Y/N? : \033[0m""".format(tms) )
+#    if ("Y" in itemx) or ("y" in itemx):
+#        pass
+#    else:
+#        print ("\033[91m Exit, please re-choose and restart...\033[0m")
+#        exit()
+#    itemized_flg = True
+#logs = {}
+#logsd, fdir =  dat_user_input(infile_mode=True,  froot = "./tmp_data/",  itemized_flg=itemized_flg)
+
+#to be change later sgao 04/19/24
+#itemized_flg = False
+#if itemized_flg:
+#    if not os.path.exists(fdir):
+#        print ("\033[91m Please perform a full test instead of the itemized tests, exit anyway\033[0m")
+#        exit()
+
+#dat.DAT_on_WIBslot = int(logsd["DAT_on_WIB_slot"])
+#fembs = [dat.DAT_on_WIBslot] 
+#dat.fembs = fembs
 
 #Possibly put DAT version in a DAT register that we can peek?
 #dat_revision = 0 # 0 = old dat
@@ -100,19 +141,19 @@ dat.fembs = fembs
 #    dat.fe_cali_vref = 1.090
 #Vref = dat.fe_cali_vref
 
-logs.update(logsd)
+#logs.update(logsd)
 
-if dat.rev == 0:
-    if dat_sn  == 1:
-        dat.fe_cali_vref = 1.583
-    if dat_sn  == 2:
-        dat.fe_cali_vref = 1.5738
-if dat.rev == 1:
-    if 'RT' in logs['env']:
-        dat.fe_cali_vref = 1.090
-    else:
-        dat.fe_cali_vref = 1.030 #DAT_SN=3
-Vref = dat.fe_cali_vref        
+#if dat.rev == 0:
+#    if dat_sn  == 1:
+#        dat.fe_cali_vref = 1.583
+#    if dat_sn  == 2:
+#        dat.fe_cali_vref = 1.5738
+#if dat.rev == 1:
+#    if 'RT' in logs['env']:
+#        dat.fe_cali_vref = 1.090
+#    else:
+#        dat.fe_cali_vref = 1.030 #DAT_SN=3
+#Vref = dat.fe_cali_vref        
 
 #to be change later sgao 04/19/24
 #tms=[0]
@@ -132,62 +173,139 @@ Vref = dat.fe_cali_vref
 #                    tms = tms + [11] #turn DAT off after testing
 
 ####### Init check information #######
+if True:
+    print ("Check DAT power status")
+    pwr_meas = dat.get_sensors()
+    on_f = True
+    for key in pwr_meas:
+        if "FEMB%d"%dat.dat_on_wibslot in key:
+            if ("BIAS_V" in key) and (pwr_meas[key] < 4.5):
+                on_f = False
+            if ("DC2DC0_V" in key) and (pwr_meas[key] < 3.5):
+                on_f = False
+            if ("DC2DC1_V" in key) and (pwr_meas[key] < 3.5):
+                on_f = False
+            if ("DC2DC2_V" in key) and (pwr_meas[key] < 3.5):
+                on_f = False
+    if (not on_f) and (tms[0] != 0) : #turn DAT on
+        tms = [12] + tms #turn DAT on
+
 if 12 in tms:
-    print ("Turn DAT on and wait 10 seconds")
-    #set FEMB voltages
-    dat.fembs_vol_set(vfe=4.0, vcd=4.0, vadc=4.0)
-    dat.femb_powering([dat.dat_on_wibslot])
-    dat.data_align_pwron_flg = True
-    time.sleep(10)
-    
+    print ("Turn DAT on ")
+    tt.append(time.time())
+    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
+    tt.append(time.time())
+    print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
+
 if 0 in tms:
     print ("Init check after chips are installed")
     datad = {}
-
-    pwr_meas, link_mask, init_f = dat.wib_pwr_on_dat()
+    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
     datad["WIB_PWR"] = pwr_meas
     datad["WIB_LINK"] = link_mask
-
-    if False:
+    if not init_ok:
+        datad["FE_Fail"] = []
+        datad["ADC_Fail"] = [] 
+        datad["CD_Fail"] = [0,1]
+        datad["QCstatus"] = "Code#E201(ColdADC): large current or HS link error when DAT is powered on"
+    else:
         fes_pwr_info = dat.fe_pwr_meas()
         datad["FE_PWRON"] = fes_pwr_info
-        print (fes_pwr_info)
         adcs_pwr_info = dat.adc_pwr_meas()
         datad["ADC_PWRON"] = adcs_pwr_info
-        print (adcs_pwr_info)
         cds_pwr_info = dat.dat_cd_pwr_meas()
         datad["CD_PWRON"] = cds_pwr_info
-        print (cds_pwr_info)
+        warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
 
-    fes_pwr_info = dat.fe_pwr_meas()
-    datad["FE_PWRON"] = fes_pwr_info
-    adcs_pwr_info = dat.adc_pwr_meas()
-    datad["ADC_PWRON"] = adcs_pwr_info
-    cds_pwr_info = dat.dat_cd_pwr_meas()
-    datad["CD_PWRON"] = cds_pwr_info
-    warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
-    if warn_flg:
-        print ("exit anyway")
-        exit()
-    dat.asic_init_por()
-    chkdata = dat.dat_asic_chk()
-    datad.update(chkdata)
-    print ("to do: FE mapping to be done")
-    
+        if warn_flg:
+            datad["QCstatus"] = "Code#E202(ColdADC): Large current of some ASIC chips is observed"
+            datad["FE_Fail"] = febads
+            datad["ADC_Fail"] = adcbads
+            datad["CD_Fail"] = cdbads
+
+        else: #if all chips look good
+            warn_flg, febads, adcbads, cdbads = dat.asic_init_por(duts=["ADC"])
+            if warn_flg:
+                datad["FE_Fail"] = febads
+                datad["ADC_Fail"] = adcbads
+                datad["CD_Fail"] = cdbads
+                datad["QCstatus"] = "Code#W203(ColdADC): ColdADC POR is not default, can be ignored"
+            else:
+                chkdata = dat.dat_asic_chk(duts=logsd['DUT'])
+                if chkdata == False:
+                    datad["QCstatus"] = "Code#E205(ColdADC): Can't Configurate DAT"
+                    febads = []
+                    adcbads = []
+                    cdbads = []
+                    for chip in range(8):
+                        adcbads.append(chip)
+                    datad["ADC_Fail"] = adcbads
+                    print ("ADC_Fail(1-8):", datad["ADC_Fail"])
+                else:
+                    datad.update(chkdata)
+                    datad["QCstatus"] = "Code#W204(ColdADC): To be anlyze at PC side"
     datad['logs'] = logs
-    if not os.path.exists(fdir):
-        try:
-            os.makedirs(fdir)
-        except OSError:
-            print ("Error to create folder %s"%save_dir)
-            sys.exit()
+    print ("QCstatus:", datad["QCstatus"])
+
+    if init_ok:
+        #back to default
+        dat.femb_cd_rst()
+        adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
+        cfg_info = dat.dat_adc_qc_cfg(autocali=0)
+        dat.femb_cd_rst()
 
     fp = fdir + "QC_INIT_CHK" + ".bin"
     with open(fp, 'wb') as fn:
         pickle.dump(datad, fn)
 
     tt.append(time.time())
-    print ("\033[92mPass init check, it took %d seconds \033[0m"%(tt[-1]-tt[-2]))
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! It took %d seconds"%(tt[-1]-tt[-2]))
+
+#    print ("Init check after chips are installed")
+#    datad = {}
+#    pwr_meas, link_mask, init_f = dat.wib_pwr_on_dat()
+#    datad["WIB_PWR"] = pwr_meas
+#    datad["WIB_LINK"] = link_mask
+#
+#    if False:
+#        fes_pwr_info = dat.fe_pwr_meas()
+#        datad["FE_PWRON"] = fes_pwr_info
+#        adcs_pwr_info = dat.adc_pwr_meas()
+#        datad["ADC_PWRON"] = adcs_pwr_info
+#        cds_pwr_info = dat.dat_cd_pwr_meas()
+#        datad["CD_PWRON"] = cds_pwr_info
+#
+#    fes_pwr_info = dat.fe_pwr_meas()
+#    datad["FE_PWRON"] = fes_pwr_info
+#    adcs_pwr_info = dat.adc_pwr_meas()
+#    datad["ADC_PWRON"] = adcs_pwr_info
+#    cds_pwr_info = dat.dat_cd_pwr_meas()
+#    datad["CD_PWRON"] = cds_pwr_info
+#    warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+#    if warn_flg:
+#        print ("exit anyway")
+#        exit()
+#    dat.asic_init_por()
+#    chkdata = dat.dat_asic_chk()
+#    datad.update(chkdata)
+#    print ("to do: FE mapping to be done")
+#    
+#    datad['logs'] = logs
+#    if not os.path.exists(fdir):
+#        try:
+#            os.makedirs(fdir)
+#        except OSError:
+#            print ("Error to create folder %s"%save_dir)
+#            sys.exit()
+#
+#    fp = fdir + "QC_INIT_CHK" + ".bin"
+#    with open(fp, 'wb') as fn:
+#        pickle.dump(datad, fn)
+#
+#    tt.append(time.time())
+#    print ("\033[92mPass init check, it took %d seconds \033[0m"%(tt[-1]-tt[-2]))
     
     
 if 1 in tms: #if "cycling_placeholder" in tms:

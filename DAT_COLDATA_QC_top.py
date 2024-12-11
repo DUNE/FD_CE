@@ -329,8 +329,6 @@ if 3 in tms:
         fes_pwr_info = dat.fe_pwr_meas()
         adcs_pwr_info = dat.adc_pwr_meas()
         cds_pwr_info = dat.dat_cd_pwr_meas()
-        print (cds_pwr_info)
-        input ("pause")
     
         datad["PC%d_"%cseti+key] = [dat.fembs, rawdata, cfg_info, fes_pwr_info, adcs_pwr_info, cds_pwr_info]
     

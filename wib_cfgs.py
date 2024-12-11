@@ -64,6 +64,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         fw_month  = (val>>23)&0xf
         fw_day    = (val>>27)&0x1f
         print (f"WIB FW generated at {fw_year}-{fw_month}-{fw_day} {fw_hour}:{fw_minute}:{fw_second}")
+        return val
 
     def wib_zynq_mon(self):
         t_mult=509.3140064
@@ -221,7 +222,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         self.femb_power_config(2,  vfe, vcd, vadc)
         self.femb_power_config(3,  vfe, vcd, vadc)
 
-    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=0.8,dc1_ilim=0.8, dc2_ilim=1.8):
+    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=0.9,dc1_ilim=0.9, dc2_ilim=1.8):
         if len(fembs) > 0:
             ##debugging
             #for femb_id in fembs:
@@ -695,8 +696,8 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         self.femb_i2c_wrchk(femb_id, chip_addr=2, reg_page=0, reg_addr=0x20, wrdata=0)
         
     def data_align(self, fembs=[0, 1, 2,3]):
-        align_sts = True
-        while align_sts:
+        tryi = 0
+        while True:
             #note032123: to be optimized 
             link_mask=self.peek(0xA00C0008) 
             if 0 in fembs:
@@ -771,19 +772,20 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                     wrreg = (rdreg & 0xfffffffb) + ((wrvalue&0x1)<<2)
                     self.poke(rdaddr, wrreg) 
                     self.poke(rdaddr, wrreg) 
-                    align_sts = False
                     return True
-                    #break
                 if dts_time_delay >= 0x7f:
-                    print ("\033[91m" + "Error: data can't be aligned" + "\033[0m")
-                    return False 
-                    ##self.femb_powering(fembs =[])
-                    #print ("\033[91m" + "Error: data can't be aligned, re-initilize the clock again." + "\033[0m")
-                    #
-                    ##self.wib_timing(ts_clk_sel=True, fp1_ptc0_sel=0, cmd_stamp_sync = 0x0)
-                    #self.wib_timing_wrap()
-                    #time.sleep(0.1)
-                    ##exit()
+                    tryi = tryi + 1
+                    if tryi >= 3:
+                        print ("\033[91m" + "Error: data can't be aligned" + "\033[0m")
+                        return False 
+                    else:
+                        ##self.femb_powering(fembs =[])
+                        print ("\033[93m" + "Error: data can't be aligned, re-initilize the clock again." + "\033[0m")
+                        #
+                        ##self.wib_timing(ts_clk_sel=True, fp1_ptc0_sel=0, cmd_stamp_sync = 0x0)
+                        self.wib_timing_wrap()
+                        time.sleep(0.1)
+                        ##exit()
 
     def femb_adc_chkreg(self, femb_id, reset_first=True):
         adcbads = []
@@ -1461,7 +1463,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                             time.sleep(0.1)
                             print ("perform data synchronzation again...")
                             self.data_align(fembs)
-                            time.sleep(0.1)
+                            self.data_align(fembs)
                         synctry = synctry+1
                     else:
                         break
