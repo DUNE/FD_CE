@@ -758,10 +758,9 @@ class DAT_CFGS(WIB_CFGS):
             if regerrflg is not False:
                 warn_flg = True
                 if regerrflg[2] == 2:
-                    adcbads.append(1)
+                    cdbads.append(1)
                 if regerrflg[2] == 3:
-                    adcbads.append(0)
-            #warn_flg, adcbads
+                    cdbads.append(0)
 
         if warn_flg:
             print ("\033[91m" + "please check before restart"+ "\033[0m")
@@ -1175,7 +1174,9 @@ class DAT_CFGS(WIB_CFGS):
                 return False
             #wibdata = wib_dec(rawdata[0], fembs=self.fembs, spy_num=1)[0]
             fes_pwr_info =  self.fe_pwr_meas()
-            datad["DIRECT_PLS_RMS"] = (self.fembs, rawdata[0], rawdata[1], fes_pwr_info)
+            adc_pwr_info =  self.adc_pwr_meas()
+            cd_pwr_info =  self.dat_cd_pwr_meas()
+            datad["DIRECT_PLS_RMS"] = (self.fembs, rawdata[0], rawdata[1], fes_pwr_info, adc_pwr_info, cd_pwr_info)
 
         self.fedly = 5
         adac_pls_en, sts, swdac, dac = self.dat_cali_source(cali_mode=2,asicdac=0x20)
@@ -1195,7 +1196,9 @@ class DAT_CFGS(WIB_CFGS):
                 return False
             #wibdata = wib_dec(rawdata[0], fembs=self.fembs, spy_num=1)[0]
             fes_pwr_info =  self.fe_pwr_meas()
-            datad["ASICDAC_CALI_RMS"] = (self.fembs, rawdata[0], rawdata[1], fes_pwr_info)
+            adc_pwr_info =  self.adc_pwr_meas()
+            cd_pwr_info =  self.dat_cd_pwr_meas()
+            datad["ASICDAC_CALI_RMS"] = (self.fembs, rawdata[0], rawdata[1], fes_pwr_info, adc_pwr_info, cd_pwr_info)
 
         self.fedly = 1
         return datad

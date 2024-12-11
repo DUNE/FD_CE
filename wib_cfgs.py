@@ -191,15 +191,15 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         #print ("coldata_rx_reset = 0x%08x"%rdreg)
         time.sleep(0.1)
 
-        #reset FELIX TX and loopback RX
-        rdreg = self.peek(0xA00C0038)
-        #print ("felix_rx_reset = 0x%08x"%rdreg)
-        self.poke(0xA00C0038, rdreg&0xffffffdf)
-        self.poke(0xA00C0038, rdreg|0x00000040)
-        self.poke(0xA00C0038, rdreg&0xffffffdf)
-        rdreg = self.peek(0xA00C0038)
-        #print ("felix_rx_reset = 0x%08x"%rdreg)
-        time.sleep(0.1)
+#        #reset FELIX TX and loopback RX
+#        rdreg = self.peek(0xA00C0038)
+#        #print ("felix_rx_reset = 0x%08x"%rdreg)
+#        self.poke(0xA00C0038, rdreg&0xffffffdf)
+#        self.poke(0xA00C0038, rdreg|0x00000040)
+#        self.poke(0xA00C0038, rdreg&0xffffffdf)
+#        rdreg = self.peek(0xA00C0038)
+#        #print ("felix_rx_reset = 0x%08x"%rdreg)
+#        time.sleep(0.1)
 
         return self.peek(0xA00C0004)
 
@@ -696,6 +696,24 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         self.femb_i2c_wrchk(femb_id, chip_addr=2, reg_page=0, reg_addr=0x20, wrdata=0)
         
     def data_align(self, fembs=[0, 1, 2,3]):
+
+        #set edge_to_act_delay
+        rdreg = self.peek(0xA0030004)
+        #print ("edge_to_act_delay = 0x%08x"%rdreg)
+        self.poke(0xA0030004, 19)
+        rdreg = self.peek(0xA0030004)
+        #print ("edge_to_act_delay = 0x%08x"%rdreg)
+
+        #reset COLDATA RX to clear buffers
+        rdreg = self.peek(0xA00C0004)
+        #print ("coldata_rx_reset = 0x%08x"%rdreg)
+        self.poke(0xA00C0004, rdreg&0xffffcfff)
+        self.poke(0xA00C0004, rdreg|0x00003000)
+        self.poke(0xA00C0004, rdreg&0xffffcfff)
+        rdreg = self.peek(0xA00C0004)
+        #print ("coldata_rx_reset = 0x%08x"%rdreg)
+        time.sleep(0.1)
+
         tryi = 0
         while True:
             #note032123: to be optimized 
@@ -734,6 +752,8 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
             wrvalue = 0x1 #cmd_stamp_sync_en = 1
             wrreg = (rdreg & 0xfffffffb) + ((wrvalue&0x1)<<2)
             self.poke(rdaddr, wrreg) 
+
+            time.sleep(0.1)
                 
             for dts_time_delay in  range(0x47, 0x80,1):
                 rdaddr = 0xA00C000C
@@ -746,7 +766,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                 wrvalue = 0x1 #align_en = 1
                 wrreg = (rdreg & 0xfffffff7) + ((wrvalue&0x1)<<3)
                 self.poke(rdaddr, wrreg) 
-                time.sleep(0.2)
+                time.sleep(0.1)
                 if 0 in fembs:
                     link0to3 = self.peek(0xA00C00A8)
                 else:
@@ -779,13 +799,12 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                         print ("\033[91m" + "Error: data can't be aligned" + "\033[0m")
                         return False 
                     else:
-                        ##self.femb_powering(fembs =[])
-                        print ("\033[93m" + "Error: data can't be aligned, re-initilize the clock again." + "\033[0m")
-                        #
-                        ##self.wib_timing(ts_clk_sel=True, fp1_ptc0_sel=0, cmd_stamp_sync = 0x0)
-                        self.wib_timing_wrap()
-                        time.sleep(0.1)
-                        ##exit()
+                        if tryi >= 2:
+                            print ("\033[93m" + "Warning: data can't be aligned, re-initilize the clock again." + "\033[0m")
+                            self.wib_timing_wrap()
+                            time.sleep(0.1)
+                        else:
+                            print ("\033[93m" + "Warning: data can't be aligned, try again." + "\033[0m")
 
     def femb_adc_chkreg(self, femb_id, reset_first=True):
         adcbads = []

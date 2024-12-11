@@ -33,13 +33,13 @@ print ("\033[96m 5: ADC noise measurement  \033[0m")
 print ("\033[96m 6: ADC DNL/INL measurement  \033[0m")
 print ("\033[96m 7: ADC DAT-DAC SCAN  \033[0m")
 print ("\033[96m 8: ADC ENOB measurement \033[0m")
-print ("\033[96m 9: ADC ring oscillator frequency readout \033[0m")
-print ("\033[96m 10: ADC RANGE test \033[0m")
-print ("\033[96m 11: Turn DAT off \033[0m")
-print ("\033[96m 12: Turn DAT (on WIB slot0) on without any check\033[0m")
+print ("\033[96m 11: ADC ring oscillator frequency readout \033[0m")
+print ("\033[96m 12: ADC RANGE test \033[0m")
+print ("\033[96m 9: Turn DAT off \033[0m")
+print ("\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m")
 
 ag = argparse.ArgumentParser()
-ag.add_argument("-t", "--task", help="which QC tasks to be performed", type=int, choices=[0, 1,2,3,4,5,6,7,8,9,10,11,12],  nargs='+', default=[0,1,2,3,4,5,6,7,8,9,10,11])
+ag.add_argument("-t", "--task", help="which QC tasks to be performed", type=int, choices=[0, 1,2,3,4,5,6,7,8,11,12,9,10],  nargs='+', default=[0,1,3,4,5,6,7,8,11,12])
 args = ag.parse_args()   
 tms = args.task
 
@@ -67,9 +67,6 @@ dat.dat_sn = dat_sn
 
 logs.update(logsd)
 
-print (logs)
-exit()
-
 if dat.rev == 0:
     if dat_sn  == 1:
         dat.fe_cali_vref = 1.583
@@ -85,92 +82,6 @@ if dat.rev == 1:
     else:
         dat.fe_cali_vref = 1.030 #DAT_SN=3
 Vref = dat.fe_cali_vref
-
-#while True:
-#    dat.dat_adc_mons(femb_id = dat.dat_on_wibslot, mon_type=0x3c)  
-#    time.sleep(0.1)
-#exit()
-
-#if 0 in tms:
-#    while True:
-#        print ("\033[92m WIB time: " + wib_time + " \033[0m")
-#        wibtimechk=input("\033[95m Is time of WIB current ? (Y/N):  \033[0m")
-#        if ("Y" in wibtimechk) or ("y" in wibtimechk):
-#            break
-#        else:
-#            print ("Please follow these steps to reset WIB time")
-#            print ("(Windows PC only) open Powershell, type in: ")
-#            print ("""\033[91m  $cdate = get-date  \033[0m""")
-#            print ("""\033[91m  $wibdate = "date -s '$cdate'"  \033[0m""")
-#            print ("""\033[91m  ssh root@192.168.121.123  $wibdate  \033[0m""")
-#            print ("""\033[91m  password: fpga  \033[0m""")
-#            print ("Restart this script...")
-#            exit()
-#    itemized_flg = False
-#else:
-#    itemx = input ("""\033[92m Test item# {}, Y/N? : \033[0m""".format(tms) )
-#    if ("Y" in itemx) or ("y" in itemx):
-#        pass
-#    else:
-#        print ("\033[91m Exit, please re-choose and restart...\033[0m")
-#        exit()
-#    itemized_flg = True
-#logs = {}
-#logsd, fdir =  dat_user_input(infile_mode=True,  froot = "./tmp_data/",  itemized_flg=itemized_flg)
-
-#to be change later sgao 04/19/24
-#itemized_flg = False
-#if itemized_flg:
-#    if not os.path.exists(fdir):
-#        print ("\033[91m Please perform a full test instead of the itemized tests, exit anyway\033[0m")
-#        exit()
-
-#dat.DAT_on_WIBslot = int(logsd["DAT_on_WIB_slot"])
-#fembs = [dat.DAT_on_WIBslot] 
-#dat.fembs = fembs
-
-#Possibly put DAT version in a DAT register that we can peek?
-#dat_revision = 0 # 0 = old dat
-
-#if dat.rev == 0:
-#    if dat_sn  == 1:
-#        dat.fe_cali_vref = 1.583
-#    if dat_sn  == 2:
-#        dat.fe_cali_vref = 1.5738
-#if dat.rev == 1:
-#    dat.fe_cali_vref = 1.090
-#Vref = dat.fe_cali_vref
-
-#logs.update(logsd)
-
-#if dat.rev == 0:
-#    if dat_sn  == 1:
-#        dat.fe_cali_vref = 1.583
-#    if dat_sn  == 2:
-#        dat.fe_cali_vref = 1.5738
-#if dat.rev == 1:
-#    if 'RT' in logs['env']:
-#        dat.fe_cali_vref = 1.090
-#    else:
-#        dat.fe_cali_vref = 1.030 #DAT_SN=3
-#Vref = dat.fe_cali_vref        
-
-#to be change later sgao 04/19/24
-#tms=[0]
-#if 0 not in tms :
-#    pwr_meas = dat.get_sensors()
-#    for key in pwr_meas:
-#        if "FEMB%d"%dat.dat_on_wibslot in key:
-#            on_f = False
-#            if ("BIAS_V" in key) and (pwr_meas[key] > 4.5):
-#                    if ("DC2DC0_V" in key) and (pwr_meas[key] > 3.5):
-#                            if ("DC2DC1_V" in key) and (pwr_meas[key] > 3.5):
-#                                    if ("DC2DC2_V" in key) and (pwr_meas[key] > 3.5):
-#                                            on_f = True
-#            if (not on_f) and (tms[0] != 11):
-#                tms = [11] + tms #turn DAT on
-#                if 11 not in tms:
-#                    tms = tms + [11] #turn DAT off after testing
 
 ####### Init check information #######
 if True:
@@ -188,9 +99,9 @@ if True:
             if ("DC2DC2_V" in key) and (pwr_meas[key] < 3.5):
                 on_f = False
     if (not on_f) and (tms[0] != 0) : #turn DAT on
-        tms = [12] + tms #turn DAT on
+        tms = [10] + tms #turn DAT on
 
-if 12 in tms:
+if 10 in tms:
     print ("Turn DAT on ")
     tt.append(time.time())
     pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
@@ -199,60 +110,66 @@ if 12 in tms:
 
 if 0 in tms:
     print ("Init check after chips are installed")
+
+    wibfw_ver = dat.wib_fw()
     datad = {}
-    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
-    datad["WIB_PWR"] = pwr_meas
-    datad["WIB_LINK"] = link_mask
-    if not init_ok:
-        datad["FE_Fail"] = []
-        datad["ADC_Fail"] = [] 
-        datad["CD_Fail"] = [0,1]
-        datad["QCstatus"] = "Code#E201(ColdADC): large current or HS link error when DAT is powered on"
-    else:
-        fes_pwr_info = dat.fe_pwr_meas()
-        datad["FE_PWRON"] = fes_pwr_info
-        adcs_pwr_info = dat.adc_pwr_meas()
-        datad["ADC_PWRON"] = adcs_pwr_info
-        cds_pwr_info = dat.dat_cd_pwr_meas()
-        datad["CD_PWRON"] = cds_pwr_info
-        warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
-
-        if warn_flg:
-            datad["QCstatus"] = "Code#E202(ColdADC): Large current of some ASIC chips is observed"
-            datad["FE_Fail"] = febads
-            datad["ADC_Fail"] = adcbads
-            datad["CD_Fail"] = cdbads
-
-        else: #if all chips look good
-            warn_flg, febads, adcbads, cdbads = dat.asic_init_por(duts=["ADC"])
+    if "ADC" in logsd['DUT'] and wibfw_ver == 0x90B11AEF:
+        pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
+        datad["WIB_PWR"] = pwr_meas
+        datad["WIB_LINK"] = link_mask
+        if not init_ok:
+            #datad["FE_Fail"] = []
+            #datad["ADC_Fail"] = [0,1,2,3,4,5,6,7] 
+            #datad["CD_Fail"] = []
+            datad["QCstatus"] = "Code#E201(ColdADC): large current or HS link error when DAT is powered on"
+        else:
+            fes_pwr_info = dat.fe_pwr_meas()
+            datad["FE_PWRON"] = fes_pwr_info
+            adcs_pwr_info = dat.adc_pwr_meas()
+            datad["ADC_PWRON"] = adcs_pwr_info
+            cds_pwr_info = dat.dat_cd_pwr_meas()
+            datad["CD_PWRON"] = cds_pwr_info
+            warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+    
             if warn_flg:
+                datad["QCstatus"] = "Code#E202(ColdADC): Large current of some ASIC chips is observed"
                 datad["FE_Fail"] = febads
                 datad["ADC_Fail"] = adcbads
                 datad["CD_Fail"] = cdbads
-                datad["QCstatus"] = "Code#W203(ColdADC): ColdADC POR is not default, can be ignored"
-            else:
-                chkdata = dat.dat_asic_chk(duts=logsd['DUT'])
-                if chkdata == False:
-                    datad["QCstatus"] = "Code#E205(ColdADC): Can't Configurate DAT"
-                    febads = []
-                    adcbads = []
-                    cdbads = []
-                    for chip in range(8):
-                        adcbads.append(chip)
+    
+            else: #if all chips look good
+                warn_flg, febads, adcbads, cdbads = dat.asic_init_por(duts=["ADC"])
+                if warn_flg:
+                    datad["FE_Fail"] = febads
                     datad["ADC_Fail"] = adcbads
-                    print ("ADC_Fail(1-8):", datad["ADC_Fail"])
+                    datad["CD_Fail"] = cdbads
+                    datad["QCstatus"] = "Code#W203(ColdADC): ColdADC POR is not default, can be ignored"
                 else:
-                    datad.update(chkdata)
-                    datad["QCstatus"] = "Code#W204(ColdADC): To be anlyze at PC side"
+                    chkdata = dat.dat_asic_chk(duts=logsd['DUT'])
+                    if chkdata == False:
+                        datad["QCstatus"] = "Code#E205(ColdADC): Can't Configurate DAT"
+                        febads = []
+                        adcbads = []
+                        cdbads = []
+                        for chip in range(8):
+                            adcbads.append(chip)
+                        datad["ADC_Fail"] = adcbads
+                        print ("ADC_Fail(1-8):", datad["ADC_Fail"])
+                    else:
+                        datad.update(chkdata)
+                        datad["QCstatus"] = "Code#W204(ColdADC): To be anlyze at PC side"
+        if init_ok:
+            #back to default
+            dat.femb_cd_rst()
+            adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
+            cfg_info = dat.dat_adc_qc_cfg(autocali=0)
+            dat.femb_cd_rst()
+    else:
+        datad["QCstatus"] = "Code#E201(ColdADC):Please load wib_top_0506.bin for ADC QC"
+
     datad['logs'] = logs
     print ("QCstatus:", datad["QCstatus"])
 
-    if init_ok:
-        #back to default
-        dat.femb_cd_rst()
-        adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=3)
-        cfg_info = dat.dat_adc_qc_cfg(autocali=0)
-        dat.femb_cd_rst()
 
     fp = fdir + "QC_INIT_CHK" + ".bin"
     with open(fp, 'wb') as fn:
@@ -263,51 +180,6 @@ if 0 in tms:
     print ("save_file_start_%s_end_save_file"%fp)
     print ("Done! Pass! It took %d seconds"%(tt[-1]-tt[-2]))
 
-#    print ("Init check after chips are installed")
-#    datad = {}
-#    pwr_meas, link_mask, init_f = dat.wib_pwr_on_dat()
-#    datad["WIB_PWR"] = pwr_meas
-#    datad["WIB_LINK"] = link_mask
-#
-#    if False:
-#        fes_pwr_info = dat.fe_pwr_meas()
-#        datad["FE_PWRON"] = fes_pwr_info
-#        adcs_pwr_info = dat.adc_pwr_meas()
-#        datad["ADC_PWRON"] = adcs_pwr_info
-#        cds_pwr_info = dat.dat_cd_pwr_meas()
-#        datad["CD_PWRON"] = cds_pwr_info
-#
-#    fes_pwr_info = dat.fe_pwr_meas()
-#    datad["FE_PWRON"] = fes_pwr_info
-#    adcs_pwr_info = dat.adc_pwr_meas()
-#    datad["ADC_PWRON"] = adcs_pwr_info
-#    cds_pwr_info = dat.dat_cd_pwr_meas()
-#    datad["CD_PWRON"] = cds_pwr_info
-#    warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
-#    if warn_flg:
-#        print ("exit anyway")
-#        exit()
-#    dat.asic_init_por()
-#    chkdata = dat.dat_asic_chk()
-#    datad.update(chkdata)
-#    print ("to do: FE mapping to be done")
-#    
-#    datad['logs'] = logs
-#    if not os.path.exists(fdir):
-#        try:
-#            os.makedirs(fdir)
-#        except OSError:
-#            print ("Error to create folder %s"%save_dir)
-#            sys.exit()
-#
-#    fp = fdir + "QC_INIT_CHK" + ".bin"
-#    with open(fp, 'wb') as fn:
-#        pickle.dump(datad, fn)
-#
-#    tt.append(time.time())
-#    print ("\033[92mPass init check, it took %d seconds \033[0m"%(tt[-1]-tt[-2]))
-    
-    
 if 1 in tms: #if "cycling_placeholder" in tms:
     print ("\033[95mADC power cycling measurement starts...\033[0m")
     cycle_times = 6
@@ -347,12 +219,18 @@ if 1 in tms: #if "cycling_placeholder" in tms:
     with open(fp, 'wb') as fn:
         pickle.dump(datad, fn)
     tt.append(time.time())
-    print ("\033[92mADC power cycling measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))
+    #print ("\033[92mADC power cycling measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
         
 if 2 in tms:#if "i2c_placeholder" in tms:
     print ("\033[95mI2C communication test starts...   \033[0m")
     print ("The test was included in the init chekcout")
-    print ("PASS")
+    fdir = ""
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 3 in tms:#if "refv_placeholder" in tms:
     print ("\033[95mADC monitoring measurement starts...   \033[0m")
@@ -377,7 +255,10 @@ if 3 in tms:#if "refv_placeholder" in tms:
 
         pickle.dump(data, fn)    
     tt.append(time.time())
-    print ("\033[92mADC monitoring measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))        
+#    print ("\033[92mADC monitoring measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))        
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
     
 if 4 in tms:#if "autocali_placeholder" in tms:
     print ("\033[95mADC autocalibration check starts...   \033[0m")
@@ -395,8 +276,11 @@ if 4 in tms:#if "autocali_placeholder" in tms:
     with open(fp, 'wb') as fn:
         pickle.dump(datad, fn)    
     tt.append(time.time())
-    print ("\033[92mADC autocalibration check is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))   
-    
+#    print ("\033[92mADC autocalibration check is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))   
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
+
 if 5 in tms:#if "noise_placeholder" in tms:
     print ("\033[95mADC  noise measurement starts...   \033[0m")
     datad = {}
@@ -449,14 +333,16 @@ if 5 in tms:#if "noise_placeholder" in tms:
         pickle.dump(datad, fn)
 
     tt.append(time.time())        
-    print ("\033[92mADC noise measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+#    print ("\033[92mADC noise measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
     
 if 6 in tms:
     print ("\033[95mADC DNL/INL measurement starts...   \033[0m")
     
     datad = {}
     datad['logs'] = logs  
-    
     
     #Assuming slow ramp config
     #Replace these or input them in DAT_user_input.py as necessary:
@@ -490,7 +376,10 @@ if 6 in tms:
         pickle.dump(datad, fn)
 
     tt.append(time.time())        
-    print ("\033[92mADC DNL/INL measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+#    print ("\033[92mADC DNL/INL measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
     
 if 7 in tms:#if "overflow_placeholder" in tms:
     print ("\033[95mADC DAT-DAC SCAN starts...   \033[0m")
@@ -529,79 +418,11 @@ if 7 in tms:#if "overflow_placeholder" in tms:
         pickle.dump(datad, fn)
 
     tt.append(time.time())        
-    print ("\033[92mADC DAT-DAC SCAN is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+#    print ("\033[92mADC DAT-DAC SCAN is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
-#    datad = {}
-#    datad['logs'] = logs  
-#    
-#    cfg_info = dat.dat_adc_qc_cfg()  
-#
-#
-#    #take data for underflow
-#    ##tie ADC to gnd
-#    # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_SRC_CS_P_MSB, 0x0) 
-#    # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_SRC_CS_P_LSB, 0x0) 
-#    # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_TEST_IN_SEL, 0x0)  
-#    # # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_PN_TST_SEL, 0x0)
-#    # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_PN_TST_SEL, 0x33)
-#    dat.dat_set_dac(0x0, adc=0)  #Set ADCP to 0
-#    dat.dat_set_dac(0xFFFF, adc=1)  #give ADCN a positive voltage   
-#    # import pyvisa  
-#    # rm = pyvisa.ResourceManager()    
-#    # sigconfig_done = False
-#    # while not sigconfig_done:
-#        # try:
-#            # sig_gen = rm.open_resource('TCPIP::192.168.121.10::INSTR')
-#            # print(sig_gen.query("*IDN?"))
-#            # sig_gen.write("FUNCTION DC")
-#            # sig_gen.write("VOLTAGE:OFFSET -2.5V")
-#            # sig_gen.write("OUTP ON")
-#            # sigconfig_done = True
-#            # print("Successfully configured signal generator")
-#        # except:
-#            # print("Error configuring signal generator. Trying again...")
-#            # sigconfig_done = False
-#        
-#        # sig_gen.close()
-#
-#    
-#    # dat.dat_coldadc_ext(ext_source='DAT_P6')
-#    dat.dat_coldadc_cali_cs(mode="DIFF")
-#        
-#    
-#    # input("Probe DACs - underflow")
-#    print(hex(dat.peek(0xa00c00f0) >> 10))
-#    datad['rawdata_under'] = dat.dat_adc_qc_acq(num_samples = 20) 
-#    
-#    # sig_gen = rm.open_resource('TCPIP::192.168.121.10::INSTR')
-#    # sig_gen.write("OUTP OFF")
-#    # sig_gen.close()
-#
-#    
-#    #take data for overflow
-#    # ##tie ADC P  to DAT PDAC set to max
-#    # # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_SRC_CS_P_MSB, 0x0) 
-#    # # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_SRC_CS_P_LSB, 0x0) 
-#    # # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_TEST_IN_SEL, 0x0)  
-#    # # # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_PN_TST_SEL, 0x0)    
-#    # dat.cdpoke(dat.dat_on_wibslot, 0xC, 0, dat.DAT_ADC_PN_TST_SEL, 0x33)
-#    dat.dat_coldadc_cali_cs(mode="DIFF")
-#    dat.dat_set_dac(0xFFFF, adc=0)
-#    dat.dat_set_dac(0x0, adc=1)
-#    # input("Probe DACs - overflow")
-#    print(hex(dat.peek(0xa00c00f0) >> 10))
-#    datad['rawdata_over'] = dat.dat_adc_qc_acq(num_samples = 20) 
-#    
-#    dat.dat_set_dac(0x0, adc=0) #set ADC PDAC back to 0
-#    dat.dat_set_dac(0x0, adc=1) #set ADC NDAC back to 0
-#    
-#    fp = fdir + "QC_OVERFLOW" + ".bin"
-#    with open(fp, 'wb') as fn:
-#        pickle.dump(datad, fn)
-#
-#    tt.append(time.time())        
-#    print ("\033[92mADC overflow check is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
-    
 if 8 in tms:#if "enob_placeholder" in tms:
     print ("\033[95mADC ENOB measurement starts...   \033[0m")
 
@@ -616,8 +437,6 @@ if 8 in tms:#if "enob_placeholder" in tms:
    
     for freq in [8106.23, 14781.95, 31948.09, 72002.41, 119686.13, 200748.44, 358104.70]:  
     #for freq in [8106.23]:
-    #for freq in [119686.13]:
-    #for freq in [31948]:
         datad = {}
         datad['logs'] = logs 
         datad['source'] = source
@@ -633,15 +452,6 @@ if 8 in tms:#if "enob_placeholder" in tms:
         dat.sig_gen_config(waveform = datad['waveform'], freq=datad['freq'], vlow=datad['voltage_low'], vhigh=datad['voltage_high']) 
         time.sleep(0.5)
             
-        ##dat.dat_coldadc_input_cs(mode="P6SE", SHAorADC = "SHA", chsenl=0x0000)
-        #input ("wait.......")
-
-        #rawdata = dat.dat_adc_qc_acq(1) #trigger readout, save in case of issue
-        #fp = fdir + "QC_raw_%08dHz"%datad['freq'] + ".bin"
-        #with open(fp, 'wb') as fn:
-        #    pickle.dump(rawdata, fn)
-        #exit()
-        
         datad['enobdata'] = [dat.fembs, dat.dat_enob_acq_2(sineflg=True), cfg_info, "SINE"]
         
         fp = fdir + "QC_ENOB_%08dHz"%datad['freq'] + ".bin"
@@ -650,9 +460,12 @@ if 8 in tms:#if "enob_placeholder" in tms:
 
     dat.sig_gen_config()
     tt.append(time.time())        
-    print ("\033[92mADC enob measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+#    print ("\033[92mADC enob measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
     
-if 9 in tms:#if "ringosc_placeholder" in tms:
+if 11 in tms:#if "ringosc_placeholder" in tms:
     print ("\033[95mADC ring oscillator frequency readout starts...   \033[0m")
     
     datad = {}
@@ -666,9 +479,12 @@ if 9 in tms:#if "ringosc_placeholder" in tms:
         pickle.dump(datad, fn)
 
     tt.append(time.time())        
-    print ("\033[92mADC ring oscillator frequency readout is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+#    print ("\033[92mADC ring oscillator frequency readout is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
-if 10 in tms:
+if 12 in tms:
     print ("\033[95mADC Triangle Waveform test starts...   \033[0m")
 
     datad = {}
@@ -697,12 +513,20 @@ if 10 in tms:
         pickle.dump(datad, fn)
 
     tt.append(time.time())        
-    print ("\033[92mADC Triangle waveform measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+#    print ("\033[92mADC Triangle waveform measurement is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2])) 
+    print ("save_fdir_start_%s_end_save_fdir"%fdir)
+    print ("save_file_start_%s_end_save_file"%fp)
+    print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
     
-if 11 in tms:
+if 9 in tms:
     print ("Turn DAT off")
     dat.femb_powering([])
     tt.append(time.time())
+#    print ("It took %d seconds in total for the entire test"%(tt[-1]-tt[0]))
+#    print ("\033[92m  please move data in folder ({}) to the PC and perform the analysis script \033[0m".format(fdir))
+#    print ("\033[92m  Well done \033[0m")
     print ("It took %d seconds in total for the entire test"%(tt[-1]-tt[0]))
-    print ("\033[92m  please move data in folder ({}) to the PC and perform the analysis script \033[0m".format(fdir))
-    print ("\033[92m  Well done \033[0m")
+    #print ("\033[92m  please move data in folder ({}) to the PC and perform the analysis script \033[0m".format(fdir))
+    #print ("\033[92m  Well done \033[0m")
+    print ("DAT_Power_Off, it took %d seconds"%(tt[-1]-tt[-2]))
+

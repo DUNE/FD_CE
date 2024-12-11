@@ -119,7 +119,6 @@ if 0 in tms:
     datad["WIB_PWR"] = pwr_meas
     datad["WIB_LINK"] = link_mask
     if not init_ok:
-        datad["FE_Fail"] = [0,1,2,3,4,5,6,7]
         datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
     else:
         fes_pwr_info = dat.fe_pwr_meas()
