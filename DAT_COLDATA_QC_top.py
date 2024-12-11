@@ -84,12 +84,14 @@ Vref = dat.fe_cali_vref
 #dat.cdpoke(0, 0xC, 0, dat.DAT_EXT_PULSE_CNTL, 1)  
 #dat.cdpoke(0, 0xC, 0, dat.DAT_FE_CMN_SEL, 7)        
 #while True:
-#    #val = float(input ("v = "))
 #    iii = iii + 1
 #    val = (iii%20)/10
+#    val = float(input ("v = "))
 #    valint = int(val*65536/dat.ADCVREF)
 #    dat.dat_set_dac(val=valint, fe_cal=0)
 #    time.sleep(2)
+#
+#exit()
 #iii = 0
 #while True:
 #    #kkk = iii%2
@@ -327,6 +329,8 @@ if 3 in tms:
         fes_pwr_info = dat.fe_pwr_meas()
         adcs_pwr_info = dat.adc_pwr_meas()
         cds_pwr_info = dat.dat_cd_pwr_meas()
+        print (cds_pwr_info)
+        input ("pause")
     
         datad["PC%d_"%cseti+key] = [dat.fembs, rawdata, cfg_info, fes_pwr_info, adcs_pwr_info, cds_pwr_info]
     

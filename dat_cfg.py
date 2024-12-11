@@ -756,11 +756,14 @@ class DAT_CFGS(WIB_CFGS):
 
         if "ADC" in duts:
             print ("To be developped")
-            datad_mons = self.dat_adc_mons(femb_id = 0, mon_type=0x3c)  
+            self.dat_adc_qc_cfg()
+            time.sleep(0.2)
+            datad_mons = self.dat_adc_mons(femb_id = self.dat_on_wibslot, mon_type=0x3c)  
             warn_flg, adcbads = self.adc_refv_chk(datad_mons)
 
             if not warn_flg:
                 warn_flg, adcbads = self.femb_adc_chkreg(self.dat_on_wibslot)
+        exit()
 
         if "CD" in duts:
             regerrflg = self.femb_cd_chkreg(femb_id = self.dat_on_wibslot)

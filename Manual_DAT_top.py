@@ -10,6 +10,7 @@ import filecmp
 from colorama import just_fix_windows_console
 just_fix_windows_console()
 from DAT_chk_cfgfile import dat_chk_cfgfile
+from set_rootpath import rootdir_cs
 #import colorama
 #from colorama import Fore, Back
 #colorama.init(autoreset=True)
@@ -49,16 +50,13 @@ except ValueError:
 
 if chiptype == 1:
     duttype = "FE"
-    from set_rootpath import rootdir
-    #rootdir = "D:/DAT_LArASIC_QC/Tested/"
+    rootdir = rootdir_cs(duttype)
 elif chiptype == 2:
     duttype = "ADC"
-    from set_rootpath import rootdir
-    #rootdir = "D:/DAT_ADC_QC/Tested/"
+    rootdir = rootdir_cs(duttype)
 elif chiptype == 3:
     duttype = "CD"
-    from set_rootpath import rootdir
-    #rootdir = "D:/DAT_CD_QC/Tested/"
+    rootdir = rootdir_cs(duttype)
 
 while True:
     print ("\033[96m Root folder of test data is: "+ "\033[93m" + rootdir + "\033[0m")

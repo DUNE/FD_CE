@@ -115,10 +115,10 @@ if 10 in tms:
 if 0 in tms:
     print ("Init check after chips are installed")
     datad = {}
-    pwr_meas, link_mask, init_f = dat.wib_pwr_on_dat()
+    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
     datad["WIB_PWR"] = pwr_meas
     datad["WIB_LINK"] = link_mask
-    if init_f:
+    if not init_ok:
         datad["FE_Fail"] = [0,1,2,3,4,5,6,7]
         datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
     else:
