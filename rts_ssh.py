@@ -130,9 +130,21 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
         tms_items[7 ] = "\033[96m 7 : FE delay run  \033[0m"
         tms_items[8 ] = "\033[96m 8 : FE cali-cap measurement \033[0m"
         tms_items[9 ] = "\033[96m 9 : Turn DAT off \033[0m"
-        tms_items[10] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
+#        tms_items[10] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
     elif "ADC" in duttype:
-        pass
+        tms_items[0  ] = "\033[96m 0: Initilization checkout (not selectable for itemized test item) \033[0m"
+        tms_items[1  ] = "\033[96m 1: ADC power cycling measurement  \033[0m"
+#        tms_items[2  ] = "\033[96m 2: ADC reserved...  \033[0m"
+        tms_items[3  ] = "\033[96m 3: ADC reference voltage measurement  \033[0m"
+        tms_items[4  ] = "\033[96m 4: ADC autocalibration check  \033[0m"
+        tms_items[5  ] = "\033[96m 5: ADC noise measurement  \033[0m"
+        tms_items[6  ] = "\033[96m 6: ADC DNL/INL measurement  \033[0m"
+        tms_items[7  ] = "\033[96m 7: ADC DAT-DAC SCAN  \033[0m"
+        tms_items[8  ] = "\033[96m 8: ADC ENOB measurement \033[0m"
+        tms_items[11 ] = "\033[96m 11: ADC ring oscillator frequency readout \033[0m"
+        tms_items[12 ] = "\033[96m 12: ADC RANGE test \033[0m"
+        tms_items[9  ] = "\033[96m 9: Turn DAT off \033[0m"
+#        tms_items[10 ] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
     elif "CD" in duttype:
         tms_items[0  ] = "\033[96m 0: Initilization checkout (not selectable for itemized test item) \033[0m"
         tms_items[1  ] = "\033[96m 1: COLDATA basic functionality checkout  \033[0m"
@@ -143,7 +155,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
         tms_items[6  ] = "\033[96m 6: COLDATA output link verification \033[0m"
         tms_items[7  ] = "\033[96m 7: COLDATA EFUSE burn-in \033[0m"
         tms_items[9  ] = "\033[96m 9: Turn DAT off \033[0m"
-        tms_items[10 ] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
+#        tms_items[10 ] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
 
     logs['tms_items'] = tms_items
     
@@ -270,13 +282,11 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
         tmsi = 0
         qc = QC_ANA()
         retry_fi = 0
-        #for testid in tms:
         while True:
             if tmsi >= len(tms):
                 break
             
             testid = tms[tmsi]
-        #for testid in [0]:
             print (datetime.datetime.utcnow(), " : New Test Item Starts, please wait...")
             print (tms_items[testid])
             if "FE" in DUT:

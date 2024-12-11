@@ -64,7 +64,7 @@ class QC_ANA():
     
     #Todo change default V & C ranges
     #def ana_cdpwr(self, pwr_meas, vddfe =[1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [8.5, 9.5], cddfe = [0, 0.1], cddcore = [9, 11], cddd = [21, 23], cddio = [66, 69]):
-    def ana_cdpwr(self, pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.0, 1.2], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [20, 25], cddio = [60, 75]):
+    def ana_cdpwr(self, pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.15, 1.25], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [20, 25], cddio = [60, 75]):
         kpwrs = list(pwr_meas.keys())
     
         vddas = []
