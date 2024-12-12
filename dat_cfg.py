@@ -91,7 +91,7 @@ class DAT_CFGS(WIB_CFGS):
                self.femb_cd_fc_act(femb_id, act_cmd="rst_adcs")
                self.femb_cd_fc_act(femb_id, act_cmd="rst_larasics")
                self.femb_cd_fc_act(femb_id, act_cmd="rst_larasic_spi")
-            pwr_meas, init_ok = self.wib_pwr_on_dat_chk()
+#            pwr_meas, init_ok = self.wib_pwr_on_dat_chk()
 
         if init_ok: 
             link_mask=self.wib_femb_link_en(self.fembs)
@@ -640,20 +640,22 @@ class DAT_CFGS(WIB_CFGS):
                     pass
                 else:
                     print ("Warning: {} is out of range {}".format(onekey, adcs_pwr_info[onekey]))
-                    adc_no = int(onekey[3])
-                    if adc_no not in adcbads:
-                        adcbads.append(adc_no)
-                    warn_flg = True
+                    if True: #to be changed later
+                        adc_no = int(onekey[3])
+                        if adc_no not in adcbads:
+                            adcbads.append(adc_no)
+                        warn_flg = True
 
             if "VDDD2P5" in onekey:
                 if  (adcs_pwr_info[onekey][0] > 2.10) & (adcs_pwr_info[onekey][0] < 2.40) & (adcs_pwr_info[onekey][1] > 10  ) & (adcs_pwr_info[onekey][1] < 40  ) :
                     pass
                 else:
                     print ("Warning: {} is out of range {}".format(onekey, adcs_pwr_info[onekey]))
-                    adc_no = int(onekey[3])
-                    if adc_no not in adcbads:
-                        adcbads.append(adc_no)
-                    warn_flg = True
+                    if True: #to be changed later
+                        adc_no = int(onekey[3])
+                        if adc_no not in adcbads:
+                            adcbads.append(adc_no)
+                        warn_flg = True
 
             if "VDDIO" in onekey:
                 if  (adcs_pwr_info[onekey][0] > 2.10) & (adcs_pwr_info[onekey][0] < 2.40) & (adcs_pwr_info[onekey][1] > 3  ) & (adcs_pwr_info[onekey][1] < 10  ) :
@@ -725,9 +727,17 @@ class DAT_CFGS(WIB_CFGS):
                         cdbads.append(cd_no)
                     warn_flg = True
 
+#        #to be deleted later
+#        warn_flg = False
+#        febads = []
+#        adcbads = []
+#        cdbads = []
+
         if warn_flg:
             print ("\033[91m" + "please check before restart"+ "\033[0m")
             self.femb_powering([])
+
+
         return warn_flg, febads, adcbads, cdbads
 
     def asic_init_por(self, duts=["FE", "ADC", "CD"]): #check status after power on
@@ -1339,7 +1349,51 @@ class DAT_CFGS(WIB_CFGS):
                 print ("WriteEfuse=0x%x, ReadEfuse=%d"%(efuseid, efusev))
                 break
         return efusev
-        
+    
+    def dat_coldata_efuse_rd(self, femb_id=0, cd_id="CD0", efuseid=0):
+        if (efuseid < 0) :
+            print ("Error, EFUSE ID must be >=0")
+            return False
+        elif (efuseid > 0x80000000) :
+            print ("Error, EFUSE ID must be <0x80000000")
+            return False
+        if cd_id == "CD1":
+            efuse_start_value = 0x1
+            efuse_data07adr =88 
+            efuse_data0fadr =89 
+            efuse_data17adr =90 
+            efuse_data1fadr =91 
+            if self.cd_sel == 0:
+                cd_addr = 0x3
+            else:
+                cd_addr = 0x2
+        elif cd_id == "CD2":
+            efuse_start_value = 0x10
+            efuse_data07adr =92 
+            efuse_data0fadr =93 
+            efuse_data17adr =94 
+            efuse_data1fadr =95 
+            if self.cd_sel == 0:
+                cd_addr = 0x2
+            else:
+                cd_addr = 0x3            
+
+        while True:
+            self.femb_cd_rst()
+            time.sleep(0.1)
+            efusev18 = self.cdpeek(0, cd_addr, 0, 0x18)
+            efusev19 = self.cdpeek(0, cd_addr, 0, 0x19)
+            efusev1A = self.cdpeek(0, cd_addr, 0, 0x1A)
+            efusev1B = self.cdpeek(0, cd_addr, 0, 0x1B)
+            efusev = efusev18 + (efusev19<<8) + (efusev1A<<16) +(efusev1B<<24)
+            if (efuseid&efusev) == efuseid :
+                print ("Efuse readback value is %d"%efusev)
+                break
+            else:
+                print ("Wrong: WriteEfuse=0x%x, ReadEfuse=%d"%(efuseid, efusev))
+                break
+        return efusev
+       
         
     def dat_fpga_reset(self):
         tmpi = 0

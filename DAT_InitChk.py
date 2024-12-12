@@ -429,9 +429,6 @@ def dat_initchk(fdir="/."):
             fembs = cfgdata[0]
             rawdata = cfgdata[1]
             cfg_info = cfgdata[2]
-            pwr_meas_fe = cfgdata[3]
-            pwr_meas_adc = cfgdata[4]
-            pwr_meas_cd = cfgdata[5]
 
             bads0 = []
             bads1 = []
@@ -456,10 +453,16 @@ def dat_initchk(fdir="/."):
                 bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[400,3000] , period=500)
 
             if ("DIRECT_PLS_CHK" in onekey) :
+                pwr_meas_fe = cfgdata[3]
+                pwr_meas_adc = cfgdata[4]
+                pwr_meas_cd = cfgdata[5]
                 bads1 = ana_fepwr2(pwr_meas_fe, vin=[1.7,1.9], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
                 bads2 = ana_adcpwr(pwr_meas_adc, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[125,145], cd1p2=[0,5], cio=[3,10], cd2p5 = [15,25])
                 bads3 = ana_cdpwr(pwr_meas_cd, vddfe = [1.7, 1.9], v1p1 = [1.15, 1.25], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [20, 25], cddio = [60, 75])
             elif  ("ASICDAC_CALI_CHK" in onekey):
+                pwr_meas_fe = cfgdata[3]
+                pwr_meas_adc = cfgdata[4]
+                pwr_meas_cd = cfgdata[5]
                 bads1 = ana_fepwr2(pwr_meas_fe, vin=[1.60,1.8], cdda=[40,60], cddp=[25,35], cddo=[5,15])
                 bads2 = ana_adcpwr(pwr_meas_adc, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[125,145], cd1p2=[0,5], cio=[3,10], cd2p5 = [15,25])
                 bads3 = ana_cdpwr(pwr_meas_cd, vddfe = [1.6, 1.8], v1p1 = [1.15, 1.25], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [20, 25], cddio = [60, 75])

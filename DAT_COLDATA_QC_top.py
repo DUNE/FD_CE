@@ -475,10 +475,16 @@ if 7 in tms:
         elif cd1_sn >= 0x80000000:
             datad["U1_CD2_SN_Error"] = False
         else:
-            efuse_readout_u1 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
-            datad["U1_CD1"] = (cd0_sn, efuse_readout_u1)
-            efuse_readout_u2 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD2", efuseid=cd1_sn)
-            datad["U2_CD2"] = (cd1_sn, efuse_readout_u2)
+            if 'RT' in logs['env']:
+                efuse_readout_u1 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
+                datad["U1_CD1"] = (cd0_sn, efuse_readout_u1)
+                efuse_readout_u2 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD2", efuseid=cd1_sn)
+                datad["U2_CD2"] = (cd1_sn, efuse_readout_u2)
+            else:
+                efuse_readout_u1 = dat.dat_coldata_efuse_rd(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
+                datad["U1_CD1"] = (cd0_sn, efuse_readout_u1)
+                efuse_readout_u2 = dat.dat_coldata_efuse_rd(femb_id=dat.fembs[0], cd_id="CD2", efuseid=cd1_sn)
+                datad["U2_CD2"] = (cd1_sn, efuse_readout_u2)
         
         fp = fdir + "QC_EFUSE" + ".bin"
         with open(fp, 'wb') as fn:
@@ -488,6 +494,7 @@ if 7 in tms:
         print ("save_fdir_start_%s_end_save_fdir"%fdir)
         print ("save_file_start_%s_end_save_file"%fp)
         print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
+    else:
 
 if 9 in tms:
     print ("Turn DAT off")
