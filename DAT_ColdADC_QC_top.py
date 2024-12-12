@@ -103,10 +103,15 @@ if True:
 
 if 10 in tms:
     print ("Turn DAT on ")
+    datad = {}
     tt.append(time.time())
+    #set FEMB voltages
     pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
     tt.append(time.time())
-    print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
+    if not init_ok:
+        datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
+        print ("QCstatus:", datad["QCstatus"])
+        tms = []
 
 if 0 in tms:
     print ("Init check after chips are installed")

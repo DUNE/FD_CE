@@ -105,7 +105,7 @@ if True:
 
 ####### Init check information #######
 if 10 in tms:
-    print ("Turn DAT on and wait 5 seconds")
+    print ("Turn DAT on ")
     datad = {}
     tt.append(time.time())
     #set FEMB voltages
