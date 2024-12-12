@@ -350,6 +350,9 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
             if (testid == 0):
                 print ("Run quick analysis...")
                 QCstatus, bads = dat_initchk(fdir=logs['pc_raw_dir'])
+                #debugging, to be delete
+                #QCstatus = "PASS"
+                #bads = []
 
                 if len(bads) > 0 :
                     if logs['New_chips']:
@@ -361,18 +364,20 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                     command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
                     result=subrun(command, timeout = None)
                     if result != None:
-                        print ("WIB folder {} is deleted!".format(dfirdel))
+                        print ("WIB folder {} is deleted!".format(fdirdel))
                     return (QCstatus, bads)
 
-            if duttype == "CD":
+            #if duttype == "CD":
+            if False: #debugging for LN, to be delete
                 qc.qc_stats = {}
                 qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
                 keys = list(qc.qc_stats.keys())
+                retry_fi_pre = retry_fi
                 for onekey in keys:
                     if "PASS" not in qc.qc_stats[onekey]:
                         retry_fi = retry_fi  +1
                         break
-                if retry_fi == 1:
+                if (retry_fi == 1) and (retry_fi != retry_fi_pre):
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:
@@ -388,7 +393,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                         command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
                         result=subrun(command, timeout = None)
                         if result != None:
-                            print ("WIB folder {} is deleted!".format(dfirdel))
+                            print ("WIB folder {} is deleted!".format(fdirdel))
                         return (QCstatus, bads)
                 else:
                     tmsi = tmsi + 1

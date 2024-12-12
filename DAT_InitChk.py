@@ -388,7 +388,7 @@ def dat_initchk(fdir="/."):
     QCstatus = data["QCstatus"]
 
     if "Code#E001" in QCstatus:
-        return QCstatus, sorted(data["FE_Fail"])
+        return QCstatus
     if "Code#E002" in QCstatus:
         return QCstatus, sorted(data["FE_Fail"])
     if "Code#E003" in QCstatus:
@@ -398,7 +398,7 @@ def dat_initchk(fdir="/."):
 
 
     if "Code#E101" in QCstatus:
-        return QCstatus, sorted(data["CD_Fail"])
+        return QCstatus
     if "Code#E102" in QCstatus:
         return QCstatus, sorted(data["CD_Fail"])
 #    if "Code#W103" in QCstatus:
@@ -408,7 +408,7 @@ def dat_initchk(fdir="/."):
 
 
     if "Code#E201" in QCstatus:
-        return QCstatus, sorted(data["ADC_Fail"])
+        return QCstatus
     if "Code#E202" in QCstatus:
         return QCstatus, sorted(data["ADC_Fail"])
 #    if "Code#W103" in QCstatus:

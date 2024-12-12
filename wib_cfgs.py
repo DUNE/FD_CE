@@ -222,7 +222,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         self.femb_power_config(2,  vfe, vcd, vadc)
         self.femb_power_config(3,  vfe, vcd, vadc)
 
-    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=1.5,dc1_ilim=1.5, dc2_ilim=3):
+    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=0.9,dc1_ilim=0.9, dc2_ilim=1.8):
         if len(fembs) > 0:
             ##debugging
             #for femb_id in fembs:
@@ -302,7 +302,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                                 print ("\033[91m" + "FEMB/DAT power consumption @ (power on) is not right, please contact tech coordinator!"+ "\033[0m")
                                 print ("\033[91m" + "Turn FEMB/DAT off!"+ "\033[0m")
                                 self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
-                                return False, pwr_meas
+                                return init_ok, pwr_meas
                             else:
                                 print ("\033[93m" + "Warning...detect large current during DAT/FEMB powering on, measure again..."+ "\033[0m")
                         elif (t1-t0 ) > 3:
