@@ -338,7 +338,7 @@ def dat_larasic_qc_quick_ana(fdir="/."):
         dkeys.remove("logs")
         
         for onekey in dkeys:
-            if ("DIRECT_PLS_CHK" in onekey) or ("ASICDAC_CALI_CHK" in onekey):
+            if ("CHK" in onekey) or ("DIRECT_PLS_CHK" in onekey) or ("ASICDAC_CALI_CHK" in onekey):
                 cfgdata = data[onekey]
                 fembs = cfgdata[0]
                 rawdata = cfgdata[1]
@@ -349,7 +349,8 @@ def dat_larasic_qc_quick_ana(fdir="/."):
                     show_flg = ana_res(fembs, rawdata, par=[9000,16000], rmsr=[5,25], pedr=[300,3000] )
                 if ("ASICDAC_CALI_CHK" in onekey):
                     show_flg = ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[300,3000] )
-    
+
+                show_flg=True
                 if show_flg:
                     print (onekey + "  : Fail")
                     print ("command on WIB terminal to retake data for this test item is as bellow :")
@@ -1024,6 +1025,10 @@ if __name__=="__main__":
     fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/LN_FE_002000001_002000002_002000003_002000004_002000005_002000006_002000007_002000008/"
     fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN4/RT_FE_401000001_401000002_401000003_401000004_401000005_401000006_401000007_401000008/"
     fdir = '''C:\SGAO\ColdTest\Tested\DAT_LArASIC_QC\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir  = '''C:\SGAO\ColdTest\Tested\DAT_LArASIC_QC\Tested\Time_20241213182338_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''C:\SGAO\ColdTest\Tested\DAT_LArASIC_QC\Tested\Time_20241213191546_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''C:\SGAO\ColdTest\Tested\DAT_LArASIC_QC\Tested\Time_20241213192900_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''C:\SGAO\ColdTest\Tested\DAT_LArASIC_QC\Tested\Time_20241213220257_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
     #fdir = "./tmp_data/ADC_00200001_00200002_00200003_00200004_00200005_00200006_00200007_00200008/"
     dat_larasic_qc_quick_ana(fdir=fdir)
     #QCstatus, bads = dat_larasic_initchk(fdir)

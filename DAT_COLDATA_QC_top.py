@@ -458,7 +458,8 @@ if 6 in tms:
     print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 7 in tms:
-    if 'RT' in logs['env']:
+    #if 'RT' in logs['env']:
+    if True:
         print ("COLDATA EFUSE burn-in")
         datad = {}
         datad['logs'] = logs   
