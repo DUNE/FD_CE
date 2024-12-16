@@ -367,8 +367,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                         print ("WIB folder {} is deleted!".format(fdirdel))
                     return (QCstatus, bads)
 
-            #if duttype == "CD":
-            if False: #debugging for LN, to be delete
+            if duttype == "CD":
                 qc.qc_stats = {}
                 qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
                 keys = list(qc.qc_stats.keys())
