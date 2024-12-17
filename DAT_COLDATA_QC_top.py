@@ -64,21 +64,21 @@ dat_sn = int(logsd["DAT_SN"])
 
 logs.update(logsd)
 
-if dat.rev == 0:
-    if dat_sn  == 1:
-        dat.fe_cali_vref = 1.583
-    if dat_sn  == 2:
-        dat.fe_cali_vref = 1.5738
-if dat.rev == 1:
-    if 'RT' in logs['env']:
-        dat.fe_cali_vref = 1.090
-        if dat_sn  == 7:
-            dat.fe_cali_vref = 1.193 #DAT_SN=7
-        if dat_sn  == 8:
-            dat.fe_cali_vref = 1.185 #DAT_SN=8
-    else:
-        dat.fe_cali_vref = 1.030 #DAT_SN=3
-Vref = dat.fe_cali_vref
+#if dat.rev == 0:
+#    if dat_sn  == 1:
+#        dat.fe_cali_vref = 1.583
+#    if dat_sn  == 2:
+#        dat.fe_cali_vref = 1.5738
+#if dat.rev == 1:
+#    if 'RT' in logs['env']:
+#        dat.fe_cali_vref = 1.090
+#        if dat_sn  == 7:
+#            dat.fe_cali_vref = 1.193 #DAT_SN=7
+#        if dat_sn  == 8:
+#            dat.fe_cali_vref = 1.185 #DAT_SN=8
+#    else:
+#        dat.fe_cali_vref = 1.030 #DAT_SN=3
+#Vref = dat.fe_cali_vref
 
 #iii = 0
 #dat.cdpoke(0, 0xC, 0, dat.DAT_EXT_PULSE_CNTL, 1)  
@@ -458,8 +458,7 @@ if 6 in tms:
     print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 7 in tms:
-    #if 'RT' in logs['env']:
-    if True:
+    if 'RT' in logs['env']:
         print ("COLDATA EFUSE burn-in")
         datad = {}
         datad['logs'] = logs   

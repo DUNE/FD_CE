@@ -38,7 +38,6 @@ class DAT_CFGS(WIB_CFGS):
         self.gen_rm = 'TCPIP0::192.168.121.201::inst0::INSTR'
         self.rev = 1 #0 old revison, 1 new revision
         self.dat_sn=1
-        self.fe_cali_vref = 1.090 
 
     def wib_pwr_on_dat(self, vfe=4.0, vcd=4.0, vadc=4.0):
         print ("Initilization checkout")
@@ -1167,7 +1166,8 @@ class DAT_CFGS(WIB_CFGS):
 
 
         self.fedly = 1
-        adac_pls_en, sts, swdac, dac = self.dat_cali_source(cali_mode=0, val=self.fe_cali_vref-0.05, period=0x200, width=0x180, asicdac=0x10)
+        fe_cali_vref = self.dat_CAL_MON_VREF()
+        adac_pls_en, sts, swdac, dac = self.dat_cali_source(cali_mode=0, val=fe_cali_vref-0.05, period=0x200, width=0x180, asicdac=0x10)
         rawdata = self.dat_fe_qc(num_samples=5, adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac, snc=1) #direct FE input
         if rawdata == False:
             return False
@@ -1494,7 +1494,10 @@ class DAT_CFGS(WIB_CFGS):
         datas_v = np.array(datas)*self.AD_LSB
         mon_datas["DAC_MON_VREF"] = [datas, datas_v]
 
-        return mon_datas
+        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
+        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
+
+        return cali_vref
 
     def dat_fe_vbgrs(self):
         #measure VBGR through VBGR pin

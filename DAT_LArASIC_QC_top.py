@@ -102,12 +102,6 @@ if True:
                 on_f = False
     if (not on_f) and (tms[0] != 0) : #turn DAT on
         tms = [10] + tms #turn DAT on
-    else: #measure FE Cali and Mon VREF
-        mon_datas = dat.dat_CAL_MON_VREF()
-        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
-        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
-        dat.fe_cali_vref = cali_vref 
-        Vref = dat.fe_cali_vref
 
 ####### Init check information #######
 if 10 in tms:
@@ -121,12 +115,6 @@ if 10 in tms:
         datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
         print ("QCstatus:", datad["QCstatus"])
         tms = []
-    else: #measure FE Cali and Mon VREF
-        mon_datas = dat.dat_CAL_MON_VREF()
-        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
-        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
-        dat.fe_cali_vref = cali_vref 
-        Vref = dat.fe_cali_vref
 
     #print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
 
@@ -139,13 +127,6 @@ if 0 in tms:
     if not init_ok:
         datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
     else:
-        mon_datas = dat.dat_CAL_MON_VREF()
-        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
-        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
-        dat.fe_cali_vref = cali_vref 
-        Vref = dat.fe_cali_vref
-        print (Vref)
-
         fes_pwr_info = dat.fe_pwr_meas()
         datad["FE_PWRON"] = fes_pwr_info
         adcs_pwr_info = dat.adc_pwr_meas()
@@ -311,7 +292,6 @@ if 3 in tms:
     cfg_info = dat.dat_fe_qc_cfg(adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac) 
     time.sleep(1)
 
-    data.update( dat.dat_CAL_MON_VREF() )
     data.update( dat.dat_fe_vbgrs() )
     data.update( dat.dat_fe_mons(mon_type=0x01) )
     data.update( dat.dat_fe_mons(mon_type=0x02) )
@@ -336,6 +316,8 @@ if 4 in tms:
     
     datad = {}
     datad['logs'] = logs
+    Vref = dat.dat_CAL_MON_VREF()
+    datad["FE_Ext_Cali_Vref"] = Vref
     
     for ci in range(cycle_times):
         dat.dat_pwroff_chk(env = logs['env']) #make sure DAT is off
@@ -508,9 +490,12 @@ if 61 in tms:
 if 62 in tms:
     if True:
         print ("perform DAT-DAC calibration under 14mV/fC, 2us")
+        datad = {}
+        Vref = dat.dat_CAL_MON_VREF()
+        datad["FE_Ext_Cali_Vref"] = Vref
+
         adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=1, val=Vref, period=1000, width=800) 
         cfg_info = dat.dat_fe_qc_cfg(adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac) 
-        datad = {}
         datad['logs'] = logs
     
         slk0=0
@@ -551,9 +536,13 @@ if 62 in tms:
 if 63 in tms:
     if True:
         print ("perform DIRECT-input DAC calibration under 14mV/fC, 2us")
+        datad = {}
+
+        Vref = dat.dat_CAL_MON_VREF()
+        datad["FE_Ext_Cali_Vref"] = Vref
+
         adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=0, val=Vref, period=1000, width=800) 
         cfg_info = dat.dat_fe_qc_cfg(adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac) 
-        datad = {}
         datad['logs'] = logs
     
         slk0=0
@@ -634,6 +623,8 @@ if 7 in tms:
     period = 1000
     width = 800
     #snc=1
+    Vref = dat.dat_CAL_MON_VREF()
+    datad["FE_Ext_Cali_Vref"] = Vref
 
     val = Vref-0.15
     adac_pls_en, sts, swdac, dac = dat.dat_cali_source(cali_mode=1, val=val, period=period, width=width)
@@ -706,7 +697,10 @@ if 8 in tms:
     
     period = 1000
     width = 800
-    
+
+    Vref = dat.dat_CAL_MON_VREF()
+    datad["FE_Ext_Cali_Vref"] = Vref
+
     cfg_info = dat.dat_fe_qc_cfg() #default setting 
     
     for chn in range(16):
