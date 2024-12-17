@@ -68,21 +68,21 @@ dat_sn = int(logsd["DAT_SN"])
 
 logs.update(logsd)
 
-if dat.rev == 0:
-    if dat_sn  == 1:
-        dat.fe_cali_vref = 1.583
-    if dat_sn  == 2:
-        dat.fe_cali_vref = 1.5738
-if dat.rev == 1:
-    if 'RT' in logs['env']:
-        dat.fe_cali_vref = 1.090
-        if dat_sn  == 7:
-            dat.fe_cali_vref = 1.193 #DAT_SN=7
-        if dat_sn  == 8:
-            dat.fe_cali_vref = 1.185 #DAT_SN=8
-    else:
-        dat.fe_cali_vref = 1.030 #DAT_SN=3
-Vref = dat.fe_cali_vref
+#if dat.rev == 0:
+#    if dat_sn  == 1:
+#        dat.fe_cali_vref = 1.583
+#    if dat_sn  == 2:
+#        dat.fe_cali_vref = 1.5738
+#if dat.rev == 1:
+#    if 'RT' in logs['env']:
+#        dat.fe_cali_vref = 1.090
+#        if dat_sn  == 7:
+#            dat.fe_cali_vref = 1.193 #DAT_SN=7
+#        if dat_sn  == 8:
+#            dat.fe_cali_vref = 1.185 #DAT_SN=8
+#    else:
+#        dat.fe_cali_vref = 1.030 #DAT_SN=3
+#Vref = dat.fe_cali_vref
         
 
 #if 100 in tms : #100 is only for itemed testing with power operation 
@@ -102,6 +102,12 @@ if True:
                 on_f = False
     if (not on_f) and (tms[0] != 0) : #turn DAT on
         tms = [10] + tms #turn DAT on
+    else: #measure FE Cali and Mon VREF
+        mon_datas = dat.dat_CAL_MON_VREF()
+        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
+        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
+        dat.fe_cali_vref = cali_vref 
+        Vref = dat.fe_cali_vref
 
 ####### Init check information #######
 if 10 in tms:
@@ -115,6 +121,13 @@ if 10 in tms:
         datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
         print ("QCstatus:", datad["QCstatus"])
         tms = []
+    else: #measure FE Cali and Mon VREF
+        mon_datas = dat.dat_CAL_MON_VREF()
+        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
+        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
+        dat.fe_cali_vref = cali_vref 
+        Vref = dat.fe_cali_vref
+
     #print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 0 in tms:
@@ -126,6 +139,13 @@ if 0 in tms:
     if not init_ok:
         datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
     else:
+        mon_datas = dat.dat_CAL_MON_VREF()
+        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
+        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
+        dat.fe_cali_vref = cali_vref 
+        Vref = dat.fe_cali_vref
+        print (Vref)
+
         fes_pwr_info = dat.fe_pwr_meas()
         datad["FE_PWRON"] = fes_pwr_info
         adcs_pwr_info = dat.adc_pwr_meas()
@@ -291,6 +311,7 @@ if 3 in tms:
     cfg_info = dat.dat_fe_qc_cfg(adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac) 
     time.sleep(1)
 
+    data.update( dat.dat_CAL_MON_VREF() )
     data.update( dat.dat_fe_vbgrs() )
     data.update( dat.dat_fe_mons(mon_type=0x01) )
     data.update( dat.dat_fe_mons(mon_type=0x02) )

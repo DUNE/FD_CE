@@ -1463,6 +1463,39 @@ class DAT_CFGS(WIB_CFGS):
                 datas_std.append(np.std(avg_datas[chip]))
         return datas, datas_std
 
+    def dat_CAL_MON_VREF(self):
+        print ("measure DAC_CAL_MON_VREF for Calibration")
+        mon_datas = {} 
+        mux_cs = 5
+        mux_name = self.mon_fe_cs[mux_cs]
+        self.cdpoke(0, 0xC, 0, self.DAT_FE_CALI_CS, 0x00)    
+        self.cdpoke(0, 0xC, 0, self.DAT_TEST_PULSE_EN, 0x00) #disable pin4 of U230 (FE_INS_PLS_CS)   
+        self.cdpoke(0, 0xC, 0, self.DAT_TEST_PULSE_SOCKET_EN, 0x00) #disable pin4 of U230 (FE_INS_PLS_CS = 1)   
+        self.cdpoke(0, 0xC, 0, self.DAT_FE_IN_TST_SEL_LSB, 0x00)    
+        self.cdpoke(0, 0xC, 0, self.DAT_FE_IN_TST_SEL_MSB, 0x00)    
+        self.cdpoke(0, 0xC, 0, self.DAT_ADC_FE_TEST_SEL, mux_cs<<4)    
+        self.cdpoke(0, 0xC, 0, self.DAT_FE_TEST_SEL_INHIBIT, 0x00)    
+        time.sleep(0.2)
+        datas = self.dat_monadcs()[0]
+        datas_v = np.array(datas)*self.AD_LSB
+        mon_datas["DAC_CAL_VREF"] = [datas, datas_v]
+
+        mux_cs = 3
+        mux_name = self.mon_fe_cs[mux_cs]
+        self.cdpoke(0, 0xC, 0, self.DAT_ADC_FE_TEST_SEL, mux_cs<<4)    
+        valint = int(1.25*65536/self.ADCVREF)
+        self.dat_set_dac(val=valint, fe_cal=0)
+        if self.rev == 0:
+            self.cdpoke(0, 0xC, 0, self.DAT_FE_CMN_SEL, 4)    
+        else:
+            self.cdpoke(0, 0xC, 0, self.DAT_FE_CMN_SEL, 1)    
+        time.sleep(0.2)
+        datas = self.dat_monadcs()[0]
+        datas_v = np.array(datas)*self.AD_LSB
+        mon_datas["DAC_MON_VREF"] = [datas, datas_v]
+
+        return mon_datas
+
     def dat_fe_vbgrs(self):
         #measure VBGR through VBGR pin
         print ("measure VBGR through VBGR pin")
