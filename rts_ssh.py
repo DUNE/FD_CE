@@ -209,10 +209,12 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
             print ("FAIL!")
             return None
    
-    if QC_TST_EN and (duttype=="ADC"):
-
+    if QC_TST_EN:
         print (datetime.datetime.utcnow(), " : Load WIB bin file(it takes < 30s)" )
-        command = ["ssh", wibhost, "fpgautil -b /boot/wib_top_0506.bin"]
+        if (duttype=="ADC"):
+            command = ["ssh", wibhost, "fpgautil -b /boot/wib_top_coldadc_qc_sim.bin"]
+        else:
+            command = ["ssh", wibhost, "fpgautil -b /boot/wib_top_production.bin"]
         result=subrun(command, timeout = 30)
         if result != None:
             if "BIN FILE loaded through FPGA manager successfully" in result.stdout:

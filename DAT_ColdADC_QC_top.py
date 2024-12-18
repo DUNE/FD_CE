@@ -118,7 +118,7 @@ if 0 in tms:
 
     wibfw_ver = dat.wib_fw()
     datad = {}
-    if "ADC" in logsd['DUT'] and wibfw_ver == 0x90B11AEF:
+    if "ADC" in logsd['DUT'] and wibfw_ver == 0x9630BC38:
         pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
         datad["WIB_PWR"] = pwr_meas
         datad["WIB_LINK"] = link_mask
@@ -435,6 +435,9 @@ if 7 in tms:#if "overflow_placeholder" in tms:
 
 if 8 in tms:#if "enob_placeholder" in tms:
     print ("\033[95mADC ENOB measurement starts...   \033[0m")
+    #dat.en_ref10MHz(ref_en = True)
+    #time.sleep(3)
+
 
     #source = 'WIBSE'
     source = 'P6SE'
