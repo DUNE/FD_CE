@@ -258,10 +258,10 @@ class QC_CALI_Ana(BaseClass_Ana):
         }
         # We got the following gains from the Monitoring with the commercial ADC
         self.Mon_Gain = {
-            '4.7mV/fC': 30.53,
-            '7.8mV/fC': 23.55,
-            '14mV/fC': 13.26,
-            '25mV/fC': 7.55
+            '4.7mV/fC': 19.111,
+            '7.8mV/fC': 14.7436,
+            '14mV/fC': 8.2996,
+            '25mV/fC': 4.7272
         }
         self.unit_MonGain = 'mV/DAC bit'
         self.CalibCap = 1.85*1E-13 # the calibration capacitance with ASICDAC is 185 fF = 0.185 pF
@@ -373,9 +373,11 @@ class QC_CALI_Ana(BaseClass_Ana):
                 item_data.append(d[item])
             df = pd.DataFrame({'DAC_list': DAC_list, 'item_data': item_data})
             df.sort_values(by='item_data', inplace=True)
+            # print("-DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD-")
             # print(df)
+            # sys.exit()
             df = df.reset_index()
-            
+            # double-check the gain and DAC values
             if ('ASICDAC' in self.item):
                 df['DAC_list'] = df['DAC_list'] * self.Mon_Gain[self.config['gain']] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
             else:
@@ -562,9 +564,9 @@ class QC_CALI_Ana(BaseClass_Ana):
         for c in qc_res_cols:
             if False in out_df[c]:
                 overall_result = 'FAILED'
-        print(overall_result)
-        print(out_df)
-        print(out_df.columns)
+        # print(overall_result)
+        # print(out_df)
+        # print(out_df.columns)
         ## Format file to list
         # 1st column: Test_{self.tms}_{cali_name}
         # 2nd column: {BL}_{item}
@@ -604,10 +606,10 @@ class QC_CALI_Ana(BaseClass_Ana):
                     worstINL = bl_df.iloc[ich]['worstINL (%)']
                     minCharge = bl_df.iloc[ich]['minCharge (fC)']
                     maxCharge = bl_df.iloc[ich]['maxCharge (fC)']
-                    result_Amp_bl.append("ch{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
+                    result_Amp_bl.append("CH{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
                 result_in_list.append(result_Amp_bl)
-        print(len(result_in_list))
-        print(result_in_list)
+        # print(len(result_in_list))
+        # print(result_in_list)
         # sys.exit()
         return result_in_list
 
@@ -846,11 +848,12 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
-    # for chipID in list_chipID:
-    #     # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
-    #     for cali_item in calib_item:
-    #         ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
-    #         ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
-    for cali_item in calib_item:
-        StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
+    calib_item = ['QC_CALI_ASICDAC']#['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    for chipID in list_chipID:
+        # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
+        for cali_item in calib_item:
+            ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
+            ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+            sys.exit()
+    # for cali_item in calib_item:
+    #     StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
