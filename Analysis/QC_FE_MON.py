@@ -143,7 +143,7 @@ class FE_MON(BaseClass):
              }
             where len(DAC) = 64
         '''
-        print(self.raw_data)
+        # print(self.raw_data)
         tmpout_dict = dict()
         params = [param for param in self.mon_params if 'DAC' in param]
         for param in params:
@@ -186,10 +186,12 @@ class FE_MON(BaseClass):
         dac_meas = self.mon_dac()
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
+            print(FE_ID)
             dac_meas_chip = dac_meas[FE_ID]
             for config in dac_meas_chip.keys():
                 #### In case a linearity range is needed from the monitoring, refer to this line
-                GAIN, Yintercept, INL = linear_fit(x=dac_meas_chip[config]['DAC'], y=dac_meas_chip[config]['data'])
+                AD_LSB = 2564/4096 # need to ask about this constant
+                GAIN, Yintercept, INL = linear_fit(x=dac_meas_chip[config]['DAC'], y=np.array(dac_meas_chip[config]['data'])*AD_LSB)
                 dac_meas_chip[config]['GAIN'] = np.round(GAIN,4)
                 dac_meas_chip[config]['unit_of_gain'] = 'mV/bit'
                 dac_meas_chip[config]['INL'] = np.round(INL,4)*100
@@ -409,27 +411,28 @@ if __name__ == '__main__':
 
     # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
     # root_path = '../../B010T0004'
-    root_path='/media/rado/New Volume'
-    parent_dir = ['/'.join([root_path, d]) for d in os.listdir(root_path) if 'B0' in d]
+    # root_path='/media/rado/New Volume'
+    # parent_dir = ['/'.join([root_path, d]) for d in os.listdir(root_path) if 'B0' in d]
     
-    for p in parent_dir:
-        # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
-        list_data_dir = [dir for dir in os.listdir(p) if (os.path.isdir('/'.join([p, dir]))) and (dir!='images')]
-        for data_dir in list_data_dir:
-            # we expect 13 elements in a folder
-            subfolder = '/'.join([p, data_dir])
-            subsubfolder = os.listdir(subfolder)[0]
-            newsubfolder = '/'.join([subfolder, subsubfolder])
-            lfiles_testItems = os.listdir(newsubfolder)
-            if len(lfiles_testItems)==13:
-                # fe_Mon = FE_MON(root_path=root_path, data_dir=data_dir, output_path=output_path)
-                fe_Mon = FE_MON(root_path=p, data_dir=data_dir, output_path=output_path)
-                fe_Mon.decodeFE_MON()
-                sys.exit()
-            else:
-                print(len(lfiles_testItems))
+    # for p in parent_dir:
+    #     # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
+    #     list_data_dir = [dir for dir in os.listdir(p) if (os.path.isdir('/'.join([p, dir]))) and (dir!='images')]
+    #     for data_dir in list_data_dir:
+    #         # we expect 13 elements in a folder
+    #         subfolder = '/'.join([p, data_dir])
+    #         subsubfolder = os.listdir(subfolder)[0]
+    #         newsubfolder = '/'.join([subfolder, subsubfolder])
+    #         lfiles_testItems = os.listdir(newsubfolder)
+    #         if len(lfiles_testItems)==13:
+    #             # print(newsubfolder)
+    #             # fe_Mon = FE_MON(root_path=root_path, data_dir=data_dir, output_path=output_path)
+    #             fe_Mon = FE_MON(root_path=p, data_dir=data_dir, output_path=output_path)
+    #             fe_Mon.decodeFE_MON()
+    #             sys.exit()
+    #         else:
+    #             print(len(lfiles_testItems))
     #########
-    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    # output_path = '../../Analysis'
-    # femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
-    # femon_stat.run_Ana()
+    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    output_path = '../../Analysis'
+    femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
+    femon_stat.run_Ana()
