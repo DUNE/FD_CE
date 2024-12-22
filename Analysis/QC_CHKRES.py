@@ -189,8 +189,10 @@ class QC_CHKRES(BaseClass):
 class QC_CHKRES_Ana(BaseClass_Ana):
     def __init__(self, root_path: str, chipID: str, output_path: str):
         self.item = 'QC_CHKRES'
+        self.tms = '02'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
         self.output_dir = '/'.join([self.output_dir, self.item])
+        print(self.output_dir)
         try:
             os.mkdir(self.output_dir)
         except OSError:
@@ -229,7 +231,10 @@ class QC_CHKRES_Ana(BaseClass_Ana):
         stdValues = [d['std'] for key, d in chipData.items()]
         minValues = [d['min'] for key, d in chipData.items()]
         maxValues = [d['max'] for key, d in chipData.items()]
-        cfgs_dict = [d['cfg_info'] for key, d in chipData.items()]
+        # cfgs_dict = [d['cfg_info'] for key, d in chipData.items()]
+        cfgs_200 = [d['cfg_info'] for key, d in chipData.items() if d['cfg_info']['SNC']=='200 mV']
+        cfgs_900 = [d['cfg_info'] for key, d in chipData.items() if d['cfg_info']['SNC']=='900 mV']
+        cfgs_dict = [cfgs_200, cfgs_900]
         # plt.figure(figsize=(8, 8))
         if group=='GAINs':
             # print(configs)
@@ -286,7 +291,12 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                 configs = sorted(list(configs))
             #______ return the data if returnData==True______
             if returnData:
-                return configs, meanValues, stdValue, minValues, maxValues, cfgs_dict
+                cfgs = []
+                if len(cfgs_dict[0])==0:
+                    cfgs = cfgs_dict[1]
+                else:
+                    cfgs = cfgs_dict
+                return configs, meanValues, stdValue, minValues, maxValues, cfgs
             else:
                 plt.figure(figsize=(8, 8))
                 plt.errorbar(x=configs, y=meanValues, yerr=stdValues, capsize=4, label='Mean of {}'.format(item_to_plot), elinewidth=1.5)
@@ -347,46 +357,143 @@ class QC_CHKRES_Ana(BaseClass_Ana):
         for item in items:
             for group in groups:
                 configs, means, stds, mins, maxs, cfgs_dict = self.ChResp_ana(item_to_plot=item, group=group, returnData=True)
-                # print(configs)
-                # print(cfgs_dict)
-                # sys.exit()
                 out_dict[group][item] = {c: dict() for c in configs}
-                
+
                 if group=='GAINs':
                     for i, c in enumerate(configs):
                         out_dict[group][item][c]['mean'] = {'200mV': means[0][i], '900mV': means[1][i]}
                         out_dict[group][item][c]['min'] = {'200mV': mins[0][i], '900mV': mins[1][i]}
                         out_dict[group][item][c]['max'] = {'200mV': maxs[0][i], '900mV': maxs[1][i]}
+                        out_dict[group][item][c]['cfgs_dict'] = {'200mV': cfgs_dict[0][i], '900mV': cfgs_dict[1][i]}
                 else:
                     for i, c in enumerate(configs):
                         out_dict[group][item][c]['mean'] = means[i]
                         out_dict[group][item][c]['min'] = mins[i]
                         out_dict[group][item][c]['max'] = maxs[i]
-        # print(out_dict)
-        # sys.exit()
+                        out_dict[group][item][c]['cfgs_dict'] = cfgs_dict[i]
+
         return out_dict
 
-    def run_Ana(self):
+    def run_Ana(self, path_to_stat=''):
         if self.ERROR:
             return
+        stat_ana_df = pd.read_csv(path_to_stat)
+        print(stat_ana_df)
         data = self.extractData()
-        testItems = list(data.keys())
-        features = list(data[testItems[0]].keys())
-        # print(testItems)
-        # print(features)
-        # print(list(data[testItems[4]][features[0]].keys()))
-        for testItem in testItems:
-            for  feature in features:
-                tmpdata = data[testItem][feature]
-                configs = list(tmpdata.keys())
-                for _cfg in configs:
-                    cfg = _cfg
-                    BL = ''
-                    print(testItem, feature, _cfg)
-                    print(tmpdata[_cfg])
-                    # if testItem in ['']
-        sys.exit()
+        qc_result_df = pd.DataFrame()
+        firstData = True
+        for testItem, itemData in data.items():
+            stat_data_mask = (stat_ana_df['testItem']==testItem)
+            # print(stat_ana_df[stat_data_mask])
+            # print(itemData['pedestal']['4.7'].keys())
+            # itemData to DataFrame
+            features = itemData.keys()
+            itemData_dict = {'testItem': [], 'feature': [], 'cfg': [], 'BL': [], 'value': []}
+            for feature in features:
+                # print(itemData[feature])
+                cfgs = itemData[feature].keys()
+                # print(itemData[feature]['4.7']['mean'])
+                # print(itemData[feature]['4.7']['cfgs_dict'].keys())
+                for cfg in cfgs:
+                    cfgs_dict = itemData[feature][cfg]['cfgs_dict']
+                    # print(testItem, cfgs_dict)
+                    # try:
+                    #     BLs = itemData[feature][cfg]['cfgs_dict'].keys()
+                    # except:
+                    #     print(itemData[feature][cfg]['cfgs_dict'])
+                    #     sys.exit()
+                    # if len(BLs)==1:
+                    #     BLs = [itemData[cfg]['cfgs_dict']['SNC']]
+                    BLs = []
+                    if testItem=='GAINs':
+                        BLs = cfgs_dict.keys()
+                    else:
+                        # print(cfgs_dict['SNC'])
+                        if type(cfgs_dict)==list:
+                            BLs = [(cfgs_dict[0])['SNC']]
+                        else:
+                            # print(cfgs_dict)
+                            BLs = [cfgs_dict['SNC']]
+                        # sys.exit()
+                    # print(BLs)
+                    # if 'mV' not in BLs[0]:
+                    #     print(testItem, cfgs_dict)
+                    #     BLs = [cfgs_dict['SNC']]
+                    # # try:
+                    # #     BLs = cfgs_dict.keys()
+                    # # except:
+                    # #     if type(cfgs_dict)==list:
+                    # #         BLs = cfgs_dict[0]['SNC']
+                    # # print(BLs)
+                    # print(testItem, BLs)
+                    # sys.exit()
+                    for BL in BLs:
+                        BL = BL.replace(" ", "")
+                        itemData_dict['BL'].append(BL.split('m')[0]+' mV') # This needs to be done in another way by changing the keys of the configurations dictionary or the BL saved in the statistical analysis. The issue here is the space between the number and the unit
+                        try:
+                            itemData_dict['value'].append(itemData[feature][cfg]['mean'][BL])
+                        except:
+                            itemData_dict['value'].append(itemData[feature][cfg]['mean'])
+                            # print(itemData[feature][cfg]['mean'])
+                            # print(itemData[feature][cfg]['mean'])
+                            # print(testItem,feature, cfg, BL)
+                            # sys.exit()
+                        itemData_dict['feature'].append(feature)
+                        if '\n' in str(cfg):
+                            cfg = cfg.split('\n')[1]
+                        itemData_dict['cfg'].append(cfg)
+                        itemData_dict['testItem'].append(testItem)
+            # print(itemData_dict)
+            itemData_df = pd.DataFrame(itemData_dict)
+            print('Missing values')
+            print(itemData_df.isna().sum())
+            # print(itemData_df)
+            # print(stat_ana_df[stat_data_mask])
+            itemData_df['cfg'] = itemData_df['cfg'].astype(str)
+            stat_df = stat_ana_df[stat_data_mask].copy().reset_index().drop('index', axis=1)
+            stat_df['cfg'] = stat_df['cfg'].astype(str)
+            df = pd.merge(itemData_df, stat_df, on=['testItem','feature','cfg','BL'], how='outer')
+            df['QC_result']= (df['value']>= (df['mean']-3*df['std'])) & (df['value'] <= (df['mean']+3*df['std']))
+            # print(df)
+            df.drop(['mean', 'std'], axis=1, inplace=True)
+            if firstData:
+                qc_result_df = df.copy()
+                firstData = False
+            else:
+                qc_result_df = pd.concat([qc_result_df, df.copy()], axis=0)
+            # # WILL FIX THIS AFTER CONVERTING THE DATAFRAME TO TABLE ROWS (This only makes sense to me)
+            # print('------------------- Missing data ---------')
+            # print(len(df['testItem']), len(stat_df['testItem']))
+            if len(df['testItem']) > len(stat_df['testItem']):
+                print(testItem)
+                print(len(itemData_df['testItem']))
+            print('0----------------------------------------0')
 
+        # save qc_result_df to csv file
+        qc_result_df.reset_index().drop('index', axis=1, inplace=True)
+        # print('Missing values : ', qc_result_df.isna().sum())
+        print(len(qc_result_df['testItem']), len(stat_ana_df['testItem']))
+        qc_result_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
+        
+        # Convert qc_result_df to table rows
+        map_result = {True: 'PASSED', False: 'FAILED'}
+        qc_result_df['col'] = qc_result_df['testItem'].str.cat([qc_result_df['cfg'], qc_result_df['BL']], sep='_')
+        unique_cols = qc_result_df['col'].unique()
+        table_rows = []
+        for c in unique_cols:
+            onecfg_df = qc_result_df[qc_result_df['col']==c].copy().reset_index().drop('index', axis=1)
+            unique_features = onecfg_df['feature'].unique()
+            table_values = onecfg_df.apply(lambda row: f"{row['feature']}={row['value']}", axis=1)#.agg(';'.join)
+            qc_res_summary = 'PASSED'
+            if 'FAILED' in onecfg_df['QC_result'].map(map_result):
+                qc_result_df = 'FAILED'
+            table_values = ['Test_{}_CHKResponse'.format(self.tms), c, qc_res_summary] + list(table_values)
+            table_rows.append(table_values)
+
+        return table_rows
+#---------------------------
+# Class for statistical analysis
+#--------------------------
 class QC_CHKRES_StatAna():
     def __init__(self, root_path: str, output_path: str):
         self.root_path = root_path
@@ -453,9 +560,14 @@ class QC_CHKRES_StatAna():
             # groups = chkres_data.keys()
             for testItem in testItems:
                 subgroups = chkres_data[testItem].keys()
+                
                 # print(subgroups)
                 for subgroup in subgroups:
-                    ssubgroups = chkres_data[testItem][subgroup].keys()
+                    ssubgroups = [s for s in chkres_data[testItem][subgroup].keys() if s!='cfgs_dict']
+                    # cfgs_dict = chkres_data[testItem][subgroup]['cfgs_dict'][0]
+                    # print(ssubgroups)
+                    # print(cfgs_dict)
+                    # sys.exit()
                     # print(ssubgroups)
                     for ss in ssubgroups:
                         # print(chkres_data[testItem][subgroup][ss].keys())
@@ -522,10 +634,10 @@ class QC_CHKRES_StatAna():
                         median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
                     median, std = np.round(median, 4), np.round(std, 4)
                     # fill the lists
-                    testItem_list.append('GAIN')
+                    testItem_list.append('GAINs')
                     group_list.append(group)
                     asicgain_list.append(asicGain)
-                    bl_list.append(BL)
+                    bl_list.append(BL.split('m')[0]+' mV')
                     mean_list.append(median)
                     std_list.append(std)
                     #
@@ -544,7 +656,7 @@ class QC_CHKRES_StatAna():
         ## OTHER THAN GAIN
         for item in testItems:
             if item!='GAINs':
-                ## GAIN ANALYSIS
+                ## not GAIN ANALYSIS
                 ItemData = data_dict[item]
                 groups = list(ItemData.keys())
                 ASIC_Items = list(ItemData[groups[0]].keys())
@@ -601,7 +713,8 @@ class QC_CHKRES_StatAna():
                             # asicItem_list.append(asicItem)
                             # bl_list.append(BL)
                             # BL = "200mV"
-                            pass
+                            BL = '900 mV' #  This information is available in the decoded data. With some more work, one can use the returned value of extractData
+                            # pass
                         # fill the lists
                         testItem_list.append(item)
                         group_list.append(group)
@@ -641,7 +754,8 @@ if __name__ == "__main__":
     list_chipID = os.listdir(root_path)
     for chipID in list_chipID:
         chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-        chk_res.run_Ana()
+        chk_res.run_Ana(path_to_stat='/'.join([output_path, 'StatAna_CHKRES.csv']))
+        sys.exit()
     #     chk_res.makePlots()
     #     # chk_res.extractData()
     # #     break
