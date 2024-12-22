@@ -177,8 +177,10 @@ class QC_Cap_Meas(BaseClass):
 class QC_Cap_Meas_Ana(BaseClass_Ana):
     def __init__(self, root_path: str, output_path: str, chipID: str):
         self.item = 'QC_Cap_Meas'
+        self.tms = '08'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
         self.output_dir = '/'.join([output_path, chipID, self.item])
+        print(self.output_dir)
         try:
             os.mkdir('/'.join([output_path, chipID]))
         except OSError:
@@ -196,7 +198,7 @@ class QC_Cap_Meas_Ana(BaseClass_Ana):
         }
         self.config = dict(config)
 
-    def getRatioCapacitance(self):
+    def getRatioCapacitance(self, returnDF=False):
         chn_list = list(self.data['INPUT'].keys())
         # print(chn_list)
         ratioC = []
@@ -230,7 +232,14 @@ class QC_Cap_Meas_Ana(BaseClass_Ana):
             ## NOTE ABOUT THIS IS ON MY IPAD : notes from the chat with Shanshan
             ratioC.append(ratio)
         self.ratioCap = ratioC
-        return np.array(ratioC)
+        if returnDF:
+            CH_list = [int(ch.split('N')[1]) for ch in chn_list]
+            return pd.DataFrame({'CH': CH_list, 'BL': [self.config['BL'] for _ in CH_list], 
+                    'peakTime': [self.config['peakTime'] for _ in CH_list], 
+                    'gain': [self.config['gain'] for _ in CH_list], 
+                    'Cap': np.array(ratioC)})
+        else:
+            return np.array(ratioC)
     
     def plotRatioCap(self):
         plt.figure()
@@ -244,10 +253,42 @@ class QC_Cap_Meas_Ana(BaseClass_Ana):
         plt.savefig('/'.join([self.output_dir, self.item + '_' + self.chipID + '.png']))
         plt.close()
 
-    def run_Ana(self):
-        plt.figure()
-        plt.plot(self.ratioCap)
-        plt.show()
+    def run_Ana(self, path_to_stat='', generatePlots=False):
+        if generatePlots:
+            self.plotRatioCap
+        stat_ana_df = pd.read_csv(path_to_stat)
+        print(stat_ana_df['gain'])
+        print(stat_ana_df.columns)
+        
+        Cap_df = self.getRatioCapacitance(returnDF=True)
+        combined_df = pd.DataFrame({
+            'item': [stat_ana_df.iloc[0]['item'] for _ in range(16)],
+            'BL' : [stat_ana_df.iloc[0]['BL'] for _ in range(16)],
+            'peakTime': [stat_ana_df.iloc[0]['peakTime'] for _ in range(16)],
+            'gain' : [stat_ana_df.iloc[0]['gain'] for _ in range(16)],
+            'meanCap (pF)': [stat_ana_df.iloc[0]['meanCap (pF)'] for _ in range(16)],
+            'stdCap (pF)': [stat_ana_df.iloc[0]['stdCap (pF)'] for _ in range(16)],
+            'Cap (pF)': Cap_df['Cap'],
+            'CH': Cap_df['CH']
+        })
+        print(combined_df)
+        print(combined_df.columns)
+        combined_df['QC_result']= (combined_df['Cap (pF)']>= (combined_df['meanCap (pF)']-3*combined_df['stdCap (pF)'])) & (combined_df['Cap (pF)'] <= (combined_df['meanCap (pF)']+3*combined_df['stdCap (pF)']))
+        print(combined_df)
+        combined_df.drop(['meanCap (pF)', 'stdCap (pF)'], axis=1, inplace=True)
+        print(combined_df)
+        combined_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
+        #
+        # combined_df, which is the result of the QC, row
+        qc_result = 'PASSED'
+        if False in combined_df['QC_result']:
+            qc_result = 'FAILED'
+        cfg = '_'.join(combined_df.iloc[0][['BL', 'peakTime','gain']])
+        row_data = ['Test_{}_Capacitance'.format(self.tms), cfg, qc_result]
+        for chn in combined_df['CH']:
+            row_data.append('CH{}=(Cap (pF)={})'.format(chn, combined_df.iloc[chn]['Cap (pF)']))
+        print(row_data)
+        return row_data
         
 def Cap_stat_ana(root_path: str, list_chipID: list, output_path: str, savefig=False):
     ############################# QUESTION RELATED TO THIS #####################
@@ -313,8 +354,8 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    # for chipID in list_chipID:
-    #     m = QC_Cap_Meas_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
-    #     m.run_Ana()
-    #     sys.exit()
-    Cap_stat_ana(root_path=root_path, output_path=output_path, list_chipID=list_chipID)
+    for chipID in list_chipID:
+        m = QC_Cap_Meas_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+        m.run_Ana(path_to_stat='/'.join([output_path, 'QC_Cap_Meas.csv']))
+        sys.exit()
+    # Cap_stat_ana(root_path=root_path, output_path=output_path, list_chipID=list_chipID)
