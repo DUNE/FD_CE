@@ -7,7 +7,7 @@
 import os, sys, pickle, json, statistics
 from scipy.stats import norm
 import numpy as np
-from utils import dumpJson, createDirs, decodeRawData, printItem, LArASIC_ana, BaseClass
+from utils import dumpJson, createDirs, decodeRawData, printItem, LArASIC_ana, BaseClass, BaseClass_Ana
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -90,6 +90,108 @@ class RMS(BaseClass):
                 for key in out_dict[FE_ID][config].keys():
                     pedrms_dict[config][key] = out_dict[FE_ID][config][key]
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='RMS_Noise', data_to_dump=pedrms_dict)
+
+class RMS_Ana(BaseClass_Ana):
+    def __init__(self, root_path: str, output_path: str, chipID: str):
+        self.item = 'QC_RMS'
+        self.tms = 5
+        super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
+        self.output_dir = '/'.join([self.output_dir, self.item])
+        try:
+            os.mkdir(self.output_dir)
+        except OSError:
+            pass
+        print(self.output_dir)
+        # sys.exit()
+    
+    def _FileExist(self):
+        chipDir = '/'.join([self.root_path, self.chipID])
+        chipDirExist = os.path.isdir(chipDir)
+        qcMondirExist = os.path.isdir('/'.join([chipDir, 'QC_RMS']))
+        feMonFileExist = os.path.isfile('/'.join([chipDir, 'QC_RMS/RMS_Noise.json']))
+        return chipDirExist and qcMondirExist and feMonFileExist
+
+    def getItem(self,config=''):
+        data = self.data[config]
+        return data, config
+
+    def plot_rms_data(self, dict_data, config):
+        decodedConfig = dict_data['CFG']
+        ped = dict_data['pedestal']
+        rms = dict_data['rms']
+        # plot of pedestal vs CH
+        fig, ax = plt.subplots(1,2,figsize=(5*2,5))
+        ax[0].plot(np.arange(16), ped, '.-')
+        ax[0].set_xlabel('CH')
+        ax[0].set_ylabel('Pedestal')
+        # plot of RMS vs CH
+        ax[1].plot(np.arange(16), rms, '.-')
+        ax[1].set_xlabel('CH')
+        ax[1].set_ylabel('RMS')
+        plt.savefig('/'.join([self.output_dir, config + '.png']))
+        plt.close()
+
+    def run_Ana(self, path_to_statAna='', generatePlots=False):
+        if self._FileExist():
+            stat_csv = pd.read_csv(path_to_statAna)
+                        
+            result_df = pd.DataFrame({'cfg': []})
+            for icfg, config in enumerate(self.params):
+                data ,cfg = self.getItem(config=config)
+                # stat_config_df = new_stat_csv[new_stat_csv['cfg']==cfg].copy().reset_index().drop('index', axis=1).copy()
+                stat_config_row = stat_csv[stat_csv['cfg']==config].copy().reset_index().drop('index', axis=1)
+                stat_dict = {
+                    'mean_pedestal': [stat_config_row['mean_pedestal'][0] for _ in range(16)],
+                    'mean_rms': [stat_config_row['mean_rms'][0] for _ in range(16)],
+                    'std_pedestal': [stat_config_row['std_pedestal'][0] for _ in range(16)],
+                    'std_rms': [stat_config_row['std_rms'][0] for _ in range(16)]
+                }
+
+                # print(stat_config_row.columns)
+                # sys.exit()
+                # print(data, config)
+                if generatePlots:
+                    self.plot_rms_data(dict_data=data, config=cfg)
+                # print(self.chipID)
+                df = pd.DataFrame({'cfg': [cfg for _ in range(len(data['pedestal']))], 'CH': [chn for chn in range(16)], 'pedestal': data['pedestal'], 'rms': data['rms']})
+                for key, val in stat_dict.items():
+                    df[key] = val
+                df['QC_result_pedestal']= (df['pedestal']>= (df['mean_pedestal']-3*df['std_pedestal'])) & (df['pedestal'] <= (df['mean_pedestal']+3*df['std_pedestal']))
+                df['QC_result_rms']= (df['rms']>= (df['mean_rms']-3*df['std_rms'])) & (df['rms'] <= (df['mean_rms']+3*df['std_rms']))
+                # print(df.shape)
+                # print(df)
+                # print(df.columns)
+                for key in stat_dict.keys():
+                    df.drop(key, axis=1, inplace=True)
+                # print(df.columns)
+                if icfg==0:
+                    result_df = df.copy()
+                else:
+                    result_df = pd.concat([result_df, df], axis=0).reset_index().drop('index', axis=1)
+            # save dataframe to csv
+            result_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
+            # convert dataframe to an array of arrays
+            result_table = []
+            for config in self.params:
+                qc_res_ped = 'PASSED'
+                qc_res_rms = 'PASSED'
+                tmp_df = result_df[result_df['cfg']==config].copy().reset_index().drop('index', axis=1)
+                if False in tmp_df['QC_result_pedestal']:
+                    qc_res_ped = 'FAILED'
+                if False in tmp_df['QC_result_rms']:
+                    qc_res_rms = 'FAILED'
+                qc_result = 'PASSED'
+                if 'FAILED' in [qc_res_ped, qc_res_rms]:
+                    qc_result = 'FAILED'
+                row_table = ['Test_0{}_RMS'.format(self.tms), config, qc_result]
+                for chn in range(len(tmp_df['CH'])):
+                    ped = tmp_df.iloc[chn]['pedestal']
+                    rms = tmp_df.iloc[chn]['rms']
+                    row_table.append("CH{}=(pedestal={};rms={})".format( chn, ped, rms ))
+                result_table.append(row_table)
+            return result_table
+        else:
+            return
 
 class RMS_StatAna():
     def __init__(self, root_path: str, output_path: str):
@@ -220,7 +322,15 @@ if __name__ == '__main__':
     # for i, data_dir in enumerate(list_data_dir):
     #     rms = RMS(root_path=root_path, data_dir=data_dir, output_path=output_path)
     #     rms.decodeRMS()
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    # rms_stat = RMS_StatAna(root_path=root_path, output_path=output_path)
+    # rms_stat.run_Ana()
+    ##
+    ##
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    rms_stat = RMS_StatAna(root_path=root_path, output_path=output_path)
-    rms_stat.run_Ana()
+    list_chipID = os.listdir(root_path)
+    for chipID in list_chipID:
+        rms_ana = RMS_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+        rms_ana.run_Ana(path_to_statAna='/'.join([output_path, 'StatAna_RMS.csv']), generatePlots=False)
