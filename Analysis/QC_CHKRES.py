@@ -440,7 +440,9 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                             # sys.exit()
                         itemData_dict['feature'].append(feature)
                         if '\n' in str(cfg):
-                            cfg = cfg.split('\n')[1]
+                            print(cfg)
+                            cfg = '_'.join(cfg.split('\n')[1:])
+                        
                         itemData_dict['cfg'].append(cfg)
                         itemData_dict['testItem'].append(testItem)
             # print(itemData_dict)
@@ -452,6 +454,8 @@ class QC_CHKRES_Ana(BaseClass_Ana):
             itemData_df['cfg'] = itemData_df['cfg'].astype(str)
             stat_df = stat_ana_df[stat_data_mask].copy().reset_index().drop('index', axis=1)
             stat_df['cfg'] = stat_df['cfg'].astype(str)
+            stat_df.sort_values(by=['cfg'], axis=0, inplace=True, ignore_index=True)
+            itemData_df.sort_values(by=['cfg'], axis=0, inplace=True, ignore_index=True)
             df = pd.merge(itemData_df, stat_df, on=['testItem','feature','cfg','BL'], how='outer')
             df['QC_result']= (df['value']>= (df['mean']-3*df['std'])) & (df['value'] <= (df['mean']+3*df['std']))
             # print(df)
@@ -464,10 +468,12 @@ class QC_CHKRES_Ana(BaseClass_Ana):
             # # WILL FIX THIS AFTER CONVERTING THE DATAFRAME TO TABLE ROWS (This only makes sense to me)
             # print('------------------- Missing data ---------')
             # print(len(df['testItem']), len(stat_df['testItem']))
-            if len(df['testItem']) > len(stat_df['testItem']):
-                print(testItem)
-                print(len(itemData_df['testItem']))
-            print('0----------------------------------------0')
+            # if len(df['testItem']) > len(stat_df['testItem']):
+            #     print(len(df['testItem']), len(stat_df['testItem']), len(itemData_df['testItem']))
+            #     print(itemData_df)
+            #     print(stat_df)
+            #     sys.exit()
+            # print('0----------------------------------------0')
 
         # save qc_result_df to csv file
         qc_result_df.reset_index().drop('index', axis=1, inplace=True)
