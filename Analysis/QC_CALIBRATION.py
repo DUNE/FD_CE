@@ -70,6 +70,8 @@ class QC_CALI(BaseClass):
                     DAC = param.split('_')[-1]
                     BL = param.split('_')[1]
                 cfg[BL].append((DAC, param))
+        # print(cfg)
+        # sys.exit()
         return cfg
 
     def avgWf(self, data: list, param='ASIC', getWaveforms=False):
@@ -100,11 +102,18 @@ class QC_CALI(BaseClass):
             print('-- Start decoding BL {} --'.format(BL))
             for DAC, param in DAC_param:
                 print('Decoding DAC {}...'.format(DAC))
+                # print(param)
                 fembs = self.raw_data[param][0]
                 rawdata = self.raw_data[param][1]
                 data = decodeRawData(fembs=fembs, rawdata=rawdata, period=self.period)
-                decoded_data[BL][DAC] = self.avgWf(data=data, param=param, getWaveforms=getWaveform_data) # already averaged
+                if self.tms==62:
+                    DAC_cfg = '_'.join(param.split('_')[2:-1])
+                    decoded_data[BL][DAC_cfg] = self.avgWf(data=data, param=param, getWaveforms=getWaveform_data)
+                else:
+                    decoded_data[BL][DAC] = self.avgWf(data=data, param=param, getWaveforms=getWaveform_data) # already averaged
             print('-- End of decoding BL {} --'.format(BL))
+            # print(decoded_data[BL].keys())
+            # sys.exit()
         return decoded_data
 
     def organizeData(self, saveWaveformData=False):
@@ -116,13 +125,17 @@ class QC_CALI(BaseClass):
                 organized_data[FE_ID][BL] = dict()
                 for chn in range(16):
                     organized_data[FE_ID][BL]['CH{}'.format(chn)] = {'DAC': [], 'CH': [], 'pedestal': [], 'rms': [], 'pospeak': [], 'negpeak': []} # [DAC_list, [ch_list. ch_list, ....]]
-        
+
         # organize the data
         decodedData = self.decode(getWaveform_data=self.generateWf)
-        
+        # print(decodedData['SNC0'].keys())
+        # sys.exit()
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]            
             for BL in decodedData.keys():
+                # print(BL)
+                # print(decodedData[BL].keys())
+                # sys.exit()
                 for chn in range(16):
                     for DAC in decodedData[BL].keys():
                         pedestal = decodedData[BL][DAC][ichip]['pedestal'][chn]
@@ -191,6 +204,7 @@ class QC_CALI(BaseClass):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
             print('Save amplitudes of {} ...'.format(FE_ID))
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='CALI_{}_Amp'.format(self.suffixName), data_to_dump=amplitudes[FE_ID], indent=4)
+        
 
     def plotWaveForms(self, organizedData: dict):
         for ichip in range(8):
@@ -308,7 +322,10 @@ class QC_CALI_Ana(BaseClass_Ana):
         ch = 'CH0'
         for d in data[ch]:
             DAClist.append(d['DAC'])
+        # print(DAClist)
+        # sys.exit()
         return DAClist
+
 
     def getDataperDAC(self, BL: str, item: str, DAC: int):
         data = self.data[BL]
@@ -505,6 +522,7 @@ class QC_CALI_Ana(BaseClass_Ana):
                     out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4))
                     out_dict['minCharge (fC)'].append(linRanges[ich][0])
                     out_dict['maxCharge (fC)'].append(linRanges[ich][1])
+        
         out_df = pd.DataFrame(out_dict)
         # out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
         #
@@ -571,7 +589,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         # 1st column: Test_{self.tms}_{cali_name}
         # 2nd column: {BL}_{item}
         # starting from 3rd column: ch0=(worstINL=xxx;gain=xxx;maxCharge=xxx;minCharge=xxx), ch1=(....), ....
-        print(len(out_df['item'])//16)
+        print("LENGTH out_df = ",len(out_df['item'])//16)
         posAmp_df = out_df[out_df['item']=='posAmp']
         negAmp_df = out_df[out_df['item']=='negAmp']
         result_in_list = []
@@ -830,12 +848,12 @@ if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
     # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
 
-    # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
+    # # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
     # root_path = '../../B010T0004'
     # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
     # for i, data_dir in enumerate(list_data_dir):
     #     # if '20240703163752' in data_dir:
-    #         asicdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=61, QC_filename='QC_CALI_ASICDAC.bin', generateWf=True)
+    #         asicdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=61, QC_filename='QC_CALI_DATDAC.bin', generateWf=True)
     #         asicdac.runASICDAC_cali(saveWfData=False)
     #         subdir = os.listdir('/'.join([root_path, data_dir]))[0]
     #         if 'QC_CALI_ASICDAC_47.bin' in os.listdir('/'.join([root_path, data_dir, subdir])):
@@ -848,7 +866,7 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_ASICDAC']#['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    calib_item = ['QC_CALI_DATDAC']#['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
     for chipID in list_chipID:
         # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
         for cali_item in calib_item:
