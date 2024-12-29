@@ -263,7 +263,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         self.setGain = '14mV/fC'
         if 'ASICDAC_47' in self.item:
             self.setGain = '4.7mV/fC'
-        self.config = {
+        self.config = { # config for ASICDAC
             'RQI' : '500pA',
             'SLKH' : 'disabled',
             'peakTime' : '2us',
@@ -279,6 +279,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         }
         self.unit_MonGain = 'mV/DAC bit'
         self.CalibCap = 1.85*1E-13 # the calibration capacitance with ASICDAC is 185 fF = 0.185 pF
+        self.CalibCap_DATDAC = 1E-15 # Need to confirm with Shanshan
         self.tms = {'CALI_ASICDAC': 61,
                     'CALI_DATDAC': 62,
                     'CALI_DIRECT': 63,
@@ -322,8 +323,6 @@ class QC_CALI_Ana(BaseClass_Ana):
         ch = 'CH0'
         for d in data[ch]:
             DAClist.append(d['DAC'])
-        # print(DAClist)
-        # sys.exit()
         return DAClist
 
 
@@ -365,7 +364,7 @@ class QC_CALI_Ana(BaseClass_Ana):
             stddata.append(std)
         
         return DAC_list, meandata, stddata
-    
+
     def getINL(self, BL: str, item: str, returnGain=False, generatePlot=False):
         '''
             - For each channel number, get the DAC and item values.
@@ -374,80 +373,161 @@ class QC_CALI_Ana(BaseClass_Ana):
             We use the positive amplitude to get the linearity.
         '''
         data = self.data[BL]
-        INLs = {}
-        GAINs = {}
-        linearity_range = {}
-        for chn in range(16):
-            # chn = 0
-            chdata = data["CH{}".format(chn)]
-            item_data = []
-            DAC_list = []
-            for d in chdata:
-                dac = d['DAC']
-                if type(dac)==str:
-                    dac = int(dac.split('m')[0])
-                DAC_list.append(dac)
-                item_data.append(d[item])
-            df = pd.DataFrame({'DAC_list': DAC_list, 'item_data': item_data})
-            df.sort_values(by='item_data', inplace=True)
-            # print("-DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD-")
-            # print(df)
-            # sys.exit()
-            df = df.reset_index()
-            # double-check the gain and DAC values
-            if ('ASICDAC' in self.item):
-                df['DAC_list'] = df['DAC_list'] * self.Mon_Gain[self.config['gain']] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
-            else:
-                df['DAC_list'] = df['DAC_list'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
-            # check linearity and get INL
-            # slope, yintercept, inl = linear_fit(x=DAC_list[1:-2], y=item_data[1:-2])
-            # if 'ASICDAC' in self.item:
-            # slope, yintercept, inl, linRange = gain_inl(x=df['DAC_list'], y=df['item_data'], item=self.item)
-            slope, yintercept, inl, linRange = gain_inl(y=df['DAC_list'], x=df['item_data'], item=self.item)
-            # # unit of slope (=gain) : fC / ADC bit
-            # # unit of linRange : fC
-            # # unit of yintercept : fC because the DAC value (charge) is on the y-axis
-            # #
-            #############################################################################
+        allDAC_cfg = []
+        unique_DAC_cfg = []
+        if self.tms==62:
+            allDAC_cfg = ['_'.join(dac_cfg['DAC'].split('_')[1:]) for dac_cfg in data['CH0']]
+            unique_DAC_cfg = list(dict.fromkeys(allDAC_cfg))
+        
+        df = {'BL':[], 'outputCFG': [], 'CH': [], 'DAC': [], 'data': []}
+        if self.tms==62:
+            for DAC_cfg in unique_DAC_cfg:
+                for chn in range(16):
+                    chdata = data['CH{}'.format(chn)]
+                    item_data = []
+                    DAC_list = []
+                    for d in chdata:
+                        tmp_dac_cfg = d['DAC']
+                        dac = float((tmp_dac_cfg.split('_')[0]).split('m')[0])
+                        cfg = '_'.join(tmp_dac_cfg.split('_')[1:])
+                        if cfg==DAC_cfg:
+                            # DAC_list.append(dac)
+                            # item_data.append(d[item])
+                            df['BL'].append(BL)
+                            df['outputCFG'].append(cfg)
+                            df['CH'].append(chn)
+                            df['DAC'].append(dac)
+                            df['data'].append(d[item])
+            df = pd.DataFrame(df)
 
-            if generatePlot:
-                # print(df)
-                ypred = slope*df['item_data'] + yintercept
-                # print(slope, yintercept, inl, linRange)
-                label = 'gain = {} fC/ADC bit, worst inl = {}% \n minCharge = {} fC, maxCharge = {} fC'.format( np.round(slope,4), np.round(inl*100,4), np.round(linRange[0], 4), np.round(linRange[1], 4) )
-                plt.figure()
-                plt.scatter(df['item_data'], df['DAC_list'], label=label)
-                plt.plot(df['item_data'], ypred, 'r')
-                plt.xlabel('{} (ADC bit)'.format(item))
-                plt.ylabel('Charge (fC)')
-                plt.legend()
-                plt.savefig('/'.join([self.output_dir, '{}_ChargeVSamplitude_{}_{}.png'.format(self.item, BL, item)]))
-                plt.close()
-            # sys.exit()
-
-            # slope, yintercept, inl = linear_fit(x=df['DAC_list'], y=df['item_data'])
-            # print(inl)
-            #---------------- Convert the unit of gain to e-/ADC bit ----------------
-            # linRange = np.array(linRange)
-            # gain = slope
-            # if 'ASICDAC' in self.item:
-            #     linRange = linRange * self.Mon_Gain[self.config['gain']] * 1E-3 # this is the DAC value, in Volt
-            #     gain = gain * self.Mon_Gain[self.config['gain']] * 1E-3
-            # else:
-            #     linRange = linRange * 1E-3 # we just needed to convert to Volt
-            #     gain = gain * 1E-3
-            # # chargeLinRange = linRange * self.CalibCap / (1.602*np.power(10.,-19)) # charge with unit e-
-            # chargeLinRange = linRange * self.CalibCap / np.power(10.,-12) # charge with unit Coulomb
-            # gain = gain * self.CalibCap / np.power(10., -12)
-            # print(chargeLinRange, gain)
-            # sys.exit()
-            INLs[chn] = inl # need to  multiply by 100  to get %
-            GAINs[chn] = slope
-            linearity_range[chn] = linRange
-        if returnGain:
-            return INLs, GAINs, linearity_range
         else:
-            return INLs
+            for chn in range(16):
+                # chn = 0
+                chdata = data["CH{}".format(chn)]
+                item_data = []
+                DAC_list = []
+                for d in chdata:
+                    dac = d['DAC']
+                    if type(dac)==str:
+                        dac = int(dac.split('m')[0])
+                    # DAC_list.append(dac)
+                    # item_data.append(d[item])
+                    df['BL'].append(BL)
+                    df['outputCFG'].append('cfg')
+                    df['CH'].append(chn)
+                    df['DAC'].append(dac)
+                    df['data'].append(d[item])
+                # df = pd.DataFrame({'DAC_list': DAC_list, 'item_data': item_data})
+                # df.sort_values(by='item_data', inplace=True)
+            df = pd.DataFrame(df)
+        
+        if self.tms==62:
+            all_INLs = {}
+            all_GAINs = {}
+            all_linearity_range = {}
+            for dac_cfg in unique_DAC_cfg:
+                INLs = {}
+                GAINs = {}
+                linearity_range = {}
+                dac_cfg_df = df[df['outputCFG']==dac_cfg].copy()
+                for chn in range(16):
+                    chdf = dac_cfg_df[dac_cfg_df['CH']==chn].copy()
+                    chdf.sort_values(by='data', inplace=True)
+                    chdf = chdf.reset_index()
+                    chdf['DAC'] = chdf['DAC'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+                    slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
+                    if generatePlot:
+                        ypred = slope*chdf['data'] + yintercept
+                        # print(slope, yintercept, inl, linRange)
+                        label = 'gain = {} fC/ADC bit, worst inl = {}% \n minCharge = {} fC, maxCharge = {} fC'.format( np.round(slope,4), np.round(inl*100,4), np.round(linRange[0], 4), np.round(linRange[1], 4) )
+                        plt.figure()
+                        plt.scatter(chdf['data'], chdf['DAC'], label=label)
+                        plt.plot(chdf['data'], ypred, 'r')
+                        plt.xlabel('{} (ADC bit)'.format(item))
+                        plt.ylabel('Charge (fC)')
+                        plt.legend()
+                        plt.savefig('/'.join([self.output_dir, '{}_ChargeVSamplitude_{}_{}.png'.format(self.item, BL, item)]))
+                        plt.close()
+                    INLs[chn] = inl # need to  multiply by 100  to get %
+                    GAINs[chn] = slope
+                    linearity_range[chn] = linRange
+                all_INLs[dac_cfg] = INLs
+                all_GAINs[dac_cfg] = GAINs
+                all_linearity_range[dac_cfg] = linearity_range
+            if returnGain:
+                print(all_INLs)
+                sys.exit()
+                return all_INLs, all_GAINs, all_linearity_range
+            else:
+                return all_INLs
+                    
+        else:
+            INLs = {}
+            GAINs = {}
+            linearity_range = {}
+            for chn in range(16):
+                # print("-DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD-")
+                # print(df)
+                # sys.exit()
+                chdf = df[df['CH']==chn].copy()
+                chdf.sort_values(by='data', inplace=True)
+                chdf = chdf.reset_index()
+                # double-check the gain and DAC values
+                if ('ASICDAC' in self.item):
+                    chdf['DAC'] = chdf['DAC'] * self.Mon_Gain[self.config['gain']] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+                else:
+                    chdf['DAC'] = chdf['DAC'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+                # check linearity and get INL
+                # slope, yintercept, inl = linear_fit(x=DAC_list[1:-2], y=item_data[1:-2])
+                # if 'ASICDAC' in self.item:
+                # slope, yintercept, inl, linRange = gain_inl(x=chdf['DAC_list'], y=chdf['item_data'], item=self.item)
+                slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
+                # # unit of slope (=gain) : fC / ADC bit
+                # # unit of linRange : fC
+                # # unit of yintercept : fC because the DAC value (charge) is on the y-axis
+                # #
+                #############################################################################
+
+                if generatePlot:
+                    # print(chdf)
+                    ypred = slope*chdf['data'] + yintercept
+                    # print(slope, yintercept, inl, linRange)
+                    label = 'gain = {} fC/ADC bit, worst inl = {}% \n minCharge = {} fC, maxCharge = {} fC'.format( np.round(slope,4), np.round(inl*100,4), np.round(linRange[0], 4), np.round(linRange[1], 4) )
+                    plt.figure()
+                    plt.scatter(chdf['data'], chdf['DAC'], label=label)
+                    plt.plot(chdf['data'], ypred, 'r')
+                    plt.xlabel('{} (ADC bit)'.format(item))
+                    plt.ylabel('Charge (fC)')
+                    plt.legend()
+                    plt.savefig('/'.join([self.output_dir, '{}_ChargeVSamplitude_{}_{}.png'.format(self.item, BL, item)]))
+                    plt.close()
+                # sys.exit()
+
+                # slope, yintercept, inl = linear_fit(x=df['DAC_list'], y=df['item_data'])
+                # print(inl)
+                #---------------- Convert the unit of gain to e-/ADC bit ----------------
+                # linRange = np.array(linRange)
+                # gain = slope
+                # if 'ASICDAC' in self.item:
+                #     linRange = linRange * self.Mon_Gain[self.config['gain']] * 1E-3 # this is the DAC value, in Volt
+                #     gain = gain * self.Mon_Gain[self.config['gain']] * 1E-3
+                # else:
+                #     linRange = linRange * 1E-3 # we just needed to convert to Volt
+                #     gain = gain * 1E-3
+                # # chargeLinRange = linRange * self.CalibCap / (1.602*np.power(10.,-19)) # charge with unit e-
+                # chargeLinRange = linRange * self.CalibCap / np.power(10.,-12) # charge with unit Coulomb
+                # gain = gain * self.CalibCap / np.power(10., -12)
+                # print(chargeLinRange, gain)
+                # sys.exit()
+                INLs[chn] = inl # need to  multiply by 100  to get %
+                GAINs[chn] = slope
+                linearity_range[chn] = linRange
+            if returnGain:
+                print(INLs, GAINs, linearity_range)
+                sys.exit()
+                return INLs, GAINs, linearity_range
+            else:
+                return INLs
     
     def Amp_vs_CH(self):
         items = ['posAmp', 'negAmp']
@@ -519,7 +599,7 @@ class QC_CALI_Ana(BaseClass_Ana):
                     out_dict['item'].append(item)
                     out_dict['BL'].append(BL)
                     out_dict['gain (fC/ADC bit)'].append(np.round(gains[ich], 4))
-                    out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4))
+                    out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4)) # the worstINL is converted to %
                     out_dict['minCharge (fC)'].append(linRanges[ich][0])
                     out_dict['maxCharge (fC)'].append(linRanges[ich][1])
         
@@ -582,13 +662,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         for c in qc_res_cols:
             if False in out_df[c]:
                 overall_result = 'FAILED'
-        # print(overall_result)
-        # print(out_df)
-        # print(out_df.columns)
-        ## Format file to list
-        # 1st column: Test_{self.tms}_{cali_name}
-        # 2nd column: {BL}_{item}
-        # starting from 3rd column: ch0=(worstINL=xxx;gain=xxx;maxCharge=xxx;minCharge=xxx), ch1=(....), ....
+
         print("LENGTH out_df = ",len(out_df['item'])//16)
         posAmp_df = out_df[out_df['item']=='posAmp']
         negAmp_df = out_df[out_df['item']=='negAmp']
@@ -626,11 +700,9 @@ class QC_CALI_Ana(BaseClass_Ana):
                     maxCharge = bl_df.iloc[ich]['maxCharge (fC)']
                     result_Amp_bl.append("CH{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
                 result_in_list.append(result_Amp_bl)
-        # print(len(result_in_list))
-        # print(result_in_list)
-        # sys.exit()
         return result_in_list
 
+    
 def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', saveDist=False):
     def plot_distribution(array, xtitle, output_path_fig, figname):
         xmin, xmax = np.min(array), np.max(array)
