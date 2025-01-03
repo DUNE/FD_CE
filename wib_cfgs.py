@@ -235,48 +235,18 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
             for femb_id in fembs:
                 t0 = time.time()
                 print ("FEMB%d is being turned on"%femb_id)
-                #for vadc_en in [0,1]:
-                #for vfe_en in [0,1]:
-                #for vcd_en in [0,1]:
                 for bias_en in [0]:
                     self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
                     time.sleep(1)
                     pwr_meas = self.get_sensors(sensors="FEMB%d"%femb_id)
 
-                    ##debugging
-                    #t1 = time.time()
-                    #iiiis = []
-                    #for key in pwr_meas:
-                    #    if "_I" in key:
-                    #        iiiis.append(pwr_meas[key])
-                    #print (t1-t0, iiiis)
-
                 for bias_en in [1]:
-                    #print ("bias_en", bias_en)
-                    #print ("vfe_en", vfe_en)
-                    #print ("vcd_en", vcd_en)
-                    #print ("vadc_en", vadc_en)
-                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=vadc_en, bias_en=1 )
-                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=vfe_en, vcd_en=1, vadc_en=1, bias_en=1 )
-                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=vcd_en, vadc_en=1, bias_en=1 )
                     self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
                     t1 = time.time()
                     i = 0
                     while True:
                         init_ok = True
                         pwr_meas = self.get_sensors(sensors="FEMB%d"%femb_id) #takes ~50ms
-
-                        ##debugging
-                        #t1 = time.time()
-                        #iiiis = []
-                        #for key in pwr_meas:
-                        #    if "_I" in key:
-                        #        iiiis.append(pwr_meas[key])
-                        #print (t1-t0, iiiis)
-                        #i = i + 1
-                        #if i > 100:
-                        #    break
-                        #continue
 
                         for key in pwr_meas:
                             if "BIAS_I" in key:
@@ -298,7 +268,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                         if not init_ok:
                             print (key, pwr_meas[key] )
                             i = i + 1
-                            if i >= 5 : #~200ms
+                            if i >= 20 : #~200ms
                                 print ("\033[91m" + "FEMB/DAT power consumption @ (power on) is not right, please contact tech coordinator!"+ "\033[0m")
                                 print ("\033[91m" + "Turn FEMB/DAT off!"+ "\033[0m")
                                 self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )

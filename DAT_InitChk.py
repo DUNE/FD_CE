@@ -388,7 +388,7 @@ def dat_initchk(fdir="/."):
     QCstatus = data["QCstatus"]
 
     if "Code#E001" in QCstatus:
-        return QCstatus
+        return QCstatus, [0,1,2,3,4,5,6,7]
     if "Code#E002" in QCstatus:
         return QCstatus, sorted(data["FE_Fail"])
     if "Code#E003" in QCstatus:
@@ -398,7 +398,7 @@ def dat_initchk(fdir="/."):
 
 
     if "Code#E101" in QCstatus:
-        return QCstatus
+        return QCstatus, [0,1,2,3,4,5,6,7]
     if "Code#E102" in QCstatus:
         return QCstatus, sorted(data["CD_Fail"])
 #    if "Code#W103" in QCstatus:
@@ -408,7 +408,7 @@ def dat_initchk(fdir="/."):
 
 
     if "Code#E201" in QCstatus:
-        return QCstatus
+        return QCstatus, [0,1,2,3,4,5,6,7]
     if "Code#E202" in QCstatus:
         return QCstatus, sorted(data["ADC_Fail"])
 #    if "Code#W103" in QCstatus:
@@ -436,19 +436,19 @@ def dat_initchk(fdir="/."):
             bads3 = []
 
             if ("DIRECT_PLS_CHK" in onekey) :
-                bads0 = ana_res2(fembs, rawdata, par=[3000,10000], rmsr=[2.5,15], pedr=[500,3000] , period=512)
+                bads0 = ana_res2(fembs, rawdata, par=[3000,10000], rmsr=[2.5,30], pedr=[300,3000] , period=512)
             if ("ASICDAC_CALI_CHK" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[7000,10000], rmsr=[3,25], pedr=[100,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[7000,10000], rmsr=[3,30], pedr=[100,3000] , period=500)
             if ("ASICDAC_47mV_CHK" in onekey) and ("ASICDAC_47mV_CHK_x10" not in onekey) and ("ASICDAC_47mV_CHK_x18" not in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,25], pedr=[400,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,25], pedr=[300,3000] , period=500)
             if ("ASICDAC_47mV_CHK_x10" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[2000,4000], rmsr=[2,25], pedr=[400,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[2000,4000], rmsr=[2,25], pedr=[300,3000] , period=500)
             if ("ASICDAC_47mV_CHK_x18" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[3500,5500], rmsr=[2,25], pedr=[400,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[3500,5500], rmsr=[2,25], pedr=[300,3000] , period=500)
             if ("DIRECT_PLS_RMS" in onekey) :
-                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[500,3000] , period=512)
+                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,30], pedr=[300,3000] , period=512)
             if ("ASICDAC_CALI_RMS" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,25], pedr=[100,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,30], pedr=[100,3000] , period=500)
             if ("ASICDAC_47mV_RMS" in onekey):
                 bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[400,3000] , period=500)
 
@@ -487,6 +487,8 @@ if __name__=="__main__":
     fdir = '''D:/DAT_CD_QC/Tested/Time_20241205160750_DUT_1000_2000/RT_CD_031712417_031882417/'''
     fdir = '''D:\DAT_ColdADC_QC\\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 #    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20250102143601_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''C:/SGAO/ColdTest/Tested/DAT_ColdADC_QC/Tested/Time_20250103180258_DUT_1000_2000_3000_4000_5000_6000_7000_8000/RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+    print (fdir)
     QCstatus, bads = dat_initchk(fdir=fdir)
 
     print (QCstatus)
