@@ -28,6 +28,8 @@ fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/LN_ADC_000100001_000100002_
 fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/RT_ADC_000200001_000200002_000200003_000200004_000200005_000200006_000200007_000200008/"
 fdir = '''D:\DAT_LArASIC_QC\DAT_Rev1_SN4\ADC_400100001_400100002_400100003_400100004_400100005_400100006_400100007_400100008/'''
 fdir = '''D:\DAT_ColdADC_QC\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+fdir = '''D:\DAT_SN_data\SN1\Time_20250103155045_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+fdir = '''D:\DAT_SN_data\SN1\Time_20250103161442_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 #fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\Time_20241212183902_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 #fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\Time_20241213194328_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 # fdir = os.path.join(froot,fsubdir) #platform-agnostic
@@ -1102,10 +1104,10 @@ if 8 in tms:
     
     #for freq in [8106.23, 14781.95, 31948.09,]:
     #for freq in [8106.23]:
-    for freq in [8106.23, 14781.95, 31948.09, 72002.41, 119686.13, 200748.44, 358104.70]:
     #for freq in [358104]:
     #for freq in [119686]:
-        fp = fdir + "QC_ENOB_%08dHz"%(int(freq)) + ".bin"
+    if True:
+        fp = fdir + "QC_ENOB.bin"
         print ("When it is done, replace {} on the local PC".format(fp) )
         if os.path.isfile(fp):
             with open(fp, 'rb') as fn:
@@ -1120,7 +1122,9 @@ if 8 in tms:
             exit()
     
         for onekey in dkeys:
+    #for freq in [8106.23, 14781.95, 31948.09, 72002.41, 119686.13, 200748.44, 358104.70]:
             if 'enobdata' in onekey:     
+                freq = float(onekey[9:])
                 cfgdata = data[onekey]
                 fembs = cfgdata[0]
                 enobdata = cfgdata[1]
@@ -1140,21 +1144,22 @@ if 8 in tms:
                     num_16bwords = 0x8000 / 2
                     words16b = list(struct.unpack_from("<%dH"%(num_16bwords),raw))
     
-                    if ch == 57:
-                        import matplotlib.pyplot as plt
-                        plt.plot(words16b)
-                        plt.show()
-                        plt.close()
-                        ffig = True
-                    else:
-                        ffig = False
+                    #if ch == 57:
+                    #    import matplotlib.pyplot as plt
+                    #    plt.plot(words16b)
+                    #    plt.show()
+                    #    plt.close()
+                    #    ffig = True
+                    #else:
+                    #    ffig = False
+                    ffig = False
                     ENOB, NAD, SFDR, SINAD, psd_dbfs, points_dbfs = adc_enob(chndata=words16b, fs=1953125, Ntot=2**12, Vfullscale=1.4, Vinput=1.2, ffig=ffig)
                     chsenob.append(ENOB)
                 import matplotlib.pyplot as plt
                 fig, ax = plt.subplots(figsize=(8, 6))
                 plt.plot(chsenob)
                 plt.ylim((0,12))
-                plt.title ("ENOB")
+                plt.title ("ENOB (Fin = %f Hz)"%freq)
                 plt.ylabel('ENOB / bit')
                 plt.xlabel('Frequence / Hz')
 
@@ -1162,7 +1167,6 @@ if 8 in tms:
                     
                 plt.tight_layout()
                 plt.show()
-                break
             
 if 9 in tms:
     print ("-------------------------------------------------------------------------")
