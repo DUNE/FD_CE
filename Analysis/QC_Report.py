@@ -15,6 +15,9 @@ from datetime import datetime
 from QC_PWR import QC_PWR_analysis
 from QC_PWR_CYCLE import PWR_CYCLE_Ana
 from QC_CALIBRATION import QC_CALI_Ana
+from QC_RMS import RMS_Ana
+from QC_Cap_Meas import QC_Cap_Meas_Ana
+from QC_CHKRES import QC_CHKRES_Ana
 
 class QC_Report():
     def __init__(self, root_path: str, output_path: str, chipID: str):
@@ -43,15 +46,34 @@ class QC_Report():
         # print(pwrcycle_data)
         # sys.exit()
         return pwrcycle_data #, logs
+    
+    def get_QC_CHKRES(self):
+        chk_res = QC_CHKRES_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
+        chkres_data = chk_res.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_CHKRES.csv']))
+        return chkres_data
 
     def get_QC_CALI(self, cali_item='QC_CALI_ASICDAC'):
         ana_cali = QC_CALI_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID, CALI_item=cali_item)
         cali_data = ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([self.output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
         return cali_data # re-run the decoding so that the logs can be updated
 
+    def get_QC_RMS(self):
+        rms_ana = RMS_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
+        rms_data = rms_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_RMS.csv']), generatePlots=False)
+        return rms_data
+
+    def get_QC_Cap_Meas(self):
+        cap_meas = QC_Cap_Meas_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
+        data = cap_meas.run_Ana(path_to_stat='/'.join([self.output_path, 'QC_Cap_Meas.csv']), generatePlots=False)
+        return data
+    
     def generate_summary_csv(self):
         pwr_data = self.get_QC_PWR()
         pwr_cycle_data = self.get_QC_PWR_CYCLE()
+        rms_data = self.get_QC_RMS()
+        capacitance_data = self.get_QC_Cap_Meas()
+        chkres_data = self.get_QC_CHKRES()
+
         cali_data = []
         for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
             cali_data += self.get_QC_CALI(cali_item=cali_item)
@@ -78,13 +100,19 @@ class QC_Report():
         csv_data_rows = []
         for h in header:
             csv_data_rows.append(h)
+        
         for d in pwr_data:
+            csv_data_rows.append(d)
+        for d in chkres_data:
             csv_data_rows.append(d)
         for d in pwr_cycle_data:
             csv_data_rows.append(d)
         for d in cali_data:
             csv_data_rows.append(d)
-        print(csv_data_rows)
+        for d in rms_data:
+            csv_data_rows.append(d)
+        csv_data_rows.append(capacitance_data)
+        # print(csv_data_rows)
         with open('test.csv', 'w') as f:
             csvwriter = csv.writer(f, delimiter=',')
             csvwriter.writerows(csv_data_rows)

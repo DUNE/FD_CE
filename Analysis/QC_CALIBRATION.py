@@ -70,6 +70,8 @@ class QC_CALI(BaseClass):
                     DAC = param.split('_')[-1]
                     BL = param.split('_')[1]
                 cfg[BL].append((DAC, param))
+        # print(cfg)
+        # sys.exit()
         return cfg
 
     def avgWf(self, data: list, param='ASIC', getWaveforms=False):
@@ -100,11 +102,18 @@ class QC_CALI(BaseClass):
             print('-- Start decoding BL {} --'.format(BL))
             for DAC, param in DAC_param:
                 print('Decoding DAC {}...'.format(DAC))
+                # print(param)
                 fembs = self.raw_data[param][0]
                 rawdata = self.raw_data[param][1]
                 data = decodeRawData(fembs=fembs, rawdata=rawdata, period=self.period)
-                decoded_data[BL][DAC] = self.avgWf(data=data, param=param, getWaveforms=getWaveform_data) # already averaged
+                if self.tms==62:
+                    DAC_cfg = '_'.join(param.split('_')[2:-1])
+                    decoded_data[BL][DAC_cfg] = self.avgWf(data=data, param=param, getWaveforms=getWaveform_data)
+                else:
+                    decoded_data[BL][DAC] = self.avgWf(data=data, param=param, getWaveforms=getWaveform_data) # already averaged
             print('-- End of decoding BL {} --'.format(BL))
+            # print(decoded_data[BL].keys())
+            # sys.exit()
         return decoded_data
 
     def organizeData(self, saveWaveformData=False):
@@ -116,13 +125,17 @@ class QC_CALI(BaseClass):
                 organized_data[FE_ID][BL] = dict()
                 for chn in range(16):
                     organized_data[FE_ID][BL]['CH{}'.format(chn)] = {'DAC': [], 'CH': [], 'pedestal': [], 'rms': [], 'pospeak': [], 'negpeak': []} # [DAC_list, [ch_list. ch_list, ....]]
-        
+
         # organize the data
         decodedData = self.decode(getWaveform_data=self.generateWf)
-        
+        # print(decodedData['SNC0'].keys())
+        # sys.exit()
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]            
             for BL in decodedData.keys():
+                # print(BL)
+                # print(decodedData[BL].keys())
+                # sys.exit()
                 for chn in range(16):
                     for DAC in decodedData[BL].keys():
                         pedestal = decodedData[BL][DAC][ichip]['pedestal'][chn]
@@ -191,6 +204,7 @@ class QC_CALI(BaseClass):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
             print('Save amplitudes of {} ...'.format(FE_ID))
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='CALI_{}_Amp'.format(self.suffixName), data_to_dump=amplitudes[FE_ID], indent=4)
+        
 
     def plotWaveForms(self, organizedData: dict):
         for ichip in range(8):
@@ -249,7 +263,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         self.setGain = '14mV/fC'
         if 'ASICDAC_47' in self.item:
             self.setGain = '4.7mV/fC'
-        self.config = {
+        self.config = { # config for ASICDAC
             'RQI' : '500pA',
             'SLKH' : 'disabled',
             'peakTime' : '2us',
@@ -258,13 +272,14 @@ class QC_CALI_Ana(BaseClass_Ana):
         }
         # We got the following gains from the Monitoring with the commercial ADC
         self.Mon_Gain = {
-            '4.7mV/fC': 30.53,
-            '7.8mV/fC': 23.55,
-            '14mV/fC': 13.26,
-            '25mV/fC': 7.55
+            '4.7mV/fC': 19.111,
+            '7.8mV/fC': 14.7436,
+            '14mV/fC': 8.2996,
+            '25mV/fC': 4.7272
         }
         self.unit_MonGain = 'mV/DAC bit'
         self.CalibCap = 1.85*1E-13 # the calibration capacitance with ASICDAC is 185 fF = 0.185 pF
+        self.CalibCap_DATDAC = 1E-15 # Need to confirm with Shanshan
         self.tms = {'CALI_ASICDAC': 61,
                     'CALI_DATDAC': 62,
                     'CALI_DIRECT': 63,
@@ -276,31 +291,89 @@ class QC_CALI_Ana(BaseClass_Ana):
             Idea I want to implement in this function:
             - concatenate the data for the 16-channels corresponding to each DAC value
         '''
+        ################################################################################################################
+        # BLs = ['SNC0', 'SNC1']
+        # outdata = {BL: dict() for BL in BLs}
+        # for BL in BLs:
+        #     data = self.data[BL]
+        #     DAClist = self.getDAClist(BL=BL)
+        #     tmp_out = {'DAC': DAClist, 
+        #                 'pedestal': [np.array([]) for _ in range(len(DAClist))],
+        #                 'posAmp': [np.array([]) for _ in range(len(DAClist))],
+        #                 'negAmp': [np.array([]) for _ in range(len(DAClist))]
+        #               }
+        #     BL_INL_posAmp = self.getINL(BL=BL, item='posAmp', returnGain=True, generatePlot=generatePlot)
+        #     BL_INL_negAmp = self.getINL(BL=BL, item='negAmp', returnGain=True, generatePlot=generatePlot)
+        #     for ich in range(16):
+        #         # for i, d in enumerate(data['CH{}'.format(ich)]):
+        #         chdata = data['CH{}'.format(ich)]
+        #         for idac, dac in enumerate(DAClist):
+        #             tmpdata = chdata[idac] 
+        #             tmp_out['pedestal'][idac] = np.append(tmp_out['pedestal'][idac], tmpdata['pedestal'])
+        #             tmp_out['posAmp'][idac] = np.append(tmp_out['posAmp'][idac], tmpdata['posAmp'])
+        #             tmp_out['negAmp'][idac] = np.append(tmp_out['negAmp'][idac], tmpdata['negAmp'])
+            
+        #     posAmp_inl_linrange = {'inl': BL_INL_posAmp[0], 'gain': BL_INL_posAmp[1], 'linRange' : BL_INL_posAmp[2]}
+        #     negAmp_inl_linrange = {'inl': BL_INL_negAmp[0], 'gain': BL_INL_negAmp[1], 'linRange' : BL_INL_negAmp[2]}
+        #     outdata[BL] = {'data': tmp_out, 'posAmp_INL': posAmp_inl_linrange, 'negAmp_INL' : negAmp_inl_linrange} # units : inl*100 in %, gain in fC/ADC bit, linRange in fC
+        # return outdata
+        ################################################################################################################
         BLs = ['SNC0', 'SNC1']
-        outdata = {BL: dict() for BL in BLs}
-        for BL in BLs:
-            data = self.data[BL]
-            DAClist = self.getDAClist(BL=BL)
-            tmp_out = {'DAC': DAClist, 
-                        'pedestal': [np.array([]) for _ in range(len(DAClist))],
-                        'posAmp': [np.array([]) for _ in range(len(DAClist))],
-                        'negAmp': [np.array([]) for _ in range(len(DAClist))]
-                      }
+        outdf = pd.DataFrame()
+        for ibl, BL in enumerate(BLs):
+            # BL_INL_pos/negAmp = [all_INLs, all_GAINs, all_linearity_range, df]
             BL_INL_posAmp = self.getINL(BL=BL, item='posAmp', returnGain=True, generatePlot=generatePlot)
             BL_INL_negAmp = self.getINL(BL=BL, item='negAmp', returnGain=True, generatePlot=generatePlot)
-            for ich in range(16):
-                # for i, d in enumerate(data['CH{}'.format(ich)]):
-                chdata = data['CH{}'.format(ich)]
-                for idac, dac in enumerate(DAClist):
-                    tmpdata = chdata[idac] 
-                    tmp_out['pedestal'][idac] = np.append(tmp_out['pedestal'][idac], tmpdata['pedestal'])
-                    tmp_out['posAmp'][idac] = np.append(tmp_out['posAmp'][idac], tmpdata['posAmp'])
-                    tmp_out['negAmp'][idac] = np.append(tmp_out['negAmp'][idac], tmpdata['negAmp'])
-            
-            posAmp_inl_linrange = {'inl': BL_INL_posAmp[0], 'gain': BL_INL_posAmp[1], 'linRange' : BL_INL_posAmp[2]}
-            negAmp_inl_linrange = {'inl': BL_INL_negAmp[0], 'gain': BL_INL_negAmp[1], 'linRange' : BL_INL_negAmp[2]}
-            outdata[BL] = {'data': tmp_out, 'posAmp_INL': posAmp_inl_linrange, 'negAmp_INL' : negAmp_inl_linrange} # units : inl*100 in %, gain in fC/ADC bit, linRange in fC
-        return outdata
+            negAmp_df = BL_INL_negAmp[3]
+            posAmp_df = BL_INL_posAmp[3]
+            # For both dataframes, the configurations are the same
+            list_configs = np.unique(posAmp_df['outputCFG'])
+            DAC_list = np.unique(posAmp_df['DAC'])
+
+            BLdf = pd.DataFrame()
+            for icfg, CFG in enumerate(list_configs):
+                cfgdf = pd.DataFrame()
+                cfgneg_df = negAmp_df[negAmp_df['outputCFG']==CFG].copy()
+                cfgneg_df['item'] = ['negAmp' for _ in range(len(cfgneg_df['CH']))]
+                cfgpos_df = posAmp_df[posAmp_df['outputCFG']==CFG].copy()
+                cfgpos_df['item'] = ['posAmp' for _ in range(len(cfgpos_df['CH']))]
+                # print(BL_INL_negAmp[0][CFG])
+                # print(cfgpos_df)
+                # print(np.unique(cfgpos_df['DAC']))
+                for chn in range(16):
+                    # units : inl to be multiplied by 100 to get %, gain in fC/ADC bit, linRange in fC
+                    # negAmp
+                    chn_neg_df = cfgneg_df[cfgneg_df['CH']==chn].copy()
+                    chnINL_neg = np.round(BL_INL_negAmp[0][CFG][chn],4)
+                    chnGAIN_neg = np.round(BL_INL_negAmp[1][CFG][chn], 4)
+                    chnLinRange_neg = np.round(BL_INL_negAmp[2][CFG][chn][1]-BL_INL_negAmp[2][CFG][chn][0], 2) # after discussion with Shanshan, only represent the maximum and set the minimum to zero
+                    chn_neg_df['INL'] = [chnINL_neg for _ in range(len(chn_neg_df['DAC']))]
+                    chn_neg_df['GAIN'] = [chnGAIN_neg for _ in range(len(chn_neg_df['DAC']))]
+                    chn_neg_df['linRange'] = [chnLinRange_neg for _ in range(len(chn_neg_df['DAC']))]
+                    # posAmp
+                    chn_pos_df = cfgpos_df[cfgpos_df['CH']==chn].copy()
+                    chnINL_pos = BL_INL_posAmp[0][CFG][chn]
+                    chnGAIN_pos = BL_INL_posAmp[1][CFG][chn]
+                    chnLinRange_pos = np.round(BL_INL_posAmp[2][CFG][chn][1]-BL_INL_posAmp[2][CFG][chn][0], 2) # after discussion with Shanshan, only represent the maximum and set the minimum to zero
+                    chn_pos_df['INL'] = [chnINL_pos for _ in range(len(chn_pos_df['DAC']))]
+                    chn_pos_df['GAIN'] = [chnGAIN_pos for _ in range(len(chn_pos_df['DAC']))]
+                    chn_pos_df['linRange'] = [chnLinRange_pos for _ in range(len(chn_pos_df['DAC']))]
+
+                    chndf = pd.concat([chn_neg_df, chn_pos_df], axis=0)
+                    if chn==0:
+                        cfgdf = chndf
+                    else:
+                        cfgdf = pd.concat([cfgdf, chndf], axis=0)
+                if icfg==0:
+                    BLdf = cfgdf
+                else:
+                    BLdf = pd.concat([BLdf, cfgdf], axis=0)
+            if ibl==0:
+                outdf = BLdf
+            else:
+                outdf = pd.concat([outdf, BLdf], axis=0)
+        outdf.reset_index(drop=True, inplace=True)
+        return outdf
 
     def getDAClist(self, BL: str):
         data = self.data[BL]
@@ -309,6 +382,7 @@ class QC_CALI_Ana(BaseClass_Ana):
         for d in data[ch]:
             DAClist.append(d['DAC'])
         return DAClist
+
 
     def getDataperDAC(self, BL: str, item: str, DAC: int):
         data = self.data[BL]
@@ -348,7 +422,7 @@ class QC_CALI_Ana(BaseClass_Ana):
             stddata.append(std)
         
         return DAC_list, meandata, stddata
-    
+
     def getINL(self, BL: str, item: str, returnGain=False, generatePlot=False):
         '''
             - For each channel number, get the DAC and item values.
@@ -357,78 +431,182 @@ class QC_CALI_Ana(BaseClass_Ana):
             We use the positive amplitude to get the linearity.
         '''
         data = self.data[BL]
-        INLs = {}
-        GAINs = {}
-        linearity_range = {}
-        for chn in range(16):
-            # chn = 0
-            chdata = data["CH{}".format(chn)]
-            item_data = []
-            DAC_list = []
-            for d in chdata:
-                dac = d['DAC']
-                if type(dac)==str:
-                    dac = int(dac.split('m')[0])
-                DAC_list.append(dac)
-                item_data.append(d[item])
-            df = pd.DataFrame({'DAC_list': DAC_list, 'item_data': item_data})
-            df.sort_values(by='item_data', inplace=True)
-            # print(df)
-            df = df.reset_index()
-            
-            if ('ASICDAC' in self.item):
-                df['DAC_list'] = df['DAC_list'] * self.Mon_Gain[self.config['gain']] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
-            else:
-                df['DAC_list'] = df['DAC_list'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
-            # check linearity and get INL
-            # slope, yintercept, inl = linear_fit(x=DAC_list[1:-2], y=item_data[1:-2])
-            # if 'ASICDAC' in self.item:
-            # slope, yintercept, inl, linRange = gain_inl(x=df['DAC_list'], y=df['item_data'], item=self.item)
-            slope, yintercept, inl, linRange = gain_inl(y=df['DAC_list'], x=df['item_data'], item=self.item)
-            # # unit of slope (=gain) : fC / ADC bit
-            # # unit of linRange : fC
-            # # unit of yintercept : fC because the DAC value (charge) is on the y-axis
-            # #
-            #############################################################################
-
-            if generatePlot:
-                # print(df)
-                ypred = slope*df['item_data'] + yintercept
-                # print(slope, yintercept, inl, linRange)
-                label = 'gain = {} fC/ADC bit, worst inl = {}% \n minCharge = {} fC, maxCharge = {} fC'.format( np.round(slope,4), np.round(inl*100,4), np.round(linRange[0], 4), np.round(linRange[1], 4) )
-                plt.figure()
-                plt.scatter(df['item_data'], df['DAC_list'], label=label)
-                plt.plot(df['item_data'], ypred, 'r')
-                plt.xlabel('{} (ADC bit)'.format(item))
-                plt.ylabel('Charge (fC)')
-                plt.legend()
-                plt.savefig('/'.join([self.output_dir, '{}_ChargeVSamplitude_{}_{}.png'.format(self.item, BL, item)]))
-                plt.close()
-            # sys.exit()
-
-            # slope, yintercept, inl = linear_fit(x=df['DAC_list'], y=df['item_data'])
-            # print(inl)
-            #---------------- Convert the unit of gain to e-/ADC bit ----------------
-            # linRange = np.array(linRange)
-            # gain = slope
-            # if 'ASICDAC' in self.item:
-            #     linRange = linRange * self.Mon_Gain[self.config['gain']] * 1E-3 # this is the DAC value, in Volt
-            #     gain = gain * self.Mon_Gain[self.config['gain']] * 1E-3
-            # else:
-            #     linRange = linRange * 1E-3 # we just needed to convert to Volt
-            #     gain = gain * 1E-3
-            # # chargeLinRange = linRange * self.CalibCap / (1.602*np.power(10.,-19)) # charge with unit e-
-            # chargeLinRange = linRange * self.CalibCap / np.power(10.,-12) # charge with unit Coulomb
-            # gain = gain * self.CalibCap / np.power(10., -12)
-            # print(chargeLinRange, gain)
-            # sys.exit()
-            INLs[chn] = inl # need to  multiply by 100  to get %
-            GAINs[chn] = slope
-            linearity_range[chn] = linRange
-        if returnGain:
-            return INLs, GAINs, linearity_range
+        allDAC_cfg = []
+        unique_DAC_cfg = []
+        if self.tms==62:
+            allDAC_cfg = ['_'.join(dac_cfg['DAC'].split('_')[1:]) for dac_cfg in data['CH0']]
+            unique_DAC_cfg = list(dict.fromkeys(allDAC_cfg))
         else:
-            return INLs
+            unique_DAC_cfg = ['cfg']
+        
+        df = {'BL':[], 'outputCFG': [], 'CH': [], 'DAC': [], 'data': [], 'pedestal': []}
+        # if self.tms==62:
+        for DAC_cfg in unique_DAC_cfg:
+            for chn in range(16):
+                chdata = data['CH{}'.format(chn)]
+                item_data = []
+                DAC_list = []
+                for d in chdata:
+                    tmp_dac_cfg = d['DAC']
+                    dac = 0
+                    cfg = ''
+                    if self.tms==62:
+                        dac = float((tmp_dac_cfg.split('_')[0]).split('m')[0])
+                        cfg = '_'.join(tmp_dac_cfg.split('_')[1:])
+                    else:
+                        dac = tmp_dac_cfg
+                        if type(dac)==str:
+                            dac = int(dac.split('m')[0])
+                        cfg = DAC_cfg
+                    if cfg==DAC_cfg:
+                        # DAC_list.append(dac)
+                        # item_data.append(d[item])
+                        df['pedestal'].append(d['pedestal'])
+                        df['BL'].append(BL)
+                        df['outputCFG'].append(cfg)
+                        df['CH'].append(chn)
+                        df['DAC'].append(dac)
+                        df['data'].append(d[item])
+        df = pd.DataFrame(df)
+
+        # else:
+        #     for cfg in unique_DAC_cfg:
+        #         for chn in range(16):
+        #             # chn = 0
+        #             chdata = data["CH{}".format(chn)]
+        #             item_data = []
+        #             DAC_list = []
+        #             for d in chdata:
+        #                 dac = d['DAC']
+        #                 if type(dac)==str:
+        #                     dac = int(dac.split('m')[0])
+        #                 # DAC_list.append(dac)
+        #                 # item_data.append(d[item])
+        #                 df['pedestal'].append(d['pedestal'])
+        #                 df['BL'].append(BL)
+        #                 df['outputCFG'].append(cfg)
+        #                 df['CH'].append(chn)
+        #                 df['DAC'].append(dac)
+        #                 df['data'].append(d[item])
+        #         # df = pd.DataFrame({'DAC_list': DAC_list, 'item_data': item_data})
+        #         # df.sort_values(by='item_data', inplace=True)
+        #     df = pd.DataFrame(df)
+        
+        # if self.tms==62:
+        all_INLs = {}
+        all_GAINs = {}
+        all_linearity_range = {}
+        for dac_cfg in unique_DAC_cfg:
+            INLs = {}
+            GAINs = {}
+            linearity_range = {}
+            dac_cfg_df = df[df['outputCFG']==dac_cfg].copy()
+            for chn in range(16):
+                chdf = dac_cfg_df[dac_cfg_df['CH']==chn].copy()
+                chdf.sort_values(by='data', inplace=True)
+                chdf = chdf.reset_index()
+                chdf['DAC'] = chdf['DAC'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+                slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
+                if generatePlot:
+                    ypred = slope*chdf['data'] + yintercept
+                    # print(slope, yintercept, inl, linRange)
+                    label = 'gain = {} fC/ADC bit, worst inl = {}% \n minCharge = {} fC, maxCharge = {} fC'.format( np.round(slope,4), np.round(inl*100,4), np.round(linRange[0], 4), np.round(linRange[1], 4) )
+                    plt.figure()
+                    plt.scatter(chdf['data'], chdf['DAC'], label=label)
+                    plt.plot(chdf['data'], ypred, 'r')
+                    plt.xlabel('{} (ADC bit)'.format(item))
+                    plt.ylabel('Charge (fC)')
+                    plt.legend()
+                    plt.savefig('/'.join([self.output_dir, '{}_ChargeVSamplitude_{}_{}.png'.format(self.item, BL, item)]))
+                    plt.close()
+                INLs[chn] = inl # need to  multiply by 100  to get %
+                GAINs[chn] = slope
+                linearity_range[chn] = linRange
+            all_INLs[dac_cfg] = INLs
+            all_GAINs[dac_cfg] = GAINs
+            all_linearity_range[dac_cfg] = linearity_range
+        if returnGain:
+            # print(all_INLs)
+            # sys.exit()
+            return all_INLs, all_GAINs, all_linearity_range, df
+        else:
+            return all_INLs
+                    
+        # else:
+        #     all_INLs = {}
+        #     all_GAINs = {}
+        #     all_linearity_range = {}
+        #     for cfg in unique_DAC_cfg:
+        #         INLs = {}
+        #         GAINs = {}
+        #         linearity_range = {}
+        #         for chn in range(16):
+        #             # print("-DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD-")
+        #             # print(df)
+        #             # sys.exit()
+        #             chdf = df[df['CH']==chn].copy()
+        #             chdf.sort_values(by='data', inplace=True)
+        #             chdf = chdf.reset_index()
+        #             # double-check the gain and DAC values
+        #             if ('ASICDAC' in self.item):
+        #                 chdf['DAC'] = chdf['DAC'] * self.Mon_Gain[self.config['gain']] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+        #             else:
+        #                 chdf['DAC'] = chdf['DAC'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+        #             # check linearity and get INL
+        #             # slope, yintercept, inl = linear_fit(x=DAC_list[1:-2], y=item_data[1:-2])
+        #             # if 'ASICDAC' in self.item:
+        #             # slope, yintercept, inl, linRange = gain_inl(x=chdf['DAC_list'], y=chdf['item_data'], item=self.item)
+        #             slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
+        #             # # unit of slope (=gain) : fC / ADC bit
+        #             # # unit of linRange : fC
+        #             # # unit of yintercept : fC because the DAC value (charge) is on the y-axis
+        #             # #
+        #             #############################################################################
+
+        #             if generatePlot:
+        #                 # print(chdf)
+        #                 ypred = slope*chdf['data'] + yintercept
+        #                 # print(slope, yintercept, inl, linRange)
+        #                 label = 'gain = {} fC/ADC bit, worst inl = {}% \n minCharge = {} fC, maxCharge = {} fC'.format( np.round(slope,4), np.round(inl*100,4), np.round(linRange[0], 4), np.round(linRange[1], 4) )
+        #                 plt.figure()
+        #                 plt.scatter(chdf['data'], chdf['DAC'], label=label)
+        #                 plt.plot(chdf['data'], ypred, 'r')
+        #                 plt.xlabel('{} (ADC bit)'.format(item))
+        #                 plt.ylabel('Charge (fC)')
+        #                 plt.legend()
+        #                 plt.savefig('/'.join([self.output_dir, '{}_ChargeVSamplitude_{}_{}.png'.format(self.item, BL, item)]))
+        #                 plt.close()
+        #             # sys.exit()
+
+        #             # slope, yintercept, inl = linear_fit(x=df['DAC_list'], y=df['item_data'])
+        #             # print(inl)
+        #             #---------------- Convert the unit of gain to e-/ADC bit ----------------
+        #             # linRange = np.array(linRange)
+        #             # gain = slope
+        #             # if 'ASICDAC' in self.item:
+        #             #     linRange = linRange * self.Mon_Gain[self.config['gain']] * 1E-3 # this is the DAC value, in Volt
+        #             #     gain = gain * self.Mon_Gain[self.config['gain']] * 1E-3
+        #             # else:
+        #             #     linRange = linRange * 1E-3 # we just needed to convert to Volt
+        #             #     gain = gain * 1E-3
+        #             # # chargeLinRange = linRange * self.CalibCap / (1.602*np.power(10.,-19)) # charge with unit e-
+        #             # chargeLinRange = linRange * self.CalibCap / np.power(10.,-12) # charge with unit Coulomb
+        #             # gain = gain * self.CalibCap / np.power(10., -12)
+        #             # print(chargeLinRange, gain)
+        #             # sys.exit()
+        #             INLs[chn] = inl # need to  multiply by 100  to get %
+        #             GAINs[chn] = slope
+        #             linearity_range[chn] = linRange
+        #         all_INLs[cfg] = INLs
+        #         all_GAINs[cfg] = GAINs
+        #         all_linearity_range[cfg] = linearity_range
+        #     if returnGain:
+        #         # print(INLs, GAINs, linearity_range)
+        #         # sys.exit()
+        #         # return INLs, GAINs, linearity_range, df
+        #         return all_INLs, all_GAINs, all_linearity_range, df
+        #     else:
+        #         return INLs
     
     def Amp_vs_CH(self):
         items = ['posAmp', 'negAmp']
@@ -500,9 +678,10 @@ class QC_CALI_Ana(BaseClass_Ana):
                     out_dict['item'].append(item)
                     out_dict['BL'].append(BL)
                     out_dict['gain (fC/ADC bit)'].append(np.round(gains[ich], 4))
-                    out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4))
+                    out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4)) # the worstINL is converted to %
                     out_dict['minCharge (fC)'].append(linRanges[ich][0])
                     out_dict['maxCharge (fC)'].append(linRanges[ich][1])
+        
         out_df = pd.DataFrame(out_dict)
         # out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
         #
@@ -562,14 +741,8 @@ class QC_CALI_Ana(BaseClass_Ana):
         for c in qc_res_cols:
             if False in out_df[c]:
                 overall_result = 'FAILED'
-        print(overall_result)
-        print(out_df)
-        print(out_df.columns)
-        ## Format file to list
-        # 1st column: Test_{self.tms}_{cali_name}
-        # 2nd column: {BL}_{item}
-        # starting from 3rd column: ch0=(worstINL=xxx;gain=xxx;maxCharge=xxx;minCharge=xxx), ch1=(....), ....
-        print(len(out_df['item'])//16)
+
+        print("LENGTH out_df = ",len(out_df['item'])//16)
         posAmp_df = out_df[out_df['item']=='posAmp']
         negAmp_df = out_df[out_df['item']=='negAmp']
         result_in_list = []
@@ -604,13 +777,11 @@ class QC_CALI_Ana(BaseClass_Ana):
                     worstINL = bl_df.iloc[ich]['worstINL (%)']
                     minCharge = bl_df.iloc[ich]['minCharge (fC)']
                     maxCharge = bl_df.iloc[ich]['maxCharge (fC)']
-                    result_Amp_bl.append("ch{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
+                    result_Amp_bl.append("CH{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
                 result_in_list.append(result_Amp_bl)
-        print(len(result_in_list))
-        print(result_in_list)
-        # sys.exit()
         return result_in_list
 
+    
 def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', saveDist=False):
     def plot_distribution(array, xtitle, output_path_fig, figname):
         xmin, xmax = np.min(array), np.max(array)
@@ -628,9 +799,10 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
 
     outdata = dict()
     # processed_data = {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}} # to save the gain and inl
-    processed_data = {'posAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge' : []}},
-                    'negAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge' : []}}
-                    }
+    # processed_data = {'posAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge' : []}},
+    #                 'negAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge': [], 'maxCharge' : []}}
+    #                 }
+    processed_data_df = pd.DataFrame()
     output_path_fig = '/'.join([output_path, 'fig'])
     list_chipID = os.listdir(root_path)
     firstData = True
@@ -647,35 +819,40 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
         if firstData:
             # outdata = chipdata
             # print(chipdata)
-            BLs = list(chipdata.keys())
-            for BL in BLs:
-                outdata[BL] = {key: val for key, val in chipdata[BL]['data'].items()}
-                for k in ['posAmp', 'negAmp']:
-                    key = k+'_INL'
-                    processed_data[k][BL]['INL'] = np.array([v for i, v in chipdata[BL][key]['inl'].items()])
-                    processed_data[k][BL]['GAIN'] = np.array([v for i, v in chipdata[BL][key]['gain'].items()])
-                    processed_data[k][BL]['minCharge'] = np.array([v[0] for i, v in chipdata[BL][key]['linRange'].items()])
-                    processed_data[k][BL]['maxCharge'] = np.array([v[1] for i, v in chipdata[BL][key]['linRange'].items()])
-            DACs = [list(outdata[bl]['DAC']) for bl in BLs]
+            # BLs = list(chipdata.keys())
+            # for BL in BLs:
+            #     outdata[BL] = {key: val for key, val in chipdata[BL]['data'].items()}
+            #     for k in ['posAmp', 'negAmp']:
+            #         key = k+'_INL'
+            #         processed_data[k][BL]['INL'] = np.array([v for i, v in chipdata[BL][key]['inl'].items()])
+            #         processed_data[k][BL]['GAIN'] = np.array([v for i, v in chipdata[BL][key]['gain'].items()])
+            #         processed_data[k][BL]['minCharge'] = np.array([v[0] for i, v in chipdata[BL][key]['linRange'].items()])
+            #         processed_data[k][BL]['maxCharge'] = np.array([v[1] for i, v in chipdata[BL][key]['linRange'].items()])
+            # DACs = [list(outdata[bl]['DAC']) for bl in BLs]
+            processed_data_df = chipdata.copy()
             firstData = False
-            # print(processed_data)
-            # sys.exit()
         else:
-            for ibl, bl in enumerate(BLs):
-                for k in ['posAmp', 'negAmp']:
-                    key = k+'_INL'
-                    inls = np.array([v for v in chipdata[bl][key]['inl'].values()])
-                    gains = np.array([v for v in chipdata[bl][key]['gain'].values()])
-                    maxCharges = np.array([v[1] for v in chipdata[bl][key]['linRange'].values()])
-                    minCharges = np.array([v[0] for v in chipdata[bl][key]['linRange'].values()])
-                    processed_data[k][bl]['INL'] = np.concatenate((processed_data[k][bl]['INL'], inls))
-                    processed_data[k][bl]['GAIN'] = np.concatenate((processed_data[k][bl]['GAIN'], gains))
-                    processed_data[k][bl]['minCharge'] = np.concatenate((processed_data[k][bl]['minCharge'], minCharges))
-                    processed_data[k][bl]['maxCharge'] = np.concatenate((processed_data[k][bl]['maxCharge'], maxCharges))
-                for idac, dac in enumerate(DACs[ibl]):
-                    outdata[bl]['pedestal'][idac] = np.concatenate((outdata[bl]['pedestal'][idac], chipdata[bl]['data']['pedestal'][idac]))
-                    outdata[bl]['posAmp'][idac] = np.concatenate((outdata[bl]['posAmp'][idac], chipdata[bl]['data']['posAmp'][idac]))
-                    outdata[bl]['negAmp'][idac] = np.concatenate((outdata[bl]['negAmp'][idac], chipdata[bl]['data']['negAmp'][idac]))
+            # for ibl, bl in enumerate(BLs):
+            #     for k in ['posAmp', 'negAmp']:
+            #         key = k+'_INL'
+            #         inls = np.array([v for v in chipdata[bl][key]['inl'].values()])
+            #         gains = np.array([v for v in chipdata[bl][key]['gain'].values()])
+            #         maxCharges = np.array([v[1] for v in chipdata[bl][key]['linRange'].values()])
+            #         minCharges = np.array([v[0] for v in chipdata[bl][key]['linRange'].values()])
+            #         processed_data[k][bl]['INL'] = np.concatenate((processed_data[k][bl]['INL'], inls))
+            #         processed_data[k][bl]['GAIN'] = np.concatenate((processed_data[k][bl]['GAIN'], gains))
+            #         processed_data[k][bl]['minCharge'] = np.concatenate((processed_data[k][bl]['minCharge'], minCharges))
+            #         processed_data[k][bl]['maxCharge'] = np.concatenate((processed_data[k][bl]['maxCharge'], maxCharges))
+            #     for idac, dac in enumerate(DACs[ibl]):
+            #         outdata[bl]['pedestal'][idac] = np.concatenate((outdata[bl]['pedestal'][idac], chipdata[bl]['data']['pedestal'][idac]))
+            #         outdata[bl]['posAmp'][idac] = np.concatenate((outdata[bl]['posAmp'][idac], chipdata[bl]['data']['posAmp'][idac]))
+            #         outdata[bl]['negAmp'][idac] = np.concatenate((outdata[bl]['negAmp'][idac], chipdata[bl]['data']['negAmp'][idac]))
+            processed_data_df = pd.concat([processed_data_df, chipdata], axis=0)
+            break
+    processed_data_df.reset_index(drop=True, inplace=True)
+    # print(processed_data_df)
+    # print(processed_data_df[processed_data_df['DAC']==processed_data_df['DAC'].unique()[0]])
+    # sys.exit()
         # firstData = False
     
     # print(processed_data['SNC0']['GAIN'])
@@ -689,76 +866,98 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
     # DACs = [] # 0, 4, 8, ....
     # means = []
     # stdevs = []
-    out_dict = {'testItem': [], 'BL': [], 'DAC': [], 'mean': [], 'std': []}
-    for ibl, bl in enumerate(outdata.keys()):
-        bldata = outdata[bl]
-        # print(bldata.keys())
-        # print(len(bldata['pedestal'][0]))
-        # print(bldata['DAC'])
-        for idac, dac in enumerate(bldata['DAC']):
-            pedestal = bldata['pedestal'][idac]
-            posAmp = bldata['posAmp'][idac]
-            negAmp = bldata['negAmp'][idac]
-            # pedestal
-            pedmean = statistics.median(pedestal)
-            pedstd = statistics.stdev(pedestal)
-            pedmin, pedmax = pedmean-3*pedstd, pedmean+3*pedstd
-            # posAmp
-            posAmpmean = statistics.median(posAmp)
-            posAmpstd = statistics.stdev(posAmp)
-            posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
-            # negAmp
-            negAmpmean = statistics.median(negAmp)
-            negAmpstd = statistics.stdev(negAmp)
-            negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
-            for _ in range(10):
+    out_dict = {'testItem': [], 'CFG': [], 'BL': [], 'DAC': [], 'mean': [], 'std': []}
+    BLs = ['SNC0', 'SNC1']
+    # DACs = processed_data_df['DAC'].unique()
+    # for ibl, bl in enumerate(outdata.keys()):
+    for ibl, bl in enumerate(BLs):
+        # bldata = outdata[bl]
+        bldata = processed_data_df[processed_data_df['BL']==bl].copy().reset_index().drop('index', axis=1)
+        CFGs = bldata['outputCFG'].unique()
+        for cfg in CFGs:
+            cfgdata = bldata[bldata['outputCFG']==cfg].copy().reset_index().drop('index', axis=1)
+            DACs = cfgdata['DAC'].unique()
+            # print(bldata.keys())
+            # print(len(bldata['pedestal'][0]))
+            # print(bldata['DAC'])
+            # for idac, dac in enumerate(bldata['DAC']):
+            for idac, dac in enumerate(DACs):
+                dacdata = cfgdata[cfgdata['DAC']==dac].copy().reset_index().drop('index', axis=1)
+                # print('-----------------DACDATA-----------------')
+                # print(dac)
+                # print(dacdata)
+                # print('-----------------------------------------')
+                # pedestal = bldata['pedestal'][idac]
+                # posAmp = bldata['posAmp'][idac]
+                # negAmp = bldata['negAmp'][idac]
+                pedestal = np.array(dacdata['pedestal'])
+                posAmp = dacdata[dacdata['item']=='posAmp']['data']
+                negAmp = dacdata[dacdata['item']=='negAmp']['data']
+
                 # pedestal
-                posmin = np.where(pedestal < pedmin)[0]
-                posmax = np.where(pedestal > pedmax)[0]
-                pos = np.concatenate((posmin, posmax))
-                pedestal = np.delete(pedestal, pos)
                 pedmean = statistics.median(pedestal)
                 pedstd = statistics.stdev(pedestal)
                 pedmin, pedmax = pedmean-3*pedstd, pedmean+3*pedstd
                 # posAmp
-                posmin = np.where(posAmp < posAmpmin)[0]
-                posmax = np.where(posAmp > posAmpmax)[0]
-                pos = np.concatenate((posmin, posmax))
-                posAmp = np.delete(posAmp, pos)
                 posAmpmean = statistics.median(posAmp)
                 posAmpstd = statistics.stdev(posAmp)
                 posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
+                
                 # negAmp
-                posmin = np.where(negAmp < negAmpmin)[0]
-                posmax = np.where(negAmp > negAmpmax)[0]
-                pos = np.concatenate((posmin, posmax))
-                negAmp = np.delete(negAmp, pos)
                 negAmpmean = statistics.median(negAmp)
                 negAmpstd = statistics.stdev(negAmp)
                 negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
-            if saveDist:
-                plot_distribution(array=pedestal, xtitle='pedestal', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'pedestal', bl, str(dac)]))
-                plot_distribution(array=posAmp, xtitle='posAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'posAmp', bl, str(dac)]))
-                plot_distribution(array=negAmp, xtitle='negAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'negAmp', bl, str(dac)]))
-            
-            # pedestal
-            out_dict['testItem'].append('pedestal')
-            out_dict['BL'].append(bl)
-            out_dict['DAC'].append(dac)
-            out_dict['mean'].append(pedmean)
-            out_dict['std'].append(pedstd)
-            # posAmp
-            out_dict['testItem'].append('posAmp')
-            out_dict['BL'].append(bl)
-            out_dict['DAC'].append(dac)
-            out_dict['mean'].append(posAmpmean)
-            out_dict['std'].append(posAmpstd)
-            # negAmp
-            out_dict['testItem'].append('negAmp')
-            out_dict['BL'].append(bl)
-            out_dict['DAC'].append(dac)
-            out_dict['mean'].append(negAmpmean)
-            out_dict['std'].append(negAmpstd)
+                for _ in range(10):
+                    # pedestal
+                    posmin = np.where(pedestal < pedmin)[0]
+                    posmax = np.where(pedestal > pedmax)[0]
+                    pos = np.concatenate((posmin, posmax))
+                    pedestal = np.delete(pedestal, pos)
+                    pedmean = statistics.median(pedestal)
+                    pedstd = statistics.stdev(pedestal)
+                    pedmin, pedmax = pedmean-3*pedstd, pedmean+3*pedstd
+                    # posAmp
+                    posmin = np.where(posAmp < posAmpmin)[0]
+                    posmax = np.where(posAmp > posAmpmax)[0]
+                    pos = np.concatenate((posmin, posmax))
+                    posAmp = np.delete(posAmp, pos)
+                    posAmpmean = statistics.median(posAmp)
+                    posAmpstd = statistics.stdev(posAmp)
+                    posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
+                    # negAmp
+                    posmin = np.where(negAmp < negAmpmin)[0]
+                    posmax = np.where(negAmp > negAmpmax)[0]
+                    pos = np.concatenate((posmin, posmax))
+                    negAmp = np.delete(negAmp, pos)
+                    negAmpmean = statistics.median(negAmp)
+                    negAmpstd = statistics.stdev(negAmp)
+                    negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
+                if saveDist:
+                    plot_distribution(array=pedestal, xtitle='pedestal', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'pedestal', bl, str(dac)]))
+                    plot_distribution(array=posAmp, xtitle='posAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'posAmp', bl, str(dac)]))
+                    plot_distribution(array=negAmp, xtitle='negAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'negAmp', bl, str(dac)]))
+                
+                # pedestal
+                out_dict['testItem'].append('pedestal')
+                out_dict['CFG'].append(cfg)
+                out_dict['BL'].append(bl)
+                out_dict['DAC'].append(dac)
+                out_dict['mean'].append(pedmean)
+                out_dict['std'].append(pedstd)
+                # posAmp
+                out_dict['testItem'].append('posAmp')
+                out_dict['CFG'].append(cfg)
+                out_dict['BL'].append(bl)
+                out_dict['DAC'].append(dac)
+                out_dict['mean'].append(posAmpmean)
+                out_dict['std'].append(posAmpstd)
+                # negAmp
+                out_dict['testItem'].append('negAmp')
+                out_dict['CFG'].append(cfg)
+                out_dict['BL'].append(bl)
+                out_dict['DAC'].append(dac)
+                out_dict['mean'].append(negAmpmean)
+                out_dict['std'].append(negAmpstd)
 
     # for key in out_dict.keys():
     #     print(len(out_dict[key]))
@@ -771,55 +970,70 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
     # BLs = []
     # means = []
     # stds = []
+    # print(processed_data_df)
+    # sys.exit()
     # processed_data = {'posAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}},
     #                 'negAmp' : {'SNC0': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}, 'SNC1': {'INL': [], 'GAIN': [], 'minCharge (fC)': [], 'maxCharge (fC)' : []}}
     #                 }
     # processed_data_dict = {'BL': [], 'testItem': [], 'mean': [], 'std': []}
     # processed_data_dict = {'item': [], 'BL': [], 'gain (fC/ADC bit)': [], 'std gain (fC/ADC bit)': [], 'INL (%)': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}
-    processed_data_dict = {'item': [], 'BL': [], 'measItem': [], 'unit': [], 'mean': [], 'std' : []}
+    processed_data_dict = {'item': [], 'CFG': [], 'BL': [], 'measItem': [], 'unit': [], 'mean': [], 'std' : []}
     # unit_gain = 'fC/ADC bit'
     unit = ''
-    for keyItem in processed_data.keys():
-        itemData = processed_data[keyItem]
-        for bl in itemData.keys():
-            bldata = itemData[bl]
-            for key, val in bldata.items():
-                median, std = statistics.median(val), statistics.stdev(val)
-                xmin, xmax = median - 3*std, median+3*std
-                for _ in range(10):
-                    posmin = np.where(val<xmin)[0]
-                    posmax = np.where(val>xmax)[0]
-                    pos = np.concatenate((posmin, posmax))
-                    val = np.delete(val, pos)
+    testItems = processed_data_df['item'].unique() # posAmp, negAmp
+    # for keyItem in processed_data.keys():
+    for keyItem in testItems:
+        itemData = processed_data_df[processed_data_df['item']==keyItem].copy().reset_index().drop('index', axis=1)
+        CFGs = itemData['outputCFG'].unique()
+        for cfg in CFGs:
+            cfgdata = itemData[itemData['outputCFG']==cfg].copy().reset_index().drop('index', axis=1)
+            # itemData = processed_data[keyItem]
+            BLs = cfgdata['BL'].unique() # SNC0, SNC1
+            # for bl in itemData.keys():
+            for bl in BLs:
+                bldata = cfgdata[cfgdata['BL']==bl].copy().reset_index().drop('index', axis=1)
+                # bldata = itemData[bl]
+                item_to_process = ['INL', 'GAIN', 'linRange']
+                # for key, val in bldata.items():
+                for key in item_to_process:
+                    val = bldata[key]
                     median, std = statistics.median(val), statistics.stdev(val)
                     xmin, xmax = median - 3*std, median+3*std
-                if saveDist:
-                    plot_distribution(array=d, xtitle='{} {} {}'.format(keyItem, bl, key), output_path_fig=output_path_fig, figname='_'.join([cali_item, keyItem, bl, key]))
-                outKEY = ''
-                processed_data_dict['item'].append(keyItem)
-                processed_data_dict['BL'].append(bl)
-                if key=='INL':
-                    unit = '%'
-                    outKEY = key
-                    # processed_data_dict[outKEY].append(np.round(median*100, 4))
-                elif key=='GAIN':
-                    outKEY = 'gain'
-                    unit = 'fC/ADC bit'
-                    # processed_data_dict[outKEY].append(np.round(median, 4))
-                    # processed_data_dict['std {}'.format(outKEY)].append(np.round(std, 4))
-                else:
-                    outKEY = key
-                    unit = 'fC'
-                    # processed_data_dict[outKEY].append(np.round(median, 4))
-                processed_data_dict['measItem'].append(outKEY)
-                if key=='INL':
-                    processed_data_dict['mean'].append(np.round(median*100, 4))
-                    processed_data_dict['std'].append(np.round(std, 4))
-                    processed_data_dict['unit'].append(unit)
-                else:
-                    processed_data_dict['mean'].append(np.round(median, 4))
-                    processed_data_dict['std'].append(np.round(std, 4))
-                    processed_data_dict['unit'].append(unit)
+                    for _ in range(10):
+                        posmin = np.where(val<xmin)[0]
+                        posmax = np.where(val>xmax)[0]
+                        pos = np.concatenate((posmin, posmax))
+                        val = np.delete(val, pos)
+                        median, std = statistics.median(val), statistics.stdev(val)
+                        xmin, xmax = median - 3*std, median+3*std
+                    if saveDist:
+                        plot_distribution(array=d, xtitle='{} {} {}'.format(keyItem, bl, key), output_path_fig=output_path_fig, figname='_'.join([cali_item, keyItem, bl, key]))
+                    outKEY = ''
+                    processed_data_dict['item'].append(keyItem)
+                    processed_data_dict['BL'].append(bl)
+                    if key=='INL':
+                        unit = '%'
+                        outKEY = key
+                        # processed_data_dict[outKEY].append(np.round(median*100, 4))
+                    elif key=='GAIN':
+                        outKEY = 'gain'
+                        unit = 'fC/ADC bit'
+                        # processed_data_dict[outKEY].append(np.round(median, 4))
+                        # processed_data_dict['std {}'.format(outKEY)].append(np.round(std, 4))
+                    else:
+                        outKEY = key
+                        unit = 'fC'
+                        # processed_data_dict[outKEY].append(np.round(median, 4))
+                    processed_data_dict['measItem'].append(outKEY)
+                    processed_data_dict['CFG'].append(cfg)
+                    if key=='INL':
+                        processed_data_dict['mean'].append(np.round(median*100, 4))
+                        processed_data_dict['std'].append(np.round(std, 4))
+                        processed_data_dict['unit'].append(unit)
+                    else:
+                        processed_data_dict['mean'].append(np.round(median, 4))
+                        processed_data_dict['std'].append(np.round(std, 4))
+                        processed_data_dict['unit'].append(unit)
 
     processed_data_df = pd.DataFrame(processed_data_dict)
     processed_data_df.to_csv('/'.join([output_path, cali_item + '_GAIN_INL.csv']), index=False)
@@ -828,12 +1042,12 @@ if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
     # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
 
-    # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
+    # # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
     # root_path = '../../B010T0004'
     # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
     # for i, data_dir in enumerate(list_data_dir):
     #     # if '20240703163752' in data_dir:
-    #         asicdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=61, QC_filename='QC_CALI_ASICDAC.bin', generateWf=True)
+    #         asicdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=61, QC_filename='QC_CALI_DATDAC.bin', generateWf=True)
     #         asicdac.runASICDAC_cali(saveWfData=False)
     #         subdir = os.listdir('/'.join([root_path, data_dir]))[0]
     #         if 'QC_CALI_ASICDAC_47.bin' in os.listdir('/'.join([root_path, data_dir, subdir])):
@@ -846,11 +1060,12 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    calib_item = ['QC_CALI_DIRECT']#['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
     # for chipID in list_chipID:
     #     # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
     #     for cali_item in calib_item:
     #         ana_cali = QC_CALI_Ana(root_path=root_path, output_path=output_path, chipID=chipID, CALI_item=cali_item)
     #         ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+    #         sys.exit()
     for cali_item in calib_item:
         StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
