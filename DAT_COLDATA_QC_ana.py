@@ -766,13 +766,13 @@ class QC_ANA():
                     elif "CUR_2" in onekey:
                         pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
                     elif "CUR_3" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [55, 65])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [50, 65])
                     elif "CUR_4" in onekey:
                         pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
                     elif "CUR_5" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [55, 65])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [50, 65])
                     elif "CUR_6" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [55, 65])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [50, 65])
                     else:
                         pass_flg = self.ana_cdpwr(pwr_meas, cddio = [60, 75])
 
@@ -850,6 +850,7 @@ if __name__=="__main__":
     #fdir = froot + fsubdir + "\\"
 
     fdir = """D:\DAT_CD_QC\RT_CD_031672417_031862417/"""
+    fdir = '''D:\DAT_SN_data\SN1\Time_20250103160419_DUT_1000_2000\RT_CD_060602417_060562417/'''
 
     evl = input ("Analyze all test items? (Y/N) : " )
     if ("Y" in evl) or ("y" in evl):
