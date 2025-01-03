@@ -134,6 +134,27 @@ if 0 in tms:
         cds_pwr_info = dat.dat_cd_pwr_meas()
         datad["CD_PWRON"] = cds_pwr_info
         warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+        #while True:
+        #    fes_pwr_info = dat.fe_pwr_meas()
+        #    datad["FE_PWRON"] = fes_pwr_info
+        #    #for key in datad["FE_PWRON"].keys():
+        #    #    print (key, datad["FE_PWRON"][key])
+        #    adcs_pwr_info = dat.adc_pwr_meas()
+        #    datad["ADC_PWRON"] = adcs_pwr_info
+        #    #for key in datad["ADC_PWRON"].keys():
+        #    #    #if "ADC3-0xB_VDDD2P5" in key:
+        #    #    if "ADC2-0xA" in key:
+        #    #        print (key, datad["ADC_PWRON"][key])
+        #    #    if "ADC3-0xB" in key:
+        #    #        print (key, datad["ADC_PWRON"][key])
+        #    #print (datad["ADC_PWRON"])
+        #    cds_pwr_info = dat.dat_cd_pwr_meas()
+        #    datad["CD_PWRON"] = cds_pwr_info
+        #    #print (datad["CD_PWRON"])
+        #    warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+        #    #input ("aa")
+        #    time.sleep(3)
+        #    print ("####################################################")
 
         if warn_flg:
             datad["QCstatus"] = "Code#E002: Large current of some ASIC chips is observed"
@@ -650,6 +671,9 @@ if 8 in tms:
     datad = {}
     datad['logs'] = logs
 
+    Vref = dat.dat_CAL_MON_VREF()
+    datad["FE_Ext_Cali_Vref"] = Vref
+
     #bl200mV
     snc=1
     #3.0us
@@ -679,27 +703,24 @@ if 8 in tms:
             #4.7mV/fC
             sg0=1
             sg1=1
-            cali_vals=[0.2, 0.9]
-            dire_vals=[0.95, 1.05]
+            cali_vals=[Vref - 0.9, Vref - 0.2]
+            dire_vals=[Vref - 0.15, Vref - 0.05]
         if False:
             #7.8mV/fC
             sg0=0
             sg1=1
-            cali_vals=[0.5, 1.00]
-            dire_vals=[1.00, 1.07]
+            cali_vals=[Vref - 0.6, Vref - 0.1]
+            dire_vals=[Vref - 0.1, Vref - 0.03]
         if False:
             #14mV/fC
             sg0=0
             sg1=0
-            cali_vals=[0.8, 1.05]
-            dire_vals=[1.03, 1.08]
-
+            cali_vals=[Vref - 0.3, Vref - 0.15]
+            dire_vals=[Vref - 0.07, Vref - 0.02]
     
     period = 1000
     width = 800
 
-    Vref = dat.dat_CAL_MON_VREF()
-    datad["FE_Ext_Cali_Vref"] = Vref
 
     cfg_info = dat.dat_fe_qc_cfg() #default setting 
     

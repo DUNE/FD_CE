@@ -332,7 +332,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 try:
                     os.makedirs(fddir)
                 except OSError:
-                    print ("Error to create folder %s"%save_dir)
+                    print ("Error to create folder %s"%fddir)
                     print ("Exit anyway")
                     #sys.exit()
                     return None
