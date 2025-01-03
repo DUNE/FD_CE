@@ -268,7 +268,8 @@ class DAT_CFGS(WIB_CFGS):
     def adc_pwr_meas(self):
         adc_list = ["ADC0-0x8", "ADC1-0x9", "ADC2-0xA", "ADC3-0xB", "ADC4-0x4", "ADC5-0x5", "ADC6-0x6", "ADC7-0x7"]
         addrs = [0x43, 0x44, 0x45, 0x46]
-        pwrrails = ["VDDA2P5", "VDDD1P2", "VDDIO", "VDDD2P5"]
+        #pwrrails = ["VDDA2P5", "VDDD1P2", "VDDIO", "VDDD2P5"]
+        pwrrails = ["VDDA2P5", "VDDD1P2", "VDDD2P5", "VDDIO" ]
         adcs_pwr_info = self.feadc_pwr_info(asic_list=adc_list, dat_addrs=addrs, pwrrails=pwrrails)
         return adcs_pwr_info
 
@@ -584,17 +585,14 @@ class DAT_CFGS(WIB_CFGS):
             return False
         rawdata = self.spybuf_trig(fembs=[femb_id], num_samples=1, trig_cmd=0)
         datad["FC_ACT_RST_LARASIC_SPI_Before"] = (self.fembs, rawdata)
-
         self.femb_cd_fc_act(femb_id, act_cmd="larasic_pls") #disable pulse
         time.sleep(1)
         rawdata = self.spybuf_trig(fembs=[femb_id], num_samples=1, trig_cmd=0)
         datad["FC_ACT_RST_LARASIC_SPI_DIS"] = (self.fembs, rawdata)
-
         self.femb_cd_fc_act(femb_id, act_cmd="rst_larasic_spi")
         time.sleep(1)
         rawdata = self.spybuf_trig(fembs=[femb_id], num_samples=1, trig_cmd=0)
         datad["FC_ACT_RST_LARASIC_SPI_After"] = (self.fembs, rawdata)
-
         return datad
     
     def asic_init_pwrchk(self, fes_pwr_info, adcs_pwr_info, cds_pwr_info):
@@ -645,7 +643,7 @@ class DAT_CFGS(WIB_CFGS):
                             adcbads.append(adc_no)
                         warn_flg = True
 
-            if "VDDD2P5" in onekey:
+            if "VDDIO" in onekey:
                 if  (adcs_pwr_info[onekey][0] > 2.10) & (adcs_pwr_info[onekey][0] < 2.40) & (adcs_pwr_info[onekey][1] > 10  ) & (adcs_pwr_info[onekey][1] < 40  ) :
                     pass
                 else:
@@ -656,7 +654,7 @@ class DAT_CFGS(WIB_CFGS):
                             adcbads.append(adc_no)
                         warn_flg = True
 
-            if "VDDIO" in onekey:
+            if "VDDD2P5" in onekey:
                 if  (adcs_pwr_info[onekey][0] > 2.10) & (adcs_pwr_info[onekey][0] < 2.40) & (adcs_pwr_info[onekey][1] > 3  ) & (adcs_pwr_info[onekey][1] < 10  ) :
                     pass
                 else:
@@ -742,6 +740,7 @@ class DAT_CFGS(WIB_CFGS):
     def asic_init_por(self, duts=["FE", "ADC", "CD"]): #check status after power on
         warn_flg = False
         self.dat_fpga_reset()
+        self.femb_cd_rst()
         febads = []
         adcbads = []
         cdbads = []
@@ -1168,7 +1167,7 @@ class DAT_CFGS(WIB_CFGS):
         self.fedly = 1
         fe_cali_vref = self.dat_CAL_MON_VREF()
         adac_pls_en, sts, swdac, dac = self.dat_cali_source(cali_mode=0, val=fe_cali_vref-0.05, period=0x200, width=0x180, asicdac=0x10)
-        rawdata = self.dat_fe_qc(num_samples=5, adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac, snc=1) #direct FE input
+        rawdata = self.dat_fe_qc(num_samples=5, adac_pls_en=adac_pls_en, sts=sts, swdac=swdac, dac=dac, snc=1, sg0=0, sg1=1, ) #direct FE input #7.8mV/fC
         if rawdata == False:
             return False
         #wibdata = wib_dec(rawdata[0], fembs=self.fembs, spy_num=1)[0]
@@ -1198,6 +1197,7 @@ class DAT_CFGS(WIB_CFGS):
         adc_pwr_info =  self.adc_pwr_meas()
         cd_pwr_info =  self.dat_cd_pwr_meas()
         datad["ASICDAC_CALI_CHK"] = (self.fembs, rawdata[0], rawdata[1], fes_pwr_info, adc_pwr_info, cd_pwr_info)
+        #input ("xxxxxx")
 
         if ("FE" in duts) or ("ADC" in duts):
             adac_pls_en, sts, swdac, dac = self.dat_cali_source(cali_mode=3)
@@ -1465,37 +1465,43 @@ class DAT_CFGS(WIB_CFGS):
 
     def dat_CAL_MON_VREF(self):
         print ("measure DAC_CAL_MON_VREF for Calibration")
-        mon_datas = {} 
-        mux_cs = 5
-        mux_name = self.mon_fe_cs[mux_cs]
-        self.cdpoke(0, 0xC, 0, self.DAT_FE_CALI_CS, 0x00)    
-        self.cdpoke(0, 0xC, 0, self.DAT_TEST_PULSE_EN, 0x00) #disable pin4 of U230 (FE_INS_PLS_CS)   
-        self.cdpoke(0, 0xC, 0, self.DAT_TEST_PULSE_SOCKET_EN, 0x00) #disable pin4 of U230 (FE_INS_PLS_CS = 1)   
-        self.cdpoke(0, 0xC, 0, self.DAT_FE_IN_TST_SEL_LSB, 0x00)    
-        self.cdpoke(0, 0xC, 0, self.DAT_FE_IN_TST_SEL_MSB, 0x00)    
-        self.cdpoke(0, 0xC, 0, self.DAT_ADC_FE_TEST_SEL, mux_cs<<4)    
-        self.cdpoke(0, 0xC, 0, self.DAT_FE_TEST_SEL_INHIBIT, 0x00)    
-        time.sleep(0.2)
-        datas = self.dat_monadcs()[0]
-        datas_v = np.array(datas)*self.AD_LSB
-        mon_datas["DAC_CAL_VREF"] = [datas, datas_v]
+        prev = 0
+        for i in range(5):
+            mon_datas = {} 
+            mux_cs = 5
+            mux_name = self.mon_fe_cs[mux_cs]
+            self.cdpoke(0, 0xC, 0, self.DAT_FE_CALI_CS, 0x00)    
+            self.cdpoke(0, 0xC, 0, self.DAT_TEST_PULSE_EN, 0x00) #disable pin4 of U230 (FE_INS_PLS_CS)   
+            self.cdpoke(0, 0xC, 0, self.DAT_TEST_PULSE_SOCKET_EN, 0x00) #disable pin4 of U230 (FE_INS_PLS_CS = 1)   
+            self.cdpoke(0, 0xC, 0, self.DAT_FE_IN_TST_SEL_LSB, 0x00)    
+            self.cdpoke(0, 0xC, 0, self.DAT_FE_IN_TST_SEL_MSB, 0x00)    
+            self.cdpoke(0, 0xC, 0, self.DAT_ADC_FE_TEST_SEL, mux_cs<<4)    
+            self.cdpoke(0, 0xC, 0, self.DAT_FE_TEST_SEL_INHIBIT, 0x00)    
+            time.sleep(0.2)
+            datas = self.dat_monadcs()[0]
+            datas_v = np.array(datas)*self.AD_LSB
+            mon_datas["DAC_CAL_VREF"] = [datas, datas_v]
 
-        mux_cs = 3
-        mux_name = self.mon_fe_cs[mux_cs]
-        self.cdpoke(0, 0xC, 0, self.DAT_ADC_FE_TEST_SEL, mux_cs<<4)    
-        valint = int(1.25*65536/self.ADCVREF)
-        self.dat_set_dac(val=valint, fe_cal=0)
-        if self.rev == 0:
-            self.cdpoke(0, 0xC, 0, self.DAT_FE_CMN_SEL, 4)    
-        else:
-            self.cdpoke(0, 0xC, 0, self.DAT_FE_CMN_SEL, 1)    
-        time.sleep(0.2)
-        datas = self.dat_monadcs()[0]
-        datas_v = np.array(datas)*self.AD_LSB
-        mon_datas["DAC_MON_VREF"] = [datas, datas_v]
-
-        mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
-        cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
+            mux_cs = 3
+            mux_name = self.mon_fe_cs[mux_cs]
+            self.cdpoke(0, 0xC, 0, self.DAT_ADC_FE_TEST_SEL, mux_cs<<4)    
+            valint = int(1.25*65536/self.ADCVREF)
+            self.dat_set_dac(val=valint, fe_cal=0)
+            if self.rev == 0:
+                self.cdpoke(0, 0xC, 0, self.DAT_FE_CMN_SEL, 4)    
+            else:
+                self.cdpoke(0, 0xC, 0, self.DAT_FE_CMN_SEL, 1)    
+            time.sleep(0.3)
+            datas = self.dat_monadcs()[0]
+            datas_v = np.array(datas)*self.AD_LSB
+            mon_datas["DAC_MON_VREF"] = [datas, datas_v]
+            mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
+            cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
+            print (cali_vref, prev)
+            if abs(cali_vref - prev) < 0.001:
+                break
+            else:
+                prev = cali_vref 
 
         return cali_vref
 
@@ -2042,9 +2048,9 @@ class DAT_CFGS(WIB_CFGS):
                 vnom = vcmo_nom            
 
             for chipno in range(8):
-                if (self.rev==1) and (self.dat_sn==7) and (chipno ==2): #bypass chipno2 on Rev1_SN7
-                    print ("monitoring on DAT rev#1SN7 for ColdADC chip(0-7)#2 is dysfunctional, ignore!")
-                    continue
+                #if (self.rev==1) and (self.dat_sn==7) and (chipno ==2): #bypass chipno2 on Rev1_SN7
+                #    print ("monitoring on DAT rev#1SN7 for ColdADC chip(0-7)#2 is dysfunctional, ignore!")
+                #    continue
                 data = datad[onekey][1][chipno]
                 if (vnom*err_low < data) and (data < vnom*err_high):
                     pass

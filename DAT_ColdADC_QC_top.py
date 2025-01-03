@@ -67,22 +67,6 @@ dat.dat_sn = dat_sn
 
 logs.update(logsd)
 
-#if dat.rev == 0:
-#    if dat_sn  == 1:
-#        dat.fe_cali_vref = 1.583
-#    if dat_sn  == 2:
-#        dat.fe_cali_vref = 1.5738
-#if dat.rev == 1:
-#    if 'RT' in logs['env']:
-#        dat.fe_cali_vref = 1.090
-#        if dat_sn  == 7:
-#            dat.fe_cali_vref = 1.193 #DAT_SN=7
-#        if dat_sn  == 8:
-#            dat.fe_cali_vref = 1.185 #DAT_SN=8
-#    else:
-#        dat.fe_cali_vref = 1.030 #DAT_SN=3
-#Vref = dat.fe_cali_vref
-
 ####### Init check information #######
 if True:
     print ("Check DAT power status")
@@ -128,11 +112,6 @@ if 0 in tms:
             #datad["CD_Fail"] = []
             datad["QCstatus"] = "Code#E201(ColdADC): large current or HS link error when DAT is powered on"
         else:
-            mon_datas = dat.dat_CAL_MON_VREF()
-            mon_vref = np.mean(mon_datas["DAC_MON_VREF"][0])
-            cali_vref =  mon_datas["DAC_CAL_VREF"][0][0]*1.25/mon_vref
-            dat.fe_cali_vref = cali_vref 
-
             fes_pwr_info = dat.fe_pwr_meas()
             datad["FE_PWRON"] = fes_pwr_info
             adcs_pwr_info = dat.adc_pwr_meas()
@@ -175,7 +154,7 @@ if 0 in tms:
             cfg_info = dat.dat_adc_qc_cfg(autocali=0)
             dat.femb_cd_rst()
     else:
-        datad["QCstatus"] = "Code#E201(ColdADC):Please load wib_top_0506.bin for ADC QC"
+        datad["QCstatus"] = "Code#E201(ColdADC):Please load wib_top_coldadc_qc_sim.wibbin for ADC QC"
 
     datad['logs'] = logs
     print ("QCstatus:", datad["QCstatus"])

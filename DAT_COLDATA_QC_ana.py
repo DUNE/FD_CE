@@ -322,7 +322,7 @@ class QC_ANA():
                     pwr_meas = cfgdata[5]
         
                     if ("DIRECT_PLS_CHK" in onekey) :
-                        failflg = self.ana_res(fembs, rawdata, par=[6000,14000], rmsr=[5,25], pedr=[300,3000] )
+                        failflg = self.ana_res(fembs, rawdata, par=[3000,10000], rmsr=[2.5,15], pedr=[300,3000] )
                     elif ("ASICDAC_CALI_CHK" in onekey):
                         failflg = self.ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[100,3000] )
     
@@ -690,7 +690,6 @@ class QC_ANA():
     
             for chn in chns:
                 if (peds_p[chn] < 4000) and (pamps_p[chn] > 5000) and (peds_a[chn] > 6000) and (pamps_a[chn] < 3000): 
-                    pass
                     if chn == chns[-1]:
                         print (Fore.GREEN + "FC_ACT_RST_LARASIC" + "  : PASS")
                 else:
@@ -698,6 +697,10 @@ class QC_ANA():
                     print(Fore.RED + "FC_ACT_RST_LARASIC" + " : Fail")
                     pass_flg = False
                     break
+            if pass_flg:
+                self.qc_stats[onekey] ="PASS"
+            else:
+                self.qc_stats[onekey] ="FAIL"
     
             cfgdata = data["FC_ACT_RST_LARASIC_SPI_Before"] #200mV, pulsed
             fembs = cfgdata[0]
@@ -725,6 +728,11 @@ class QC_ANA():
                     print(Fore.RED + "FC_ACT_RST_LARASIC_SPI" + " : Fail")
                     pass_flg = False
                     break
+            if pass_flg:
+                self.qc_stats[onekey] ="PASS"
+            else:
+                self.qc_stats[onekey] ="FAIL"
+
     
         if 6 in tms:
             print ("-------------------------------------------------------------------------")

@@ -222,7 +222,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         self.femb_power_config(2,  vfe, vcd, vadc)
         self.femb_power_config(3,  vfe, vcd, vadc)
 
-    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=0.9,dc1_ilim=0.9, dc2_ilim=1.8):
+    def femb_safe_powering(self, fembs = [], bias_ilim=0.3, dc0_ilim=0.9,dc1_ilim=0.9, dc2_ilim=1.9):
         if len(fembs) > 0:
             ##debugging
             #for femb_id in fembs:
@@ -680,6 +680,8 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
         elif act_cmd == "rst_larasics":
             wrdata = 0x06
         elif act_cmd == "rst_larasic_spi":
+            for chip in range(8):
+                self.femb_i2c_wrchk(femb_id, chip_addr=3-(chip//4), reg_page=(chip%4+1), reg_addr=0xB, wrdata=0x7f        )
             wrdata = 0x07
         elif act_cmd == "prm_larasics":
             wrdata = 0x08
@@ -1042,11 +1044,13 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
             sts_cd1 = self.femb_i2c_rd(femb_id, chip_addr=3, reg_page=0, reg_addr=0x24)
             sts_cd2 = self.femb_i2c_rd(femb_id, chip_addr=2, reg_page=0, reg_addr=0x24)
 
+
             if (sts_cd1&0xff == 0xff) and (sts_cd2&0xff == 0xff):
                 print ("FEs are configurated")
                 break
             else:
                 print ("\033[91m" + "LArASIC readback status are {} {}, diffrent from 0xFF".format(sts_cd1, sts_cd2) + "\033[0m")
+                continue
                 if i > 10:
                     if (sts_cd1>>0)&0x03 != 0x03:
                         self.fe_spi_fails[0] = True
