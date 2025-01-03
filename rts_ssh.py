@@ -138,11 +138,11 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
         tms_items[3  ] = "\033[96m 3: ADC reference voltage measurement  \033[0m"
         tms_items[4  ] = "\033[96m 4: ADC autocalibration check  \033[0m"
         tms_items[5  ] = "\033[96m 5: ADC noise measurement  \033[0m"
-        tms_items[6  ] = "\033[96m 6: ADC DNL/INL measurement  \033[0m"
         tms_items[7  ] = "\033[96m 7: ADC DAT-DAC SCAN  \033[0m"
-        tms_items[8  ] = "\033[96m 8: ADC ENOB measurement \033[0m"
         tms_items[11 ] = "\033[96m 11: ADC ring oscillator frequency readout \033[0m"
         tms_items[12 ] = "\033[96m 12: ADC RANGE test \033[0m"
+        tms_items[8  ] = "\033[96m 8: ADC ENOB measurement \033[0m"
+        tms_items[6  ] = "\033[96m 6: ADC DNL/INL measurement  \033[0m"
         tms_items[9  ] = "\033[96m 9: Turn DAT off \033[0m"
 #        tms_items[10 ] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
     elif "CD" in duttype:

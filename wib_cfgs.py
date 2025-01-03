@@ -1033,6 +1033,7 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                     if rdreg != self.regs_int8[chip][reg_id]:
                         self.femb_i2c_wrchk(femb_id, chip_addr=2, reg_page=(chip%4+1), reg_addr=(0x91-reg_id), wrdata=self.regs_int8[chip][reg_id])
         i = 0
+
         while True:
             self.femb_cd_fc_act(femb_id, act_cmd="clr_saves")
             time.sleep(0.001)
@@ -1050,7 +1051,6 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
                 break
             else:
                 print ("\033[91m" + "LArASIC readback status are {} {}, diffrent from 0xFF".format(sts_cd1, sts_cd2) + "\033[0m")
-                continue
                 if i > 10:
                     if (sts_cd1>>0)&0x03 != 0x03:
                         self.fe_spi_fails[0] = True
