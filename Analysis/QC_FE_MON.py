@@ -6,7 +6,7 @@
 
 import numpy as np
 import os, sys, pickle
-from utils import printItem, createDirs, dumpJson, linear_fit, BaseClass
+from utils import printItem, createDirs, dumpJson, linear_fit, BaseClass, gain_inl
 import matplotlib.pyplot as plt
 import json, statistics
 from scipy.stats import norm
@@ -190,10 +190,10 @@ class FE_MON(BaseClass):
             dac_meas_chip = dac_meas[FE_ID]
             for config in dac_meas_chip.keys():
                 #### In case a linearity range is needed from the monitoring, refer to this line
-                AD_LSB = 2564/4096 # need to ask about this constant
-                GAIN, Yintercept, INL = linear_fit(x=dac_meas_chip[config]['DAC'], y=np.array(dac_meas_chip[config]['data'])*AD_LSB)
+                AD_LSB = 2564/4096 # LSB in mV / ADC bit
+                GAIN, Yintercept, INL = linear_fit(x=dac_meas_chip[config]['DAC'], y=np.array(dac_meas_chip[config]['data'])*AD_LSB) # y here is in mV
                 dac_meas_chip[config]['GAIN'] = np.round(GAIN,4)
-                dac_meas_chip[config]['unit_of_gain'] = 'mV/bit'
+                dac_meas_chip[config]['unit_of_gain'] = 'mV/bit' # mV / DAC bit
                 dac_meas_chip[config]['INL'] = np.round(INL,4)*100
             oneChipData = {
                 "logs" : logs,
@@ -204,8 +204,9 @@ class FE_MON(BaseClass):
 
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='FE_MON', data_to_dump=oneChipData, indent=4)
 
-class QC_FE_MON_StatAna():
-    def __init__(self, root_path: str, output_path: str):
+class QC_FE_MON_Ana():
+    def __init__(self, root_path: str, output_path: str, chipID=''):
+        self.chipID = chipID
         self.root_path = root_path
         self.output_path = output_path
         self.output_fig = '/'.join([output_path, 'fig'])
@@ -221,6 +222,85 @@ class QC_FE_MON_StatAna():
         return chipDirExist and qcMondirExist and feMonFileExist
     
     def getItems(self):
+        path_to_chipID = '/'.join([self.root_path, self.chipID])
+        if not self._FileExist(chipdir=path_to_chipID):
+            return None
+        path_to_file = '/'.join([path_to_chipID, 'QC_MON/FE_MON.json'])
+        data = json.load(open(path_to_file))
+        logs = data['logs']
+        BL_dict = data['BL']
+        BL_dict['CH'] = [ich for ich in range(16)]
+        BL_df = pd.DataFrame(BL_dict)
+        # print(BL_df)
+
+        DAC_meas_dict = data['DAC_meas']
+        DAC_meas_df = pd.DataFrame()
+        configs = [c for c in DAC_meas_dict.keys()]
+        GAIN_INL_DNL_RANGE = {'CFG': [], 'gain': [], 'worstINL': [], 'worstDNL': [], 'linRange': []}
+        for icfg, cfg in enumerate(configs):
+            tmp_df = {}
+            # print(DAC_meas_dict[cfg])
+            keys = [c for c in DAC_meas_dict[cfg].keys() if (c=='DAC') | (c=='data')]
+            # print(keys)
+            for key in keys:
+                tmp_df[key] = DAC_meas_dict[cfg][key]
+            tmp_df['CFG'] = [cfg for _ in range(len(tmp_df[keys[0]]))]
+            tmp_df = pd.DataFrame(tmp_df)
+            # print(tmp_df)
+            if icfg==0:
+                DAC_meas_df = tmp_df
+            else:
+                DAC_meas_df = pd.concat([DAC_meas_df, tmp_df], axis=0)
+            DAC_list = tmp_df['DAC'] # DAC bit
+            data_list = tmp_df['data'] # in mV
+            AD_LSB = 2564/4096 # 2564 mV / 2^12 ==> mV / ADC bit
+            ## units: gain in DAC bit / mV -- need to convert to mV / DAC bit
+            ## worstinl * 100 ==> %
+            ## linRange in DAC bit
+            gain, yintercept, worstinl, linRange, worstdnl = gain_inl(y=DAC_list, x=data_list*AD_LSB, item='', returnDNL=True)
+
+            # GAIN_INL_DNL_RANGE[cfg] = {'gain': 1/gain, 'worstINL': worstinl*100, 'linRange': np.abs(linRange[1]-linRange[0]), 'worstDNL': worstdnl*100} # gain in mV/ADC bit, worstINL and worstDNL in %, linRange in DAC bit
+            GAIN_INL_DNL_RANGE['CFG'].append(cfg)
+            GAIN_INL_DNL_RANGE['gain'].append(1/gain)
+            GAIN_INL_DNL_RANGE['worstINL'].append(worstinl*100)
+            GAIN_INL_DNL_RANGE['worstDNL'].append(worstdnl*100)
+            GAIN_INL_DNL_RANGE['linRange'].append(np.abs(linRange[1]-linRange[0]))
+            # if np.abs(linRange[1]-linRange[0]) ==7:
+            #     plt.figure()
+            #     plt.scatter(data_list, DAC_list)
+            #     plt.show()
+            #     sys.exit()
+        # print(DAC_meas_df) 
+        # sys.exit()
+        GAIN_INL_DNL_RANGE = pd.DataFrame(GAIN_INL_DNL_RANGE)
+        # sys.exit()
+        
+        VBGR_Temp_dict = data['VBGR_Temp']
+
+        # print(VBGR_Temp_dict)
+        # sys.exit()
+        return {'BL': BL_df, 'VBGR_TEMP': VBGR_Temp_dict, 'GAIN_INL': GAIN_INL_DNL_RANGE}
+
+    def run_Ana(self, path_to_statAna=''):
+        # stat_ana_df
+        stat_ana_df = pd.read_csv(path_to_statAna)
+        print(stat_ana_df)
+        sys.exit()
+        items = self.getItems()
+        if items==None:
+            print('NONE')
+            return None
+        BL = items['BL']
+        VBGR_Temp_dict = items['VBGR_TEMP']
+        GAIN_INL_df = items['GAIN_INL']
+        
+        
+
+class QC_FE_MON_StatAna(QC_FE_MON_Ana):
+    def __init__(self, root_path: str, output_path: str):
+        super().__init__(root_path=root_path, output_path=output_path)
+
+    def getItems(self): ### need to update this function to use the getItems in QC_FE_MON_Ana. It will be easier to read that way and we will have access to more information
         list_chipID = os.listdir(self.root_path)
         out_dict = dict()
         i = 0
@@ -289,7 +369,7 @@ class QC_FE_MON_StatAna():
         # # plt.xlim([1500, 1575])
         # plt.show()
         return out_dict, unit_gain, unit_vbgrtemp
-
+    
     def run_Ana(self):
         ##############################################################
         print('FE MONITORING Statistical analysis...')
@@ -434,5 +514,9 @@ if __name__ == '__main__':
     #########
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
-    femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
-    femon_stat.run_Ana()
+    list_chipID = os.listdir(root_path)
+    for chipID in list_chipID:
+        ana_femon = QC_FE_MON_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+        ana_femon.run_Ana(path_to_statAna='/'.join([output_path, 'StatAna_FE_MON.csv']))
+    # femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
+    # femon_stat.run_Ana()

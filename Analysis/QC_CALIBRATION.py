@@ -278,8 +278,8 @@ class QC_CALI_Ana(BaseClass_Ana):
             '25mV/fC': 4.7272
         }
         self.unit_MonGain = 'mV/DAC bit'
-        self.CalibCap = 1.85*1E-13 # the calibration capacitance with ASICDAC is 185 fF = 0.185 pF
-        self.CalibCap_DATDAC = 1E-15 # Need to confirm with Shanshan
+        self.CalibCap = 185*1E-15 # the calibration capacitance with ASICDAC is 185 fF = 0.185 pF
+        self.CalibCap_DATDAC = 1000*1E-15 # Need to confirm with Shanshan. Calibration capacitance for DATDAC and DIRECT is equal to 1E-12 F = 1pF
         self.tms = {'CALI_ASICDAC': 61,
                     'CALI_DATDAC': 62,
                     'CALI_DIRECT': 63,
@@ -505,8 +505,39 @@ class QC_CALI_Ana(BaseClass_Ana):
                 chdf = dac_cfg_df[dac_cfg_df['CH']==chn].copy()
                 chdf.sort_values(by='data', inplace=True)
                 chdf = chdf.reset_index()
-                chdf['DAC'] = chdf['DAC'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+                # calib = self.Mon_Gain[self.config['gain']] * self.CalibCap / np.power(10., -15) # mV/DAC bit * C  * 1E15 = mV/DAC bit * fC
+                # if self.tms==62 | self.tms==63:
+                #     calib = self.CalibCap_DATDAC / np.power(10., -12)
+                # # chdf['DAC'] = chdf['DAC'] * 1e-3 * self.CalibCap / np.power(10., -15) # unit of input charge : fC
+                # chdf['DAC'] = chdf['DAC'] * 1e-3 * calib # DAC bit * 1E-3 * mV/DAC bit * fC = V * fC
+                # calibcap = self.CalibCap
+                # if self.tms==62 | self.tms==63:
+                #     calibcap = self.CalibCap_DATDAC
+                
+                ##
+                ## gain in mV / DAC bit
+                ## DAC in DAC
+                ## CalibCap in F
+                ##
+                ## select calibcap
+                calibCap = self.CalibCap
+                if self.tms==62 | self.tms==63:
+                    calibCap = self.CalibCap_DATDAC
+                ## DAC in V
+                if 'ASICDAC' in self.item:
+                    chdf['DAC'] = chdf['DAC'] * self.Mon_Gain[self.config['gain']] * 1E-3
+                else:
+                    chdf['DAC'] = chdf['DAC'] * 1E-3
+                ## DAC in fC
+                chdf['DAC'] = chdf['DAC'] * calibCap * 1E15
+                ## DAC in e-
+                # chdf['DAC'] = chdf['DAC'] * calibCap / (1.602*1E-19)
+                # plt.figure()
+                # plt.scatter(y=chdf['DAC'], x=chdf['data'])
+                # plt.show()
+                # sys.exit()
                 slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
+                
                 if generatePlot:
                     ypred = slope*chdf['data'] + yintercept
                     # print(slope, yintercept, inl, linRange)
@@ -522,9 +553,9 @@ class QC_CALI_Ana(BaseClass_Ana):
                 INLs[chn] = inl # need to  multiply by 100  to get %
                 GAINs[chn] = slope
                 linearity_range[chn] = linRange
-            all_INLs[dac_cfg] = INLs
-            all_GAINs[dac_cfg] = GAINs
-            all_linearity_range[dac_cfg] = linearity_range
+            all_INLs[dac_cfg] = INLs # INL*100 gives %
+            all_GAINs[dac_cfg] = GAINs # in fC/ADC bit
+            all_linearity_range[dac_cfg] = linearity_range # in fC
         if returnGain:
             # print(all_INLs)
             # sys.exit()
@@ -669,24 +700,64 @@ class QC_CALI_Ana(BaseClass_Ana):
         items = ['posAmp', 'negAmp']
         BLs = ['SNC0', 'SNC1']
         BL_dict = {'SNC0': '900mV', 'SNC1' : '200mV'}
-        out_dict = {'item' : [], 'BL': [], 'ch': [], 'gain (fC/ADC bit)': [], 'worstINL (%)': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}
+        # out_dict = {'item' : [], 'BL': [], 'CFG': [], 'ch': [], 'gain (fC/ADC bit)': [], 'worstINL (%)': [], 'minCharge (fC)': [], 'maxCharge (fC)': []}
+        out_dict = {'item' : [], 'BL': [], 'CFG': [], 'ch': [], 'gain (fC/ADC bit)': [], 'worstINL (%)': [], 'linRange (fC)': []}
         for item in items:
             for BL in BLs:
-                worstinls, gains, linRanges = self.getINL(BL=BL, item=item, generatePlot=generatePlots, returnGain=True)
-                for ich in range(16):
-                    out_dict['ch'].append(ich)
-                    out_dict['item'].append(item)
-                    out_dict['BL'].append(BL)
-                    out_dict['gain (fC/ADC bit)'].append(np.round(gains[ich], 4))
-                    out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4)) # the worstINL is converted to %
-                    out_dict['minCharge (fC)'].append(linRanges[ich][0])
-                    out_dict['maxCharge (fC)'].append(linRanges[ich][1])
+                print("output of getINL")
+                # format of the output of self.getINL : all_INLs, all_GAINs, all_linearity_range, df
+                outINL = self.getINL(BL=BL, item=item, generatePlot=generatePlots, returnGain=True)
+                configurations = list(outINL[0].keys())
+                # print(outINL[0])
+                # print('-----------------------')
+                # print(outINL[1])
+                # print('------------------------')
+                # print(outINL[2])
+                # print('-----------------------')
+                # print(outINL[3])
+                # print('-----------------------')
+                # print(configurations)
+                all_INLs = outINL[0]
+                all_GAINs = outINL[1]
+                all_linearity_range = outINL[2]
+                df = outINL[3]
+                for cfg in configurations:
+                    cfg_INL_dict =all_INLs[cfg]
+                    cfg_GAIN_dict = all_GAINs[cfg]
+                    cfg_linRange_dict = all_linearity_range[cfg]
+                    for ich in range(16):
+                        out_dict['ch'].append(ich)
+                        out_dict['item'].append(item)
+                        out_dict['BL'].append(BL)
+                        out_dict['CFG'].append(cfg)
+                        out_dict['gain (fC/ADC bit)'].append(np.round(cfg_GAIN_dict[ich], 4))
+                        out_dict['worstINL (%)'].append(np.round(cfg_INL_dict[ich]*100, 2)) # the worstINL is converted to %
+                        out_dict['linRange (fC)'].append(np.round(cfg_linRange_dict[ich][1]-cfg_linRange_dict[ich][0], 2))
+                        # out_dict['minCharge (fC)'].append(0)
+                        # out_dict['maxCharge (fC)'].append(np.round(cfg_linRange_dict[ich][1]-cfg_linRange_dict[ich][0], 2))
+                # print(out_dict)
+                # sys.exit()
+                # worstinls, gains, linRanges = self.getINL(BL=BL, item=item, generatePlot=generatePlots, returnGain=True)
+                # for ich in range(16):
+                #     out_dict['ch'].append(ich)
+                #     out_dict['item'].append(item)
+                #     out_dict['BL'].append(BL)
+                #     out_dict['gain (fC/ADC bit)'].append(np.round(gains[ich], 4))
+                #     out_dict['worstINL (%)'].append(np.round(worstinls[ich]*100, 4)) # the worstINL is converted to %
+                #     out_dict['minCharge (fC)'].append(linRanges[ich][0])
+                #     out_dict['maxCharge (fC)'].append(linRanges[ich][1])
         
         out_df = pd.DataFrame(out_dict)
+        # print(out_df)
+        print('---------------- After converting out_df ------------')
+        # print(out_df)
+        # sys.exit()
         # out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
         #
         # get statistical analysis file
         cali_statAna_df = pd.read_csv(path_to_statAna)
+        # print(cali_statAna_df)
+        # print('------------ after reading statAna --------------')
         ## Append statAna to the result for one chip
         measItems = cali_statAna_df['measItem'].unique()
         
@@ -696,9 +767,9 @@ class QC_CALI_Ana(BaseClass_Ana):
             tmp_df = cali_statAna_df[cali_statAna_df['measItem']==measItems[i]].copy().reset_index().drop('index', axis=1)
             # print(tmp_df)
             if i==0:
-                tmp_out_df = tmp_df[['item', 'BL', 'mean', 'std']].copy()
+                tmp_out_df = tmp_df[['item', 'CFG', 'BL', 'mean', 'std']].copy()
             else:
-                tmp_out_df = pd.merge(tmp_out_df, tmp_df[['item', 'BL', 'mean', 'std']], on=['item', 'BL'], how='outer')
+                tmp_out_df = pd.merge(tmp_out_df, tmp_df[['item', 'CFG', 'BL', 'mean', 'std']], on=['item', 'CFG', 'BL'], how='outer')
             tmp_out_df.rename(columns={'mean': 'mean_{}'.format(measItems[i]), 'std': 'std_{}'.format(measItems[i])}, inplace=True)
 
         cali_statAna_new_df = {key: [] for key in tmp_out_df.keys()}
@@ -710,13 +781,29 @@ class QC_CALI_Ana(BaseClass_Ana):
                 cali_statAna_new_df['ch'].append(ich)
         cali_statAna_new_df = pd.DataFrame(cali_statAna_new_df)
 
-        combined_df = pd.merge(out_df, cali_statAna_new_df, on=['item', 'BL', 'ch'], how='outer')
+        combined_df = pd.merge(out_df, cali_statAna_new_df, on=['item', 'CFG', 'BL', 'ch'], how='outer')
+        # print('------ combined_df ----------')
+        # print(combined_df)
+        
         keys_combined = combined_df.keys()
+        # print(keys_combined)
+        # print(measItems)
+        # sys.exit()
         result_qc_df = pd.DataFrame()
         for i, measItem in enumerate(measItems):
             k = [key for key in keys_combined if measItem in key] 
-            tmp = combined_df[['item', 'BL', 'ch']+k].copy().reset_index().drop('index', axis=1)
-            keyval = [t for t in k if ('mean' not in t) & ('std' not in t)][0]
+            tmp = combined_df[['item', 'CFG','BL', 'ch']+k].copy().reset_index().drop('index', axis=1)
+            # print(tmp)
+            # print(k)
+
+            keyval = [t for t in k if ('mean' not in t) & ('std' not in t)]
+            try:
+                keyval = keyval[0]
+                # print(keyval)
+            except:
+                print('key val = ',keyval)
+                print('measItem = ', measItem)
+            
             tmp.rename(columns={keyval: 'value', 'mean_{}'.format(measItem): 'mean', 'std_{}'.format(measItem): 'std'}, inplace=True)
             if measItem=='INL': # we accept ASIC with worstINL < 1% (double-check with Shanshan)
                 tmp['QC_result'] = (tmp['value'] < 1)
@@ -727,13 +814,19 @@ class QC_CALI_Ana(BaseClass_Ana):
             if i==0:
                 result_qc_df = tmp.copy().reset_index().drop('index', axis=1)
             else:
-                result_qc_df = pd.merge(result_qc_df, tmp, on=['item', 'BL', 'ch'], how='outer')
+                result_qc_df = pd.merge(result_qc_df, tmp, on=['item', 'CFG','BL', 'ch'], how='outer')
+        # print('------------ result_qc_df --------------')
+        # print(result_qc_df)
+        # sys.exit()
         # drop the case where item==negAmp and BL=SNC1. We expect a non-linear behavior when it comes to the negative amplitude of the baseline 200mV
         posAmp_df = result_qc_df[result_qc_df['item']=='posAmp'].copy().reset_index().drop('index', axis=1)
         negAmp_df = result_qc_df[result_qc_df['item']=='negAmp'].copy()
         SNC0_negAmp_df = negAmp_df[negAmp_df['BL']=='SNC0'].copy().reset_index().drop('index', axis=1)
         out_df = pd.concat([posAmp_df, SNC0_negAmp_df], axis=0).reset_index().drop('index', axis=1)
         out_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
+        # print('------------ out_df ------------')
+        # print(out_df)
+        # sys.exit()
         ##
         ## Generate the summary of the QC
         qc_res_cols = [c for c in out_df.columns if 'QC_result' in c]
@@ -756,29 +849,42 @@ class QC_CALI_Ana(BaseClass_Ana):
                 tmp_df = out_df[out_df['item']=='negAmp']
                 BLs = ['SNC0']
             for BL in BLs:
-                result_Amp_bl = []
+                # print('------------------------')
+                # print(tmp_df)
+                # sys.exit()
+                configurations = tmp_df['CFG'].unique()
+                # print(configurations)
+                # sys.exit()
                 bl_df = tmp_df[tmp_df['BL']==BL].copy().reset_index().drop('index', axis=1)
-                result_Amp_bl.append('Test_{}_{}'.format(self.tms, self.item))
-                item_cfg_result = 'PASSED'
-                for c in qc_res_cols:
-                    if False in bl_df[c]:
-                        item_cfg_result = 'FAILED'
-                        break
-                __BL = ''
-                if BL=='SNC0':
-                    __BL = '900mV'
-                elif BL=='SNC1':
-                    __BL = '200mV'
-                result_Amp_bl.append('_'.join([__BL, item]))
-                result_Amp_bl.append(item_cfg_result)
+                for cfg in configurations:
+                    cfg_df = bl_df[bl_df['CFG']==cfg].copy().reset_index().drop('index', axis=1)
+                    result_Amp_cfg = []
+                    # bl_df = tmp_df[tmp_df['BL']==BL].copy().reset_index().drop('index', axis=1)
+                    result_Amp_cfg.append('Test_{}_{}'.format(self.tms, self.item))
+                    item_cfg_result = 'PASSED'
+                    for c in qc_res_cols:
+                        if False in cfg_df[c]:
+                            item_cfg_result = 'FAILED'
+                            break
+                    __BL = ''
+                    if BL=='SNC0':
+                        __BL = '900mV'
+                    elif BL=='SNC1':
+                        __BL = '200mV'
+                    result_Amp_cfg.append('_'.join([__BL, item, cfg]))
+                    result_Amp_cfg.append(item_cfg_result)
 
-                for ich, ch in enumerate(bl_df['ch']):
-                    gain = bl_df.iloc[ich]['gain (fC/ADC bit)']
-                    worstINL = bl_df.iloc[ich]['worstINL (%)']
-                    minCharge = bl_df.iloc[ich]['minCharge (fC)']
-                    maxCharge = bl_df.iloc[ich]['maxCharge (fC)']
-                    result_Amp_bl.append("CH{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
-                result_in_list.append(result_Amp_bl)
+                    for ich, ch in enumerate(cfg_df['ch']):
+                        gain = cfg_df.iloc[ich]['gain (fC/ADC bit)']
+                        worstINL = cfg_df.iloc[ich]['worstINL (%)']
+                        # minCharge = cfg_df.iloc[ich]['minCharge (fC)']
+                        # maxCharge = cfg_df.iloc[ich]['maxCharge (fC)']
+                        # result_Amp_cfg.append("CH{}=(worstINL={};gain={};minCharge={};maxCharge={})".format(ch, worstINL, gain, minCharge, maxCharge))
+                        linRange = cfg_df.iloc[ich]['linRange (fC)']
+                        result_Amp_cfg.append("CH{}=(worstINL={};gain={};linRangeCharge={})".format(ch, worstINL, gain, linRange))
+                    result_in_list.append(result_Amp_cfg)
+                # print(result_in_list)
+                # sys.exit()
         return result_in_list
 
     
@@ -1060,7 +1166,7 @@ if __name__ == '__main__':
     root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     output_path = '../../Analysis'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_DIRECT']#['QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
     # for chipID in list_chipID:
     #     # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
     #     for cali_item in calib_item:

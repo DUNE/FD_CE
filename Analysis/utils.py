@@ -73,7 +73,7 @@ def linear_fit(x: list, y: list):
     peakinl = np.max(inl)
     return slope, yintercept, peakinl
 
-def gain_inl(x: list, y: list, item=''):
+def gain_inl(x: list, y: list, item='', returnDNL=False):
     x = list(x)
     y = list(y)
     i0 = 0
@@ -106,7 +106,7 @@ def gain_inl(x: list, y: list, item=''):
         #     i0 = i
         #     dy = np.abs(y[i0] - ypred[i0])
         #     tmp_inl = (dy / np.abs(y[i0+1] - y[i1]))*100
-        if tmp_inl > 1:
+        if tmp_inl > 1: ## if inl > 1%
             break
         else:
             slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
@@ -118,7 +118,22 @@ def gain_inl(x: list, y: list, item=''):
     linRange = [y[i0], y[i1]]
     if 'ASICDAC' not in item:
         linRange = [y[i1], y[i0]]
-    return slope, yintercept, peakinl, linRange
+
+    # DNL calculation : needed in FE_MONITORING
+    dnl_list = []
+    lsb = np.abs((np.max(y[i0:i1]) - np.min(y[i0:i1])) / (np.max(x[i0:i1]) - np.min(x[i0:i1])))
+    dnl_list.append( np.abs(((np.abs(y[i0+1] - y[i0])/np.abs(x[i0+1] - x[i0]))-lsb)/lsb ))
+    for i in range(i0+1, i1):
+        dnl_list.append( np.abs(((np.abs(y[i]-y[i-1])/np.abs(x[i]-x[i-1])) - lsb)/lsb ))
+    y_FSR = (np.max(y[i0:i1]) - np.min(y[i0:i1]))
+    dnl_normalized_to_y_FSR = ((np.array(dnl_list)*lsb/y_FSR))
+    # print(np.sum(dnl_normalized_to_y_FSR))
+    if returnDNL:  ## There's a bug in getting the linearity range: The algorithm failed when the non-linearity early in the list
+        # print(i0, i1)
+        # print(y[i0], y[i1])
+        return slope, yintercept, peakinl, linRange, np.max(dnl_normalized_to_y_FSR)
+    else:
+        return slope, yintercept, peakinl, linRange
 
 def createDirs(logs_dict: dict, output_dir: str):
     for ife in range(8):
