@@ -382,21 +382,23 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:
-                    QCstatus = "Fail"
-                    bads = [0, 1]
+                    break
+                    #
+                    #QCstatus = "Fail"
+                    #bads = [0, 1]
 
-                    if len(bads) > 0 :
-                        if logs['New_chips']:
-                            fp = logs['pc_raw_dir'] + "QC.log"
-                            with open(fp, 'wb') as fn:
-                                pickle.dump(logs, fn)
-                        fdirdel = logs['wib_raw_dir']
-                        command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
-                        result=subrun(command, timeout = None)
-                        if result != None:
-                            print ("WIB folder {} is deleted!".format(fdirdel))
-                        DAT_power_off()
-                        return (QCstatus, bads)
+                    #if len(bads) > 0 :
+                    #    if logs['New_chips']:
+                    #        fp = logs['pc_raw_dir'] + "QC.log"
+                    #        with open(fp, 'wb') as fn:
+                    #            pickle.dump(logs, fn)
+                    #    fdirdel = logs['wib_raw_dir']
+                    #    command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
+                    #    result=subrun(command, timeout = None)
+                    #    if result != None:
+                    #        print ("WIB folder {} is deleted!".format(fdirdel))
+                    #    DAT_power_off()
+                    #    return (QCstatus, bads)
                 else:
                     tmsi = tmsi + 1
                     retry_fi = 0

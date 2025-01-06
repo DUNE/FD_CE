@@ -322,9 +322,9 @@ class QC_ANA():
                     pwr_meas = cfgdata[5]
         
                     if ("DIRECT_PLS_CHK" in onekey) :
-                        failflg = self.ana_res(fembs, rawdata, par=[3000,10000], rmsr=[2.5,15], pedr=[300,3000] )
+                        failflg = self.ana_res(fembs, rawdata, par=[3000,10000], rmsr=[1.5,15], pedr=[300,3000] )
                     elif ("ASICDAC_CALI_CHK" in onekey):
-                        failflg = self.ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[100,3000] )
+                        failflg = self.ana_res(fembs, rawdata, par=[7000,10000], rmsr=[1,25], pedr=[100,3000] )
     
                     if True:
                         import matplotlib.pyplot as plt
@@ -851,6 +851,7 @@ if __name__=="__main__":
 
     fdir = """D:\DAT_CD_QC\RT_CD_031672417_031862417/"""
     fdir = '''D:\DAT_SN_data\SN1\Time_20250103160419_DUT_1000_2000\RT_CD_060602417_060562417/'''
+    fdir = '''C:\SGAO\ColdTest\Tested\DAT_CD_QC\Tested\Time_20250103214218_DUT_1000_2000\LN_CD_067107825_067026929/'''
 
     evl = input ("Analyze all test items? (Y/N) : " )
     if ("Y" in evl) or ("y" in evl):
