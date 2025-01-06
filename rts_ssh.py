@@ -395,6 +395,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                         result=subrun(command, timeout = None)
                         if result != None:
                             print ("WIB folder {} is deleted!".format(fdirdel))
+                        DAT_power_off()
                         return (QCstatus, bads)
                 else:
                     tmsi = tmsi + 1
