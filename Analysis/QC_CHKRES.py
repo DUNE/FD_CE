@@ -197,146 +197,6 @@ class QC_CHKRES_Ana(BaseClass_Ana):
             os.mkdir(self.output_dir)
         except OSError:
             pass
-        # print(self.params)
-        # self.makePlots()
-        # sys.exit()
-    
-    def ChResp_ana(self, item_to_plot: str, group: str, returnData=False):
-        chipData = {}
-        for param in self.params:
-            data = self.getoneConfigData(config=param)
-            # meanValue, stdValue, minValue, maxValue = self.getCHresp_info(oneChipData=data[item_to_plot])
-            meanValue, stdValue, minValue, maxValue = 0., 0., 0., 0.
-            if data['CFG_info']['param_chk'] == group:
-                meanValue, stdValue, minValue, maxValue = self.getCHresp_info(oneChipData=data[item_to_plot])
-                cfg_info = data['CFG_info']
-                config = ''
-                if group=='GAINs':
-                    # config = '\n'.join([cfg_info['SNC'], cfg_info['SGP'], str(cfg_info['SG'])])
-                    config = '_'.join([cfg_info['SNC'], str(cfg_info['SG'])])
-                elif group=='OUTPUT':
-                    # config = '\n'.join(['_'.join([cfg_info['SNC'], cfg_info['SG']]), cfg_info['SDD'], cfg_info['SDF']])
-                    config = '\n'.join([cfg_info['SNC'], cfg_info['SDD'], cfg_info['SDF']])
-                elif group=='BL':
-                    config = '\n'.join([cfg_info['SNC'], '_'.join([cfg_info['SDD'], cfg_info['SDF']])])
-                elif group=='TP':
-                    # config = '\n'.join([cfg_info['ST'], cfg_info['SLK'], cfg_info['SLKH']])
-                    config = cfg_info['ST']
-                elif group=='SLKS':
-                    # config = '\n'.join([cfg_info['SNC'], cfg_info['SLKH'], cfg_info['SLK']])
-                    config = cfg_info['SLKH'] * cfg_info['SLK']
-                chipData[config] = {'mean': meanValue, 'std': stdValue, 'min': minValue, 'max': maxValue, 'cfg_info': cfg_info}
-        configs = chipData.keys()
-        meanValues = [d['mean'] for key, d in chipData.items()]
-        stdValues = [d['std'] for key, d in chipData.items()]
-        minValues = [d['min'] for key, d in chipData.items()]
-        maxValues = [d['max'] for key, d in chipData.items()]
-        # cfgs_dict = [d['cfg_info'] for key, d in chipData.items()]
-        cfgs_200 = [d['cfg_info'] for key, d in chipData.items() if d['cfg_info']['SNC']=='200 mV']
-        cfgs_900 = [d['cfg_info'] for key, d in chipData.items() if d['cfg_info']['SNC']=='900 mV']
-        cfgs_dict = [cfgs_200, cfgs_900]
-        # plt.figure(figsize=(8, 8))
-        if group=='GAINs':
-            # print(configs)
-            BL200mV_configs = [c for c in list(configs) if '200 mV' in c]
-            BL900mV_configs = [c for c in list(configs) if '900 mV' in c]
-            # xticks = ['\n'.join(c.split('\n')[1:]) for c in BL200mV_configs]
-            xticks = [float(c.split('_')[1]) for c in BL200mV_configs]
-            bl200_xticks = xticks.copy()
-            bl900_xticks = xticks.copy()
-            bl200_xticks, BL200mV_configs = (list(t) for t in zip(*sorted(zip(bl200_xticks, BL200mV_configs))))
-            bl900_xticks, BL900mV_configs = (list(t)for t in zip(*sorted(zip(bl900_xticks, BL900mV_configs))))
-            xticks = [c.split('_')[1] for c in BL200mV_configs]
-            tmpdata200 = {key: chipData[key] for key in BL200mV_configs}
-            tmpdata900 = {key: chipData[key] for key in BL900mV_configs}
-            mean200 = [d['mean'] for key, d, in tmpdata200.items()]
-            std200 = [d['std'] for key, d in tmpdata200.items()]
-            min200 = [d['min'] for key, d in tmpdata200.items()]
-            max200 = [d['max'] for key, d in tmpdata200.items()]
-            mean900 = [d['mean'] for key, d, in tmpdata900.items()]
-            std900 = [d['std'] for key, d in tmpdata900.items()]
-            min900 = [d['min'] for key, d in tmpdata900.items()]
-            max900 = [d['max'] for key, d in tmpdata900.items()]
-            datas = [tmpdata200, tmpdata900]
-            BL = ['200mV', '900mV']
-            colors=['r', 'b']
-            means = [mean200, mean900]
-            stds = [std200, std900]
-            mins = [min200, min900]
-            maxs = [max200, max900]
-            #______ return the data if returnData==True______
-            if returnData:
-                return xticks, means, stds, mins, maxs, cfgs_dict
-            else:
-                plt.figure(figsize=(8, 8))
-                range_to_scan = []
-                if item_to_plot=='negpeak':
-                    range_to_scan = [1] # select 900mV only
-                else:
-                    range_to_scan = [0, 1]
-                for i in range_to_scan:
-                    # plt.figure(figsize=(8, 8))
-                    plt.errorbar(x=xticks, y=means[i], yerr=stds[i], capsize=4, color=colors[i], ecolor=colors[i], label='Mean of {}, {} BL'.format(item_to_plot, BL[i]), elinewidth=1.5)
-                    # plt.scatter(x=xticks, y=means[i], color='g', marker='.', s=10)
-                    plt.scatter(x=xticks, y=mins[i], color=colors[i], marker='.', s=100)
-                    plt.scatter(x=xticks, y=maxs[i], color=colors[i], marker='.', s=100)
-                    plt.xticks(xticks)
-        else:
-            if type(list(configs)[0]) in [float, int]:
-                tmp = list(configs).copy()
-                _, meanValues = (list(t) for t in zip(*sorted(zip(list(configs).copy(), meanValues))))
-                _, stdValues = (list(t) for t in zip(*sorted(zip(list(configs).copy(), stdValues))))
-                _, minValues = (list(t) for t in zip(*sorted(zip(list(configs).copy(), minValues))))
-                _, maxValues = (list(t) for t in zip(*sorted(zip(list(configs).copy(), maxValues))))
-                configs = sorted(list(configs))
-            #______ return the data if returnData==True______
-            if returnData:
-                cfgs = []
-                if len(cfgs_dict[0])==0:
-                    cfgs = cfgs_dict[1]
-                else:
-                    cfgs = cfgs_dict
-                return configs, meanValues, stdValue, minValues, maxValues, cfgs
-            else:
-                plt.figure(figsize=(8, 8))
-                plt.errorbar(x=configs, y=meanValues, yerr=stdValues, capsize=4, label='Mean of {}'.format(item_to_plot), elinewidth=1.5)
-                # plt.scatter(x=configs, y=meanValues, color='b', marker='.', s=100)
-                plt.scatter(x=configs, y=minValues, color='r', marker='.', s=100)
-                plt.scatter(x=configs, y=maxValues, color='r', marker='.', s=100)
-                plt.xticks(list(configs))
-        # plt.figure(figsize=(8, 8))
-        unitx = ''
-        if group=='GAINs':
-            unitx = '(mV/fC)'
-        elif group=='TP':
-            unitx = '($\\mu s$)'
-        elif group=='SLKS':
-            unitx = '(pA RQI)'
-        
-        ylim = []
-        if item_to_plot=='pedestal':
-            minped = 500
-            maxped = 10000
-            if group=='SLKS':
-                minped = 8000
-                maxped = 12000
-            ylim = [minped, maxped]
-        elif item_to_plot=='rms':
-            ylim = [0, 25]
-        elif item_to_plot=='pospeak':
-            ylim = [3000, 5000]
-        elif item_to_plot=='negpeak':
-            ylim = [3000, 5000]
-        if len(ylim)!=0:
-            plt.ylim(ylim)
-        plt.xlabel('Configurations {}'.format(unitx), fontdict={'weight': 'bold'}, loc='right')
-        plt.ylabel('{} (ADC bit)'.format(item_to_plot), fontdict={'weight': 'bold'}, loc='top')
-        plt.title(item_to_plot)
-        plt.legend()
-        plt.grid(True)
-        plt.savefig('/'.join([self.output_dir, '_'.join([self.item, item_to_plot, group]) + '.png']))
-        plt.close()
-        # sys.exit()
 
     def makePlots(self):
         if self.ERROR:
@@ -347,7 +207,7 @@ class QC_CHKRES_Ana(BaseClass_Ana):
             for group in groups:
                 self.ChResp_ana(item_to_plot=item_to_plot, group=group)
 
-    def extractData(self):
+    def extractData_forStat(self):
         items = ['pedestal', 'rms', 'pospeak', 'negpeak']
         groups = ['GAINs', 'OUTPUT', 'BL', 'TP', 'SLKS']
         out_dict = dict()
@@ -373,130 +233,73 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                         out_dict[group][item][c]['cfgs_dict'] = cfgs_dict[i]
 
         return out_dict
+    
+    def extractData(self):
+        data_dict = {'testItem': [], 'cfg': [], 'feature': [], 'CH': [], 'data': []}
+        mapping_params = {}
+        for param in self.params:
+            param_data = self.getoneConfigData(config=param)
+            mapping_params[param] = param_data['CFG_info']
+            param_splitted = param.split('_')
+            testItem = param_splitted[1]
+            config = '_'.join(param_splitted[2:])
+            # print(testItem, config)
+            # print(param_data)
+            # print(mapping_params)
+            features = [f for f in param_data.keys() if f!='CFG_info']
+            # print(features)
+            for feature in features:
+                feature_data = param_data[feature]
+                for ich, d in enumerate(feature_data):
+                    data_dict['testItem'].append(testItem)
+                    data_dict['cfg'].append(config)
+                    data_dict['feature'].append(feature)
+                    data_dict['CH'].append(ich)
+                    data_dict['data'].append(d)
+        # print(mapping_params)
+        # sys.exit()
+        return pd.DataFrame(data_dict), mapping_params
 
     def run_Ana(self, path_to_stat=''):
         if self.ERROR:
-            return
+            return None
         stat_ana_df = pd.read_csv(path_to_stat)
-        print(stat_ana_df)
-        data = self.extractData()
-        qc_result_df = pd.DataFrame()
-        firstData = True
-        for testItem, itemData in data.items():
-            stat_data_mask = (stat_ana_df['testItem']==testItem)
-            # print(stat_ana_df[stat_data_mask])
-            # print(itemData['pedestal']['4.7'].keys())
-            # itemData to DataFrame
-            features = itemData.keys()
-            itemData_dict = {'testItem': [], 'feature': [], 'cfg': [], 'BL': [], 'value': []}
-            for feature in features:
-                # print(itemData[feature])
-                cfgs = itemData[feature].keys()
-                # print(itemData[feature]['4.7']['mean'])
-                # print(itemData[feature]['4.7']['cfgs_dict'].keys())
-                for cfg in cfgs:
-                    cfgs_dict = itemData[feature][cfg]['cfgs_dict']
-                    # print(testItem, cfgs_dict)
-                    # try:
-                    #     BLs = itemData[feature][cfg]['cfgs_dict'].keys()
-                    # except:
-                    #     print(itemData[feature][cfg]['cfgs_dict'])
-                    #     sys.exit()
-                    # if len(BLs)==1:
-                    #     BLs = [itemData[cfg]['cfgs_dict']['SNC']]
-                    BLs = []
-                    if testItem=='GAINs':
-                        BLs = cfgs_dict.keys()
-                    else:
-                        # print(cfgs_dict['SNC'])
-                        if type(cfgs_dict)==list:
-                            BLs = [(cfgs_dict[0])['SNC']]
-                        else:
-                            # print(cfgs_dict)
-                            BLs = [cfgs_dict['SNC']]
-                        # sys.exit()
-                    # print(BLs)
-                    # if 'mV' not in BLs[0]:
-                    #     print(testItem, cfgs_dict)
-                    #     BLs = [cfgs_dict['SNC']]
-                    # # try:
-                    # #     BLs = cfgs_dict.keys()
-                    # # except:
-                    # #     if type(cfgs_dict)==list:
-                    # #         BLs = cfgs_dict[0]['SNC']
-                    # # print(BLs)
-                    # print(testItem, BLs)
-                    # sys.exit()
-                    for BL in BLs:
-                        BL = BL.replace(" ", "")
-                        itemData_dict['BL'].append(BL.split('m')[0]+' mV') # This needs to be done in another way by changing the keys of the configurations dictionary or the BL saved in the statistical analysis. The issue here is the space between the number and the unit
-                        try:
-                            itemData_dict['value'].append(itemData[feature][cfg]['mean'][BL])
-                        except:
-                            itemData_dict['value'].append(itemData[feature][cfg]['mean'])
-                            # print(itemData[feature][cfg]['mean'])
-                            # print(itemData[feature][cfg]['mean'])
-                            # print(testItem,feature, cfg, BL)
-                            # sys.exit()
-                        itemData_dict['feature'].append(feature)
-                        if '\n' in str(cfg):
-                            print(cfg)
-                            cfg = '_'.join(cfg.split('\n')[1:])
-                        
-                        itemData_dict['cfg'].append(cfg)
-                        itemData_dict['testItem'].append(testItem)
-            # print(itemData_dict)
-            itemData_df = pd.DataFrame(itemData_dict)
-            print('Missing values')
-            print(itemData_df.isna().sum())
-            # print(itemData_df)
-            # print(stat_ana_df[stat_data_mask])
-            itemData_df['cfg'] = itemData_df['cfg'].astype(str)
-            stat_df = stat_ana_df[stat_data_mask].copy().reset_index().drop('index', axis=1)
-            stat_df['cfg'] = stat_df['cfg'].astype(str)
-            stat_df.sort_values(by=['cfg'], axis=0, inplace=True, ignore_index=True)
-            itemData_df.sort_values(by=['cfg'], axis=0, inplace=True, ignore_index=True)
-            df = pd.merge(itemData_df, stat_df, on=['testItem','feature','cfg','BL'], how='outer')
-            df['QC_result']= (df['value']>= (df['mean']-3*df['std'])) & (df['value'] <= (df['mean']+3*df['std']))
-            # print(df)
-            df.drop(['mean', 'std'], axis=1, inplace=True)
-            if firstData:
-                qc_result_df = df.copy()
-                firstData = False
-            else:
-                qc_result_df = pd.concat([qc_result_df, df.copy()], axis=0)
-            # # WILL FIX THIS AFTER CONVERTING THE DATAFRAME TO TABLE ROWS (This only makes sense to me)
-            # print('------------------- Missing data ---------')
-            # print(len(df['testItem']), len(stat_df['testItem']))
-            # if len(df['testItem']) > len(stat_df['testItem']):
-            #     print(len(df['testItem']), len(stat_df['testItem']), len(itemData_df['testItem']))
-            #     print(itemData_df)
-            #     print(stat_df)
-            #     sys.exit()
-            # print('0----------------------------------------0')
+        #
+        data_df, mapping_params = self.extractData()
+        # print(mapping_params)
+        dumpJson(output_path=self.output_dir, output_name=self.chipID+'_mapping', data_to_dump=mapping_params)
+        #
+        testItems = data_df['testItem'].unique()
+        full_result_rows = []
+        for testItem in testItems:
+            item_result_rows = []
+            itemData = data_df[data_df['testItem']==testItem].copy()
+            stat_ana_item = stat_ana_df[stat_ana_df['testItem']==testItem].copy()
+            configurations = itemData['cfg'].unique()
+            for cfg in configurations:
+                cfg_result_rows = []
+                cfg_data = itemData[itemData['cfg']==cfg].copy()
+                stat_ana_cfg = stat_ana_item[stat_ana_item['cfg']==cfg].copy()
+                features = cfg_data['feature'].unique()
+                for feature in features:
+                    feature_data = cfg_data[cfg_data['feature']==feature].copy()
+                    stat_ana_feature = stat_ana_cfg[stat_ana_cfg['feature']==feature].copy()
+                    feature_data['mean'] = [stat_ana_feature.iloc[0]['mean'] for _ in range(16)]
+                    feature_data['std'] = [stat_ana_feature.iloc[0]['std'] for _ in range(16)]
+                    feature_data['QC_result_{}'.format(testItem)]= (feature_data['data']>= (feature_data['mean']-3*feature_data['std'])) & (feature_data['data'] <= (feature_data['mean']+3*feature_data['std']))
+                    result = 'PASSED'
+                    if False in feature_data['QC_result_{}'.format(testItem)]:
+                        result = 'FAILED'
+                    feature_data.drop(['mean', 'std', 'QC_result_{}'.format(testItem)], axis=1, inplace=True)
+                    feature_result_row = ['Test_{}_{}'.format(self.tms, self.item), cfg+'_'+feature, result]
+                    for ch in feature_data['CH']:
+                        chdata = 'CH{}={}'.format(ch, feature_data.iloc[ch]['data'])
+                        feature_result_row.append(chdata)
+                    cfg_result_rows.append(feature_result_row)
+                item_result_rows += cfg_result_rows
+            full_result_rows += item_result_rows
+        return full_result_rows
 
-        # save qc_result_df to csv file
-        qc_result_df.reset_index().drop('index', axis=1, inplace=True)
-        # print('Missing values : ', qc_result_df.isna().sum())
-        print(len(qc_result_df['testItem']), len(stat_ana_df['testItem']))
-        qc_result_df.to_csv('/'.join([self.output_dir, self.item+'.csv']),index=False)
-        
-        # Convert qc_result_df to table rows
-        map_result = {True: 'PASSED', False: 'FAILED'}
-        qc_result_df['col'] = qc_result_df['testItem'].str.cat([qc_result_df['cfg'], qc_result_df['BL']], sep='_')
-        unique_cols = qc_result_df['col'].unique()
-        table_rows = []
-        for c in unique_cols:
-            onecfg_df = qc_result_df[qc_result_df['col']==c].copy().reset_index().drop('index', axis=1)
-            unique_features = onecfg_df['feature'].unique()
-            table_values = onecfg_df.apply(lambda row: f"{row['feature']}={row['value']}", axis=1)#.agg(';'.join)
-            qc_res_summary = 'PASSED'
-            if 'FAILED' in onecfg_df['QC_result'].map(map_result):
-                qc_result_df = 'FAILED'
-            table_values = ['Test_{}_CHKResponse'.format(self.tms), c, qc_res_summary] + list(table_values)
-            table_rows.append(table_values)
-
-        return table_rows
 #---------------------------
 # Class for statistical analysis
 #--------------------------
@@ -509,240 +312,68 @@ class QC_CHKRES_StatAna():
             os.mkdir(self.output_fig)
         except:
             pass
-        # THIS LINE NEEDS TO BE MODIFIED --> Find a better way to get the structure of the json file automatically
-        self.chkdata_toy = {'GAINs': {'pedestal': {'4.7': {'mean': {'200mV': 920.0535, '900mV': 8723.2227}, 'min': {'200mV': 761.4332, '900mV': 8617.5559}, 'max': {'200mV': 1108.3855, '900mV': 8826.7037}}, '7.8': {'mean': {'200mV': 984.7076, '900mV': 8791.0025}, 'min': {'200mV': 826.057, '900mV': 8685.8425}, 'max': {'200mV': 1171.1404, '900mV': 8897.9679}}, '14': {'mean': {'200mV': 1116.7686, '900mV': 8931.4033}, 'min': {'200mV': 961.4979, '900mV': 8824.759}, 'max': {'200mV': 1300.3047, '900mV': 9043.0753}}, '25': {'mean': {'200mV': 1340.1492, '900mV': 9166.9446}, 'min': {'200mV': 1185.6007, '900mV': 9057.4761}, 'max': {'200mV': 1514.5733, '900mV': 9281.407}}}, 'rms': {'4.7': {'mean': {'200mV': 4.6696, '900mV': 4.7128}, 'min': {'200mV': 4.2797, '900mV': 4.2253}, 'max': {'200mV': 5.0279, '900mV': 5.2124}}, '7.8': {'mean': {'200mV': 7.3023, '900mV': 7.2306}, 'min': {'200mV': 6.6742, '900mV': 6.456}, 'max': {'200mV': 8.1935, '900mV': 7.963}}, '14': {'mean': {'200mV': 12.6979, '900mV': 12.9429}, 'min': {'200mV': 11.3092, '900mV': 11.7697}, 'max': {'200mV': 14.1517, '900mV': 14.4354}}, '25': {'mean': {'200mV': 22.7148, '900mV': 22.6192}, 'min': {'200mV': 18.8299, '900mV': 19.1871}, 'max': {'200mV': 26.8888, '900mV': 26.4137}}}, 'pospeak': {'4.7': {'mean': {'200mV': 3193.134, '900mV': 3274.3554}, 'min': {'200mV': 2761.7161, '900mV': 3186.8646}, 'max': {'200mV': 3253.5668, '900mV': 3312.3322}}, '7.8': {'mean': {'200mV': 4148.7768, '900mV': 4228.06}, 'min': {'200mV': 3779.7961, '900mV': 4120.1223}, 'max': {'200mV': 4210.443, '900mV': 4269.8196}}, '14': {'mean': {'200mV': 4203.2939, '900mV': 4275.0967}, 'min': {'200mV': 3956.6253, '900mV': 4172.9517}, 'max': {'200mV': 4259.7521, '900mV': 4330.0932}}, '25': {'mean': {'200mV': 4276.1008, '900mV': 4353.0346}, 'min': {'200mV': 4106.7747, '900mV': 4243.2496}, 'max': {'200mV': 4333.6218, '900mV': 4409.7394}}}, 'negpeak': {'4.7': {'mean': {'200mV': 920.0535, '900mV': 3264.254}, 'min': {'200mV': 761.4332, '900mV': 3026.6354}, 'max': {'200mV': 1108.3855, '900mV': 3307.9178}}, '7.8': {'mean': {'200mV': 984.7076, '900mV': 4224.815}, 'min': {'200mV': 826.057, '900mV': 4026.5444}, 'max': {'200mV': 1171.1404, '900mV': 4277.6942}}, '14': {'mean': {'200mV': 1116.7686, '900mV': 4277.4971}, 'min': {'200mV': 961.4979, '900mV': 4140.7983}, 'max': {'200mV': 1300.3047, '900mV': 4334.1568}}, '25': {'mean': {'200mV': 1340.1492, '900mV': 4362.1946}, 'min': {'200mV': 1185.6007, '900mV': 4259.4706}, 'max': {'200mV': 1514.5733, '900mV': 4422.9604}}}}, 'OUTPUT': {'pedestal': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 8917.833, 'min': 8811.4033, 'max': 9026.0783}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 8765.595, 'min': 8647.3767, 'max': 8858.0942}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 8783.0081, 'min': 8687.8206, 'max': 8875.1222}}, 'rms': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 12.9223, 'min': 11.5787, 'max': 14.929}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 13.2322, 'min': 11.6834, 'max': 14.8552}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 12.7703, 'min': 11.6407, 'max': 15.3885}}, 'pospeak': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 4279.1045, 'min': 4162.4816, 'max': 4326.8397}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 4385.2487, 'min': 4292.1999, 'max': 4425.2744}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 4328.32, 'min': 4295.3213, 'max': 4367.7248}}, 'negpeak': {'900 mV\nSEDC OFF\nBuff OFF': {'mean': 4285.083, 'min': 4131.8517, 'max': 4334.2154}, '900 mV\nSEDC OFF\nBuff ON': {'mean': 4399.2044, 'min': 4277.0102, 'max': 4446.4614}, '900 mV\nSEDC ON\nBuff OFF': {'mean': 4464.68, 'min': 4418.1787, 'max': 4526.5252}}}, 'BL': {'pedestal': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 8925.9726, 'min': 8820.9019, 'max': 9034.7863}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 1112.1438, 'min': 956.8159, 'max': 1296.2411}}, 'rms': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 12.7781, 'min': 11.4768, 'max': 14.1009}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 12.4046, 'min': 11.4699, 'max': 14.5145}}, 'pospeak': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 4277.2774, 'min': 4169.3895, 'max': 4322.2863}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 4203.0749, 'min': 3956.9595, 'max': 4263.4341}}, 'negpeak': {'900 mV\nSEDC OFF_Buff OFF': {'mean': 4279.5039, 'min': 4129.8605, 'max': 4335.1366}, '200 mV\nSEDC OFF_Buff OFF': {'mean': 1112.1438, 'min': 956.8159, 'max': 1296.2411}}}, 'TP': {'pedestal': {0.5: {'mean': 8694.7244, 'min': 8590.512, 'max': 8796.9825}, 1.0: {'mean': 8769.0665, 'min': 8663.2963, 'max': 8873.2017}, 2: {'mean': 8913.0714, 'min': 8807.7834, 'max': 9020.7699}, 3: {'mean': 9058.2681, 'min': 8953.8225, 'max': 9169.9924}}, 'rms': {0.5: {'mean': 11.6278, 'min': 11.0525, 'max': 12.5184}, 1.0: {'mean': 11.7596, 'min': 10.8947, 'max': 12.6109}, 2: {'mean': 12.3655, 'min': 11.2181, 'max': 13.2762}, 3: {'mean': 14.2321, 'min': 12.5532, 'max': 17.3397}}, 'pospeak': {0.5: {'mean': 3474.0673, 'min': 3367.489, 'max': 3521.4585}, 1.0: {'mean': 4130.6679, 'min': 4002.3059, 'max': 4178.7866}, 2: {'mean': 4278.6786, 'min': 4170.2014, 'max': 4327.7293}, 3: {'mean': 4289.2631, 'min': 4172.703, 'max': 4336.5276}}, 'negpeak': {0.5: {'mean': 3333.0577, 'min': 3152.8444, 'max': 3379.9383}, 1.0: {'mean': 4106.2071, 'min': 3929.6941, 'max': 4171.4634}, 2: {'mean': 4280.3839, 'min': 4128.4653, 'max': 4335.1151}, 3: {'mean': 4295.2994, 'min': 4183.297, 'max': 4336.7003}}}, 'SLKS': {'pedestal': {100: {'mean': 8740.8038, 'min': 8636.862, 'max': 8843.2177}, 500: {'mean': 8916.2093, 'min': 8808.6837, 'max': 9027.261}, 1000: {'mean': 9088.254, 'min': 8983.9484, 'max': 9202.2339}, 5000: {'mean': 11032.9986, 'min': 10929.6243, 'max': 11220.9052}}, 'rms': {100: {'mean': 12.5143, 'min': 11.1642, 'max': 14.5457}, 500: {'mean': 12.8407, 'min': 11.6557, 'max': 15.4567}, 1000: {'mean': 12.8509, 'min': 11.9001, 'max': 14.1173}, 5000: {'mean': 15.7395, 'min': 13.7845, 'max': 18.2684}}, 'pospeak': {100: {'mean': 4269.6962, 'min': 4037.5465, 'max': 4332.5828}, 500: {'mean': 4275.0876, 'min': 4169.616, 'max': 4327.9026}, 1000: {'mean': 4266.9752, 'min': 3997.7634, 'max': 4327.8913}, 5000: {'mean': 4248.5014, 'min': 3944.4107, 'max': 4317.3849}}, 'negpeak': {100: {'mean': 4265.8819, 'min': 3963.4535, 'max': 4330.6672}, 500: {'mean': 4277.2405, 'min': 4132.884, 'max': 4333.0974}, 1000: {'mean': 4280.3998, 'min': 4058.57, 'max': 4332.7753}, 5000: {'mean': 4277.3944, 'min': 3938.256, 'max': 4341.4135}}}}
-        # dumpJson(output_path=self.output_path, output_name='chkdata_toy', data_to_dump=self.chkdata_toy)
-        # sys.exit()
 
+    def get_mean_std(self, tmpdata):
+        median = statistics.median(tmpdata)
+        std = statistics.stdev(tmpdata)
+        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+
+        for _ in range(100):
+            if xmin < median-3*std:
+                posMin = np.where(tmpdata==xmin)[0]
+                # del tmpdata[posMin]
+                tmpdata = np.delete(np.array(tmpdata), posMin)
+            if xmax > median+3*std:
+                posMax = np.where(tmpdata==xmax)[0]
+                # del tmpdata[posMax]
+                tmpdata = np.delete(np.array(tmpdata), posMax)
+
+            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+        median, std = np.round(median, 4), np.round(std, 4)
+        return median, std
+    
     def getItems(self):
+        data_df = pd.DataFrame()
+        FirstData = True
         list_chipID = os.listdir(self.root_path)
-        # chipID_toy = list_chipID[0]
-        # chkres_toy = QC_CHKRES_Ana(root_path=self.root_path, chipID=chipID_toy, output_path='')
-        # # if chkres_toy.ERROR==True:
-        # #     return dict()
-        # chkdata_toy = chkres_toy.extractData()
-        # print(chkdata_toy)
-        # sys.exit()
-        # Get data structure
-        testItems = list(self.chkdata_toy.keys())
-        groups = list(self.chkdata_toy[testItems[0]].keys())
-        # Test item specific configurations
-        ## Gains
-        gains = list(self.chkdata_toy[testItems[0]][groups[0]].keys())
-        ## OUTPUT
-        outputs = list(self.chkdata_toy[testItems[1]][groups[0]].keys())
-        ## BL
-        Baselines = list(self.chkdata_toy[testItems[2]][groups[0]].keys())
-        ## Peaking time
-        TPs = list(self.chkdata_toy[testItems[3]][groups[0]].keys())
-        ## SLKS
-        slks = list(self.chkdata_toy[testItems[4]][groups[0]].keys())
-        # print(chkdata_toy[testItems[1]][groups[0]].keys())
-
-        # Format of the output dictionary
-        ## We will only save the mean values. Note: saving the min, max, or std is also possible if needed --> Changing the format of the output is required
-        out_dict = {key: dict() for key in testItems}
-        for key in testItems:
-            subdict = {g: dict() for g in groups}
-            for g in groups:
-                if key=='GAINs':
-                    subdict[g] = {gain: {'200mV': [], '900mV': []} for gain in gains}
-                elif key=='OUTPUT':
-                    subdict[g] = {output: [] for output in outputs}
-                elif key=='BL':
-                    subdict[g] = {bl: [] for bl in Baselines}
-                elif key=='TP':
-                    subdict[g] = {tp: [] for tp in TPs}
-                elif key=='SLKS':
-                    subdict[g] = {s: [] for s in slks}
-            out_dict[key] = subdict
-
         for chipID in list_chipID:
             chkres = QC_CHKRES_Ana(root_path=self.root_path, chipID=chipID, output_path='')
             if chkres.ERROR==True:
                 continue
-            chkres_data = chkres.extractData()
-            # print(chkres_data.keys())
-            # groups = chkres_data.keys()
-            for testItem in testItems:
-                subgroups = chkres_data[testItem].keys()
-                
-                # print(subgroups)
-                for subgroup in subgroups:
-                    ssubgroups = [s for s in chkres_data[testItem][subgroup].keys() if s!='cfgs_dict']
-                    # cfgs_dict = chkres_data[testItem][subgroup]['cfgs_dict'][0]
-                    # print(ssubgroups)
-                    # print(cfgs_dict)
-                    # sys.exit()
-                    # print(ssubgroups)
-                    for ss in ssubgroups:
-                        # print(chkres_data[testItem][subgroup][ss].keys())
-                        if testItem=='GAINs':
-                            out_dict[testItem][subgroup][ss]['200mV'].append(chkres_data[testItem][subgroup][ss]['mean']['200mV'])
-                            out_dict[testItem][subgroup][ss]['900mV'].append(chkres_data[testItem][subgroup][ss]['mean']['900mV'])
-                        else:
-                            out_dict[testItem][subgroup][ss].append(chkres_data[testItem][subgroup][ss]['mean'])
-                # break
-            # print(chkres_data)
-            # break
-        # print(out_dict)
-        # # TEST DISTRIBUTION
-        # plt.figure()
-        # plt.hist(out_dict['GAINs']['pedestal']['4.7']['900mV'])
-        # plt.show()
-        return out_dict
-
+            chkres_data, mapping_parms = chkres.extractData()
+            print(chkres_data)
+            if FirstData:
+                data_df = chkres_data.copy()
+                FirstData = False
+            else:
+                data_df = pd.concat([data_df, chkres_data.copy()], axis=0, ignore_index=True)
+                # break # comment this in real analysis
+        return data_df
+    
     def run_Ana(self):
-        ## Use CFG_info to get the configuration from the analyzed data
-        OUTPUT_DF = pd.DataFrame()
-        #******************************
-        data_dict = self.getItems()
-        testItems = list(data_dict.keys())
-        # The analysis of GAINs and the other items are different
-        ## GAIN ANALYSIS
-        gainData = data_dict['GAINs']
-        groups = list(gainData.keys())
-        ASIC_gains = list(gainData[groups[0]].keys())
-        BLs = list(gainData[groups[0]][ASIC_gains[0]].keys())
-        ##---- Lists for the dataframe
-        testItem_list, group_list, asicgain_list, bl_list = [], [], [], []
-        mean_list, std_list = [], []
-        for group in groups:
-            for asicGain in ASIC_gains:
-                for BL in BLs:
-                    filename = '_'.join(['QC_CHKRES', 'GAIN', group, asicGain, BL])
-                    tmpdata = gainData[group][asicGain][BL]
-                    Nbins = int(len(tmpdata)//32)
-                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    # make the distribution symmetric
-                    # dmean_min = np.abs(median-xmin)
-                    # dmean_max = np.abs(median-xmax)
-                    # dmin = dmean_min
-                    # if dmin > dmean_max:
-                    #     dmin = dmean_max
-                    # pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
-                    # tmpdata = np.delete(np.array(tmpdata), pmins)
-                    # #
-                    # xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    # median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    for _ in range(75):
-                        if xmin < median-3*std:
-                            posMin = np.where(tmpdata==xmin)[0]
-                            # del tmpdata[posMin]
-                            tmpdata = np.delete(np.array(tmpdata), posMin)
-                        if xmax > median+3*std:
-                            posMax = np.where(tmpdata==xmax)[0]
-                            # del tmpdata[posMax]
-                            tmpdata = np.delete(np.array(tmpdata), posMax)
+        stat_ana_df = {'testItem': [], 'cfg': [], 'feature': [], 'mean': [], 'std': []}
+        data_df = self.getItems()
+        testItems = data_df['testItem'].unique()
+        # configurations = data_df['cfg'].unique()
+        # features = data_df['feature'].unique()
+        for testItem in testItems:
+            testItem_data = data_df[data_df['testItem']==testItem].copy()
+            configurations = testItem_data['cfg'].unique()
+            for cfg in configurations:
+                cfg_data = testItem_data[testItem_data['cfg']==cfg].copy()
+                features = cfg_data['feature'].unique()
+                for feature in features:
+                    feature_data = cfg_data[cfg_data['feature']==feature].copy()
+                    mean, std = self.get_mean_std(tmpdata=np.array(feature_data['data']))
+                    stat_ana_df['testItem'].append(testItem)
+                    stat_ana_df['cfg'].append(cfg)
+                    stat_ana_df['feature'].append(feature)
+                    stat_ana_df['mean'].append(mean)
+                    stat_ana_df['std'].append(std)
+        stat_ana_df = pd.DataFrame(stat_ana_df).sort_values(by='testItem', ascending=True)
+        stat_ana_df.to_csv('/'.join([self.output_path, 'StatAna_CHKRES.csv']), index=False)
 
-                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    median, std = np.round(median, 4), np.round(std, 4)
-                    # fill the lists
-                    testItem_list.append('GAINs')
-                    group_list.append(group)
-                    asicgain_list.append(asicGain)
-                    bl_list.append(BL.split('m')[0]+' mV')
-                    mean_list.append(median)
-                    std_list.append(std)
-                    #
-                    x = np.linspace(xmin, xmax, len(tmpdata))
-                    p = norm.pdf(x, median, std)
-                    plt.figure()
-                    plt.hist(tmpdata, bins=Nbins, density=True)
-                    plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
-                    plt.xlabel(group);plt.ylabel('#')
-                    # plt.show()
-                    plt.legend()
-                    plt.savefig('/'.join([self.output_fig, filename + '.png']))
-                    plt.close()
-        Gain_df = pd.DataFrame({'testItem': testItem_list, 'feature': group_list, 'cfg': asicgain_list, 'BL': bl_list, 'mean': mean_list, 'std': std_list})
-        OUTPUT_DF = pd.concat([OUTPUT_DF, Gain_df], axis=0, ignore_index=True) #*******************
-        ## OTHER THAN GAIN
-        for item in testItems:
-            if item!='GAINs':
-                ## not GAIN ANALYSIS
-                ItemData = data_dict[item]
-                groups = list(ItemData.keys())
-                ASIC_Items = list(ItemData[groups[0]].keys())
-                # BLs = list(ItemData[groups[0]][ASIC_Items[0]].keys())
-                ##---- Lists for the dataframe
-                testItem_list, group_list, asicItem_list, bl_list = [], [], [], []
-                mean_list, std_list = [], []
-                for group in groups:
-                    for asicItem in ASIC_Items:
-                        # for BL in BLs:
-                        BL = ''
-                        filename = '_'.join(['QC_CHKRES', '{}_{}_{}'.format(item, group, asicItem)])
-                        if '\n' in filename:
-                            tmpASICitem = '_'.join(asicItem.split('\n'))
-                            BL = group.split('\n')[0]
-                            filename = '_'.join(['QC_CHKRES', item, group, tmpASICitem])
-
-                        tmpdata = ItemData[group][asicItem]
-                        Nbins = int(len(tmpdata)//32)
-                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                        # make the distribution symmetric
-                        # dmean_min = np.abs(median-xmin)
-                        # dmean_max = np.abs(median-xmax)
-                        # dmin = dmean_min
-                        # if dmin > dmean_max:
-                        #     dmin = dmean_max
-                        # pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
-                        # tmpdata = np.delete(np.array(tmpdata), pmins)
-                        #
-                        # xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        # median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                        for _ in range(75):
-                            if xmin < median-3*std:
-                                posMin = np.where(tmpdata<=xmin)[0]
-                                # del tmpdata[posMin]
-                                tmpdata = np.delete(np.array(tmpdata), posMin)
-                            
-                            if xmax > median+std:
-                                posMax = np.where(tmpdata==xmax)[0]
-                                # del tmpdata[posMax]
-                                tmpdata = np.delete(np.array(tmpdata), posMax)
-                            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                        median, std = np.round(median, 4), np.round(std, 4)
-                        if item in ['OUTPUT', 'BL']:
-                            tmp = asicItem.split('\n')
-                            asicItem = '_'.join(tmp[1:])
-                            BL = tmp[0]
-                            # asicItem_list.append(asicItem)
-                            # bl_list.append(BL)
-                        elif item in ['SLKS', 'TP']:
-                            ## the configured baseline should be in the script used for data collection
-                            # asicItem_list.append(asicItem)
-                            # bl_list.append(BL)
-                            # BL = "200mV"
-                            BL = '900 mV' #  This information is available in the decoded data. With some more work, one can use the returned value of extractData
-                            # pass
-                        # fill the lists
-                        testItem_list.append(item)
-                        group_list.append(group)
-                        asicItem_list.append(asicItem)
-                        bl_list.append(BL)
-                        mean_list.append(median)
-                        std_list.append(std)
-                        #
-                        x = np.linspace(xmin, xmax, len(tmpdata))
-                        p = norm.pdf(x, median, std)
-                        plt.figure()
-                        plt.hist(tmpdata, bins=Nbins, density=True)
-                        plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
-                        plt.xlabel(group);plt.ylabel('#')
-                        # plt.show()
-                        plt.legend()
-                        plt.savefig('/'.join([self.output_fig, filename + '.png']))
-                        plt.close()
-                Item_df = pd.DataFrame({'testItem': testItem_list, 'feature': group_list, 'cfg': asicItem_list, 'BL': bl_list, 'mean': mean_list, 'std': std_list})
-                OUTPUT_DF = pd.concat([OUTPUT_DF, Item_df], axis=0, ignore_index=True)
-        OUTPUT_DF.sort_values(by=['testItem'], axis=0, inplace=True, ignore_index=True)
-        OUTPUT_DF.to_csv('/'.join([self.output_path, 'StatAna_CHKRES.csv']), index=False)
 
 if __name__ == "__main__":
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
