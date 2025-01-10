@@ -69,6 +69,11 @@ class QC_CALI(BaseClass):
                 if self.tms==63:
                     DAC = param.split('_')[-1]
                     BL = param.split('_')[1]
+
+                if 'Vref' in BL:
+                    continue
+                if 'Ext' in BL:
+                    continue
                 cfg[BL].append((DAC, param))
         # print(cfg)
         # sys.exit()
