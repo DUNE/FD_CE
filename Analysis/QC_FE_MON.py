@@ -206,6 +206,8 @@ class FE_MON(BaseClass):
 
 class QC_FE_MON_Ana():
     def __init__(self, root_path: str, output_path: str, chipID=''):
+        self.item = 'FE_MON'
+        self.tms = '03'
         self.chipID = chipID
         self.root_path = root_path
         self.output_path = output_path
@@ -276,212 +278,234 @@ class QC_FE_MON_Ana():
         # sys.exit()
         
         VBGR_Temp_dict = data['VBGR_Temp']
+        # print(VBGR_Temp_dict)
+        # sys.exit()
 
         # print(VBGR_Temp_dict)
         # sys.exit()
-        return {'BL': BL_df, 'VBGR_TEMP': VBGR_Temp_dict, 'GAIN_INL': GAIN_INL_DNL_RANGE}
+        return {'BL': BL_df, 'VBGR_Temp': VBGR_Temp_dict, 'DAC_meas': GAIN_INL_DNL_RANGE}
 
     def run_Ana(self, path_to_statAna=''):
         # stat_ana_df
         stat_ana_df = pd.read_csv(path_to_statAna)
-        print(stat_ana_df)
-        sys.exit()
+        # print(stat_ana_df)
+        # sys.exit()
         items = self.getItems()
         if items==None:
             print('NONE')
             return None
-        BL = items['BL']
-        VBGR_Temp_dict = items['VBGR_TEMP']
-        GAIN_INL_df = items['GAIN_INL']
+        # print(items)
         
+        # BL analysis
+        BL_data = items['BL']
+        stat_BL = stat_ana_df[stat_ana_df['testItem']=='BL'].copy().reset_index().drop('index', axis=1)
+        baselines = stat_BL['cfg'].unique()
+        # print(baselines)
+        for BL in baselines:
+            tmp = stat_BL[stat_BL['cfg']==BL].copy().reset_index().drop('index', axis=1)
+            mean_stat = tmp['mean'][0]
+            std_stat = tmp['std'][0]
+            # print(mean_stat, std_stat)
+            # sys.exit()
+            mean_stat_bl = []
+            std_stat_bl = []
+            for ich in range(16):
+                mean_stat_bl.append(mean_stat)
+                std_stat_bl.append(std_stat)
+            BL_data['mean_{}'.format(BL)] = mean_stat_bl
+            BL_data['std_{}'.format(BL)] = std_stat_bl
+        ## QC result for Baseline
+        for BL in baselines:
+            BL_cols = [c for c in BL_data.columns if BL in c]
+            BL_data['QC_result_{}'.format(BL)]= (BL_data[BL]>= (BL_data['mean_{}'.format(BL)]-3*BL_data['std_{}'.format(BL)])) & (BL_data[BL] <= (BL_data['mean_{}'.format(BL)]+3*BL_data['std_{}'.format(BL)]))
+            BL_data.drop(['mean_{}'.format(BL), 'std_{}'.format(BL)], axis=1, inplace=True)
+        BL_data['CH'] = BL_data['CH'].apply(lambda x: 'CH{}'.format(x))
+        # print(BL_data)
+
+        # VBGR_Temp analysis
+        VBGR_Temp_data = items['VBGR_Temp']
+        stat_vbgr_temp = stat_ana_df[stat_ana_df['testItem']=='VBGR_Temp']
+        VBGR_Temp_data_df = pd.DataFrame([VBGR_Temp_data])
+        transformed_vbgr_temp = stat_vbgr_temp.pivot(index='testItem', columns='cfg', values=['mean', 'std']).reset_index()
+        transformed_vbgr_temp.columns = ['_'.join(col).strip() if col[0]!='testItem' else 'testItem' for col in transformed_vbgr_temp.columns.values]
+        # print(transformed_vbgr_temp)
+        combined_vbgr_temp = pd.concat([ VBGR_Temp_data_df, transformed_vbgr_temp ], axis=1)
+        combined_vbgr_temp.drop(['unit'], axis=1, inplace=True)
+        cols = ['VBGR', 'MON_Temper', 'MON_VBGR']
+        for col in cols:
+            combined_vbgr_temp['QC_result_{}'.format(col)]= (combined_vbgr_temp[col]>= (combined_vbgr_temp['mean_{}'.format(col)]-3*combined_vbgr_temp['std_{}'.format(col)])) & (combined_vbgr_temp[col] <= (combined_vbgr_temp['mean_{}'.format(col)]+3*combined_vbgr_temp['std_{}'.format(col)]))
+            combined_vbgr_temp.drop(['mean_{}'.format(col), 'std_{}'.format(col)], axis=1, inplace=True)
+        # print(combined_vbgr_temp)
+
+        # DAC_meas analysis
+        DAC_meas_data = items['DAC_meas'].copy()
+        stat_DAC_meas = stat_ana_df[stat_ana_df['testItem']=='DAC_meas'].copy()
+        # print(DAC_meas_data)
+        stat_DAC_meas[['CFG', 'feature']] = stat_DAC_meas['cfg'].astype(str).str.split('-', expand=True)
+        stat_DAC_meas.drop('cfg', axis=1, inplace=True)
         
+        transformed_stat_DAC = stat_DAC_meas.pivot(index='CFG', columns='feature', values=['mean', 'std']).reset_index()
+        transformed_stat_DAC.columns = ['_'.join(col).strip() if col[0]!='CFG' else 'CFG' for col in transformed_stat_DAC.columns.values]
+        # print(transformed_stat_DAC)
+        # print(type(DAC_meas_data))
+        merged_DAC_meas = DAC_meas_data.merge(transformed_stat_DAC, on='CFG', how='outer')
+        cols = [col for col in merged_DAC_meas.columns if (col!='CFG') & ('mean' not in col) & ('std' not in col)]
+        for col in cols:
+            merged_DAC_meas['QC_result_{}'.format(col)]= (merged_DAC_meas[col]>= (merged_DAC_meas['mean_{}'.format(col)]-3*merged_DAC_meas['std_{}'.format(col)])) & (merged_DAC_meas[col] <= (merged_DAC_meas['mean_{}'.format(col)]+3*merged_DAC_meas['std_{}'.format(col)]))
+            merged_DAC_meas.drop(['mean_{}'.format(col), 'std_{}'.format(col)], axis=1, inplace=True)
+        # print(merged_DAC_meas)
+
+        ## Transform dataframes to data tables
+        ## Baselines
+        BL_tables = []
+        for BL in baselines:
+            cols = [c for c in BL_data.columns if (c=='CH') | (BL in c)]
+            result = 'PASSED'
+            if False in BL_data['QC_result_{}'.format(BL)]:
+                result = 'FAILED'
+            # print(BL_data['CH'].apply(lambda x: 'CH{}'.format(x)))
+            oneBL = list(BL_data['CH'].astype(str).str.cat(BL_data[BL].astype(str), sep='=')) # unit here mV, need to ask why is the values 2x higher than the expected ? I think we saw this before
+            # tmp_oneBLresult = ','.join([self.item, 'BL_{}'.format(BL), result, ','.join(oneBL)])
+            BL_tables.append(['Test_{}_{}'.format(self.tms,self.item), 'BL_{}'.format(BL), result] + oneBL)
+        # print(BL_tables)
+        
+        # VBGR_Temp
+        vbgr_temp_tables = []
+        cols = ['VBGR', 'MON_Temper', 'MON_VBGR']
+        for col in cols:
+            result = 'PASSED'
+            if False in combined_vbgr_temp['QC_result_{}'.format(col)]:
+                result = 'FAILED'
+            combined_vbgr_temp[col] = combined_vbgr_temp[col].apply(lambda x: '{}={}'.format(col, x))
+            tmp_result = ['Test_{}_{}'.format(self.tms, self.item), combined_vbgr_temp.iloc[0]['testItem'], result, combined_vbgr_temp.iloc[0][col]]
+            vbgr_temp_tables.append(tmp_result)
+        # print(vbgr_temp_tables)
+        
+        # DAC_meas
+        DAC_meas_table = []
+        configurations = merged_DAC_meas['CFG'].unique()
+        for cfg in configurations:
+            onecfg_data = merged_DAC_meas[merged_DAC_meas['CFG']==cfg].copy()
+            qc_res_cols = [c for c in merged_DAC_meas.columns if 'QC_result' in c]
+            result = 'PASSED'
+            for cc in qc_res_cols:
+                if False in onecfg_data[cc]:
+                    result = 'FAILED'
+                    break
+
+            features = [cc for cc in onecfg_data.columns if ('QC_result' not in cc) & (cc!='CFG')]
+            tmp_result = ['Test_{}_{}'.format(self.tms, self.item), cfg, result]
+            for feature in features:
+                tmp_result.append( '{}={}'.format(feature, onecfg_data.iloc[0][feature]) )
+            DAC_meas_table.append(tmp_result)
+        output_table = BL_tables + vbgr_temp_tables + DAC_meas_table
+        # print(output_table)
+        return output_table
 
 class QC_FE_MON_StatAna(QC_FE_MON_Ana):
     def __init__(self, root_path: str, output_path: str):
         super().__init__(root_path=root_path, output_path=output_path)
 
-    def getItems(self): ### need to update this function to use the getItems in QC_FE_MON_Ana. It will be easier to read that way and we will have access to more information
+    def getdata(self):
         list_chipID = os.listdir(self.root_path)
-        out_dict = dict()
+        out_dict = {'BL': pd.DataFrame(), 'VBGR_Temp': dict(), 'DAC_meas': pd.DataFrame()}
         i = 0
-        keys = []
-        unit_gain = ''
-        unit_vbgrtemp = ''
         for chipID in list_chipID:
-            path_to_chipID = '/'.join([self.root_path, chipID])
-            if not self._FileExist(chipdir=path_to_chipID):
+            self.chipID = chipID
+            chip_dict = self.getItems()
+            if chip_dict==None:
                 continue
-            path_to_file = '/'.join([path_to_chipID, 'QC_MON/FE_MON.json'])
-            data = json.load(open(path_to_file))
+            # print(chip_dict)
+            # sys.exit()
+            BL = chip_dict['BL']
+            vbgr_temp = chip_dict['VBGR_Temp']
+            gain_inl = chip_dict['DAC_meas']
             if i==0:
-                keys = [k for k in data.keys() if k!='logs']
-                for key in keys:
-                    out_dict[key] = dict()
-                for key in keys:
-                    if key != 'DAC_meas':
-                        out_dict[key] = {k: np.array([]) for k in data[key].keys() if k!='unit'}
-                        subkeys_noDAC = [k for k in data[key].keys() if k!='unit']
-                        # get the unit vbgr and temperature
-                        if key=='VBGR_Temp':
-                            if len(unit_vbgrtemp)==0:
-                                unit_vbgrtemp = data[key]['unit']
-                        #
-                        for subkey in subkeys_noDAC:
-                            tmpdata = data[key][subkey]
-                            if type(tmpdata)!=str:
-                                out_dict[key][subkey] = np.append(out_dict[key][subkey], tmpdata)
-                    else:
-                        configs = data[key].keys()
-                        out_dict[key] = {cfg: dict() for cfg in configs}
-                        for cfg in configs:
-                            subkeys = [k for k in data[key][cfg].keys() if (k!='data' and k!='DAC' and k!='unit_of_gain')]
-                            # get the unit of gain
-                            if len(unit_gain)==0:
-                                unit_gain = data[key][cfg]['unit_of_gain']
-                            out_dict[key][cfg] = {subkey: np.array([]) for subkey in subkeys}
-                            for subkey in subkeys:
-                                tmpdata = data[key][cfg][subkey]
-                                out_dict[key][cfg][subkey] = np.append(out_dict[key][cfg][subkey], tmpdata)
+                # BL_keys = BL.columns
+                # for blkey in BL_keys:
+                #     out_dict['BL'][blkey] = np.array(BL[blkey])
+                out_dict['BL'] = BL.copy()
+                VT_keys = [k for k in vbgr_temp.keys() ]
+
+                for k in VT_keys:
+                    out_dict['VBGR_Temp'][k] = [vbgr_temp[k]]
+                out_dict['DAC_meas'] = gain_inl.copy()
+                i = 1
             else:
-                for key in keys:
-                    if key != 'DAC_meas':
-                        subkeys_noDAC = list(out_dict[key].keys())
-                        for subkey in subkeys_noDAC:
-                            tmpdata = data[key][subkey]
-                            if type(tmpdata)!=str:
-                                out_dict[key][subkey] = np.append(out_dict[key][subkey], tmpdata)
-                    else:
-                        configs = out_dict[key].keys()
-                        for cfg in configs:
-                            subkeys = out_dict[key][cfg].keys()
-                            for subkey in subkeys:
-                                tmpdata = data[key][cfg][subkey]
-                                out_dict[key][cfg][subkey] = np.append(out_dict[key][cfg][subkey], tmpdata)
-                # print(out_dict)
-                # sys.exit()
-            i += 1
-        # keys[1] = 'DAC_meas'
-        # testSubkey = list(out_dict[keys[1]].keys())[1]
-        # print(len(out_dict[keys[1]][testSubkey]))
-        # plt.figure()
-        # plt.hist(out_dict[keys[1]][testSubkey]['INL'], bins=284)
-        # plt.xlabel('_'.join([keys[1], testSubkey]))
-        # # plt.xlim([1500, 1575])
-        # plt.show()
-        return out_dict, unit_gain, unit_vbgrtemp
+                # for blkey in BL.columns:
+                #     out_dict['BL'][blkey] = np.append(out_dict['BL'][blkey], np.array(BL[blkey]))
+                out_dict['BL'] = pd.concat([out_dict['BL'], BL.copy()], axis=0)
+                VT_keys = [k for k in vbgr_temp.keys()]
+                for k in VT_keys:
+                    out_dict['VBGR_Temp'][k].append(vbgr_temp[k])
+                out_dict['DAC_meas'] = pd.concat([out_dict['DAC_meas'], gain_inl.copy()], axis=0)
+                # break
+        # print(out_dict['VBGR_Temp'])
+        output_dict = {'BL': out_dict['BL'].reset_index().drop('index', axis=1), 'VBGR_Temp': pd.DataFrame(out_dict['VBGR_Temp']), 'DAC_meas': out_dict['DAC_meas'].reset_index().drop('index', axis=1)}
+        return output_dict
     
+    def get_mean_std(self, tmpdata):
+        median = statistics.median(tmpdata)
+        std = statistics.stdev(tmpdata)
+        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+
+        for _ in range(100):
+            if xmin < median-3*std:
+                posMin = np.where(tmpdata==xmin)[0]
+                # del tmpdata[posMin]
+                tmpdata = np.delete(np.array(tmpdata), posMin)
+            if xmax > median+3*std:
+                posMax = np.where(tmpdata==xmax)[0]
+                # del tmpdata[posMax]
+                tmpdata = np.delete(np.array(tmpdata), posMax)
+
+            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
+            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
+        median, std = np.round(median, 4), np.round(std, 4)
+        return median, std
+
     def run_Ana(self):
-        ##############################################################
-        print('FE MONITORING Statistical analysis...')
-        ##############################################################
-        keys = ['BL', 'VBGR_Temp', 'DAC_meas']
-        data, unit_gain, unit_vbgrtemp = self.getItems()
-        # print(data[keys[0]].keys())
-        # print(unit_gain, unit_vbgrtemp)
+        data = self.getdata()
 
-        items = []
-        configurations = []
-        means = []
-        stdevs = []
+        output_dict = {'testItem': [], 'cfg': [], 'mean': [], 'std': []}
+        ## BL analysis
+        BL_data = data['BL']
+        for BL in ['200mV', '900mV']:
+            tmpdata = np.array(BL_data[BL], dtype=float)
+            mean, std = self.get_mean_std(tmpdata=tmpdata)
+            output_dict['testItem'].append('BL')
+            output_dict['cfg'].append(BL)
+            output_dict['mean'].append(mean)
+            output_dict['std'].append(std)
+
+        ## VBGR_Temp analysis
+        VBGR_Temp_data = data['VBGR_Temp']
+        keys = [c for c in VBGR_Temp_data.columns if c!='unit']
         for key in keys:
-            # The case of DAC_meas is different because we have the configuration information in that case
-            if key!='DAC_meas':
-                subkeys = list(data[key].keys())
-                for subkey in subkeys:
-                    tmpdata = data[key][subkey]
-                    median = statistics.median(tmpdata)
-                    std = statistics.stdev(tmpdata)
-                    xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    # # make the distribution symmetric
-                    # dmean_min = np.abs(median-xmin)
-                    # dmean_max = np.abs(median-xmax)
-                    # dmin = dmean_min
-                    # if dmin > dmean_max:
-                    #     dmin = dmean_max
-                    # pmins = np.where((np.array(tmpdata)<=dmin-median) | (np.array(tmpdata)>=dmin+median))[0]
-                    # tmpdata = np.delete(np.array(tmpdata), pmins)
-                    # xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                    # median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    for _ in range(100):
-                        if xmin < median-3*std:
-                            posMin = np.where(tmpdata==xmin)[0]
-                            # del tmpdata[posMin]
-                            tmpdata = np.delete(np.array(tmpdata), posMin)
-                        if xmax > median+3*std:
-                            posMax = np.where(tmpdata==xmax)[0]
-                            # del tmpdata[posMax]
-                            tmpdata = np.delete(np.array(tmpdata), posMax)
+            tmpdata = np.array(VBGR_Temp_data[key], dtype=float)
+            mean, std = self.get_mean_std(tmpdata=tmpdata)
+            output_dict['testItem'].append('VBGR_Temp')
+            output_dict['cfg'].append(key)
+            output_dict['mean'].append(mean)
+            output_dict['std'].append(std)
 
-                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                    median, std = np.round(median, 4), np.round(std, 4)
-                    items.append(key)
-                    configurations.append(subkey)
-                    means.append(median)
-                    stdevs.append(std)
-                    x = np.linspace(xmin, xmax, len(tmpdata))
-                    p = norm.pdf(x, median, std)
-                    plt.figure()
-                    Nbins = len(tmpdata)//256
-                    unit = ''
-                    if key=='VBGR_Temp':
-                        unit = unit_vbgrtemp
-                        Nbins = len(tmpdata)//16
-                    plt.hist(tmpdata, bins=Nbins, density=True)
-                    
-                    plt.plot(x, p, 'r', label='mean = {} {}, std = {} {}'.format(median, unit, std, unit))
-                    plt.xlabel('-'.join([key, subkey]));plt.ylabel('#')
-                    # plt.show()
-                    plt.legend()
-                    plt.savefig('/'.join([self.output_fig, 'QC_FE_MON_{}_{}.png'.format(key, subkey)]))
-                    plt.close()
-                    # plt.figure()
-                    # plt.hist(tmpdata, bins=len(tmpdata)//128)
-                    # plt.show()
-                    # sys.exit()
-            else:
-                configs = list(data[key].keys())
-                for cfg in configs:
-                    subkeys = list(data[key][cfg].keys())
-                    for subkey in subkeys:
-                        tmpdata = data[key][cfg][subkey]
-                        median = statistics.median(tmpdata)
-                        std = statistics.stdev(tmpdata)
-                        xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                        for _ in range(100):
-                            if xmin < median-3*std:
-                                posMin = np.where(tmpdata==xmin)[0]
-                                # del tmpdata[posMin]
-                                tmpdata = np.delete(np.array(tmpdata), posMin)
-                            if xmax > median+3*std:
-                                posMax = np.where(tmpdata==xmax)[0]
-                                # del tmpdata[posMax]
-                                tmpdata = np.delete(np.array(tmpdata), posMax)
-
-                            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-                        median, std = np.round(median, 4), np.round(std, 4)
-
-                        items.append(key)
-                        configurations.append('-'.join([cfg, subkey]))
-                        means.append(median)
-                        stdevs.append(std)
-                        
-                        x = np.linspace(xmin, xmax, len(tmpdata))
-                        p = norm.pdf(x, median, std)
-                        plt.figure()
-                        plt.hist(tmpdata, bins=len(tmpdata)//64, density=True)
-                        unit = ''
-                        if subkey=='GAIN':
-                            unit = unit_gain
-                        plt.plot(x, p, 'r', label='mean = {} {}, std = {} {}'.format(median, unit, std, unit))
-                        plt.xlabel('-'.join([key, cfg, subkey]));plt.ylabel('#')
-                        # plt.show()
-                        plt.legend()
-                        plt.savefig('/'.join([self.output_fig, 'QC_FE_MON_{}_{}_{}.png'.format(key, cfg, subkey)]))
-                        plt.close()
-        OUTPUT_DF = pd.DataFrame({'testItem': items, 'cfg': configurations, 'mean': means, 'std': stdevs})
+        ## GAIN_INL analysis
+        GAIN_INL_data = data['DAC_meas']
+        configurations = GAIN_INL_data['CFG'].unique()
+        for cfg in configurations:
+            currentdata = GAIN_INL_data[GAIN_INL_data['CFG']==cfg]
+            features = [c for c in currentdata.columns if c!='CFG']
+            for feature in features:
+                feature_data = np.array(currentdata[feature], dtype=float)
+                mean, std = self.get_mean_std(tmpdata=feature_data)
+                cfg_feature = '-'.join([cfg, feature])
+                output_dict['testItem'].append('DAC_meas')
+                output_dict['cfg'].append(cfg_feature)
+                output_dict['mean'].append(mean)
+                output_dict['std'].append(std)
+        OUTPUT_DF = pd.DataFrame(output_dict)
         OUTPUT_DF.to_csv('/'.join([self.output_path, 'StatAna_FE_MON.csv']), index=False)
+
 
 
 
@@ -518,5 +542,6 @@ if __name__ == '__main__':
     for chipID in list_chipID:
         ana_femon = QC_FE_MON_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
         ana_femon.run_Ana(path_to_statAna='/'.join([output_path, 'StatAna_FE_MON.csv']))
+        sys.exit()
     # femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
     # femon_stat.run_Ana()
