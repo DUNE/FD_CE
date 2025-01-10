@@ -494,6 +494,8 @@ if 7 in tms:
         print ("save_fdir_start_%s_end_save_fdir"%fdir)
         print ("save_file_start_%s_end_save_file"%fp)
         print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
+    else:
+        print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 9 in tms:
     print ("Turn DAT off")

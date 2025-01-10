@@ -2055,7 +2055,7 @@ class DAT_CFGS(WIB_CFGS):
                 if (vnom*err_low < data) and (data < vnom*err_high):
                     pass
                 else:
-                    print ("Warning: {} of chip(0-8)#{} is out of range of {} mV: {}".format(onekey, chipno, vnom, data))
+                    print ("Warning: {} of chip(0-7)#{} is out of range of {} mV: {}".format(onekey, chipno, vnom, data))
                     if chipno not in adcbads:
                         adcbads.append(chipno)
                     warn_flg = True
