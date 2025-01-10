@@ -18,6 +18,8 @@ from QC_CALIBRATION import QC_CALI_Ana
 from QC_RMS import RMS_Ana
 from QC_Cap_Meas import QC_Cap_Meas_Ana
 from QC_CHKRES import QC_CHKRES_Ana
+from QC_FE_MON import QC_FE_MON_Ana
+from Init_checkout import QC_INIT_CHK_Ana
 
 class QC_Report():
     def __init__(self, root_path: str, output_path: str, chipID: str):
@@ -27,6 +29,11 @@ class QC_Report():
         self.logs_dict = dict()
         self.qc_data = list()
 
+    def get_INIT_CHK(self):
+        init_chk = QC_INIT_CHK_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
+        init_chk_data = init_chk.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_INIT_CHK.csv']))
+        return init_chk_data
+    
     def get_QC_PWR(self):
         pwr_ana = QC_PWR_analysis(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
         pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR.csv']))
@@ -46,6 +53,11 @@ class QC_Report():
         # print(pwrcycle_data)
         # sys.exit()
         return pwrcycle_data #, logs
+    
+    def get_FE_MON(self):
+        ana_femon = QC_FE_MON_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
+        fe_mon_data = ana_femon.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_FE_MON.csv']))
+        return fe_mon_data
     
     def get_QC_CHKRES(self):
         chk_res = QC_CHKRES_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
@@ -73,9 +85,12 @@ class QC_Report():
         rms_data = self.get_QC_RMS()
         capacitance_data = self.get_QC_Cap_Meas()
         chkres_data = self.get_QC_CHKRES()
+        fe_mon_data = self.get_FE_MON()
+        init_chk_data = self.get_INIT_CHK()
 
         cali_data = []
         for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
+        # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_DATDAC']:
             cali_data += self.get_QC_CALI(cali_item=cali_item)
 
         month_day_year = '_'.join(self.logs_dict['date'].split('_')[:3])
@@ -101,9 +116,13 @@ class QC_Report():
         for h in header:
             csv_data_rows.append(h)
         
+        for d in init_chk_data:
+            csv_data_rows.append(d)
         for d in pwr_data:
             csv_data_rows.append(d)
         for d in chkres_data:
+            csv_data_rows.append(d)
+        for d in fe_mon_data:
             csv_data_rows.append(d)
         for d in pwr_cycle_data:
             csv_data_rows.append(d)
@@ -113,9 +132,10 @@ class QC_Report():
             csv_data_rows.append(d)
         csv_data_rows.append(capacitance_data)
         # print(csv_data_rows)
-        with open('test.csv', 'w') as f:
+        with open('/'.join([self.output_path, self.chipID,'{}.csv'.format(self.chipID)]), 'w') as f:
             csvwriter = csv.writer(f, delimiter=',')
             csvwriter.writerows(csv_data_rows)
+        print(self.chipID)
 # def create_simple_pdf(filename="sample.pdf"):
 #     """
 #     Creates a simple PDF file using FPDF

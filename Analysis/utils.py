@@ -118,7 +118,12 @@ def gain_inl(x: list, y: list, item='', returnDNL=False):
     linRange = [y[i0], y[i1]]
     if 'ASICDAC' not in item:
         linRange = [y[i1], y[i0]]
-
+    # if np.abs(linRange[1]-linRange[0]) ==7:
+    #     print(linRange)
+    #     plt.figure()
+    #     plt.scatter(x,y)
+    #     plt.show()
+    #     sys.exit()
     # DNL calculation : needed in FE_MONITORING
     dnl_list = []
     lsb = np.abs((np.max(y[i0:i1]) - np.min(y[i0:i1])) / (np.max(x[i0:i1]) - np.min(x[i0:i1])))
