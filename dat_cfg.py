@@ -52,7 +52,7 @@ class DAT_CFGS(WIB_CFGS):
         self.fembs_vol_set(vfe=vfe, vcd=vcd, vadc=vadc)
 
         #power on FEMBs in safe mode
-        init_ok, pwr_meas  = self.femb_safe_powering(self.fembs)
+        init_ok, pwr_meas  = self.femb_safe_powering(fembs=self.fembs, bias_ilim=0.3, dc0_ilim=1.5,dc1_ilim=1.5, dc2_ilim=2.5)
         self.data_align_pwron_flg = True
 
         if not init_ok: #unexpected large current
@@ -764,7 +764,8 @@ class DAT_CFGS(WIB_CFGS):
         if "CD" in duts:
             regerrflg = self.femb_cd_chkreg(femb_id = self.dat_on_wibslot)
             if regerrflg is not False:
-                warn_flg = True
+                #warn_flg = True
+                warn_flg = False
                 if regerrflg[2] == 2:
                     cdbads.append(1)
                 if regerrflg[2] == 3:

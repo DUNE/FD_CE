@@ -458,8 +458,8 @@ if 6 in tms:
     print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 7 in tms:
-    if 'RT' in logs['env']:
-        print ("COLDATA EFUSE burn-in")
+    if True:
+        print ("COLDATA EFUSE burn-in (only at RT)")
         datad = {}
         datad['logs'] = logs   
         print("Set U1 (left) as primary")        
@@ -493,8 +493,6 @@ if 7 in tms:
         #print ("\033[92mCOLDATA EFUSE burn-in is done. it took %d seconds   \033[0m"%(tt[-1]-tt[-2]))
         print ("save_fdir_start_%s_end_save_fdir"%fdir)
         print ("save_file_start_%s_end_save_file"%fp)
-        print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
-    else:
         print ("Done! Pass! it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 9 in tms:
