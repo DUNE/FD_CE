@@ -235,12 +235,20 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
             for femb_id in fembs:
                 t0 = time.time()
                 print ("FEMB%d is being turned on"%femb_id)
-                for bias_en in [0]:
-                    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
+                #for bias_en in [0]:
+                    #self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
+                #    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=bias_en )
+                #    time.sleep(1)
+                    #pwr_meas = self.get_sensors(sensors="FEMB%d"%femb_id)
+                #for bias_en in [1]:
+                if True:
+                    bias_en = 1
+                    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=bias_en )
                     time.sleep(1)
-                    pwr_meas = self.get_sensors(sensors="FEMB%d"%femb_id)
-
-                for bias_en in [1]:
+                    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=1, vadc_en=0, bias_en=bias_en )
+                    time.sleep(1)
+                    self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=1, vadc_en=1, bias_en=bias_en )
+                    time.sleep(1)
                     self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=bias_en )
                     t1 = time.time()
                     i = 0
@@ -290,7 +298,13 @@ class WIB_CFGS(LLC, FE_ASIC_REG_MAPPING):
             self.all_femb_bias_ctrl(enable=1 )
 
             for femb_id in fembs:
-                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=0 )
+                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=0 )
+                time.sleep(1)
+                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=0, vadc_en=0, bias_en=1 )
+                time.sleep(1)
+                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=1, vadc_en=0, bias_en=1 )
+                time.sleep(1)
+                self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=0, vcd_en=1, vadc_en=1, bias_en=1 )
                 time.sleep(1)
                 self.femb_power_en_ctrl(femb_id=femb_id, vfe_en=1, vcd_en=1, vadc_en=1, bias_en=1 )
                 time.sleep(0.1)

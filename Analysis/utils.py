@@ -22,7 +22,9 @@ if system_info=='Linux':
     sys.path.append('./decode')
     from dunedaq_decode import wib_dec
     sys.path.append('../')
-# elif system_info=='Windows':
+elif system_info=='Windows':
+    sys.path.append('../')
+    from spymemory_decode import wib_dec
 #     sys.path.append('../build')
 #     from dunedaq_decode import wib_dec
 #     sys.path.append('../Analysis')
@@ -809,4 +811,4 @@ if __name__ == '__main__':
     for chipID in listChips:
         report = QC_REPORT(root_path=root_path, chipID=chipID)
         report.QC_PWR_report()
-        sys.exit()
+        sys.exit()        sys.exit()

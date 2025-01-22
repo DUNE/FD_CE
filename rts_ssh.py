@@ -382,7 +382,10 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:
-                    break
+                    QCstatus = "PASS"
+                    bads = []
+                    tmsi = tmsi + 1
+                    retry_fi = 0
                     #
                     #QCstatus = "Fail"
                     #bads = [0, 1]

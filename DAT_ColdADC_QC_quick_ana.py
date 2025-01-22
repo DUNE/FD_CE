@@ -24,17 +24,9 @@ fsubdir = "LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_00
 froot = os.getcwd() + "\\tmp_data\\"
 
 fdir = froot + fsubdir + "\\"
-fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/"
-fdir = "D:/DAT_LArASIC_QC/DAT_Rev1_SN3_Fermilab_data/RT_ADC_000200001_000200002_000200003_000200004_000200005_000200006_000200007_000200008/"
-fdir = '''D:\DAT_LArASIC_QC\DAT_Rev1_SN4\ADC_400100001_400100002_400100003_400100004_400100005_400100006_400100007_400100008/'''
-fdir = '''D:\DAT_ColdADC_QC\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-fdir = '''D:\DAT_SN_data\SN1\Time_20250103155045_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-fdir = '''D:\DAT_SN_data\SN1\Time_20250103161442_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-fdir = '''C:\SGAO\ColdTest\SN7\Time_20250103190252_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-fdir = '''C:\SGAO\ColdTest\SN7\Time_20250103213039_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-#fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\Time_20241212183902_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-#fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\Time_20241213194328_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-# fdir = os.path.join(froot,fsubdir) #platform-agnostic
+fdir = '''D:\DAT_SN_data\SN9\Time_20250103212716_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+fdir = '''D:\DAT_SN_data\SN9\Time_20250106163307_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+fdir = '''D:\DAT_SN_data\SN7\Time_20250110170750_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 
 evl = input ("Analyze all test items? (Y/N) : " )
 if ("Y" in evl) or ("y" in evl):
@@ -1146,15 +1138,15 @@ if 8 in tms:
                     num_16bwords = 0x8000 / 2
                     words16b = list(struct.unpack_from("<%dH"%(num_16bwords),raw))
     
-                    if ch == 110:
-                        import matplotlib.pyplot as plt
-                        plt.plot(words16b)
-                        plt.show()
-                        plt.close()
-                        ffig = True
-                    else:
-                        ffig = False
-                    #ffig = False
+                    #if ch == 84:
+                    #    import matplotlib.pyplot as plt
+                    #    plt.plot(words16b)
+                    #    plt.show()
+                    #    plt.close()
+                    #    ffig = True
+                    #else:
+                    #    ffig = False
+                    ffig = False
                     ENOB, NAD, SFDR, SINAD, psd_dbfs, points_dbfs = adc_enob(chndata=words16b, fs=1953125, Ntot=2**12, Vfullscale=1.4, Vinput=1.2, ffig=ffig)
                     chsenob.append(ENOB)
                 import matplotlib.pyplot as plt

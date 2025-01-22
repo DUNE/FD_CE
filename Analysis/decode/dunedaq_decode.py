@@ -285,5 +285,6 @@ def wib_dec(data, fembs=range(4), spy_num= 1, fastchk = False, cd0cd1sync=True):
         
         
         #wibdata.append([femb0, femb1, femb2, femb3, t0max])
-        wibdata.append([femb0, femb1, femb2, femb3, tmts, cd_tmts]) #temp for graphing 
+        #wibdata.append([femb0, femb1, femb2, femb3, tmts, cd_tmts]) #for rado LArASIC analysis
+        wibdata.append([femb0, femb1, femb2, femb3,  t0max, tmts, cd_tmts]) # for normal data collection operation 
     return wibdata
