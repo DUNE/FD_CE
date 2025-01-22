@@ -320,12 +320,12 @@ class QC_ANA():
                     rawdata = cfgdata[1]
                     cfg_info = cfgdata[2]
                     pwr_meas = cfgdata[5]
-        
+
                     if ("DIRECT_PLS_CHK" in onekey) :
-                        failflg = self.ana_res(fembs, rawdata, par=[3000,10000], rmsr=[2.5,15], pedr=[300,3000] )
-                    elif ("ASICDAC_CALI_CHK" in onekey):
-                        failflg = self.ana_res(fembs, rawdata, par=[7000,10000], rmsr=[5,25], pedr=[100,3000] )
-    
+                        failflg = self.ana_res(fembs, rawdata, par=[4000,10000], rmsr=[2,25], pedr=[300,3000] )
+                    if ("ASICDAC_CALI_CHK" in onekey):
+                        failflg = self.ana_res(fembs, rawdata, par=[6000,10000], rmsr=[2,25], pedr=[300,3000] )
+
                     if True:
                         import matplotlib.pyplot as plt
                         plt.rcParams.update({'font.size': 8})
@@ -335,6 +335,7 @@ class QC_ANA():
                         self.plt_subplot(plt, fembs, rawdata)
                         plt.tight_layout( rect=[0.05, 0.05, 0.95, 0.95])
                         plt.plot()
+                        #plt.show()
                         plt.savefig( fp[0:-4] + "_" + onekey + ".png")
                         plt.close()
     
@@ -851,7 +852,7 @@ if __name__=="__main__":
     fdir = """D:\DAT_CD_QC\RT_CD_031672417_031862417/"""
     fdir = '''D:\DAT_SN_data\SN1\Time_20250103160419_DUT_1000_2000\RT_CD_060602417_060562417/'''
     fdir = '''D:\DAT_CD_QC\Tested\Time_20250109200316_DUT_1000_2000\RT_CD_031702417_031722417/'''
-    fdir = '''D:\DAT_CD_QC\RT_CD_031672417_031862417/'''
+    fdir = '''D:\DAT_CD_QC\Tested\Time_20250122214842_DUT_1000_2000\LN_CD_031872417_031822417/'''
 
 
     evl = input ("Analyze all test items? (Y/N) : " )
