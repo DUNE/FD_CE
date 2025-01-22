@@ -5,13 +5,43 @@ import time
 import random
 import pickle
 
+# To send notification email
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 
 #start robot
 from RTS_CFG import RTS_CFG
-from rts_ssh_LArASIC import DAT_power_off
-from rts_ssh_LArASIC import Sinkcover
-from rts_ssh_LArASIC import rts_ssh_LArASIC
+from rts_ssh import DAT_power_off
+from rts_ssh import Sinkcover
+from rts_ssh import rts_ssh
 
+def send_email(message):
+    sender_email = "ningxuyang0202@gmail.com"
+    receiver_email = "xning@bnl.gov"
+    #receiver_email = ningxuyang0202@gmail.com
+    password = "tadu prhn atwp tvdb"
+    subject = "ERROR from RTS"
+    body = message
+    msg = MIMEMultipart()
+
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    # Attach the body text to the email
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try: 
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.ehlo()
+            server.starttls()  # Start TLS encryption
+            server.ehlo()
+            server.login(sender_email, password)  # Login to the server
+            server.send_message(msg)  # Send the email
+            print("Email sent successfully!")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 
 ############################################################
@@ -40,7 +70,8 @@ while True:
 
 
 
-
+#send_email("run start")
+#exit()
 
 trayid = bno
 #trayid = "B001T0001"
@@ -148,6 +179,7 @@ def DAT_debug (QCstatus):
                     return "2"
 
 def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=None, sktn=None):
+    send_email("RTS is crying for help!!")
     print ("Please check the error information on EPSON RC")
     if "T2S" in info:
         print ("Chip is moved from Tray") 
@@ -258,7 +290,7 @@ def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7]) :
 
 def DAT_QC(dut_skt) :
     while True:
-        QCresult = rts_ssh_LArASIC(dut_skt, root=rootdir)
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE" )
         if QCresult != None:
             QCstatus = QCresult[0]
             badchips = QCresult[1]
@@ -421,7 +453,7 @@ while (len(duts) > 0) or (len(skts) != 8):
     dut_skt.update(dut_skt_n)
     print ("Chips to be tested: ", dut_skt)
 
-    if True:
+    if False:
         QCstatus, badchips = DAT_QC(dut_skt) 
     else:
         QCstatus = "PASS"
