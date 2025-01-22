@@ -189,15 +189,20 @@ def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=Non
         print ("Chip on orignial DATno(1-2)={}, Skt(1-8)={} ".format(datno, sktn)) 
     else:
         print (info)
+        rts.rts_idle()
 
     while True:
         print ("444-> Shutdown RTS and exit anyway")
         print ("1->move chip to Tray#1_Col#15_Row#6")
         print ("2->move chip to orignal position")
         print ("6->fixed,")
+
+        if True: #07302024 to be deleted later when exception processings are added. 
+            rts.rts_idle()
         userinput = input ("Please contatc tech coordinator : ")
         if len(userinput) > 0:
             if "444" in userinput :
+                rts.MotorOn()
                 rts.JumpToCamera()
                 rts.rts_shutdown()
                 print ("Exit anyway")
@@ -241,6 +246,7 @@ def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=Non
 
             elif "6" in userinput[0] :
                 input ("Make sure the chip back to orginal position and click anykey")
+                rts.MotorOn()
                 break
 
 def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7]) :
