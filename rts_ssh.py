@@ -356,7 +356,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 #QCstatus = "PASS"
                 #bads = []
 
-                if len(bads) > 0 :
+                if (len(bads) > 0) or ("Code#E" in QCstatus):
                     if logs['New_chips']:
                         fp = logs['pc_raw_dir'] + "QC.log"
                         with open(fp, 'wb') as fn:

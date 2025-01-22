@@ -325,7 +325,8 @@ if Py_Dec_Flg: # line#10 to line#371 use python for decoding
             else:
                 femb3 = None
     
-            wibdata.append([femb0, femb1, femb2, femb3, tmts, cd_tmts])
+            #wibdata.append([femb0, femb1, femb2, femb3, tmts, cd_tmts])
+            wibdata.append([femb0, femb1, femb2, femb3, t0max, tmts, cd_tmts]) #temp for graphing 
         return wibdata
 
 

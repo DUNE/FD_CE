@@ -42,7 +42,8 @@ if 1:
     plt.rcParams.update({'font.size': 14})
     rms = []
     pkp  = []
-    for fe in range(8):
+    #for fe in range(8):
+    for fe in [6]:
         for fe_chn in range(16):
     
             fechndata = datd[fe*16+fe_chn]
