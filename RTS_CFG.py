@@ -204,6 +204,7 @@ class RTS_CFG():
     def MoveChipFromTrayToTray(self, stray_nr, scol_nr, srow_nr, dtray_nr, dcol_nr, drow_nr):
         i = 0
         origpos = False
+        tryi = 0
         while True:
             print ("Move Chip From  Tray#{},col#{},row#{} To Tray#{},col#{},row#{}".format(stray_nr, scol_nr, srow_nr, dtray_nr, dcol_nr, drow_nr))
             i = i + 1
