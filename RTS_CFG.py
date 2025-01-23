@@ -89,6 +89,7 @@ class RTS_CFG():
                 self.rts_init(port=2001, host_ip='192.168.0.2')
 
     def MoveChipFromTrayToSocket(self, tray_nr, col_nr, row_nr, DAT_nr, socket_nr):
+        tryi = 0
         while True:
             try:
                 print ("Move Chip From Tray#{},col#{},row#{} To DAT#{},Socket{}".format(tray_nr, col_nr, row_nr, DAT_nr, socket_nr))
@@ -114,11 +115,26 @@ class RTS_CFG():
                 self.msg = self.s.recv(1024).decode()
                 self.msg = self.msg.strip()
                 print("msg: ", self.msg)
-                try:
+                #try:
+                if True:
                     status = int(self.msg)
-                    break
-                except:
-                    time.sleep(1)
+                    if (status < 0):
+                        tryi = tryi + 1 
+                        print ("Move chip to orignal position")
+                        self.JumpToTray(tray_nr, col_nr, row_nr)    
+                        self.DropToTray()    
+                        self.JumpToCamera()
+                        time.sleep (1)
+                    else:
+                        break
+                    if tryi > 1:
+                        break
+                    else:
+                        print ("Try again")
+                        continue
+                #except:
+                #    print ("whyereeeee")
+                #    time.sleep(1)
             except ConnectionAbortedError:
                 print ("ConnectionAbortedError")
                 self.rts_init(port=2001, host_ip='192.168.0.2')
@@ -151,6 +167,27 @@ class RTS_CFG():
                 self.msg = self.s.recv(1024).decode()
                 self.msg = self.msg.strip()
                 print("msg: ", self.msg)
+                #try:
+                if True:
+                    status = int(self.msg)
+                    if (status < 0) :
+                        tryi = tryi + 1
+                        print ("Move chip to orignal position")
+                        self.JumpToSocket(DAT_nr, socket_nr)    
+                        self.InsertIntoSocket()    
+                        self.JumpToCamera()
+                        time.sleep (1)
+                    else:
+                        break
+
+                    if tryi > 1:
+                        break
+                    else: 
+                        print ("Try again")
+                        continue
+                #except:
+                #    time.sleep(1)
+
                 try:
                     status = int(self.msg)
                     break
@@ -197,7 +234,23 @@ class RTS_CFG():
             print("msg: ", self.msg)
             try:
                 status = int(self.msg)
-                break
+                if (status < 0) and (tryi == 0):
+                    print ("Move chip to orignal position")
+                    tryi = tryi + 1
+                    i=i-1
+                    self.JumpToTray(tray_nr, col_nr, row_nr)    
+                    self.DropToTray()    
+                    self.JumpToCamera()
+                    time.sleep (1)
+                    continue
+                else:
+                    break
+
+                if tryi > 1:
+                    break
+                else:
+                    print ("Try again")
+                    continue
             except:
                 time.sleep(1)
                 continue
@@ -260,4 +313,90 @@ class RTS_CFG():
         time.sleep(3)
         self.s.close()
         
+    def JumpToTray(self, tray_nr, col_nr, row_nr):
+        while True:
+            try:
+                print ("Move Chip To Tray#{},col#{},row#{}".format(tray_nr, col_nr, row_nr))
+                msg = "JumpToTray"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(tray_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(col_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(row_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if msg in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def DropToTray(self): #
+        while True:
+            try:
+                msg = "DropToTray"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "DropToTray" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def JumpToSocket(self, DAT_nr, socket_nr):
+        while True:
+            try:
+                print ("Move Chip To Socket#{},col#{},row#{}".format(tray_nr, col_nr, row_nr))
+                msg = "JumpToSocket"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(DAT_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(socket_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if msg in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def InsertIntoSocket(self): #
+        while True:
+            try:
+                msg = "InsertIntoSocket"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "InsertIntoSocket" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
 

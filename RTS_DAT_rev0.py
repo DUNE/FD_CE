@@ -119,12 +119,22 @@ else:
     rts.MotorOn()
     rts.JumpToCamera()
 
-#rts.MotorOn()
-#rts.MoveChipFromSocketToTray(2, 12, 4, 2, 1)
+rts.MotorOn()
+#rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
+rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
+#rts.JumpToTray(2,1,1)
+#rts.DropToTray()
 
+print ("KKKKKKKKKKKKKK")
 #rts.rts_idle()
+rts.MotorOn()
+rts.JumpToCamera()
+rts.rts_shutdown()
+
+exit()
+
+
 #rts.MotorOn()
-#rts.MoveChipFromSocketToTray(2, 4, 2, 12, 1)
 #rts.rts_idle()
 #exit()
 #rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
@@ -187,6 +197,7 @@ def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=Non
     elif "S2T" in info:
         print ("Chip is moved from Socket") 
         print ("Chip on orignial DATno(1-2)={}, Skt(1-8)={} ".format(datno, sktn)) 
+
     else:
         print (info)
         rts.rts_idle()
@@ -280,6 +291,14 @@ def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7]) :
         else:
             status = rts.MoveChipFromTrayToSocket(trayno, trayc, trayr, datno, sktn)    
 
+#        if status < 0:
+#            print ("Move chip to orignal position, and try again")
+#            rts.JumpToTray(trayno=trayno, trayc=trayc, trayr=r)    
+#            rts.DroptoTray()    
+#            rts.JumpToCamera()
+#            time.sleep (1)
+#            status = rts.MoveChipFromTrayToSocket(trayno, trayc, trayr, datno, sktn)    
+
         if status < 0:
             RTS_debug ("T2S", status, trayno, trayc, trayr, datno, sktn)
             tmpi = tmpi
@@ -353,6 +372,13 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order) :
             else:
                 status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
 
+#            if status < 0:
+#                print ("Move chip to orignal position, and try again")
+#                rts.JumpToSocket(datno=datno, sktn=sktn)    
+#                rts.DroptoSocket()    
+#                rts.JumpToCamera()
+#                status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
+
             if status < 0:
                 RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
                 tmpi = tmpi
@@ -390,6 +416,14 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order) :
                     status = 0
                 else:
                     status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr)
+
+#                if status < 0:
+#                    print ("Move chip to orignal position, and try again")
+#                    rts.JumpToSocket(datno=datno, sktn=sktn)    
+#                    rts.DroptoSocket()    
+#                    rts.JumpToCamera()
+#                    status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
+
                 if status < 0:
                     RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
                     tmpi = tmpi
@@ -424,6 +458,13 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order) :
                         status = 0
                     else:
                         status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
+
+#                if status < 0:
+#                    print ("Move chip to orignal position, and try again")
+#                    rts.JumpToSocket(datno=datno, sktn=sktn)    
+#                    rts.DroptoSocket()    
+#                    rts.JumpToCamera()
+#                    status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
 
                 if status < 0:
                     RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
