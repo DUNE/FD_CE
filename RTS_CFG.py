@@ -118,7 +118,7 @@ class RTS_CFG():
                 #try:
                 if True:
                     status = int(self.msg)
-                    if (status < 0):
+                    if (status < 0) and (status != -200) :
                         tryi = tryi + 1 
                         print ("Move chip to orignal position")
                         self.JumpToTray(tray_nr, col_nr, row_nr)    
@@ -142,6 +142,7 @@ class RTS_CFG():
 
 
     def MoveChipFromSocketToTray(self, DAT_nr, socket_nr, tray_nr, col_nr, row_nr):
+        tryi = 0
         while True:
             try:
                 print ("Move Chip From DAT#{},Socket{} To Tray#{},col#{},row#{}".format(DAT_nr, socket_nr, tray_nr, col_nr, row_nr))
@@ -167,10 +168,9 @@ class RTS_CFG():
                 self.msg = self.s.recv(1024).decode()
                 self.msg = self.msg.strip()
                 print("msg: ", self.msg)
-                #try:
-                if True:
+                try:
                     status = int(self.msg)
-                    if (status < 0) :
+                    if (status < 0) and (status != -200) :
                         tryi = tryi + 1
                         print ("Move chip to orignal position")
                         self.JumpToSocket(DAT_nr, socket_nr)    
@@ -185,8 +185,8 @@ class RTS_CFG():
                     else: 
                         print ("Try again")
                         continue
-                #except:
-                #    time.sleep(1)
+                except:
+                    time.sleep(1)
 
                 try:
                     status = int(self.msg)
@@ -235,11 +235,11 @@ class RTS_CFG():
             print("msg: ", self.msg)
             try:
                 status = int(self.msg)
-                if (status < 0) and (tryi == 0):
+                if (status < 0) and (status != -200) :
                     print ("Move chip to orignal position")
                     tryi = tryi + 1
                     i=i-1
-                    self.JumpToTray(tray_nr, col_nr, row_nr)    
+                    self.JumpToTray(stray_nr, scol_nr, srow_nr)    
                     self.DropToTray()    
                     self.JumpToCamera()
                     time.sleep (1)
@@ -362,7 +362,8 @@ class RTS_CFG():
     def JumpToSocket(self, DAT_nr, socket_nr):
         while True:
             try:
-                print ("Move Chip To Socket#{},col#{},row#{}".format(tray_nr, col_nr, row_nr))
+
+                print ("Move Chip To DAT#{},Socket{}".format(DAT_nr, socket_nr))
                 msg = "JumpToSocket"
                 self.s.send(msg.encode())
                 self.s.send(b"\r\n")
