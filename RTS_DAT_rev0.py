@@ -16,6 +16,7 @@ from RTS_CFG import RTS_CFG
 from rts_ssh import DAT_power_off
 from rts_ssh import Sinkcover
 from rts_ssh import rts_ssh
+from set_rootpath import rootdir_cs
 
 def send_email(message):
     sender_email = "ningxuyang0202@gmail.com"
@@ -49,6 +50,29 @@ def send_email(message):
 BypassRTS = False
 logs = {}
 
+chiptype = 1
+print ("RTS only support FE chip testing at the current development phase)")
+
+if chiptype == 1:
+    duttype = "FE"
+    rootdir = rootdir_cs(duttype)
+elif chiptype == 2:
+    duttype = "ADC"
+    rootdir = rootdir_cs(duttype)
+elif chiptype == 3:
+    duttype = "CD"
+    rootdir = rootdir_cs(duttype)
+
+while True:
+    print ("\033[96m Root folder of test data is: "+ "\033[93m" + rootdir + "\033[0m")
+    yns = input ("\033[96m Is path correct (Y/N): " + "\033[95m" )
+    if "Y" in yns or "y" in yns:
+        break
+    else:
+        print ( "\033[91m Wrong path, please edit set_rootpath.py" + "\033[0m")
+        print ( "\033[91m exit anyway" + "\033[0m")
+        exit()
+
 while True:
     print ("Read TrayID (BxxxTxxxx) from the tray")
     bno = input("Input TrayID (-1 to exit): ")
@@ -69,7 +93,6 @@ while True:
         sys.exit()
 
 
-
 #send_email("run start")
 #exit()
 
@@ -79,7 +102,8 @@ trayno =2
 badtrayno = 1 #some issue with tray#1
 bad_dut_order=0
 datno =2
-rootdir = "C:/DAT_LArASIC_QC/Tested/" + trayid + "/"
+rootdir = rootdir + trayid + "/"
+#rootdir = "C:/DAT_LArASIC_QC/Tested/" + trayid + "/"
 
 logs["TrayID"] = trayid
 logs["TrayNo"] = 2
@@ -107,7 +131,7 @@ if not os.path.exists(rootdir):
 else:
     print ("File exist, please make sure the tray ID is unique")
     print ("Exit anyway")
-    #sys.exit()
+    sys.exit()
 
 ############################################################
 rts = RTS_CFG()
@@ -118,19 +142,27 @@ else:
     rts.rts_init(port=2001, host_ip='192.168.0.2')
     rts.MotorOn()
     rts.JumpToCamera()
-#rts.MotorOn()
-#rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
 #rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
-#rts.MoveChipFromTrayToTray(2, 1, 1, 1, 1,1)    
-#rts.JumpToTray(2,1,1)
-#rts.DropToTray()
-
+#rts.MoveChipFromSocketToTray(2, 2, 2, 2, 1)
+#rts.MoveChipFromSocketToTray(2, 3, 2, 3, 1)
+#rts.MoveChipFromSocketToTray(2, 4, 2, 4, 1)
+##rts.MoveChipFromSocketToTray(2, 5, 2, 5, 1)
+#rts.MoveChipFromSocketToTray(2, 6, 2, 7, 2)
+#rts.MoveChipFromSocketToTray(2, 7, 2, 8, 2)
+#rts.MoveChipFromSocketToTray(2, 8, 2, 9, 2)
+##rts.MotorOn()
+##rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
+##rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
+##rts.MoveChipFromTrayToTray(2, 1, 1, 1, 1,1)    
+##rts.JumpToTray(2,1,1)
+##rts.DropToTray()
+#
 #print ("KKKKKKKKKKKKKK")
 ##rts.rts_idle()
 #rts.MotorOn()
 #rts.JumpToCamera()
 #rts.rts_shutdown()
-#
+##
 #exit()
 
 
@@ -471,7 +503,7 @@ while (len(duts) > 0) or (len(skts) != 8):
     dut_skt.update(dut_skt_n)
     print ("Chips to be tested: ", dut_skt)
 
-    if False:
+    if True:
         QCstatus, badchips = DAT_QC(dut_skt) 
     else:
         QCstatus = "PASS"

@@ -124,10 +124,12 @@ class RTS_CFG():
                         self.JumpToTray(tray_nr, col_nr, row_nr)    
                         self.DropToTray()    
                         self.JumpToCamera()
+                        self.rts_idle() 
                         time.sleep (1)
+                        self.MotorOn() 
                     else:
                         break
-                    if tryi > 1:
+                    if tryi > 2:
                         break
                     else:
                         print ("Try again")
@@ -176,11 +178,13 @@ class RTS_CFG():
                         self.JumpToSocket(DAT_nr, socket_nr)    
                         self.InsertIntoSocket()    
                         self.JumpToCamera()
+                        self.rts_idle() 
                         time.sleep (1)
+                        self.MotorOn() 
                     else:
                         break
 
-                    if tryi > 1:
+                    if tryi > 2:
                         break
                     else: 
                         print ("Try again")
@@ -242,12 +246,14 @@ class RTS_CFG():
                     self.JumpToTray(stray_nr, scol_nr, srow_nr)    
                     self.DropToTray()    
                     self.JumpToCamera()
+                    self.rts_idle() 
                     time.sleep (1)
+                    self.MotorOn() 
                     continue
                 else:
                     break
 
-                if tryi > 1:
+                if tryi > 2:
                     break
                 else:
                     print ("Try again")
