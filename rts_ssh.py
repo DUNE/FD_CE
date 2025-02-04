@@ -88,7 +88,7 @@ def Sinkcover():
         else:
             print ("Please close the covers and continue...")
 
-def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
+def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" ):
 
     QC_TST_EN =  True 
     
@@ -111,8 +111,21 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                                                                             dut_skt[x[0]][1]*1000 + dut_skt[x[0]][0], 
                                                                             dut_skt[x[1]][1]*1000 + dut_skt[x[1]][0]
                                                                             )
-
+    
     logs['PC_WRCFG_FN'] = "./asic_info.csv"
+    csvfp = logs['PC_WRCFG_FN']
+    tmps = []
+    with open(csvfp, 'r') as fp:
+        for cl in fp:
+            tmp = cl.split(",")
+            if "env" in tmp[0]:
+                tmp[1] = env
+            cln=','.join(tmp)
+            tmps.append(cln)
+    
+    with open(csvfp, 'w') as fp:
+        for cl in tmps:
+            fp.write(cl)
     
     #[0, 1, 2, 3, 4,5,61, 62, 63, 64, 7,8, 9]
     tms_items = {}
@@ -349,7 +362,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE" ):
                 print ("FAIL!")
                 return None
 
-            if (testid == 0):
+            if (testid == 0) and ("RT" in env):
                 print ("Run quick analysis...")
                 QCstatus, bads = dat_initchk(fdir=logs['pc_raw_dir'])
                 #debugging, to be delete

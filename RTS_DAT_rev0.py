@@ -10,6 +10,20 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+from colorama import just_fix_windows_console
+just_fix_windows_console()
+
+####### Input test information #######
+#Red = '\033[91m'
+#Green = '\033[92m'
+#Blue = '\033[94m'
+#Cyan = '\033[96m'
+#White = '\033[97m'
+#Yellow = '\033[93m'
+#Magenta = '\033[95m'
+#Grey = '\033[90m'
+#Black = '\033[90m'
+#Default = '\033[99m'
 
 #start robot
 from RTS_CFG import RTS_CFG
@@ -114,7 +128,7 @@ logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(0,90,1))
+duts = list(range(8,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)
 logs["duts"] = duts 
@@ -131,7 +145,7 @@ if not os.path.exists(rootdir):
 else:
     print ("File exist, please make sure the tray ID is unique")
     print ("Exit anyway")
-    sys.exit()
+    #sys.exit()
 
 ############################################################
 rts = RTS_CFG()
@@ -142,6 +156,8 @@ else:
     rts.rts_init(port=2001, host_ip='192.168.0.2')
     rts.MotorOn()
     rts.JumpToCamera()
+
+ 
 #rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
 #rts.MoveChipFromSocketToTray(2, 2, 2, 2, 1)
 #rts.MoveChipFromSocketToTray(2, 3, 2, 3, 1)
@@ -355,6 +371,23 @@ def DAT_QC(dut_skt) :
                 elif "2" in userinput[0] :
                     print ("debugging, ")
                     input ("click any key to start ASIC QC again...")
+    yorn = input ("Do you want to perform cold test? (Y/N)")
+    if "Y" in yorn or "y" in yorn:
+        yorn = input ("Is sink cover close?(Y/N):")
+        input ("Is value 22psi dewar open? (Y/N)")  
+        input ("Input 0 in the putty window, wait until it turns to Mode 2(Y/N)")
+        input ("Input 1 in the putty window(Y/N)")
+        input ("Input 3 in the putty window(Y/N)")
+        print ("Wait 20 minutes")
+        input ("Input 4 in the putty window(Y/N)")
+        print ("Wait 10 minutes")
+        LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE", env="LN" )
+        input ("Input 2 in the putty window(Y/N)")
+        print ("Wait 20 minutes")
+        input ("Remove the cover(y/n)")
+        input ("Remove the cover(y/n)")
+        input ("Remove the cover(y/n)")
+
     return QCstatus, badchips #badchips range from 0 to7
 
 ################STEP3#################################

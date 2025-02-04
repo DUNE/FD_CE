@@ -159,6 +159,14 @@ def data_ana(fembs, rawdata, rms_flg=False):
     npos64=0
     for achn in range(len(datd)):
         chndata = datd[achn]
+
+        #if achn==80:
+        #    import matplotlib.pyplot as plt
+        #    print ("AAAAA")
+        #    plt.plot(chndata)
+        #    plt.show()
+        #    plt.close()
+
         amax = np.max(chndata[300:-150])
         amin = np.min(chndata[300:-150])
         if achn==0:
@@ -1025,7 +1033,7 @@ def dat_larasic_qc_quick_ana(fdir="/."):
     
 
 if __name__=="__main__":
-    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20250122202831_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''C:/aa/LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
     dat_larasic_qc_quick_ana(fdir=fdir)
     #QCstatus, bads = dat_larasic_initchk(fdir)
     #print (bads)
