@@ -67,7 +67,6 @@ class cryobox:
 
     def cryo_fill(self):
         self.cryo_create()
-
         fill_flg = True
         while fill_flg:
             try:
@@ -112,8 +111,9 @@ class cryobox:
                         break
                     else:
                         pass
-
+#                raise
         self.cryo_close()
+
         return rd
 
     def cryo_warmup(self, waitminutes = 20):
@@ -144,144 +144,10 @@ class cryobox:
                     
 if __name__=="__main__":
     cryo=cryobox()
-    cryo.cryo_fill()
-    cryo.cryo_lowlevel(waitminutes=1)
-    cryo.cryo_highlevel(waitminutes=1)
+    #cryo.cryo_fill()
+#    cryo.cryo_lowlevel(waitminutes=10)
+    #cryo.cryo_highlevel(waitminutes=5)
+#    input ("Wait...")
     cryo.cryo_warmup(waitminutes=1)
     #cryo.cryo_close()
 
-
-
-
-        #    rd = self.cryo_rdline()
-        #    if b'AutoFill ended' in rd:
-        #        break
-        #self.cryo_mode( mode=b'm') #set
-        #self.cryo_rdline()
-        #self.cryo_rdline()
-        #self.cryo_rdline()
-
-
-        #self.cryo_mode( mode=b'p') #set
-        #self.cryo_mode( mode=b'2') #set
-        #self.cryo_mode( mode=b'm') #set
-        #rd = self.cryo_rdline()
-        #self.cryo_mode( mode=b'3') #set
-        #for i in range(10):
-        #    self.cryo_mode( mode=b'm') #set
-        #    rd = self.cryo_rdline()
-        #    rd = self.cryo_rdline()
-        #    rd = self.cryo_rdline()
-        #    time.sleep(1)
-        #self.cryo_mode( mode=b'2') #set
-
-
-
-
-#    def mcp_rec_data(self, bytelen = 200000):
-#        while True:
-#            rd = self.ser.read(4096)
-#            if rd == b'':
-#                break
-#
-#        self.ser.write(b's\r')
-#        time.sleep(2)
-#        rawdata = b""
-#        rdlen = 0
-#        clr = False
-#        while True:
-#            rd = self.ser.read(4096)
-#            if rd == b'':
-#                if clr == True:
-#                    break
-#                else:
-#                    time.sleep(0.1)
-#            elif b'\r' in rd:
-#                print ("clear...")
-#                clr = True
-#
-#        while True:
-#            rd = self.ser.read(4096)
-#            if rd != b'':
-#                rawdata += rd
-#                rdlen += len(rd)
-#            else:
-#                if (rdlen > bytelen):
-#                    print ("data collection is done")
-#                    break
-#                time.sleep(2)
-#                print (len(rawdata))
-#        time.sleep(1)
-#        self.ser.write(b'p\r')
-#
-#        return rawdata
-
-
-        ##for i in range( 1000000):
-        #    #if (i == 0):
-        #    #    rd = self.ser.read(1)
-        #    #    print (rd)
-        #    rd = self.ser.read(1)
-        #    #    print (len(rd), rd)
-        #    #print (rd)
-        #    #rd = self.ser.read(45076)
-        #    #print (len(rd), rd[-10:])
-        #    #print (len(rd), rd)
-        #    if b'!' in rd:
-        #        print ("new frame %d"%i)
-        #        time.sleep(1)
-        #    #if b'' in rd:
-        #    #    time.sleep(0.1)
-        #    #    print ("IDLE")
-
-        #    #rd = self.ser.read(100000)
-
-
-#    def cryo_mode(self, mode=b'1'): #other than 0
-#        if mode != b'0':
-#            self.ser.write(mode)
-#            time.sleep(1)
-#            self.ser.write(b'm')
-#            rd = b''
-#            while True:
-#                k = self.cryo_rdline()
-#                if len(k) == 0:
-#                    break
-#                else:
-#                    rd += k
-#            return rd
-#
-#    def cryo_rdline(self):
-#        while True:
-#            try:
-#                k = self.ser.readline()
-#                if k != b'' :
-#                    print (k)
-#                    return k
-#            #except self.ser.SerialTimeoutException:
-#            except :
-#                print ("Timout occurred. No data received in 3s")
-#                return b''
-
-#     def cryo_status(self):
-#        self.ser.write(b'p\r')
-#        while True:
-#            if self.ser.read() == b'':
-#                break
-#        self.ser.write(b'P\r')
-#        time.sleep(1)
-#        rd = b''
-#        while True:
-#            rd = rd + self.ser.read(4096)
-#            if rd != b'' and b'State=' in rd[0:6]:
-#                print (rd)
-#                break
-#            else:
-#                rd = b''
-#        self.ser.write(b'p\r')
-#        return rd
-           
-#mcp = MCP3913()
-#mcp.mcp_init()
-#mcp.mcp_rec_data()
-#mcp.mcp_close()

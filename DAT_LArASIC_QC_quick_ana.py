@@ -160,7 +160,7 @@ def data_ana(fembs, rawdata, rms_flg=False):
     for achn in range(len(datd)):
         chndata = datd[achn]
 
-        #if achn==80:
+        #if achn==19:
         #    import matplotlib.pyplot as plt
         #    print ("AAAAA")
         #    plt.plot(chndata)
@@ -1033,7 +1033,7 @@ def dat_larasic_qc_quick_ana(fdir="/."):
     
 
 if __name__=="__main__":
-    fdir = '''C:/aa/LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''S:\RTS_DAT_LArASIC_QC\B009T0005\Time_20250207083952_DUT_0049_1050_2051_3052_4053_5054_6055_7056\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
     dat_larasic_qc_quick_ana(fdir=fdir)
     #QCstatus, bads = dat_larasic_initchk(fdir)
     #print (bads)
