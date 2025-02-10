@@ -12,11 +12,17 @@ import json
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from scipy.signal import find_peaks
+from scipy import stats
+
+##
+from sklearn.cluster import DBSCAN
+##
 # sys.path.append('../')
 # from spymemory_decode import wib_dec
 # sys.path.append('./Analysis')
 #_________Import the CPP module_____________
 system_info = platform.system()
+print("Operating system: ", system_info)
 if system_info=='Linux':
     # print('IN')
     sys.path.append('./decode')
@@ -75,72 +81,69 @@ def linear_fit(x: list, y: list):
     peakinl = np.max(inl)
     return slope, yintercept, peakinl
 
+
 def gain_inl(x: list, y: list, item='', returnDNL=False):
-    x = list(x)
-    y = list(y)
-    i0 = 0
-    i1 = 4
-    istart = 5
-    iend = len(x)
-    stepsize = 1
-    # if 'ASICDAC' not in item:
-    #     plt.figure()
-    #     plt.plot(x, y)
-    #     plt.show()
-    #     sys.exit()
-    #     i0 = -5
-    #     i1 = -1
-    #     istart = -4
-    #     iend = -len(x)-1
-    #     stepsize = -1
-    slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
-    ypred = slope * np.array(x) + yintercept
-    for i in range(istart, iend, stepsize):
-        # dy, tmp_inl = 0., 0.
-        i1 = i
-        dy = np.abs(y[i1]-ypred[i1])
-        tmp_inl = (dy / np.abs(y[i1-1]-y[i0]))*100
-        # if 'ASICDAC' in item:
-        #     i1 = i
-        #     dy = np.abs(y[i1]-ypred[i1])
-        #     tmp_inl = (dy / np.abs(y[i1-1]-y[i0]))*100
-        # else: # This case need to be corrected because I swapped the axes so that I have charge vs Amplitude
-        #     i0 = i
-        #     dy = np.abs(y[i0] - ypred[i0])
-        #     tmp_inl = (dy / np.abs(y[i0+1] - y[i1]))*100
-        if tmp_inl > 1: ## if inl > 1%
-            break
+    x = np.array(x)
+    y = np.array(y)
+    
+    # Initial fit on all points
+    slope, yintercept = np.polyfit(x, y, 1)
+    ypred = slope * x + yintercept
+    
+    # Calculate INL for all points
+    inl_points = []
+    for i in range(1, len(x)):
+        dy = np.abs(y[i] - ypred[i])
+        inl = (dy / np.abs(y[i] - y[0])) * 100
+        if inl <= 1:
+            inl_points.append(i)
+    
+    # Find longest continuous sequence
+    sequences = []
+    current_seq = [inl_points[0]]
+    
+    for i in range(1, len(inl_points)):
+        if inl_points[i] == inl_points[i-1] + 1:
+            current_seq.append(inl_points[i])
         else:
-            slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
-            ypred = slope * np.array(x) + yintercept
-    delta_y = np.abs(np.array(y[i0:i1]) - ypred[i0:i1])
+            sequences.append(current_seq)
+            current_seq = [inl_points[i]]
+    sequences.append(current_seq)
+    
+    # Get longest sequence
+    best_seq = max(sequences, key=len)
+    i0 = best_seq[0]
+    i1 = best_seq[-1] + 1
+    
+    # Final calculations for best range
+    slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
+    ypred = slope * x + yintercept
+    
+    delta_y = np.abs(y[i0:i1] - ypred[i0:i1])
     inl = delta_y / (np.max(y[i0:i1]) - np.min(y[i0:i1]))
+    if len(y[i0:i1])==1:
+        plt.figure()
+        plt.scatter(x,y)
+        plt.show()
+        sys.exit()
     peakinl = np.max(inl)
-    # linRange = [x[i0], x[i1]]
-    linRange = [y[i0], y[i1]]
-    if 'ASICDAC' not in item:
-        linRange = [y[i1], y[i0]]
-    # if np.abs(linRange[1]-linRange[0]) ==7:
-    #     print(linRange)
-    #     plt.figure()
-    #     plt.scatter(x,y)
-    #     plt.show()
-    #     sys.exit()
-    # DNL calculation : needed in FE_MONITORING
-    dnl_list = []
-    lsb = np.abs((np.max(y[i0:i1]) - np.min(y[i0:i1])) / (np.max(x[i0:i1]) - np.min(x[i0:i1])))
-    dnl_list.append( np.abs(((np.abs(y[i0+1] - y[i0])/np.abs(x[i0+1] - x[i0]))-lsb)/lsb ))
-    for i in range(i0+1, i1):
-        dnl_list.append( np.abs(((np.abs(y[i]-y[i-1])/np.abs(x[i]-x[i-1])) - lsb)/lsb ))
-    y_FSR = (np.max(y[i0:i1]) - np.min(y[i0:i1]))
-    dnl_normalized_to_y_FSR = ((np.array(dnl_list)*lsb/y_FSR))
-    # print(np.sum(dnl_normalized_to_y_FSR))
-    if returnDNL:  ## There's a bug in getting the linearity range: The algorithm failed when the non-linearity early in the list
-        # print(i0, i1)
-        # print(y[i0], y[i1])
+    
+    linRange = [y[i0], y[i1-1]] if 'ASICDAC' in item else [y[i1-1], y[i0]]
+    
+    if returnDNL:
+        dnl_list = []
+        lsb = np.abs((np.max(y[i0:i1]) - np.min(y[i0:i1])) / (np.max(x[i0:i1]) - np.min(x[i0:i1])))
+        dnl_list.append(np.abs(((np.abs(y[i0+1] - y[i0])/np.abs(x[i0+1] - x[i0]))-lsb)/lsb))
+        
+        for i in range(i0+1, i1):
+            dnl_list.append(np.abs(((np.abs(y[i]-y[i-1])/np.abs(x[i]-x[i-1])) - lsb)/lsb))
+            
+        y_FSR = (np.max(y[i0:i1]) - np.min(y[i0:i1]))
+        dnl_normalized_to_y_FSR = ((np.array(dnl_list)*lsb/y_FSR))
+        
         return slope, yintercept, peakinl, linRange, np.max(dnl_normalized_to_y_FSR)
-    else:
-        return slope, yintercept, peakinl, linRange
+    
+    return slope, yintercept, peakinl, linRange
 
 def createDirs(logs_dict: dict, output_dir: str):
     for ife in range(8):
@@ -191,8 +194,12 @@ def decodeRawData(fembs, rawdata, needTimeStamps=False, period=500):
     dat_tmts_l = []
     dat_tmts_h = []
     for wibdata in tmpwibdata:
-        dat_tmts_l.append(wibdata[4][fembs[0]*2][0]) #LSB of timestamp = 16ns
-        dat_tmts_h.append(wibdata[4][fembs[0]*2+1][0])
+        if system_info=='Linux':
+            dat_tmts_l.append(wibdata[5][fembs[0]*2][0]) #LSB of timestamp = 16ns
+            dat_tmts_h.append(wibdata[5][fembs[0]*2+1][0])
+        elif system_info=='Windows':
+            dat_tmts_l.append(wibdata[4][fembs[0]*2][0]) #LSB of timestamp = 16ns
+            dat_tmts_h.append(wibdata[4][fembs[0]*2+1][0])
 
     # period = 500
     dat_tmtsl_oft = (np.array(dat_tmts_l)//32)%period #ADC sample rate = 16ns*32 = 512ns
@@ -760,38 +767,38 @@ def stat_ana(root_path: str, testItem: str):
     ## negpeak analysis
     print(file_list)
 ##++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# Generate report for one LArASIC
-# --> All parameters for the QC
-class QC_REPORT:
-    def __init__(self, root_path: str, chipID: str):
-        self.input_path = '/'.join([root_path, chipID])
-        self.output_path = '/'.join([root_path, chipID])
-        self.chipID = chipID
-        self.reportName = '{}_report.md'.format(chipID)
-        self.mdfile = self.openMD(reportName=self.reportName)
+# # Generate report for one LArASIC
+# # --> All parameters for the QC
+# class QC_REPORT:
+#     def __init__(self, root_path: str, chipID: str):
+#         self.input_path = '/'.join([root_path, chipID])
+#         self.output_path = '/'.join([root_path, chipID])
+#         self.chipID = chipID
+#         self.reportName = '{}_report.md'.format(chipID)
+#         self.mdfile = self.openMD(reportName=self.reportName)
 
-    def openMD(self, reportName: str):
-        mdfile = open('/'.join([self.output_path, reportName]), 'w', encoding="utf-8")
-        return mdfile
+#     def openMD(self, reportName: str):
+#         mdfile = open('/'.join([self.output_path, reportName]), 'w', encoding="utf-8")
+#         return mdfile
 
-    def QC_PWR_report(self):
+#     def QC_PWR_report(self):
         
-        pwr_report = "| <h3 style='text-align:center'>Power Consumption</h3> |\n|---|"
-        list_plots = ['/'.join(['.', f]) for f in os.listdir(self.input_path) if 'PWR' in f]
-        keys_pwr = ["Voltage", "Current", "Power"]
-        BLs = ["200mV", "900mV"]
-        ## --- Pulse Response
-        row_pulseResp = "|<div style='display:flex; align-items: center;justify-content: center;'>\
-            <table style='margin-left:auto'>"
-        row_pulseResp += "<tr>"
-        for BL in BLs:
-            plotname = "./QC_PWR_{}_pulseResp.png".format(BL)
-            row_pulseResp += "<td> ![{}Baseline]({}) </td>".format(BL, plotname)
-        print(row_pulseResp)
-        row_pulseResp += "</tr></table></div>|\n"
-        pwr_report = '\n'.join([pwr_report, row_pulseResp])
+#         pwr_report = "| <h3 style='text-align:center'>Power Consumption</h3> |\n|---|"
+#         list_plots = ['/'.join(['.', f]) for f in os.listdir(self.input_path) if 'PWR' in f]
+#         keys_pwr = ["Voltage", "Current", "Power"]
+#         BLs = ["200mV", "900mV"]
+#         ## --- Pulse Response
+#         row_pulseResp = "|<div style='display:flex; align-items: center;justify-content: center;'>\
+#             <table style='margin-left:auto'>"
+#         row_pulseResp += "<tr>"
+#         for BL in BLs:
+#             plotname = "./QC_PWR_{}_pulseResp.png".format(BL)
+#             row_pulseResp += "<td> ![{}Baseline]({}) </td>".format(BL, plotname)
+#         print(row_pulseResp)
+#         row_pulseResp += "</tr></table></div>|\n"
+#         pwr_report = '\n'.join([pwr_report, row_pulseResp])
         
-        self.mdfile.write(pwr_report)
+#         self.mdfile.write(pwr_report)
         
     
 if __name__ == '__main__':
@@ -811,4 +818,4 @@ if __name__ == '__main__':
     for chipID in listChips:
         report = QC_REPORT(root_path=root_path, chipID=chipID)
         report.QC_PWR_report()
-        sys.exit()        sys.exit()
+        sys.exit()
