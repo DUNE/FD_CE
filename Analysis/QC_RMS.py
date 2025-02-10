@@ -324,13 +324,15 @@ if __name__ == '__main__':
     #     rms.decodeRMS()
     # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     # output_path = '../../Analysis'
-    # rms_stat = RMS_StatAna(root_path=root_path, output_path=output_path)
-    # rms_stat.run_Ana()
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
+    rms_stat = RMS_StatAna(root_path=root_path, output_path=output_path)
+    rms_stat.run_Ana()
     ##
     ##
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
-    list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        rms_ana = RMS_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
-        rms_ana.run_Ana(path_to_statAna='/'.join([output_path, 'StatAna_RMS.csv']), generatePlots=False)
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    # list_chipID = os.listdir(root_path)
+    # for chipID in list_chipID:
+    #     rms_ana = RMS_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+    #     rms_ana.run_Ana(path_to_statAna='/'.join([output_path, 'StatAna_RMS.csv']), generatePlots=False)

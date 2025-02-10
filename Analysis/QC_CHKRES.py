@@ -386,15 +386,17 @@ if __name__ == "__main__":
     #         qc_checkres = QC_CHKRES(root_path=root_path, data_dir=data_dir, output_dir=output_path)
     #         qc_checkres.decode_CHKRES()
     #********************************************************
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
-    list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-        chk_res.run_Ana(path_to_stat='/'.join([output_path, 'StatAna_CHKRES.csv']))
-        sys.exit()
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
+    # list_chipID = os.listdir(root_path)
+    # for chipID in list_chipID:
+    #     chk_res = QC_CHKRES_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+    #     chk_res.run_Ana(path_to_stat='/'.join([output_path, 'StatAna_CHKRES.csv']))
+    #     sys.exit()
     #     chk_res.makePlots()
     #     # chk_res.extractData()
     # #     break
-    # chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
-    # chkres_stat.run_Ana()
+    chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
+    chkres_stat.run_Ana()

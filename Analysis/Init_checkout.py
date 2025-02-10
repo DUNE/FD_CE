@@ -319,8 +319,10 @@ if __name__ == '__main__':
     #     print("Decoding time : {} seconds".format(deltaT))
     #     print("=xx="*20)
     #--*********************************************************--------
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
     # list_chipID = os.listdir(root_path)
     # for chipID in list_chipID:
     #     init_chk_ana = QC_INIT_CHK_Ana(root_path=root_path, chipID=chipID, output_path=output_path)

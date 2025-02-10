@@ -847,25 +847,27 @@ class QC_PWR_StatAna():
 
 if __name__ =='__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
-    root_path = '../../B010T0004'
-    output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # root_path = '../../B010T0004'
+    # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]
-    list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
-    # # qc_selection = json.load(open("qc_selection.json"))
-    for data_dir in list_data_dir:
-        print(data_dir)
-        t0 = datetime.datetime.now()
-        print('start time : {}'.format(t0))
-        qc_pwr = QC_PWR(root_path=root_path, data_dir=data_dir, output_dir=output_path)
-        qc_pwr.decode_FE_PWR()
-        print(qc_pwr.logs_dict)
-        tf = datetime.datetime.now()
-        print('end time : {}'.format(tf))
-        deltaT = (tf - t0).total_seconds()
-        print("Decoding time : {} seconds".format(deltaT))
-        sys.exit()
+    # list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')]
+    # # # qc_selection = json.load(open("qc_selection.json"))
+    # for data_dir in list_data_dir:
+    #     print(data_dir)
+    #     t0 = datetime.datetime.now()
+    #     print('start time : {}'.format(t0))
+    #     qc_pwr = QC_PWR(root_path=root_path, data_dir=data_dir, output_dir=output_path)
+    #     qc_pwr.decode_FE_PWR()
+    #     print(qc_pwr.logs_dict)
+    #     tf = datetime.datetime.now()
+    #     print('end time : {}'.format(tf))
+    #     deltaT = (tf - t0).total_seconds()
+    #     print("Decoding time : {} seconds".format(deltaT))
+    #     sys.exit()
     # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
     # list_chipID = os.listdir(root_path)
     # for chipID in list_chipID:
     #     pwr_ana = QC_PWR_analysis(root_path=root_path, chipID=chipID, output_path=output_path)
@@ -873,6 +875,6 @@ if __name__ =='__main__':
     #     sys.exit()
         # pwr_ana.Mean_ChResp_ana(BL='900mV')
         # sys.exit()
-    # pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
-    # # pwr_ana_stat.getItem(item='I')
-    # pwr_ana_stat.run_Ana()
+    pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
+    # pwr_ana_stat.getItem(item='I')
+    pwr_ana_stat.run_Ana()

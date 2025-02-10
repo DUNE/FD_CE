@@ -583,15 +583,17 @@ if __name__ == '__main__':
     #         pwr_c.decode_PwrCycle()
     #         print(pwr_c.logs_dict)
     #         sys.exit()
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
-    list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        print(chipID)
-        pwrcyclea_ana = PWR_CYCLE_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-        pwrcyclea_ana.run_Ana(path_to_statAna='/'.join([output_path, 'StatAnaPWR_CYCLE.csv']))
-        sys.exit()
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
+    # list_chipID = os.listdir(root_path)
+    # for chipID in list_chipID:
+    #     print(chipID)
+    #     pwrcyclea_ana = PWR_CYCLE_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+    #     pwrcyclea_ana.run_Ana(path_to_statAna='/'.join([output_path, 'StatAnaPWR_CYCLE.csv']))
+    #     sys.exit()
     #     # pwr_ana.Mean_ChResp_ana(BL='900mV')
     #     # sys.exit()
-    # stat = PWR_CYCLE_statAna(root_path=root_path, output_path=output_path)
-    # stat.run_Ana()
+    stat = PWR_CYCLE_statAna(root_path=root_path, output_path=output_path)
+    stat.run_Ana()
