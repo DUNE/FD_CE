@@ -13,10 +13,10 @@ from scipy.stats import norm
 import pandas as pd
 
 class FE_MON(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, env='RT'):
         self.tms = 3
         printItem(item="FE monitoring")
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_MON.bin', tms=self.tms)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_MON.bin', tms=self.tms, env=env)
         if self.ERROR:
             return
         self.mon_params = self.params

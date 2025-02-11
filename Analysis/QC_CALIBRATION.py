@@ -26,7 +26,7 @@ class QC_CALI(BaseClass):
             - num_samples = 5
             - filename: QC_CALI_ASICDAC.bin
     '''
-    def __init__(self, root_path: str, data_dir: str, output_path: str, tms: int, QC_filename: str, generateWf=False):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, tms: int, QC_filename: str, generateWf=False, env='RT'):
         if tms in [61, 64]:
             printItem('ASICDAC Calibration')
             self.period = 500
@@ -37,7 +37,7 @@ class QC_CALI(BaseClass):
             printItem('DIRECT calibration')
             self.period = 1000
         self.generateWf = generateWf
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=tms, QC_filename=QC_filename, generateWaveForm=self.generateWf)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=tms, QC_filename=QC_filename, generateWaveForm=self.generateWf, env=env)
         if self.ERROR:
             return
             
@@ -326,53 +326,60 @@ class QC_CALI_Ana(BaseClass_Ana):
         BLs = ['SNC0', 'SNC1']
         outdf = pd.DataFrame()
         for ibl, BL in enumerate(BLs):
-            # BL_INL_pos/negAmp = [all_INLs, all_GAINs, all_linearity_range, df]
-            BL_INL_posAmp = self.getINL(BL=BL, item='posAmp', returnGain=True, generatePlot=generatePlot)
-            BL_INL_negAmp = self.getINL(BL=BL, item='negAmp', returnGain=True, generatePlot=generatePlot)
-            negAmp_df = BL_INL_negAmp[3]
-            posAmp_df = BL_INL_posAmp[3]
-            # For both dataframes, the configurations are the same
-            list_configs = np.unique(posAmp_df['outputCFG'])
-            DAC_list = np.unique(posAmp_df['DAC'])
+            for item in ['posAmp', 'negAmp']:
+                isNegAmp_SNC1 = (BL=='SNC1') & (item=='negAmp')
+                if isNegAmp_SNC1:
+                    continue
+                # BL_INL_pos/negAmp = [all_INLs, all_GAINs, all_linearity_range, df]
+                # BL_INL_posAmp = self.getINL(BL=BL, item='posAmp', returnGain=True, generatePlot=generatePlot)
+                BL_INL_posAmp = self.getINL(BL=BL, item=item, returnGain=True, generatePlot=generatePlot)
+                # BL_INL_negAmp = self.getINL(BL=BL, item='negAmp', returnGain=True, generatePlot=generatePlot)
+                # negAmp_df = BL_INL_negAmp[3]
+                posAmp_df = BL_INL_posAmp[3]
+                # For both dataframes, the configurations are the same
+                list_configs = np.unique(posAmp_df['outputCFG'])
+                DAC_list = np.unique(posAmp_df['DAC'])
 
-            BLdf = pd.DataFrame()
-            for icfg, CFG in enumerate(list_configs):
-                cfgdf = pd.DataFrame()
-                cfgneg_df = negAmp_df[negAmp_df['outputCFG']==CFG].copy()
-                cfgneg_df['item'] = ['negAmp' for _ in range(len(cfgneg_df['CH']))]
-                cfgpos_df = posAmp_df[posAmp_df['outputCFG']==CFG].copy()
-                cfgpos_df['item'] = ['posAmp' for _ in range(len(cfgpos_df['CH']))]
-                # print(BL_INL_negAmp[0][CFG])
-                # print(cfgpos_df)
-                # print(np.unique(cfgpos_df['DAC']))
-                for chn in range(16):
-                    # units : inl to be multiplied by 100 to get %, gain in fC/ADC bit, linRange in fC
-                    # negAmp
-                    chn_neg_df = cfgneg_df[cfgneg_df['CH']==chn].copy()
-                    chnINL_neg = np.round(BL_INL_negAmp[0][CFG][chn],4)
-                    chnGAIN_neg = np.round(BL_INL_negAmp[1][CFG][chn], 4)
-                    chnLinRange_neg = np.round(BL_INL_negAmp[2][CFG][chn][1]-BL_INL_negAmp[2][CFG][chn][0], 2) # after discussion with Shanshan, only represent the maximum and set the minimum to zero
-                    chn_neg_df['INL'] = [chnINL_neg for _ in range(len(chn_neg_df['DAC']))]
-                    chn_neg_df['GAIN'] = [chnGAIN_neg for _ in range(len(chn_neg_df['DAC']))]
-                    chn_neg_df['linRange'] = [chnLinRange_neg for _ in range(len(chn_neg_df['DAC']))]
-                    # posAmp
-                    chn_pos_df = cfgpos_df[cfgpos_df['CH']==chn].copy()
-                    chnINL_pos = BL_INL_posAmp[0][CFG][chn]
-                    chnGAIN_pos = BL_INL_posAmp[1][CFG][chn]
-                    chnLinRange_pos = np.round(BL_INL_posAmp[2][CFG][chn][1]-BL_INL_posAmp[2][CFG][chn][0], 2) # after discussion with Shanshan, only represent the maximum and set the minimum to zero
-                    chn_pos_df['INL'] = [chnINL_pos for _ in range(len(chn_pos_df['DAC']))]
-                    chn_pos_df['GAIN'] = [chnGAIN_pos for _ in range(len(chn_pos_df['DAC']))]
-                    chn_pos_df['linRange'] = [chnLinRange_pos for _ in range(len(chn_pos_df['DAC']))]
+                BLdf = pd.DataFrame()
+                for icfg, CFG in enumerate(list_configs):
+                    cfgdf = pd.DataFrame()
+                    # cfgneg_df = negAmp_df[negAmp_df['outputCFG']==CFG].copy()
+                    # cfgneg_df['item'] = ['negAmp' for _ in range(len(cfgneg_df['CH']))]
+                    cfgpos_df = posAmp_df[posAmp_df['outputCFG']==CFG].copy()
+                    # cfgpos_df['item'] = ['posAmp' for _ in range(len(cfgpos_df['CH']))]
+                    cfgpos_df['item'] = [item for _ in range(len(cfgpos_df['CH']))]
+                    # print(BL_INL_negAmp[0][CFG])
+                    # print(cfgpos_df)
+                    # print(np.unique(cfgpos_df['DAC']))
+                    for chn in range(16):
+                        # units : inl to be multiplied by 100 to get %, gain in fC/ADC bit, linRange in fC
+                        # negAmp
+                        # chn_neg_df = cfgneg_df[cfgneg_df['CH']==chn].copy()
+                        # chnINL_neg = np.round(BL_INL_negAmp[0][CFG][chn],4)
+                        # chnGAIN_neg = np.round(BL_INL_negAmp[1][CFG][chn], 4)
+                        # chnLinRange_neg = np.round(BL_INL_negAmp[2][CFG][chn][1]-BL_INL_negAmp[2][CFG][chn][0], 2) # after discussion with Shanshan, only represent the maximum and set the minimum to zero
+                        # chn_neg_df['INL'] = [chnINL_neg for _ in range(len(chn_neg_df['DAC']))]
+                        # chn_neg_df['GAIN'] = [chnGAIN_neg for _ in range(len(chn_neg_df['DAC']))]
+                        # chn_neg_df['linRange'] = [chnLinRange_neg for _ in range(len(chn_neg_df['DAC']))]
+                        # posAmp
+                        chn_pos_df = cfgpos_df[cfgpos_df['CH']==chn].copy()
+                        chnINL_pos = BL_INL_posAmp[0][CFG][chn]
+                        chnGAIN_pos = BL_INL_posAmp[1][CFG][chn]
+                        chnLinRange_pos = np.round(BL_INL_posAmp[2][CFG][chn][1]-BL_INL_posAmp[2][CFG][chn][0], 2) # after discussion with Shanshan, only represent the maximum and set the minimum to zero
+                        chn_pos_df['INL'] = [chnINL_pos for _ in range(len(chn_pos_df['DAC']))]
+                        chn_pos_df['GAIN'] = [chnGAIN_pos for _ in range(len(chn_pos_df['DAC']))]
+                        chn_pos_df['linRange'] = [chnLinRange_pos for _ in range(len(chn_pos_df['DAC']))]
 
-                    chndf = pd.concat([chn_neg_df, chn_pos_df], axis=0)
-                    if chn==0:
-                        cfgdf = chndf
+                        chndf = chn_pos_df.copy()
+                        # chndf = pd.concat([chn_neg_df, chn_pos_df], axis=0)
+                        if chn==0:
+                            cfgdf = chndf
+                        else:
+                            cfgdf = pd.concat([cfgdf, chndf], axis=0)
+                    if icfg==0:
+                        BLdf = cfgdf
                     else:
-                        cfgdf = pd.concat([cfgdf, chndf], axis=0)
-                if icfg==0:
-                    BLdf = cfgdf
-                else:
-                    BLdf = pd.concat([BLdf, cfgdf], axis=0)
+                        BLdf = pd.concat([BLdf, cfgdf], axis=0)
             if ibl==0:
                 outdf = BLdf
             else:
@@ -541,6 +548,7 @@ class QC_CALI_Ana(BaseClass_Ana):
                 # plt.scatter(y=chdf['DAC'], x=chdf['data'])
                 # plt.show()
                 # sys.exit()
+                print(self.item, '------------', item, BL)
                 slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
                 
                 if generatePlot:
@@ -682,13 +690,15 @@ class QC_CALI_Ana(BaseClass_Ana):
         BL_dict = {'SNC0': '900mV', 'SNC1' : '200mV'}
         for item in items:
             for BL in BLs:
-                inls = self.getINL(BL=BL, item=item, generatePlot=True)
-                fig, ax = plt.subplots()
-                ax.plot(inls.keys(), inls.values())
-                ax.set_xlabel('CH');ax.set_ylabel('INL')
-                ax.set_title('{} : {}'.format(BL_dict[BL], item))
-                fig.savefig('/'.join([self.output_dir, '{}_inlCH_{}_{}.png'.format(self.item, BL_dict[BL], item)]))
-                plt.close()
+                isNegAmp_200BL = (item=='negAmp') & (BL=='SNC1')
+                if not isNegAmp_200BL:
+                    inls = self.getINL(BL=BL, item=item, generatePlot=True)
+                    fig, ax = plt.subplots()
+                    ax.plot(inls.keys(), inls.values())
+                    ax.set_xlabel('CH');ax.set_ylabel('INL')
+                    ax.set_title('{} : {}'.format(BL_dict[BL], item))
+                    fig.savefig('/'.join([self.output_dir, '{}_inlCH_{}_{}.png'.format(self.item, BL_dict[BL], item)]))
+                    plt.close()
 
     def makeplots(self):
         if self.ERROR:
@@ -710,6 +720,9 @@ class QC_CALI_Ana(BaseClass_Ana):
         for item in items:
             for BL in BLs:
                 print("output of getINL")
+                isNegAmp_200BL = (item=='negAmp') & (BL=='SNC1')
+                if isNegAmp_200BL:
+                    continue
                 # format of the output of self.getINL : all_INLs, all_GAINs, all_linearity_range, df
                 outINL = self.getINL(BL=BL, item=item, generatePlot=generatePlots, returnGain=True)
                 configurations = list(outINL[0].keys())
@@ -1003,7 +1016,9 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
                 # negAmp = bldata['negAmp'][idac]
                 pedestal = np.array(dacdata['pedestal'])
                 posAmp = dacdata[dacdata['item']=='posAmp']['data']
-                negAmp = dacdata[dacdata['item']=='negAmp']['data']
+                negAmp = []
+                if bl=='SNC0':
+                    negAmp = dacdata[dacdata['item']=='negAmp']['data']
 
                 # pedestal
                 pedmean = statistics.median(pedestal)
@@ -1015,9 +1030,13 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
                 posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
                 
                 # negAmp
-                negAmpmean = statistics.median(negAmp)
-                negAmpstd = statistics.stdev(negAmp)
-                negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
+                negAmpmean, negAmpstd, negAmpstd, negAmpmin, negAmpmax = 0, 0, 0, 0, 0
+                if bl=='SNC0':
+                    if len(negAmp)==0:
+                        print(dac, cfg)
+                    negAmpmean = statistics.median(negAmp)
+                    negAmpstd = statistics.stdev(negAmp)
+                    negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
                 for _ in range(10):
                     # pedestal
                     posmin = np.where(pedestal < pedmin)[0]
@@ -1036,13 +1055,14 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
                     posAmpstd = statistics.stdev(posAmp)
                     posAmpmin, posAmpmax = posAmpmean-3*posAmpstd, posAmpmean+3*posAmpstd
                     # negAmp
-                    posmin = np.where(negAmp < negAmpmin)[0]
-                    posmax = np.where(negAmp > negAmpmax)[0]
-                    pos = np.concatenate((posmin, posmax))
-                    negAmp = np.delete(negAmp, pos)
-                    negAmpmean = statistics.median(negAmp)
-                    negAmpstd = statistics.stdev(negAmp)
-                    negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
+                    if bl=='SNC0':
+                        posmin = np.where(negAmp < negAmpmin)[0]
+                        posmax = np.where(negAmp > negAmpmax)[0]
+                        pos = np.concatenate((posmin, posmax))
+                        negAmp = np.delete(negAmp, pos)
+                        negAmpmean = statistics.median(negAmp)
+                        negAmpstd = statistics.stdev(negAmp)
+                        negAmpmin, negAmpmax = negAmpmean-3*negAmpstd, negAmpmean+3*negAmpstd
                 if saveDist:
                     plot_distribution(array=pedestal, xtitle='pedestal', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'pedestal', bl, str(dac)]))
                     plot_distribution(array=posAmp, xtitle='posAmp', output_path_fig=output_path_fig, figname='_'.join([cali_item, 'posAmp', bl, str(dac)]))
@@ -1168,10 +1188,13 @@ if __name__ == '__main__':
     #         datdac.runASICDAC_cali(saveWfData=False)
     #         direct_cali = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=63, QC_filename='QC_CALI_DIRECT.bin', generateWf=True)
     #         direct_cali.runASICDAC_cali(saveWfData=False)
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
     list_chipID = os.listdir(root_path)
-    calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT'] #'QC_CALI_ASICDAC']#
+    calib_item = ['QC_CALI_ASICDAC']
     # for chipID in list_chipID:
     #     # calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
     #     for cali_item in calib_item:

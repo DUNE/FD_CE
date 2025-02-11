@@ -13,10 +13,10 @@ from utils import BaseClass_Ana
 from scipy.stats import norm
 
 class QC_Cap_Meas(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False, env='RT'):
         printItem("Capacitance measurement")
         self.generateWf = generateWf
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf, env=env)
         self.suffixName = "Cap_Meas"
         # print(self.params)
         self.period = 1000

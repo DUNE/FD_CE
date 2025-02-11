@@ -359,10 +359,11 @@ def getpedestal_rms(oneCHdata: list, pureNoise=False, period=500):
 
 #_______BASE_CLASS________________
 class BaseClass:
-    def __init__(self, root_path: str, data_dir: str, output_path: str, tms: int, QC_filename: str, generateWaveForm=False):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, tms: int, QC_filename: str, generateWaveForm=False, env='RT'):
         self.tms = tms
         # self.input_dir = '/'.join([root_path, data_dir])
-        tmpdata_dir = os.listdir('/'.join([root_path, data_dir]))[0]
+        tmpdata_dir = [f for f in os.listdir('/'.join([root_path, data_dir])) if env in f][0]
+        output_path = f'{output_path}_{env}'
         self.input_dir = '/'.join([root_path, data_dir, tmpdata_dir])
         self.filename = QC_filename
         self.ERROR = False
@@ -377,6 +378,7 @@ class BaseClass:
             self.suffixName = splitted_filename[-2] + '_47'
         else:
             self.suffixName = splitted_filename[-1].split('.')[0]
+        
         self.foldername = self.filename.split('.')[0]
         # with open('/'.join([root_path, data_dir, self.filename]), 'rb') as fn:
         with open('/'.join([self.input_dir, self.filename]), 'rb') as fn:

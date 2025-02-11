@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 class RMS(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, env='RT'):
         printItem("FE noise measurement")
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_RMS.bin', tms=5)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_RMS.bin', tms=5, env=env)
         if self.ERROR:
             return
         self.CFG_datasheet = self.getCFGs()

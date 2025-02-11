@@ -11,10 +11,10 @@ from utils import createDirs, printItem, decodeRawData, dumpJson, LArASIC_ana, B
 from utils import BaseClass_Ana
 
 class PWR_CYCLE(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, env='RT'):
         printItem('FE power cycling')
         self.item = 'QC_PWR_CYCLE'
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_PWR_CYCLE.bin', tms=4)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_PWR_CYCLE.bin', tms=4, env=env)
         if self.ERROR:
             return
         self.period = 500

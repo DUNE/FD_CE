@@ -17,10 +17,10 @@ class QC_PWR(BaseClass):
     '''
         Raw data ("QC_PWR.bin") from one DAT board -> 8x decoded data for each LArASIC
     '''
-    def __init__(self, root_path: str, data_dir: str, output_dir: str):
+    def __init__(self, root_path: str, data_dir: str, output_dir: str, env='RT'):
         printItem('FE power consumption measurement')
         self.item = "QC_PWR"
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=1, QC_filename='QC_PWR.bin')
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=1, QC_filename='QC_PWR.bin', env=env)
         if self.ERROR:
             return
         #

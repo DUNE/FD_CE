@@ -15,9 +15,9 @@ from utils import printItem, dumpJson, decodeRawData, LArASIC_ana, BaseClass
 from utils import BaseClass_Ana
 
 class QC_CHKRES(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_dir: str):
+    def __init__(self, root_path: str, data_dir: str, output_dir: str, env='RT'):
         printItem("FE response measurement")
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=2, QC_filename='QC_CHKRES.bin')
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=2, QC_filename='QC_CHKRES.bin', env=env)
         if self.ERROR:
             return
         self.period = 500
