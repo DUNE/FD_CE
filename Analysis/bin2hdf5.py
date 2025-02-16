@@ -12,12 +12,9 @@
 import os, sys
 import h5py, pickle
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # from utils import decodeRawData # can be ignored, only used for test
-
-GeneralKeys_inBin = ['WIB_PWR', 'WIB_LINK', 'FE_PWRON', 'ADC_PWRON', 'CD_PWRON'] # not included yet
-LogKey = 'logs' # not included yet
 
 def read_bin(filename, path_to_file):
     with open('/'.join([path_to_file, filename]), 'rb') as f:
@@ -29,64 +26,67 @@ def write_hdf5(f, data, group_name='/'):
         grp = f.create_group(group_name)
     else:
         grp = f
-
-    # if type(data)==dict:
     for key,val in data.items():
-        # print(key)
         if isinstance(val, dict):
-            if key=='rawdata':
-                grp_in = grp.create_group(key)
-                for ispy_buff, spy_buff_data in val.items():
-                    rawdata2grp(rawdata_np_tuple=spy_buff_data, grp=grp_in, dset_name=ispy_buff )
-            else:
-                write_hdf5(f, val, group_name=f'{group_name}/{key}')
+            write_hdf5(f, val, group_name=f'{group_name}/{key}')
         else:
-            if isinstance(val, list):
-                val = np.array(val)
             grp.create_dataset(key,data=val)
 
-def get_SpecificKeys(data):
+def get_allKeys(data):
     '''
         This function extracts the keys that are specific to the item being tested during the QC.
     '''
     SpecificKeys_inBin = []
+    GeneralKeys_inBin = []
     for key in data.keys():
-        if (key not in GeneralKeys_inBin) & (key != LogKey) & (key != 'QCstatus'):
+        if isinstance(data[key], tuple) | isinstance(data[key], list):
+        # if (key not in GeneralKeys_inBin) & (key != LogKey) & (key != 'QCstatus'):
             SpecificKeys_inBin.append(key)
-    return SpecificKeys_inBin
+        else:
+            GeneralKeys_inBin.append(key)
+    return SpecificKeys_inBin, GeneralKeys_inBin
 
 def specKeyData2Dict(data, specKeys_list):
-    # print(specKeys_list)
     all_data_dict = dict()
     for i, speckey in enumerate(specKeys_list):
         speckeyData = data[speckey]
         fembs = speckeyData[0]
-        rawdata = speckeyData[1]
-        config = speckeyData[2]
-        pwrcons = speckeyData[3]
-
         # converting the fembs list to numpy array
         fembs_np = np.array(tuple(fembs), dtype=int)
 
+        rawdata = speckeyData[1]
         # converting the rawdata (hex) list to a numpy array where each element is an object type
         all_spybuff = dict()
         N_spybuff = len(rawdata)
         for ispy_buff in range(N_spybuff):
-            rawdata_tuple = rawdata2numpy_tuple(rawdata=rawdata, spy_buff=ispy_buff)
-            all_spybuff[f'spy_buff{ispy_buff}'] = rawdata_tuple
-        
-        # converting configurations list (one element) to dictionary
-        config_dict = config2dict(config_data=config)
+            rawdata_tuple = rawdata2numpy_dict(rawdata=rawdata, spy_buff=ispy_buff)
+            all_spybuff[f'trigger{ispy_buff}'] = rawdata_tuple
 
-        # converting the power consumptions to numpy array with custom dtype
-        new_pwrcons_dict  = {}
-        for key, val in pwrcons.items():
-            val_np = np.array(tuple(val), dtype=np.dtype([('V', np.float128), ('I', np.float128), ('P', np.float128)]))
-            new_pwrcons_dict[key] = val_np
-        # new_pwrcons_np = np.array(list(new_pwrcons_dict.items()))
-        # print(new_pwrcons_np[0])
-        speckeyData_dict = {'fembs': fembs_np, 'pwrcons': new_pwrcons_dict, 'config': config_dict, 'rawdata': all_spybuff}
-        # print(f'------{speckey}---{rawdata_tuple}')
+        config = speckeyData[2]
+        if isinstance(config, list):
+            # converting configurations list (one element) to dictionary
+            config_dict = config2dict(config_data=config)
+    
+        pwrcons = speckeyData[3]
+        if isinstance(pwrcons, dict):
+            # converting the power consumptions to numpy array with custom dtype
+            new_pwrcons_dict  = {}
+            for key, val in pwrcons.items():
+                val_np = np.array(tuple(val), dtype=np.dtype([('V', np.float32), ('I', np.float32), ('P', np.float32)]))
+                # val_dict = {
+                #     'V' : val[0],
+                #     'I' : val[1],
+                #     'P' : val[2] 
+                # }
+                new_pwrcons_dict[key] = val_np
+
+            speckeyData_dict = {'fembs': fembs_np, 'pwrcons': new_pwrcons_dict, 'rawdata': all_spybuff}
+        else:
+            speckeyData_dict = {'fembs': fembs_np, 'rawdata': all_spybuff}
+        
+        if isinstance(config, list):
+            speckeyData_dict['config'] = config_dict
+        
         all_data_dict[speckey] = speckeyData_dict
     return all_data_dict
 
@@ -112,120 +112,103 @@ def config2dict(config_data):
                 'cd_sel': cd_sel}
     return out_dict
 
-def rawdata2numpy_tuple(rawdata, spy_buff=0):
+def rawdata2numpy_dict(rawdata, spy_buff=0):
     spy_buff_data = rawdata[spy_buff]
     # Structure of the spy_buff_data
     '''
         It is a tuple with 4 elements:
             a. 1st element: [bytearray, None, None, None, None, None, None]
-            b. 2nd, 3rd, 4th elements: 0, 32767, 0 (need to determine what are those values)
+            b. 2nd, 3rd, 4th elements: 0, 32767, 0 ==> (data0 = (rawdata, buf_end_addrs[fembs[0]*2], spy_rec_ticks, trig_cmd))
         Conversion steps:
             1. Convert the 1st element to a numpy array where 1st element is 
     '''
-    out_spy_buff_data = []
-    for tmpdata in spy_buff_data:
+    out_spy_buff_data = {'femb_data': {}, 'buf_end_addrs': 0, 'spy_rec_ticks': 0, 'trig_cmd': 0}
+    params = {1: 'buf_end_addrs', 2: 'spy_rec_ticks', 3: 'trig_cmd'}
+    for i_tmp, tmpdata in enumerate(spy_buff_data):
         if type(tmpdata)==list:
             data = tmpdata
-            out_data = []
-            for d in data:
-                if d==None:
-                    out_data.append(np.nan)
+            # out_data = []
+            out_data = {}
+            ifemb = 0
+            for i, d in enumerate(data):
+                if i%2 ==0:
+                    if d==None:
+                        # out_data[f'femb{ifemb}'] = {f'buff{i%2}': np.nan}
+                        pass
+                    else:     
+                        # out_data[f'femb{ifemb}'] = {f'buff{i%2}': np.frombuffer(d, dtype=np.uint8)}
+                        out_data = {f'buff{i%2}': np.frombuffer(d, dtype=np.uint8)}
                 else:
-                    out_data.append(np.frombuffer(d, dtype=np.uint8))
-            # print(out_data)
-            out_spy_buff_data.append(out_data)
-        else:
-            # print(tmpdata)
-            out_spy_buff_data.append(tmpdata)
-    return tuple(out_spy_buff_data)
+                    if d==None:
+                        # out_data[f'femb{ifemb}'][f'buff{i%2}'] = np.nan
+                        pass
+                    else:
+                        # out_data[f'femb{ifemb}'][f'buff{i%2}'] = np.frombuffer(d, dtype=np.uint8)
+                        out_data[f'buff{i%2}'] = np.frombuffer(d, dtype=np.uint8)
+                    ifemb += 1
 
-def rawdata2grp(rawdata_np_tuple, grp, dset_name):
-    '''
-        The raw data to be saved in a group here corresponds to a data for one spy buffer.
-        It is a tuple with 4 elements:
-            1. 1st element: [[...], [....], None, None, None, None, None, None] The None values are encoded to be np.nan (None doesn't exist in hdf5)
-            2. 2nd, 3rd, and 4th elements: 0, 32767, 0
-    '''
-    grp_in = grp.create_group(dset_name)
-    
-    # First element - array/None list
-    array_list = rawdata_np_tuple[0]
-    dt = h5py.special_dtype(vlen=np.uint8)
-    dset = grp_in.create_dataset('data_arrays', (len(array_list),), dtype=dt)
-    mask = [isinstance(x, np.ndarray) for x in array_list]
-    
-    for i, item in enumerate(array_list):
-        if mask[i]:
-            dset[i] = item
-    grp_in.create_dataset('data_mask', data=mask)
-    
-    # Integer values
-    grp_in.create_dataset('values', data=list(rawdata_np_tuple[1:]))
+            # out_spy_buff_data['femb_data'] = out_data
+            out_spy_buff_data = out_data
+        else:
+            out_spy_buff_data[params[i_tmp]] = tmpdata
+    return out_spy_buff_data
 
 ################# Conversion back to HEX #############################################################
-def hdf5_oneSpyBuff2HEX(hdf5_spy_buffData):
-    '''
-        We need to convert back to bytearray in order to be able to use the script wib_dec developed before.
-    '''
-    spy_buff_data = hdf5_spy_buffData
-    grp = spy_buff_data
-    arrays = grp['data_arrays'][:]
-    mask = grp['data_mask'][:]
-    array_list = [bytearray(arrays[i].tobytes()) if mask[i] else None for i in range(len(arrays))]
-    values = grp['values'][:]
-    spy_buff_HEX = (array_list,) + tuple(values)
-    return spy_buff_HEX
+# def hdf5_oneSpyBuff2HEX(hdf5_spy_buffData):
+#     '''
+#         We need to convert back to bytearray in order to be able to use the script wib_dec developed before.
+#     '''
+#     spy_buff_data = hdf5_spy_buffData
+#     grp = spy_buff_data
+#     arrays = grp['data_arrays'][:]
+#     mask = grp['data_mask'][:]
+#     array_list = [bytearray(arrays[i].tobytes()) if mask[i] else None for i in range(len(arrays))]
+#     values = grp['values'][:]
+#     spy_buff_HEX = (array_list,) + tuple(values)
+#     return spy_buff_HEX
 
-def hdf5Rawdata2HEX(wholeHDF5data, specKey):
-    '''
-        Convert the hdf5 data (spy_buffer) to hex
-    '''
-    hdf5Rawdata = wholeHDF5data[specKey]['rawdata']
-    hdf5Rawdata_inHEX = []
-    for spy_buff_i, spy_buff_data in hdf5Rawdata.items():
-        spy_buff_HEX = hdf5_oneSpyBuff2HEX(hdf5_spy_buffData=spy_buff_data)
-        hdf5Rawdata_inHEX.append(spy_buff_HEX)
-    return hdf5Rawdata_inHEX
+# def hdf5Rawdata2HEX(wholeHDF5data, specKey):
+#     '''
+#         Convert the hdf5 data (spy_buffer) to hex
+#     '''
+#     hdf5Rawdata = wholeHDF5data[specKey]['rawdata']
+#     hdf5Rawdata_inHEX = []
+#     for spy_buff_i, spy_buff_data in hdf5Rawdata.items():
+#         spy_buff_HEX = hdf5_oneSpyBuff2HEX(hdf5_spy_buffData=spy_buff_data)
+#         hdf5Rawdata_inHEX.append(spy_buff_HEX)
+#     return hdf5Rawdata_inHEX
 ###############################################################################################
 
 
+def PWRON(pwron_data):
+    out_pwron = dict()
+    for key, val in pwron_data.items():
+        pwrdtype = np.dtype([('V', np.float32), ('I', np.float32), ('P', np.float32)])
+        out_pwron[key] = np.array(tuple(val), dtype=pwrdtype)
+    return out_pwron
 
-## ------------- LOGS ----------------------------------------------------------------------------
-# IS NOT USED YET
-def getLogs(data, LogKey, path_to_QClog):
-    '''
-        Retrieve the logs from the test item binary data.
-        Match the chip ID in the logs with the timestamp corresponding to each chip (from QC.log).
-        RTS_IDs : from the QC.log
-        RTS_IDs format: 
-            {
-                timestamp : (x, y) where x and y are positions of the chip in a tray and in the DAT board respectively.
-            }
-    '''
-    testItemLog = data[LogKey]
-    with open(path_to_QClog, 'rb') as f:
-        qclog = pickle.load(f)
-    rtsIDs = qclog['RTS_IDs']
-    rtsIDs_dtype = np.dtype([('timestamp', np.int32), ('posTray', np.int32), ('posDAT', np.int32)])
-    rtsIDs_list = [(tmts, pos[0], pos[1]) for tmts, pos in rtsIDs.items()]
-    rtsIDs_object = np.array(rtsIDs_list, dtype=rtsIDs_dtype)
-##-------------------------------------------------------------------------------------------------
+def bin2dict(data):
+    speckey_list, GeneralKeys_inBin = get_allKeys(data=data)
+    out_data = dict()
+    for key in GeneralKeys_inBin:
+        if 'PWRON' in key:
+            out_data[key] = PWRON(pwron_data=data[key])
+        elif 'status' in key:
+            pass
+        else:
+            out_data[key] = data[key]
+    data = specKeyData2Dict(data=data, specKeys_list=speckey_list)
+    for key, val in data.items():
+        out_data[key] = val
+    return out_data
+    
 
 if __name__ == '__main__':
     root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
-    binFileName = 'QC_INIT_CHK.bin'
+    binFileName = 'QC_Cap_Meas.bin'
     hdf5_name = binFileName.split('.')[0] + '.hdf5'
     with h5py.File(hdf5_name, 'w') as f:
         # initial test
         data = read_bin(filename=binFileName, path_to_file=root_path)
-        speckey_list = get_SpecificKeys(data=data)
-        data = specKeyData2Dict(data=data, specKeys_list=speckey_list)
+        data = bin2dict(data=data)
         write_hdf5(f=f, data=data)
-
-    # f = h5py.File(hdf5_name, 'r')
-    # raw = hdf5Rawdata2HEX(wholeHDF5data=f, specKey='ASICDAC_47mV_CHK')
-    # data = decodeRawData(fembs=[0], rawdata=raw)
-    # print(len(data))
-    # plt.figure()
-    # plt.plot(data[7][0])
-    # plt.show()
