@@ -108,4 +108,29 @@ with h5py.File(f'path/to/{hdf5_name}', 'w') as f:
 
 ## HDF5 Datastructure
 
-### LArASIC configuration:
+*  CHK refers to checkout
+
+* ASICDAC: DAC in the LArASIC
+* DATDAC: DAC on the DAT board
+* DIRECT_PLS : direct pulse
+* ADC_PWRON :
+* CD_PWRON :
+* FE_PWRON :
+* WIB_PWR
+* logs:
+  * ADC0-7 : serial numbers of the 8 ColdADC
+  * CD0, CD1: serial numbers of the 2 COLDATA
+  * DAT_SN : DAT serial number
+  * DAT_on_WIB_slot: WIB slot used for the DAT
+  * DUT : device under test. FE for the current case.
+  * FE0-7 : serial numbers of the 8 LArASIC.
+  * TrayID : ID number of the Tray from where the chips were picked.
+  * date : date of the test.
+  * env: environment, RT for Room Temperature; LN for Liquid nitrogen.
+  * note : additional note.
+  * tester : name of the tester.
+  * testsite : test site.
+* For the power cycle data, the numbers 0 to 7 refers to the number cycles.
+* The keys in QC_PWR, QC_CHKRES, and QC_RMS are information directly from the datasheet.
+  * TP refers to Peak Time.
+  * The configurable gain 4.7mV/fC is often written as 47mV.
