@@ -73,7 +73,8 @@ class RTS_MANIP():
         with open(self.rootdir + "manip.csv", "a+") as fn:
             for msg in msgs:
                 for x in msg_rls:
-                    if (msg in x) and (msg not in manip_exist):
+                    #if (msg in x) and (msg not in manip_exist):
+                    if True:
                         fn.write(x + "\n")
                         self.pic_copy(x, pic_dir) 
                         break
@@ -84,12 +85,19 @@ class RTS_MANIP():
         for tmp in tmps:
             if "images" in tmp:
                 src_pic = tmp
+                #print (tmp)
 #                k = src_pic.find("20240701")
 #                src_pic = src_pic[k:]
 #                src_pic = "D:\\dat_tmp\\0621\\images\\" + src_pic
 #                print (src_pic)
                 try:
                     shutil.copy2(src_pic, dst)
+                    #if "_SN.bmp" in src_pic:
+                    #    try:
+                    #        #print (src_pic[0:-7] + "_socket.bmp")
+                    #        shutil.copy2(src_pic[0:-7] + "_socket.bmp", dst)
+                    #    except BaseException as e:
+                    #        print (e)
                 except BaseException as e:
                     x = src_pic.find("images")
                     src_pic = src_pic[0:x+7] + "UF_" + src_pic[x+7:]
@@ -123,7 +131,7 @@ class RTS_MANIP():
 if __name__ == "__main__":
     a = RTS_MANIP()
     a.manip_fp = "C:/Users/coldelec/RTS/manip.csv"
-    a.rootdir = "C:/DAT_LArASIC_QC/Tested/B010T0001/"
+    a.rootdir = "S:/RTS_DAT_LArASIC_QC/B009T0006/"
     rts_r = a.read_manipfp()
 
     rts_msgs = a.read_rtsmsgfp()

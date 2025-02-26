@@ -61,7 +61,7 @@ def send_email(message):
 
 def send_rts_email(message):
     sender_email = "rtshibay@gmail.com"
-    receiver_email = "sgao@bnl.gov"
+    receiver_email = "sgao@bnl.gov; sua8897@gmail.com; gkddk33@gmail.com"
     #receiver_email = ningxuyang0202@gmail.com
     password = "mbqx qfca voue zwfr"
     subject = "Message from RTS"
@@ -154,7 +154,7 @@ logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(49,90,1))
+duts = list(range(0,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)
 logs["duts"] = duts 
@@ -162,10 +162,10 @@ ids_dict = {} #good chips ID with time that chips are moved from tray to socket
 ids_dict_good = {} #good chips ID with time that chips are moved from socket to tray
 ids_dict_bad = {} #good chips ID with time that chips are moved from socket to tray
 
-while True:
-    coverclose = input ("Is sink cover open? type in \033[92m open \033[0m :")
-    if coverclose == "open":
-        break
+#while True:
+#    coverclose = input ("Is sink cover open? type in \033[92m open \033[0m :")
+#    if coverclose == "open":
+#        break
 
 if not os.path.exists(rootdir):
     try:
@@ -182,43 +182,6 @@ else:
 rts = RTS_CFG()
 cryo = cryobox()
 
-if False: #delete later
-    yorn = input ("\033[96m Do you want to perform cold test? (Y/N) :\033[0m")
-    if "Y" in yorn or "y" in yorn:
-        print ("Click \033[92m Pause \033[0m button from EPSON RC+ RUN Window")
-        while True:
-            paused = input ("type in \033[92m Pause \033[0m : ")
-            if paused == "Pause":
-                break
-        while True:
-            coverclose = input ("Is sink cover close? type in \033[92m close \033[0m :")
-            if coverclose == "close":
-                break
-        try:
-            cryo.cryo_fill()
-        except KeyboardInterrupt:
-            print ("####################")
-
-        cryo.cryo_lowlevel(waitminutes=10)
-        cryo.cryo_highlevel(waitminutes=5)
-
-        input("cold test munually")
-
-#        LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE", env="LN" )
-
-        cryo.cryo_warmup(waitminutes=20)
-
-        while True:
-            coverclose = input ("Is sink cover open? type in \033[92m open \033[0m :")
-            if coverclose == "open":
-                break
-
-        print ("Click \033[92m Continue \033[0m button from EPSON RC+ RUN Window")
-        while True:
-            paused = input ("type in \033[92m Continue \033[0m : ")
-            if paused == "Continue":
-                break
-    exit()
 
 rts.msg = "10000000000"
 if BypassRTS:
@@ -228,30 +191,71 @@ else:
     rts.MotorOn()
     rts.JumpToCamera()
 
- 
-#rts.MoveChipFromSocketToTray(2, 1, 2, 4, 3)
-#rts.MoveChipFromSocketToTray(2, 2, 2, 5, 3)
-#rts.MoveChipFromSocketToTray(2, 3, 2, 6, 3)
-#rts.MoveChipFromSocketToTray(2, 4, 2, 7, 3)
-#rts.MoveChipFromSocketToTray(2, 5, 2, 8, 3)
-#rts.MoveChipFromSocketToTray(2, 6, 2, 9, 3)
-#rts.MoveChipFromSocketToTray(2, 7, 2, 10, 3)
-#rts.MoveChipFromSocketToTray(2, 8, 2, 11, 3)
-###rts.MotorOn()
-###rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
-###rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
-###rts.MoveChipFromTrayToTray(2, 1, 1, 1, 1,1)    
-###rts.JumpToTray(2,1,1)
-###rts.DropToTray()
-##
-##print ("KKKKKKKKKKKKKK")
-###rts.rts_idle()
-##rts.MotorOn()
-#rts.JumpToCamera()
-#rts.rts_shutdown()
-##
-#exit()
+if False:
+    rts.rts_idle()
+    time.sleep(10)
+    if True:
 
+        while True:
+            cover_sts = rts.CoverStatus()
+            if "-198" in cover_sts:
+                print ("Cover is close! Start the cold test in 10 seconds")
+                time.sleep(10)
+                break
+            else:
+                time.sleep(5)
+            #else:
+            #    input ("Click any button after you close the lid! ")
+
+            #else:
+        while True:
+            cover_sts = rts.CoverStatus()
+            if "197" in cover_sts:
+                print ("Cover is open! Activate robot in 10 seconds")
+                time.sleep(10)
+                break
+            else:
+                time.sleep(5)
+
+    rts.MotorOn()
+    rts.rts_shutdown()
+    exit()
+
+#sts_tmp = rts.CoverStatus()
+#print (sts_tmp)
+#sts_tmp2 = rts.CoverStatus()
+#print ("kkk", sts_tmp2)
+# 
+##rts.MoveChipFromSocketToTray(2, 1, 2, 4, 3)
+##rts.MoveChipFromSocketToTray(2, 2, 2, 5, 3)
+##rts.MoveChipFromSocketToTray(2, 3, 2, 6, 3)
+##rts.MoveChipFromSocketToTray(2, 4, 2, 7, 3)
+##rts.MoveChipFromSocketToTray(2, 5, 2, 8, 3)
+##rts.MoveChipFromSocketToTray(2, 6, 2, 9, 3)
+##rts.MoveChipFromSocketToTray(2, 7, 2, 10, 3)
+##rts.MoveChipFromSocketToTray(2, 8, 2, 11, 3)
+####rts.MotorOn()
+####rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
+####rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
+####rts.MoveChipFromTrayToTray(2, 1, 1, 1, 1,1)    
+####rts.JumpToTray(2,1,1)
+####rts.DropToTray()
+###
+###print ("KKKKKKKKKKKKKK")
+####rts.rts_idle()
+##rts.MotorOn()
+##rts.MoveChipFromSocketToTray(2, 1, 2, 4, 3)
+##for i in range(3):
+##    rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1)    
+##    rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1)
+##rts.MoveChipFromTrayToSocket(2, 1, 2, 2, 2)    
+##while True:
+##    rts.JumpToCamera()
+##    time.sleep(1)
+#rts.rts_shutdown()
+###
+#exit()
+#
 
 #rts.MotorOn()
 #rts.rts_idle()
@@ -447,15 +451,21 @@ def DAT_QC(dut_skt) :
     send_rts_email(message="Do you want to perform cold test? ")
     yorn = input ("\033[96m Do you want to perform cold test? (Y/N) :\033[0m")
     if "Y" in yorn or "y" in yorn:
-        print ("Click \033[92m Pause \033[0m button from EPSON RC+ RUN Window")
         while True:
-            paused = input ("type in \033[92m Pause \033[0m : ")
-            if paused == "Pause":
+            cover_sts = rts.CoverStatus()
+            if "-198" in cover_sts:
+                print ("Cover is close! Start the cold test in 10 seconds")
+                time.sleep(10)
                 break
-        while True:
-            coverclose = input ("Is sink cover close? type in \033[92m close \033[0m :")
-            if coverclose == "close":
-                break
+            else:
+                time.sleep(5)
+
+#        print ("Click \033[92m Pause \033[0m button from EPSON RC+ RUN Window")
+#        while True:
+#            paused = input ("type in \033[92m Pause \033[0m : ")
+#            if paused == "Pause":
+#                break
+
         try:
             cryo.cryo_fill()
         except KeyboardInterrupt:
@@ -468,17 +478,25 @@ def DAT_QC(dut_skt) :
 
         cryo.cryo_warmup(waitminutes=20)
 
-        while True:
-            send_rts_email(message="Cold test is done, please open the sink cover and continue...")
-            coverclose = input ("Is sink cover open? type in \033[92m open \033[0m :")
-            if coverclose == "open":
-                break
+        send_rts_email(message="Cold test is done, please open the sink cover ...")
 
-        print ("Click \033[92m Continue \033[0m button from EPSON RC+ RUN Window")
         while True:
-            paused = input ("type in \033[92m Continue \033[0m : ")
-            if paused == "Continue":
+            cover_sts = rts.CoverStatus()
+            if "197" in cover_sts:
+                print ("Cover is open! Activate robot in 10 seconds")
+                time.sleep(10)
                 break
+            else:
+                time.sleep(5)
+
+
+
+
+#        print ("Click \033[92m Continue \033[0m button from EPSON RC+ RUN Window")
+#        while True:
+#            paused = input ("type in \033[92m Continue \033[0m : ")
+#            if paused == "Continue":
+#                break
 
     return QCstatus, badchips #badchips range from 0 to7
 

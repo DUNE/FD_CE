@@ -54,6 +54,24 @@ class RTS_CFG():
                 print ("ConnectionAbortedError")
                 self.rts_init(port=2001, host_ip='192.168.0.2')
 
+    def CoverStatus(self): #
+        if True:
+            try:
+                msg = "CoverStatus"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n") 
+                self.msg = self.s.recv(1024).decode() 
+                self.msg = self.msg.strip()
+                print (self.msg)
+                #if "199" in self.msg:
+                #    break
+                #else:
+                #    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+            return self.msg
+
     def JumpToCamera(self): #
         while True:
             try:
