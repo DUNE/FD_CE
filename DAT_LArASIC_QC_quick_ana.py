@@ -12,6 +12,7 @@ import colorama
 from colorama import Fore, Back
 colorama.init(autoreset=True)
 
+from highpass_filter import hp_flt_applied
 # Automatically adds a Style.RESET_ALL after each print statement
 #print(Fore.RED + 'Red foreground text')
 #print(Back.RED + 'Red background text')
@@ -160,12 +161,6 @@ def data_ana(fembs, rawdata, rms_flg=False):
     for achn in range(len(datd)):
         chndata = datd[achn]
 
-        if achn==32:
-            import matplotlib.pyplot as plt
-            print ("AAAAA")
-            plt.plot(chndata)
-            plt.show()
-            plt.close()
 
         amax = np.max(chndata[300:-150])
         amin = np.min(chndata[300:-150])
@@ -177,6 +172,26 @@ def data_ana(fembs, rawdata, rms_flg=False):
             npos64 = np.where(chndata[300:-150]==amin)[0][0] + 300
 
         if rms_flg:
+            #if (achn==82) :
+            #    chndata_hf = hp_flt_applied(chndata, fs=1953125, passfreq=10000)
+            #    import matplotlib.pyplot as plt
+            #    print (achn)
+            #    plt.plot(np.array(chndata)-int(np.mean(chndata)))
+            #    plt.plot(chndata_hf)
+            #    plt.show()
+            #    plt.close()
+            #    #from fft_chn import chn_fft_psd
+            #    #f,p = chn_fft_psd(chndata, fs=1953125, fft_s=2000, avg_cycle=1)
+            #    #import matplotlib.pyplot as plt
+            #    #plt.plot(f, p)
+            #    #plt.show()
+            #    #plt.close()
+
+            #    arms = np.std(chndata_hf)
+            #else:
+            #    arms = np.std(chndata)
+            #chndata_hf = hp_flt_applied(chndata, fs=1953125, passfreq=10000)
+            #arms = np.std(chndata_hf)
             arms = np.std(chndata)
             aped = int(np.mean(chndata))
         else:
@@ -1033,7 +1048,7 @@ def dat_larasic_qc_quick_ana(fdir="/."):
     
 
 if __name__=="__main__":
-    fdir = '''C:\Time_20250214114300_DUT_0089_1000_2001_3002_4003_5004_6005_7006\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+    fdir = '''Z:\RTS_DAT_LArASIC_QC\B009T0005_noise\Time_20250210160850_DUT_0081_1082_2083_3084_4085_5086_6087_7088\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008_11_unchanged/'''
     dat_larasic_qc_quick_ana(fdir=fdir)
     #QCstatus, bads = dat_larasic_initchk(fdir)
     #print (bads)

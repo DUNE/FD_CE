@@ -15,9 +15,9 @@ import matplotlib.pyplot as plt
 from utils import BaseClass_Ana
 
 class QC_INIT_CHECK(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_dir: str):
+    def __init__(self, root_path: str, data_dir: str, output_dir: str, env='RT'):
         printItem('Initialization checkout')
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=0, QC_filename='QC_INIT_CHK.bin')
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=0, QC_filename='QC_INIT_CHK.bin', env=env)
         self.out_dict = dict()
         if self.ERROR:
             return
@@ -319,8 +319,10 @@ if __name__ == '__main__':
     #     print("Decoding time : {} seconds".format(deltaT))
     #     print("=xx="*20)
     #--*********************************************************--------
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
     # list_chipID = os.listdir(root_path)
     # for chipID in list_chipID:
     #     init_chk_ana = QC_INIT_CHK_Ana(root_path=root_path, chipID=chipID, output_path=output_path)

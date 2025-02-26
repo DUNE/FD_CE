@@ -13,10 +13,10 @@ from utils import BaseClass_Ana
 from scipy.stats import norm
 
 class QC_Cap_Meas(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False, env='RT'):
         printItem("Capacitance measurement")
         self.generateWf = generateWf
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf, env=env)
         self.suffixName = "Cap_Meas"
         # print(self.params)
         self.period = 1000
@@ -351,11 +351,13 @@ if __name__ == '__main__':
     #         decodedData = cap.decode()
     #         cap.saveData(decodedData=decodedData)
     #         # sys.exit()
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    root_path = '../../out_B010T0004_'
+    output_path = '../../analyzed_B010T0004_'
     list_chipID = os.listdir(root_path)
-    for chipID in list_chipID:
-        m = QC_Cap_Meas_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
-        m.run_Ana(path_to_stat='/'.join([output_path, 'QC_Cap_Meas.csv']))
-        sys.exit()
-    # Cap_stat_ana(root_path=root_path, output_path=output_path, list_chipID=list_chipID)
+    # for chipID in list_chipID:
+    #     m = QC_Cap_Meas_Ana(root_path=root_path, output_path=output_path, chipID=chipID)
+    #     m.run_Ana(path_to_stat='/'.join([output_path, 'QC_Cap_Meas.csv']))
+    #     sys.exit()
+    Cap_stat_ana(root_path=root_path, output_path=output_path, list_chipID=list_chipID)
