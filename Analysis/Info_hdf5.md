@@ -77,6 +77,33 @@ This script converts binary data files (.bin) from LArASIC QC (Quality Control) 
 - **Returns**: Dictionary with structured power data
 - **Data Structure**: Creates custom numpy dtypes with voltage (V), current (I), and power (P) fields
 
+### `binWithoutRAW2dict(data, FileName='QC_MON.bin')`
+
+- **Purpose**: Converts binary files that don't contain raw data (specifically QC_MON.bin and similar monitoring files) to a structured dictionary format compatible with HDF5
+- **Parameters**:
+  - `data`: Input data from the binary file (output of the read_bin function)
+  - `FileName`: Name of the binary file (default: 'QC_MON.bin'), used to determine processing logic
+- **Returns**: Dictionary containing processed data structured for HDF5 conversion
+- **Process**:
+  - First extracts specific and general keys using the `get_allKeys` function
+  - Applies different processing based on file type:
+    - For 'MON' files (monitoring data):
+      - Creates custom numpy dtype for 8 ASICs (FE0-FE7) with float32 values
+      - Specially processes 'VBGR', 'MON_Temper', and 'MON_VBGR' data into structured dictionaries with:
+        - 'datas': Raw ADC bit values
+        - 'data_v': Values in AD_LSB units (calculated as datas*AD_LSB)
+      - Handles 'MON_200BL' and 'MON_900BL' data by creating channel-specific entries (CHN_X) with ASIC measurements
+      - Processes DAC-specific data into structured format with DAC_X entries
+      - Preserves all general keys unchanged
+    - For non-MON files:
+      - Filters general keys to include only relevant information (excludes 'QC', 'WIB', 'PC', and 'tms' prefixed keys)
+      - Preserves selected general keys with original structure
+  - Creates a consistent output dictionary ready for HDF5 storage
+- **Data Structures**:
+  - Custom dtype for ASICs: `np.dtype([(f'FE{ichip}', np.float32) for ichip in range(8)])`
+  - MON data dictionary format: `{'datas': numpy_array, 'data_v': numpy_array}`
+  - Baseline/DAC value format: `{f'CHN_{channel_number}': numpy_array}` or `{f'DAC_{dac_number}': numpy_array}`
+
 ### `bin2dict(data)`
 
 - **Purpose**: Main conversion function that processes the entire binary data structure
@@ -91,13 +118,17 @@ This script converts binary data files (.bin) from LArASIC QC (Quality Control) 
 
 ```python
 root_path = '../../path/to/data'
-binFileName = 'QC_INIT_CHK.bin'
-hdf5_name = binFileName.split('.')[0] + '.hdf5'
-
-with h5py.File(f'path/to/{hdf5_name}', 'w') as f:
-    data = read_bin(filename=binFileName, path_to_file=root_path)
-    data = bin2dict(data=data)
-    write_hdf5(f=f, data=data)
+list_bin_files = os.listdir(root_path)
+    for binFileName in list_bin_files:
+        hdf5_name = binFileName.split('.')[0] + '.hdf5'
+        with h5py.File('/'.join(['HDF5_data_path', hdf5_name]), 'w') as f:
+            data = read_bin(filename=binFileName, path_to_file=root_path)
+            try:  
+                data0 = bin2dict(data=data)
+                write_hdf5(f=f, data=data0)
+            except:
+                data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
+                write_hdf5(f=f, data=data1)
 ```
 
 ## Dependencies
@@ -108,8 +139,7 @@ with h5py.File(f'path/to/{hdf5_name}', 'w') as f:
 
 ## HDF5 Datastructure
 
-*  CHK refers to checkout
-
+* CHK refers to checkout
 * ASICDAC: DAC in the LArASIC
 * DATDAC: DAC on the DAT board
 * DIRECT_PLS : direct pulse
@@ -118,6 +148,7 @@ with h5py.File(f'path/to/{hdf5_name}', 'w') as f:
 * FE_PWRON :
 * WIB_PWR
 * logs:
+
   * ADC0-7 : serial numbers of the 8 ColdADC
   * CD0, CD1: serial numbers of the 2 COLDATA
   * DAT_SN : DAT serial number
@@ -132,5 +163,6 @@ with h5py.File(f'path/to/{hdf5_name}', 'w') as f:
   * testsite : test site.
 * For the power cycle data, the numbers 0 to 7 refers to the number cycles.
 * The keys in QC_PWR, QC_CHKRES, and QC_RMS are information directly from the datasheet.
+
   * TP refers to Peak Time.
   * The configurable gain 4.7mV/fC is often written as 47mV.

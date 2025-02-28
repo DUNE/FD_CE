@@ -12,6 +12,7 @@
 import os, sys
 import h5py, pickle
 import numpy as np
+import re
 # import matplotlib.pyplot as plt
 
 # from utils import decodeRawData # can be ignored, only used for test
@@ -187,7 +188,57 @@ def PWRON(pwron_data):
         out_pwron[key] = np.array(tuple(val), dtype=pwrdtype)
     return out_pwron
 
-def bin2dict(data):
+def binWithoutRAW2dict(data, FileName='QC_MON.bin'):
+    '''
+        This function is used to convert the data from the binary files without raw data to dictionary format.
+        Input:
+            data from the binary file, output of the read_bin function.
+        Output:
+            dictionary format of the input data.
+    '''
+    speckey_list, GeneralKeys_inBin = get_allKeys(data=data)
+    # print(speckey_list)
+    # print(GeneralKeys_inBin)
+    out_data = dict()
+    if 'MON' in FileName:
+        # print(data['logs'])
+        custom_dtype = np.dtype([(f'FE{ichip}', np.float32) for ichip in range(8)])
+        for speckey in speckey_list:
+            if speckey in ['VBGR', 'MON_Temper', 'MON_VBGR']:
+                # custom_dtype = np.dtype([(f'FE{ichip}', np.float32) for ichip in range(8)])
+                tmp_dict = {
+                    'datas' : np.array(tuple(data[speckey][0]), dtype=custom_dtype), # ADC bit
+                    'data_v': np.array(tuple(data[speckey][1]), dtype=custom_dtype) # in the unit of AD_LSB : datas*AD_LSB
+                }
+                out_data[speckey] = tmp_dict
+            elif speckey in ['MON_200BL', 'MON_900BL']:
+                # custom_dtype = np.dtype([(f'FE{ichip}', np.float32) for ichip in range(8)])
+                tmp_dict = {f'CHN_{data[speckey][ichn][0]}' : np.array(tuple(data[speckey][ichn][1]), dtype=custom_dtype) for ichn in range(16)}
+                out_data[speckey] = tmp_dict
+            else:
+                tmp_dict = {f'DAC_{data[speckey][idac][0]}' : np.array(tuple(data[speckey][idac][1]), dtype=custom_dtype) for idac in range(len(data[speckey]))}
+                out_data[speckey] = tmp_dict
+        for key in GeneralKeys_inBin:
+            out_data[key] = data[key]
+    else:
+        # print(data['WIB_UTC_Date_Time'])
+        # keys_for_report = [key for key in GeneralKeys_inBin if ('QC' not in key) & ('WIB' not in key) & ('PC' not in key) & ('tms' not in key) & ('pc' not in key)]
+        keys_for_report = [key for key in GeneralKeys_inBin if ('QC' not in key) & ('WIB' not in key) & ('PC' not in key) & ('tms' not in key)]
+        # print(keys_for_report)
+        for key in keys_for_report:
+            # if key=='tms_items':
+            #     tmp_dict = dict()
+
+            #     for key1, val1 in data[key].items():
+            #         val1 = val1.replace('\x1b[96m ', '').replace('\x1b[0m', '')
+            #         tmp_dict[key1] = val1
+            #     print(tmp_dict)
+            #     out_data[key] = tmp_dict
+            # else:
+                out_data[key] = data[key]
+    return out_data
+
+def bin2dict(data): # for binary files except QC.log and QC_MON.bin
     speckey_list, GeneralKeys_inBin = get_allKeys(data=data)
     out_data = dict()
     for key in GeneralKeys_inBin:
@@ -205,10 +256,15 @@ def bin2dict(data):
 
 if __name__ == '__main__':
     root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
-    binFileName = 'QC_Cap_Meas.bin'
-    hdf5_name = binFileName.split('.')[0] + '.hdf5'
-    with h5py.File(hdf5_name, 'w') as f:
-        # initial test
-        data = read_bin(filename=binFileName, path_to_file=root_path)
-        data = bin2dict(data=data)
-        write_hdf5(f=f, data=data)
+    # binFileName = 'QC_MON.bin'
+    list_bin_files = os.listdir(root_path)
+    for binFileName in list_bin_files:
+        hdf5_name = binFileName.split('.')[0] + '.hdf5'
+        with h5py.File('/'.join(['HDF5_data', hdf5_name]), 'w') as f:
+            data = read_bin(filename=binFileName, path_to_file=root_path)
+            try:    
+                data0 = bin2dict(data=data)
+                write_hdf5(f=f, data=data0)
+            except:
+                data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
+                write_hdf5(f=f, data=data1)
