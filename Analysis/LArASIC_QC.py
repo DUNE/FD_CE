@@ -1,4 +1,4 @@
-import os
+import os, sys
 from datetime import datetime
 from Init_checkout import QC_INIT_CHECK, QC_INIT_CHK_Ana
 from QC_PWR import QC_PWR, QC_PWR_analysis
@@ -11,17 +11,17 @@ from QC_Cap_Meas import QC_Cap_Meas, QC_Cap_Meas_Ana
 #
 from QC_Report import QC_Report
 
-DecodeRawData = True
-AnalyzeDecodedData = False
-env='LN'
+DecodeRawData = False
+AnalyzeDecodedData = True
+env='RT'
 
 if __name__ =="__main__":
     if DecodeRawData:
         ## decoding part
-        # root_path = '../../B010T0004_'
-        # output_path = '../../out_B010T0004_'
-        root_path = '../../B009T0005'
-        output_path = '../../out_B009T0005'
+        root_path = '../../B010T0004_'
+        output_path = '../../out_B010T0004_'
+        # root_path = '../../B009T0005'
+        # output_path = '../../out_B009T0005'
         list_data_dir = [dir for dir in os.listdir(root_path) if (os.path.isdir('/'.join([root_path, dir]))) and (dir!='images')] 
         
         for data_dir in list_data_dir:
@@ -58,7 +58,7 @@ if __name__ =="__main__":
             direct_cali = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=63, QC_filename='QC_CALI_DIRECT.bin', generateWf=False)
             direct_cali.runASICDAC_cali(saveWfData=False)
             ## Calibration capacitor measurement
-            cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, generateWf=True)
+            cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, generateWf_plot=False)
             cap.decode_CapMeas()
             tf = datetime.now()
             print('end time : {}'.format(tf))
@@ -67,12 +67,14 @@ if __name__ =="__main__":
             print("=xx="*20)
     if AnalyzeDecodedData:
         ## analysis part
-        decoded_path = '../../out_B010T0004_'
-        analyzed_path = '../../analyzed_B010T0004_'
+        decoded_path = '../../out_B010T0004__RT'
+        analyzed_path = '../../analyzed_B010T0004_RT'
         # decoded_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
         # analyzed_path = '../../Analysis'
         list_chipID = os.listdir(decoded_path)
         for chipID in list_chipID:
             report = QC_Report(root_path=decoded_path, chipID=chipID, output_path=analyzed_path)
             report.generate_summary_csv()
+            print(chipID)
+            sys.exit()
     pass
