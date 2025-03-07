@@ -31,12 +31,14 @@ class QC_Report():
 
     def get_INIT_CHK(self):
         init_chk = QC_INIT_CHK_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
-        init_chk_data = init_chk.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_INIT_CHK.csv']))
+        # init_chk_data = init_chk.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_INIT_CHK.csv']))
+        init_chk_data = init_chk.run_Ana()
         return init_chk_data
     
     def get_QC_PWR(self):
         pwr_ana = QC_PWR_analysis(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR.csv']))
+        # pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR.csv']))
+        pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna=None)
         # print(logs)
         # print(pwr_cons_data)
         # sys.exit()
@@ -61,7 +63,8 @@ class QC_Report():
     
     def get_QC_CHKRES(self):
         chk_res = QC_CHKRES_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        chkres_data = chk_res.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_CHKRES.csv']))
+        # chkres_data = chk_res.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_CHKRES.csv']))
+        chkres_data = chk_res.run_Ana()
         return chkres_data
 
     def get_QC_CALI(self, cali_item='QC_CALI_ASICDAC'):
@@ -71,7 +74,8 @@ class QC_Report():
 
     def get_QC_RMS(self):
         rms_ana = RMS_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        rms_data = rms_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_RMS.csv']), generatePlots=False)
+        # rms_data = rms_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_RMS.csv']), generatePlots=False)
+        rms_data = rms_ana.run_Ana(path_to_statAna=None, generatePlots=False)
         return rms_data
 
     def get_QC_Cap_Meas(self):
@@ -81,17 +85,18 @@ class QC_Report():
     
     def generate_summary_csv(self):
         pwr_data = self.get_QC_PWR()
-        pwr_cycle_data = self.get_QC_PWR_CYCLE()
+        # pwr_cycle_data = self.get_QC_PWR_CYCLE()
         rms_data = self.get_QC_RMS()
-        capacitance_data = self.get_QC_Cap_Meas()
+        # capacitance_data = self.get_QC_Cap_Meas()
         chkres_data = self.get_QC_CHKRES()
-        fe_mon_data = self.get_FE_MON()
+        # fe_mon_data = self.get_FE_MON()
         init_chk_data = self.get_INIT_CHK()
 
         cali_data = []
-        for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
-        # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_DATDAC']:
-            cali_data += self.get_QC_CALI(cali_item=cali_item)
+        # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
+        # # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_DATDAC']:
+        # # for cali_item in ['QC_CALI_ASICDAC']:
+        #     cali_data += self.get_QC_CALI(cali_item=cali_item)
 
         month_day_year = '_'.join(self.logs_dict['date'].split('_')[:3])
         header = [#[self.logs_dict['item_name'], self.logs_dict['env']],
@@ -122,15 +127,15 @@ class QC_Report():
             csv_data_rows.append(d)
         for d in chkres_data:
             csv_data_rows.append(d)
-        for d in fe_mon_data:
-            csv_data_rows.append(d)
-        for d in pwr_cycle_data:
-            csv_data_rows.append(d)
-        for d in cali_data:
-            csv_data_rows.append(d)
+        # for d in fe_mon_data:
+        #     csv_data_rows.append(d)
+        # for d in pwr_cycle_data:
+        #     csv_data_rows.append(d)
+        # for d in cali_data:
+        #     csv_data_rows.append(d)
         for d in rms_data:
             csv_data_rows.append(d)
-        csv_data_rows.append(capacitance_data)
+        # csv_data_rows.append(capacitance_data)
         # print(csv_data_rows)
         with open('/'.join([self.output_path, self.chipID,'{}.csv'.format(self.chipID)]), 'w') as f:
             csvwriter = csv.writer(f, delimiter=',')
