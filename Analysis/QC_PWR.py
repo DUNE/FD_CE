@@ -498,7 +498,7 @@ class QC_PWR_analysis(BaseClass_Ana):
                     ch_results.append(f"CH{ichn}=(ped={ped};rms={rms};posAmp={posAmp};negAmp={negAmp})")
 
                 # Add result row without statistical analysis
-                results_CFGs.append([f'Test_{self.tms}_Power_Consumption', cfg, 'NO_STAT'] + pwr_params + ch_results)
+                results_CFGs.append([f'Test_{self.tms}_Power_Consumption', cfg] + pwr_params + ch_results)
 
         else:
             # Original statistical analysis code
