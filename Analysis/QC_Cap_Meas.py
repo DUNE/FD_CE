@@ -13,10 +13,10 @@ from utils import BaseClass_Ana
 from scipy.stats import norm
 
 class QC_Cap_Meas(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False, env='RT'):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf_plot=False, env='RT'):
         printItem("Capacitance measurement")
-        self.generateWf = generateWf
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf, env=env)
+        self.generateWf_plot = generateWf_plot
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf_plot, env=env)
         self.suffixName = "Cap_Meas"
         # print(self.params)
         self.period = 1000
@@ -161,7 +161,7 @@ class QC_Cap_Meas(BaseClass):
                         tmp = arranged_data[FE_ID][c][fechn][bl]
                         wf = tmp['waveform']
                         chipdata[c][fechn][bl] = {'ppeak': tmp['ppeak'], 'npeak': tmp['npeak'], 'pedestal': tmp['pedestal'], 'rms': tmp['rms']}
-                        if self.generateWf:
+                        if self.generateWf_plot:
                             self.saveWaveform(wf_data=wf, FE_ID=FE_ID, chn=fechn, V=bl, cali_input=c)
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name=self.suffixName, data_to_dump=chipdata, indent=4)
         # sys.exit()
@@ -347,7 +347,7 @@ if __name__ == '__main__':
     # for i, data_dir in enumerate(list_data_dir):
     #     # if i==1:
     #         print(data_dir)
-    #         cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
+    #         cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf_plot=True)
     #         decodedData = cap.decode()
     #         cap.saveData(decodedData=decodedData)
     #         # sys.exit()
