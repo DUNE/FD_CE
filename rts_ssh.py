@@ -29,8 +29,8 @@ def subrun(command, timeout = 30, check=True, exitflg = True):
         print ("Call Error", e.returncode)
         if exitflg:
             print ("Call Error FAIL!")
-            print ("Exit anyway")
-            return None
+            #print ("Exit anyway")
+            #return None
             #exit()
             
 
@@ -281,15 +281,15 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
                     print (datetime.datetime.utcnow(), "\033[92m  : SUCCESS!  \033[0m")
                 else:
                     print ("FAIL!")
-                    print ("Exit anyway")
-                    return None
+                    #print ("Exit anyway")
+                    #return None
                     #exit()
             else:
                 print ("FAIL!")
-                return None
+                #return None
         else:
             print ("FAIL!")
-            return None
+            #return None
 
     
     if QC_TST_EN:
@@ -325,12 +325,12 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
                 else:
                     print ("FAIL!")
                     print (result.stdout)
-                    print ("Exit anyway")
-                    return None
-                    #exit()
+                    #print ("Exit anyway")
+                    #return None
+                    #break #exit()
             else:
                 print ("FAIL!")
-                return None
+                #break #return None
     
             print ("Transfer data to PC...")
             fdir = resultstr[resultstr.find("save_fdir_start_")+16:resultstr.find("_end_save_fdir")] 

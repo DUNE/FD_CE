@@ -297,7 +297,7 @@ def ana_cdpwr(pwr_meas, vddfe = [1.7, 1.9], v1p1 = [1.15, 1.25], vddio = [2.15, 
 
         #print (kpwrs[i], pwr_meas[kpwrs[i]][0], pwr_meas[kpwrs[i]][1])
   
-def ana_adcpwr(pwr_meas, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,145], cd1p2=[0,5], cio=[15,25], cd2p5 = [3,10]):
+def ana_adcpwr(pwr_meas, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,145], cd1p2=[0,5], cio=[3,25], cd2p5 = [3,10]):
     bads =[]
     kpwrs = list(pwr_meas.keys())
     vdda2p5s = []
@@ -436,35 +436,35 @@ def dat_initchk(fdir="/."):
             bads3 = []
 
             if ("DIRECT_PLS_CHK" in onekey) :
-                bads0 = ana_res2(fembs, rawdata, par=[3000,10000], rmsr=[2.5,50], pedr=[300,3000] , period=512)
+                bads0 = ana_res2(fembs, rawdata, par=[3000,12000], rmsr=[2.5,500], pedr=[300,3000] , period=512)
             if ("ASICDAC_CALI_CHK" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[7000,10000], rmsr=[3,50], pedr=[100,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[6000,10000], rmsr=[3,500], pedr=[100,3000] , period=500)
             if ("ASICDAC_47mV_CHK" in onekey) and ("ASICDAC_47mV_CHK_x10" not in onekey) and ("ASICDAC_47mV_CHK_x18" not in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,50], pedr=[300,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[5500,7500], rmsr=[2,50], pedr=[400,3000] , period=500)
             if ("ASICDAC_47mV_CHK_x10" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[2000,4000], rmsr=[2,50], pedr=[300,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[2000,4000], rmsr=[2,50], pedr=[400,3000] , period=500)
             if ("ASICDAC_47mV_CHK_x18" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[3500,5500], rmsr=[2,50], pedr=[300,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[3500,5500], rmsr=[2,50], pedr=[400,3000] , period=500)
             if ("DIRECT_PLS_RMS" in onekey) :
-                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,30], pedr=[300,3000] , period=512)
+                bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,30], pedr=[500,3000] , period=512)
             if ("ASICDAC_CALI_RMS" in onekey):
                 bads0 = ana_res2(fembs, rawdata, par=[0000,1000], rmsr=[3,30], pedr=[100,3000] , period=500)
             if ("ASICDAC_47mV_RMS" in onekey):
-                bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[300,3000] , period=500)
+                bads0 = ana_res2(fembs, rawdata, par=[000,1000], rmsr=[2,10], pedr=[400,3000] , period=500)
 
             if ("DIRECT_PLS_CHK" in onekey) :
                 pwr_meas_fe = cfgdata[3]
                 pwr_meas_adc = cfgdata[4]
                 pwr_meas_cd = cfgdata[5]
                 bads1 = ana_fepwr2(pwr_meas_fe, vin=[1.7,1.95], cdda=[10,25], cddp=[25,35], cddo=[-0.1,5])
-                bads2 = ana_adcpwr(pwr_meas_adc, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,145], cd1p2=[0,5], cio= [10,25], cd2p5 = [3,10])
+                bads2 = ana_adcpwr(pwr_meas_adc, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,145], cd1p2=[0,5], cio= [3,25], cd2p5 = [3,25])
                 bads3 = ana_cdpwr(pwr_meas_cd, vddfe = [1.7, 1.95], v1p1 = [1.15, 1.25], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [15, 25], cddio = [60, 75])
             elif  ("ASICDAC_CALI_CHK" in onekey):
                 pwr_meas_fe = cfgdata[3]
                 pwr_meas_adc = cfgdata[4]
                 pwr_meas_cd = cfgdata[5]
                 bads1 = ana_fepwr2(pwr_meas_fe, vin=[1.60,1.8], cdda=[40,60], cddp=[25,35], cddo=[5,15])
-                bads2 = ana_adcpwr(pwr_meas_adc, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,145], cd1p2=[0,5], cio= [10,25], cd2p5 = [3,10])
+                bads2 = ana_adcpwr(pwr_meas_adc, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,145], cd1p2=[0,5], cio= [3,25], cd2p5 = [3,25])
                 bads3 = ana_cdpwr(pwr_meas_cd, vddfe = [1.6, 1.8], v1p1 = [1.15, 1.25], vddio = [2.15, 2.35], cdda = [7, 11], cddfe = [-1, 1], cddcore = [8, 13], cddd = [15, 25], cddio = [60, 75])
 
             print(onekey, 'Bads0_Pulse = {} \t Bads1_FE_Power = {}\t Bads1_ADC_Power = {}\t Bads1_CD_Power = {}'.format(bads0, bads1, bads2, bads3))

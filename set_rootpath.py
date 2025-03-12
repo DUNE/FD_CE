@@ -15,7 +15,7 @@ def rootdir_cs (duttype = "FE"):
         rootdir = "D:/DAT_CD_QC/Tested/"
         #rootdir = "S:/SGAO_DAT/Tested/DAT_CD_QC/Tested/"
         rootdir = "S:/RTS_DAT_COLDATA_QC/"
-        rootdir = "C:/SGAO/ColdTest/Tested/DAT_CD_QC/Tested/"
+        rootdir = "C:/Users/RTS/Tested/"
     else:
         print ("Wrong ASIC type, exit anyway")
         exit()

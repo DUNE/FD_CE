@@ -124,7 +124,7 @@ while True:#
             print ("\033[91m " + "FAIL!" +"\033[0m")
             print (result.stdout)
             print ("\033[91m " + "Exit anyway" +"\033[0m")
-            exit()
+            break #exit()
 
 if True:
     #ynstr = "Y"
@@ -151,7 +151,7 @@ if True:
             else:
                 print ("\033[91m exit anyway \033[0m")
                 print ("\033[91m please restart the test script \033[0m")
-                exit()
+                break #exit()
 
 if False: #included in rts_ssh.py 
     #print ("later use pyqt to pop out a configuration windows")
