@@ -1,0 +1,339 @@
+ENVT0100,LM:2025/02/26 18:10:12:852,DS:0000004662,CS:28433,MA:D0-AD-08-5A-A1-24,EI:           
+sActiveChild="Run"
+bMdiMaximized=True
+nProgramFileCount=5
+ProgramFile1 {
+	sName="Main.prg"
+	bOpened=True
+	nWinState=0
+	Window {
+		nLeft=127
+		nTop=16
+		nWidth=1201
+		nHeight=522
+	}
+}
+ProgramFile2 {
+	sName="RTS_server.prg"
+	bOpened=True
+	nWinState=0
+	Window {
+		nLeft=202
+		nTop=83
+		nWidth=547
+		nHeight=276
+	}
+}
+ProgramFile3 {
+	sName="Calib_tools.prg"
+	bOpened=True
+	nWinState=0
+	Window {
+		nLeft=26
+		nTop=26
+		nWidth=1203
+		nHeight=501
+	}
+}
+ProgramFile4 {
+	sName="RTS_tools.prg"
+	bOpened=True
+	nWinState=0
+	Window {
+		nLeft=52
+		nTop=52
+		nWidth=503
+		nHeight=217
+	}
+}
+ProgramFile5 {
+	sName="RTS_tools_xn.prg"
+	bOpened=True
+	nWinState=0
+	Window {
+		nLeft=3
+		nTop=4
+		nWidth=1101
+		nHeight=701
+	}
+}
+nIncludeFileCount=2
+IncludeFile1 {
+	sName="RTSserver.inc"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=380
+		nTop=81
+		nWidth=721
+		nHeight=470
+	}
+}
+IncludeFile2 {
+	sName="RTS_tools.inc"
+	bOpened=True
+	nWinState=0
+	Window {
+		nLeft=0
+		nTop=0
+		nWidth=1203
+		nHeight=529
+	}
+}
+nPointFileCount=7
+PointFile1 {
+	sName="robot1.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=13
+		nTop=16
+		nWidth=1246
+		nHeight=731
+	}
+}
+PointFile2 {
+	sName="Calib_Stinger.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=52
+		nTop=52
+		nWidth=1203
+		nHeight=501
+	}
+}
+PointFile3 {
+	sName="Calib_UF_Stinger.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=78
+		nTop=78
+		nWidth=1203
+		nHeight=501
+	}
+}
+PointFile4 {
+	sName="Calib_DF_mark.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=104
+		nTop=104
+		nWidth=1203
+		nHeight=501
+	}
+}
+PointFile5 {
+	sName="Calib_DF_Socket.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=130
+		nTop=130
+		nWidth=1203
+		nHeight=501
+	}
+}
+PointFile6 {
+	sName="points_BNL.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=592
+		nTop=20
+		nWidth=1170
+		nHeight=754
+	}
+}
+PointFile7 {
+	sName="skt_cal.pts"
+	bOpened=False
+	nWinState=0
+	Window {
+		nLeft=156
+		nTop=156
+		nWidth=1203
+		nHeight=501
+	}
+}
+nForceFileCount=0
+sActiveWindow="main.prg"
+CmdWindow {
+	bOpened=False
+	Window {
+		nLeft=435
+		nTop=194
+		nWidth=1004
+		nHeight=491
+	}
+	nWinState=0
+}
+RunWindow {
+	bOpened=True
+	Window {
+		nLeft=61
+		nTop=116
+		nWidth=1094
+		nHeight=427
+	}
+	nWinState=2
+	nNumOfDisplays=1
+	nSplitterDistance=336
+	Display1 {
+		nCamera=0
+		sSequences="1"
+	}
+	Display2 {
+		nCamera=0
+		sSequences="1"
+	}
+	Display3 {
+		nCamera=0
+		sSequences="1"
+	}
+	Display4 {
+		nCamera=0
+		sSequences="1"
+	}
+	Display5 {
+		nCamera=0
+		sSequences="1"
+	}
+	Display6 {
+		nCamera=0
+		sSequences="1"
+	}
+}
+IOLabelEditor {
+	bOpened=False
+	Window {
+		nLeft=304
+		nTop=89
+		nWidth=1058
+		nHeight=574
+	}
+	nWinState=0
+}
+IOMonitor {
+	bOpened=False
+	Window {
+		nLeft=846
+		nTop=196
+		nWidth=520
+		nHeight=805
+	}
+}
+Simulator {
+	bOpened=False
+	Window {
+		nLeft=156
+		nTop=156
+		nWidth=1312
+		nHeight=480
+	}
+}
+TaskMgr {
+	bOpened=False
+	Window {
+		nLeft=0
+		nTop=0
+		nWidth=0
+		nHeight=0
+	}
+}
+Macros {
+	bOpened=False
+	Window {
+		nLeft=596
+		nTop=287
+		nWidth=488
+		nHeight=429
+	}
+}
+RobotMgr {
+	bOpened=False
+	Window {
+		nLeft=84
+		nTop=71
+		nWidth=764
+		nHeight=527
+	}
+}
+UserErrorEditor {
+	bOpened=False
+	Window {
+		nLeft=0
+		nTop=0
+		nWidth=0
+		nHeight=0
+	}
+	nWinState=0
+}
+VisionGuide {
+	bOpened=False
+	Window {
+		nLeft=26
+		nTop=26
+		nWidth=1561
+		nHeight=657
+	}
+	nWinState=0
+	bShowFlowChart=True
+	nSplitterDistance1=929
+	nSplitterDistance2=718
+	nSplitterDistance3=306
+	nSplitterDistance4=268
+	nSplitterDistance5=346
+}
+ForceGuide {
+	bOpened=False
+	Window {
+		nLeft=0
+		nTop=0
+		nWidth=0
+		nHeight=0
+	}
+	nWinState=0
+	bShowFlowChart=True
+	nSplitterDistance1=0
+	nSplitterDistance2=0
+	nSplitterDistance3=0
+	nSplitterDistance4=0
+	nSplitterDistance5=0
+	nSelectedTab=0
+}
+GUIBuilder {
+	bOpened=False
+	Window {
+		nLeft=0
+		nTop=0
+		nWidth=0
+		nHeight=0
+	}
+	nWinState=0
+	nSplitterDistance1=0
+	nSplitterDistance2=0
+	nSplitterDistance3=0
+	nSplitterDistance4=0
+}
+ProjectExplorer {
+	bProgramsOpened=True
+	bIncludesOpened=True
+	bLabelsOpened=True
+	bMacrosOpened=True
+	bFunctionsOpened=False
+	bVisionOpened=True
+	bVisionSequencesOpened=True
+	bVisionCalibsOpened=True
+	bGUIBOpened=True
+	bGUIBFormsOpened=False
+	bRobotPointsOpened=True
+	bCommonPointsOpened=False
+	bForcesOpened=True
+	bCommonForcesOpened=False
+	bRobotsOpened1=True
+	bForceGuideOpened=True
+	bForceSequencesOpened=False
+}

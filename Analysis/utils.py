@@ -198,8 +198,8 @@ def decodeRawData(fembs, rawdata, needTimeStamps=False, period=500):
             dat_tmts_l.append(wibdata[5][fembs[0]*2][0]) #LSB of timestamp = 16ns
             dat_tmts_h.append(wibdata[5][fembs[0]*2+1][0])
         elif system_info=='Windows':
-            dat_tmts_l.append(wibdata[4][fembs[0]*2][0]) #LSB of timestamp = 16ns
-            dat_tmts_h.append(wibdata[4][fembs[0]*2+1][0])
+            dat_tmts_l.append(wibdata[5][fembs[0]*2][0]) #LSB of timestamp = 16ns
+            dat_tmts_h.append(wibdata[5][fembs[0]*2+1][0])
 
     # period = 500
     dat_tmtsl_oft = (np.array(dat_tmts_l)//32)%period #ADC sample rate = 16ns*32 = 512ns

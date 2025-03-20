@@ -255,12 +255,12 @@ def bin2dict(data): # for binary files except QC.log and QC_MON.bin
     
 
 if __name__ == '__main__':
-    root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
+    root_path = 'D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
     # binFileName = 'QC_MON.bin'
     list_bin_files = os.listdir(root_path)
     for binFileName in list_bin_files:
         hdf5_name = binFileName.split('.')[0] + '.hdf5'
-        with h5py.File('/'.join(['HDF5_data', hdf5_name]), 'w') as f:
+        with h5py.File('/'.join(['D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000', hdf5_name]), 'w') as f:
             data = read_bin(filename=binFileName, path_to_file=root_path)
             try:    
                 data0 = bin2dict(data=data)
