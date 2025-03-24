@@ -29,8 +29,16 @@ def write_hdf5(f, data, group_name='/'):
         grp = f
     for key,val in data.items():
         if isinstance(val, dict):
-            write_hdf5(f, val, group_name=f'{group_name}/{key}')
+            if 'attrs' in key:
+                for k, v in val.items():
+                    grp.attrs[k] = v
+            else:
+                write_hdf5(f, val, group_name=f'{group_name}/{key}')
         else:
+            # if 'attrs' in key:
+            #     grp.attrs['N_trigger'] = val['N_trigger']
+            #     print(val)
+            # else:
             grp.create_dataset(key,data=val)
 
 def get_allKeys(data):
@@ -48,6 +56,8 @@ def get_allKeys(data):
     return SpecificKeys_inBin, GeneralKeys_inBin
 
 def specKeyData2Dict(data, specKeys_list):
+    # Attributes should be added to the dictionary of the spy buffer data (all_spybuff) and assigned to the key 'attrs'
+    # Use a dictionary to store all the attributes you want to include in the hdf5 file
     all_data_dict = dict()
     for i, speckey in enumerate(specKeys_list):
         speckeyData = data[speckey]
@@ -60,14 +70,18 @@ def specKeyData2Dict(data, specKeys_list):
         all_spybuff = dict()
         N_spybuff = len(rawdata)
         for ispy_buff in range(N_spybuff):
-            rawdata_tuple = rawdata2numpy_dict(rawdata=rawdata, spy_buff=ispy_buff)
-            all_spybuff[f'trigger{ispy_buff}'] = rawdata_tuple
+            rawdata_dict = rawdata2numpy_dict(rawdata=rawdata, spy_buff=ispy_buff)
+            all_spybuff[f'trigger{ispy_buff}'] = rawdata_dict
 
         config = speckeyData[2]
         if isinstance(config, list):
             # converting configurations list (one element) to dictionary
             config_dict = config2dict(config_data=config)
-    
+
+        # Adding attributes
+        N_triggers = len(list(all_spybuff.keys()))
+        all_spybuff['attrs'] = {'N_trigger': N_triggers}
+
         pwrcons = speckeyData[3]
         if isinstance(pwrcons, dict):
             # converting the power consumptions to numpy array with custom dtype
@@ -152,6 +166,7 @@ def rawdata2numpy_dict(rawdata, spy_buff=0):
             out_spy_buff_data = out_data
         else:
             out_spy_buff_data[params[i_tmp]] = tmpdata
+        # out_spy_buff_data['attrs'] = {'N_fembs': 'Number of FEMBs used'}
     return out_spy_buff_data
 
 ################# Conversion back to HEX #############################################################
@@ -255,12 +270,21 @@ def bin2dict(data): # for binary files except QC.log and QC_MON.bin
     
 
 if __name__ == '__main__':
-    root_path = 'D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
+    # root_path = 'D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
+    root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000/'
+    output_path = 'tmp'
+    try:
+        os.makedirs(output_path)
+    except:
+        pass
     # binFileName = 'QC_MON.bin'
     list_bin_files = os.listdir(root_path)
+    # print(list_bin_files)
+    # sys.exit()
     for binFileName in list_bin_files:
         hdf5_name = binFileName.split('.')[0] + '.hdf5'
-        with h5py.File('/'.join(['D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000', hdf5_name]), 'w') as f:
+        # with h5py.File('/'.join(['D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000', hdf5_name]), 'w') as f:
+        with h5py.File('/'.join([output_path, hdf5_name]), 'w') as f:
             data = read_bin(filename=binFileName, path_to_file=root_path)
             try:    
                 data0 = bin2dict(data=data)
