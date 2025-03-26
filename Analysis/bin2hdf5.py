@@ -35,10 +35,6 @@ def write_hdf5(f, data, group_name='/'):
             else:
                 write_hdf5(f, val, group_name=f'{group_name}/{key}')
         else:
-            # if 'attrs' in key:
-            #     grp.attrs['N_trigger'] = val['N_trigger']
-            #     print(val)
-            # else:
             grp.create_dataset(key,data=val)
 
 def get_allKeys(data):
@@ -94,11 +90,18 @@ def specKeyData2Dict(data, specKeys_list):
                 #     'P' : val[2] 
                 # }
                 new_pwrcons_dict[key] = val_np
-
+            new_pwrcons_dict['attrs'] = {'Info': 'Power consumption for each ASIC for each power rail',
+                                         'unit_V': 'V',
+                                         'unit_I': 'mA',
+                                         'unit_P': 'mW'}
             speckeyData_dict = {'fembs': fembs_np, 'pwrcons': new_pwrcons_dict, 'rawdata': all_spybuff}
+            speckeyData_dict['attrs'] = {'fembs': 'FEMBs used (tuple)',
+                                         'pwrcons': 'Power consumption in the format np.array([V, I, P])',
+                                         'rawdata': 'Spy buffer'}
         else:
             speckeyData_dict = {'fembs': fembs_np, 'rawdata': all_spybuff}
-        
+            speckeyData_dict['attrs'] = {'fembs': 'FEMBs used (tuple)',
+                                         'rawdata': 'Spy buffer'}
         if isinstance(config, list):
             speckeyData_dict['config'] = config_dict
         
@@ -201,6 +204,7 @@ def PWRON(pwron_data):
     for key, val in pwron_data.items():
         pwrdtype = np.dtype([('V', np.float32), ('I', np.float32), ('P', np.float32)])
         out_pwron[key] = np.array(tuple(val), dtype=pwrdtype)
+    out_pwron['attrs'] = {'Info': 'The power consumption is in the format (V, I, P)'}
     return out_pwron
 
 def binWithoutRAW2dict(data, FileName='QC_MON.bin'):
@@ -288,6 +292,7 @@ if __name__ == '__main__':
             data = read_bin(filename=binFileName, path_to_file=root_path)
             try:    
                 data0 = bin2dict(data=data)
+                print(hdf5_name)
                 write_hdf5(f=f, data=data0)
             except:
                 data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
