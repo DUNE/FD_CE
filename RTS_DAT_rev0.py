@@ -33,31 +33,6 @@ from rts_ssh import rts_ssh
 from set_rootpath import rootdir_cs
 from cryo_uart import cryobox
 
-def send_email(message):
-    sender_email = "ningxuyang0202@gmail.com"
-    receiver_email = "xning@bnl.gov"
-    #receiver_email = ningxuyang0202@gmail.com
-    password = "tadu prhn atwp tvdb"
-    subject = "ERROR from RTS"
-    body = message
-    msg = MIMEMultipart()
-
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = subject
-    # Attach the body text to the email
-    msg.attach(MIMEText(body, 'plain'))
-    
-    try: 
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.ehlo()
-            server.starttls()  # Start TLS encryption
-            server.ehlo()
-            server.login(sender_email, password)  # Login to the server
-            server.send_message(msg)  # Send the email
-            print("Email sent successfully!")
-    except Exception as e:
-        print(f"Failed to send email: {e}")
 
 def send_rts_email(message):
     sender_email = "rtshibay@gmail.com"
@@ -133,7 +108,6 @@ while True:
         sys.exit()
 
 
-#send_email("run start")
 #exit()
 
 trayid = bno
@@ -313,7 +287,6 @@ def DAT_debug (QCstatus):
                     return "2"
 
 def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=None, sktn=None):
-    send_email("RTS is crying for help!!")
     send_rts_email(message="Please contact tech coordinator (RTS issue)")
     print ("Please check the error information on EPSON RC")
     if "T2S" in info:
