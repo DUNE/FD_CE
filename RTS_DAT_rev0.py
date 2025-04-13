@@ -60,13 +60,299 @@ def send_rts_email(message):
     except Exception as e:
         print(f"Failed to send email: {e}")
 
+def DAT_debug (QCstatus):
+    print (QCstatus)
+    send_rts_email(message="Please contact tech coordinator (DAT issue)")
+    while True:
+        print ("444-> Move chips back to original positions")
+        print ("2->fixed,")
+        userinput = input ("Please contact tech coordinator : ")
+        if len(userinput) > 0:
+            if "444" in userinput :
+                return "444"
+            elif "2" in userinput :
+                yorn = input ("Fixed. Are you sure? (y/Y):")
+                if "Y" in yorn or "y" in yorn:
+                    return "2"
+
+def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=None, sktn=None):
+    send_rts_email(message="Please contact tech coordinator (RTS issue)")
+    print ("Please check the error information on EPSON RC")
+    if "T2S" in info:
+        print ("Chip is moved from Tray") 
+        print ("Chip on orignial TrayNo(1-2)={}, Col(1-15)={}, Row(1-6)={}".format(trayno, trayc, trayr)) 
+    elif "S2T" in info:
+        print ("Chip is moved from Socket") 
+        print ("Chip on orignial DATno(1-2)={}, Skt(1-8)={} ".format(datno, sktn)) 
+
+    rts.rts_idle()
+
+    while True:
+        print ("444-> Shutdown RTS and exit anyway")
+        print ("1->move chip to Tray#1_Col#15_Row#6")
+        print ("2->move chip to orignal position")
+        print ("6->fixed,")
+
+        userinput = input ("Please contatc tech coordinator : ")
+        if len(userinput) > 0:
+            if "444" in userinput :
+                rts.MotorOn()
+                rts.JumpToCamera()
+                rts.rts_shutdown()
+                print ("Exit anyway")
+                exit()
+            elif "6" in userinput[0] :
+                input ("Make sure the chip back to orginal position and click anykey")
+                rts.MotorOn()
+                break
+
+def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7], duttype="FE") :
+    dut_skt = {}
+    #make sure DAT is powered off
+    if BypassRTS:
+        pass
+    else:
+        DAT_power_off()
+        rts.MotorOn()
+
+    tmpi = 0
+    tmpj = 0
+    while tmpi < len(skts):
+        skt = skts[tmpi]
+        if len(duts)>0:
+            chipi = duts[0]
+            duts=duts[1:]
+        else:
+            ids_g = list(ids_dict.keys())
+            chipi = ids_dict[ids_g[tmpj]][0]
+            tmpj=tmpj+1
+
+        trayc=(chipi%15) +1
+        trayr=(chipi//15) +1
+        sktn = skt + 1
+        
+        if BypassRTS:
+            rts.msg = str(int(rts.msg) + 1)
+            status = 0
+        else:
+            status = rts.MoveChipFromTrayToSocket(trayno, trayc, trayr, datno, sktn,duttype)    
+
+        if status < 0:
+            RTS_debug ("T2S", status, trayno, trayc, trayr, datno, sktn)
+            tmpi = tmpi
+            duts=[chipi] + duts
+            continue
+        else:
+            dut_skt[rts.msg] = (chipi, skt)
+            tmpi = tmpi + 1
+    if BypassRTS:
+        pass
+    else:
+        rts.rts_idle()
+    return duts, dut_skt
+
+def DAT_QC(dut_skt, duttype="FE") :
+    while True:
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype )
+        if QCresult != None:
+            QCstatus = QCresult[0]
+            badchips = QCresult[1]
+            break
+        else:
+            print ("139-> terminate, 2->debugging")
+            send_rts_email(message="Please contact tech coordinator (QC error)")
+            userinput = input ("Please contact tech coordinator")
+            if len(userinput) > 0:
+                if "139" in userinput :
+                    QCstatus = "Terminate"
+                    badchips = []
+                    break
+                elif "2" in userinput[0] :
+                    print ("debugging, ")
+                    input ("click any key to start ASIC QC again...")
+    if len(badchips) > 0:
+        return QCstatus, badchips #badchips range from 0 to7
+
+    send_rts_email(message="Do you want to perform cold test? ")
+    yorn = input ("\033[96m Do you want to perform cold test? (Y/N) :\033[0m")
+    if "Y" in yorn or "y" in yorn:
+        while True:
+            cover_sts = rts.CoverStatus()
+            if "-198" in cover_sts:
+                print ("Cover is close! Start the cold test in 10 seconds")
+                time.sleep(10)
+                break
+            else:
+                time.sleep(5)
+
+        try:
+            cryo.cryo_fill()
+        except KeyboardInterrupt:
+            print ("####################")
+
+        cryo.cryo_lowlevel(waitminutes=10)
+        cryo.cryo_highlevel(waitminutes=5)
+
+        LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE", env="LN" )
+
+        cryo.cryo_warmup(waitminutes=20)
+
+        send_rts_email(message="Cold test is done, please open the sink cover ...")
+
+        while True:
+            cover_sts = rts.CoverStatus()
+            if "197" in cover_sts:
+                print ("Cover is open! Activate robot in 10 seconds")
+                time.sleep(10)
+                break
+            else:
+                time.sleep(5)
+
+    return QCstatus, badchips #badchips range from 0 to7
+
+################STEP3#################################
+def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
+    ids_goods = {}
+    ids_bads = {}
+    print ("ChIP ID back to tray")
+
+    ids_g = list(dut_skt.keys())
+    if BypassRTS:
+        pass
+    else:
+        DAT_power_off()
+        rts.MotorOn()
+
+    #if "Terminate" in QCstatus: #move back to original positions
+    if ("Code#E001" in QCstatus) or ("Terminate" in QCstatus) : #move back to original positions
+        rts.rts_idle()
+        admincode = DAT_debug (QCstatus)
+        if "2" in admincode:
+            QCstatus, badchips = DAT_QC(dut_skt,duttype)  
+        elif "444" in admincode:
+            RTS_debug ("DAT")
+        rts.MotorOn()
+            
+        tmpi = 0
+        while tmpi < 8:
+            for ids in ids_g:
+                if dut_skt[ids][1] == tmpi:
+                    chipi=dut_skt[ids][0]
+                    sktn =dut_skt[ids][1] + 1
+                    break
+            trayc=(chipi%15) +1
+            trayr=(chipi//15) +1
+            if BypassRTS:
+                rts.msg = str(int(rts.msg) + 1)
+                status = 0
+                pass
+            else:
+                status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr, duttype)
+
+            if status < 0:
+                RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
+                tmpi = tmpi
+                continue
+            else:
+                tmpi = tmpi + 1
+
+        tmps = []
+        for ids in ids_g:
+            tmps.append(dut_skt[ids][0])
+        tmps = sorted(tmps)
+        duts = tmps + duts
+
+        return duts, {}, bad_dut_order, ids_goods, ids_bads
+    else:
+        if "Code#" in QCstatus:
+            tmpi = 0
+            while tmpi < len(badchips):
+                skt = badchips[tmpi]
+                for ids in ids_g:
+                    if dut_skt[ids][1] == skt:
+                        chipi=dut_skt[ids][0]
+                        sktn =dut_skt[ids][1] + 1
+                        ids_bads[ids] = dut_skt[ids]
+                        removekey = ids
+                        dut_skt.pop(removekey, None)  
+                        ids_g = list(dut_skt.keys())
+                        break
+                trayc=(chipi%15) +1
+                trayr=(chipi//15) +1
+                trayc=(bad_dut_order%15) +1
+                trayr=(bad_dut_order//15) +1
+                if BypassRTS:
+                    rts.msg = str(int(rts.msg) + 1)
+                    status = 0
+                else:
+                    status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr, duttype)
+
+                if status < 0:
+                    RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
+                    tmpi = tmpi
+                    continue
+                else:
+                    ids_bads[rts.msg] = (chipi, skt)
+                    bad_dut_order +=1
+                    tmpi = tmpi + 1
+            return duts,dut_skt, bad_dut_order, ids_goods, ids_bads
+
+        if "PASS" in QCstatus:
+            tmpi = 0
+            while tmpi < 8:
+                for ids in ids_g:
+                    if dut_skt[ids][1] == tmpi:
+                        chipi=dut_skt[ids][0]
+                        sktn =dut_skt[ids][1] + 1
+                        break
+                trayc=(chipi%15) +1
+                trayr=(chipi//15) +1
+                if tmpi in badchips:
+                    trayc=(bad_dut_order%15) +1
+                    trayr=(bad_dut_order//15) +1
+                    if BypassRTS:
+                        rts.msg = str(int(rts.msg) + 1)
+                        status = 0
+                    else:
+                        status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr, duttype)
+                else:
+                    if BypassRTS:
+                        rts.msg = str(int(rts.msg) + 1)
+                        status = 0
+                    else:
+                        status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr, duttype)
+
+                if status < 0:
+                    RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
+                    tmpi = tmpi
+                    continue
+                else:
+                    if tmpi in badchips:
+                        skt = tmpi 
+                        for ids in ids_g:
+                            if dut_skt[ids][1] == skt:
+                                ids_bads[ids] = dut_skt[ids]
+                                removekey = ids
+                                dut_skt.pop(removekey, None)  
+                                ids_bads[rts.msg] = (chipi, skt)
+                                ids_g = list(dut_skt.keys())
+                                break
+                        bad_dut_order +=1
+                    else:
+                        ids_goods[rts.msg] = (chipi,tmpi)
+                    tmpi = tmpi + 1
+
+            return duts, dut_skt, bad_dut_order, ids_goods, ids_bads
+
+
 ############################################################
 
 BypassRTS = False
 logs = {}
 
-chiptype = 1
-print ("RTS only support FE chip testing at the current development phase)")
+#chiptype = 1
+#print ("RTS only support FE chip testing at the current development phase)")
+chiptype = 2
 
 if chiptype == 1:
     duttype = "FE"
@@ -108,8 +394,6 @@ while True:
         sys.exit()
 
 
-#exit()
-
 trayid = bno
 #trayid = "B001T0001"
 trayno =2
@@ -128,18 +412,14 @@ logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(0,90,1))
+duts = list(range(0,8,1))
+#duts = list(range(0,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)
 logs["duts"] = duts 
 ids_dict = {} #good chips ID with time that chips are moved from tray to socket
 ids_dict_good = {} #good chips ID with time that chips are moved from socket to tray
 ids_dict_bad = {} #good chips ID with time that chips are moved from socket to tray
-
-#while True:
-#    coverclose = input ("Is sink cover open? type in \033[92m open \033[0m :")
-#    if coverclose == "open":
-#        break
 
 if not os.path.exists(rootdir):
     try:
@@ -156,7 +436,6 @@ else:
 rts = RTS_CFG()
 cryo = cryobox()
 
-
 rts.msg = "10000000000"
 if BypassRTS:
     pass
@@ -164,36 +443,6 @@ else:
     rts.rts_init(port=2001, host_ip='192.168.0.2')
     rts.MotorOn()
     rts.JumpToCamera()
-
-if False:
-    rts.rts_idle()
-    time.sleep(10)
-    if True:
-
-        while True:
-            cover_sts = rts.CoverStatus()
-            if "-198" in cover_sts:
-                print ("Cover is close! Start the cold test in 10 seconds")
-                time.sleep(10)
-                break
-            else:
-                time.sleep(5)
-            #else:
-            #    input ("Click any button after you close the lid! ")
-
-            #else:
-        while True:
-            cover_sts = rts.CoverStatus()
-            if "197" in cover_sts:
-                print ("Cover is open! Activate robot in 10 seconds")
-                time.sleep(10)
-                break
-            else:
-                time.sleep(5)
-
-    rts.MotorOn()
-    rts.rts_shutdown()
-    exit()
 
 #sts_tmp = rts.CoverStatus()
 #print (sts_tmp)
@@ -271,342 +520,6 @@ if False:
 #print ("XXXXXX")
 #exit()
 
-def DAT_debug (QCstatus):
-    print (QCstatus)
-    send_rts_email(message="Please contact tech coordinator (DAT issue)")
-    while True:
-        print ("444-> Move chips back to original positions")
-        print ("2->fixed,")
-        userinput = input ("Please contact tech coordinator : ")
-        if len(userinput) > 0:
-            if "444" in userinput :
-                return "444"
-            elif "2" in userinput :
-                yorn = input ("Fixed. Are you sure? (y/Y):")
-                if "Y" in yorn or "y" in yorn:
-                    return "2"
-
-def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=None, sktn=None):
-    send_rts_email(message="Please contact tech coordinator (RTS issue)")
-    print ("Please check the error information on EPSON RC")
-    if "T2S" in info:
-        print ("Chip is moved from Tray") 
-        print ("Chip on orignial TrayNo(1-2)={}, Col(1-15)={}, Row(1-6)={}".format(trayno, trayc, trayr)) 
-    elif "S2T" in info:
-        print ("Chip is moved from Socket") 
-        print ("Chip on orignial DATno(1-2)={}, Skt(1-8)={} ".format(datno, sktn)) 
-
-    rts.rts_idle()
-
-    while True:
-        print ("444-> Shutdown RTS and exit anyway")
-        print ("1->move chip to Tray#1_Col#15_Row#6")
-        print ("2->move chip to orignal position")
-        print ("6->fixed,")
-
-        userinput = input ("Please contatc tech coordinator : ")
-        if len(userinput) > 0:
-            if "444" in userinput :
-                rts.MotorOn()
-                rts.JumpToCamera()
-                rts.rts_shutdown()
-                print ("Exit anyway")
-                exit()
-#            elif "1" in userinput[0] :
-#                while True:
-#                    yorn = input ("Is Tray#1_Col#15_Row#6 empty? (Y/N) : ")
-#                    if ("Y" in yorn) or ("y" in yorn): 
-#                        break
-#                print ("Move chip to Tray#1_Col#15_Row#6")
-#                rts.JumptoTray(trayno=1, trayc=15, trayr=6)    
-#                rts.DroptoTray()    
-#                rts.JumpToCamera()
-#                rts.PumpOff()
-#                rts.MoterOff()
-#                print ("please fix the issue...")
-#            elif "2" in userinput[0] :
-#                while True:
-#                    if "T2S" in info:
-#                        yorn = input ("Is Tray#{}_Col#{}_Row#{} empty? (Y/N) : ".format(trayno, trayc, trayr))
-#                    elif "S2T" in info:
-#                        yorn = input ("Is DATno#{}_Skt#{} empty? (Y/N) : ".format(datno, sktn)
-#                    if ("Y" in yorn) or ("y" in yorn): 
-#                        break
-#                print ("Move chip to Tray#{}_Col#{}_Row#{} empty? (Y/N) : ".format(trayno, trayc, trayr))
-#                rts.PumpOn()
-#                rts.MoterOn()
-#                time.sleep(1)
-#                if "T2S" in info:
-#                    rts.JumpToTray(trayno=1, trayc=15, trayr=6)    
-#                    rts.PickupToTray()    
-#                    rts.JumpToTray(trayno=trayno, trayc=trayc, trayr=r)    
-#                    rts.DroptoTray()    
-#                    rts.JumpToCamera()
-#                elif "S2T" in info:
-#                    rts.JumpToTray(trayno=1, trayc=15, trayr=6)    
-#                    rts.PickupToTray()    
-#                    rts.JumpToSocket(datno=datno, sktn=sktn)    
-#                    rts.DroptoSocket()    
-#                    rts.JumpToCamera()
-
-            elif "6" in userinput[0] :
-                input ("Make sure the chip back to orginal position and click anykey")
-                rts.MotorOn()
-                break
-
-def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7]) :
-    dut_skt = {}
-    #make sure DAT is powered off
-    if BypassRTS:
-        pass
-    else:
-        DAT_power_off()
-        rts.MotorOn()
-
-    tmpi = 0
-    tmpj = 0
-    while tmpi < len(skts):
-        skt = skts[tmpi]
-        if len(duts)>0:
-            chipi = duts[0]
-            duts=duts[1:]
-        else:
-            ids_g = list(ids_dict.keys())
-            chipi = ids_dict[ids_g[tmpj]][0]
-            tmpj=tmpj+1
-
-        trayc=(chipi%15) +1
-        trayr=(chipi//15) +1
-        sktn = skt + 1
-        
-        if BypassRTS:
-            rts.msg = str(int(rts.msg) + 1)
-            status = 0
-        else:
-            status = rts.MoveChipFromTrayToSocket(trayno, trayc, trayr, datno, sktn)    
-
-        if status < 0:
-            RTS_debug ("T2S", status, trayno, trayc, trayr, datno, sktn)
-            tmpi = tmpi
-            duts=[chipi] + duts
-            continue
-        else:
-            dut_skt[rts.msg] = (chipi, skt)
-            tmpi = tmpi + 1
-    if BypassRTS:
-        pass
-    else:
-        rts.rts_idle()
-    return duts, dut_skt
-
-def DAT_QC(dut_skt) :
-    while True:
-        QCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE" )
-        if QCresult != None:
-            QCstatus = QCresult[0]
-            badchips = QCresult[1]
-            break
-        else:
-            print ("139-> terminate, 2->debugging")
-            send_rts_email(message="Please contact tech coordinator (QC error)")
-            userinput = input ("Please contact tech coordinator")
-            if len(userinput) > 0:
-                if "139" in userinput :
-                    QCstatus = "Terminate"
-                    badchips = []
-                    break
-                elif "2" in userinput[0] :
-                    print ("debugging, ")
-                    input ("click any key to start ASIC QC again...")
-    if len(badchips) > 0:
-        return QCstatus, badchips #badchips range from 0 to7
-
-    send_rts_email(message="Do you want to perform cold test? ")
-    yorn = input ("\033[96m Do you want to perform cold test? (Y/N) :\033[0m")
-    if "Y" in yorn or "y" in yorn:
-        while True:
-            cover_sts = rts.CoverStatus()
-            if "-198" in cover_sts:
-                print ("Cover is close! Start the cold test in 10 seconds")
-                time.sleep(10)
-                break
-            else:
-                time.sleep(5)
-
-#        print ("Click \033[92m Pause \033[0m button from EPSON RC+ RUN Window")
-#        while True:
-#            paused = input ("type in \033[92m Pause \033[0m : ")
-#            if paused == "Pause":
-#                break
-
-        try:
-            cryo.cryo_fill()
-        except KeyboardInterrupt:
-            print ("####################")
-
-        cryo.cryo_lowlevel(waitminutes=10)
-        cryo.cryo_highlevel(waitminutes=5)
-
-        LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE", env="LN" )
-
-        cryo.cryo_warmup(waitminutes=20)
-
-        send_rts_email(message="Cold test is done, please open the sink cover ...")
-
-        while True:
-            cover_sts = rts.CoverStatus()
-            if "197" in cover_sts:
-                print ("Cover is open! Activate robot in 10 seconds")
-                time.sleep(10)
-                break
-            else:
-                time.sleep(5)
-
-
-
-
-#        print ("Click \033[92m Continue \033[0m button from EPSON RC+ RUN Window")
-#        while True:
-#            paused = input ("type in \033[92m Continue \033[0m : ")
-#            if paused == "Continue":
-#                break
-
-    return QCstatus, badchips #badchips range from 0 to7
-
-################STEP3#################################
-def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order) :
-    ids_goods = {}
-    ids_bads = {}
-    print ("ChIP ID back to tray")
-
-    ids_g = list(dut_skt.keys())
-    if BypassRTS:
-        pass
-    else:
-        DAT_power_off()
-        rts.MotorOn()
-
-    #if "Terminate" in QCstatus: #move back to original positions
-    if ("Code#E001" in QCstatus) or ("Terminate" in QCstatus) : #move back to original positions
-        rts.rts_idle()
-        admincode = DAT_debug (QCstatus)
-        if "2" in admincode:
-            QCstatus, badchips = DAT_QC(dut_skt) 
-        elif "444" in admincode:
-            RTS_debug ("DAT")
-        rts.MotorOn()
-            
-        tmpi = 0
-        while tmpi < 8:
-            for ids in ids_g:
-                if dut_skt[ids][1] == tmpi:
-                    chipi=dut_skt[ids][0]
-                    sktn =dut_skt[ids][1] + 1
-                    break
-            trayc=(chipi%15) +1
-            trayr=(chipi//15) +1
-            if BypassRTS:
-                rts.msg = str(int(rts.msg) + 1)
-                status = 0
-                pass
-            else:
-                status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
-
-            if status < 0:
-                RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
-                tmpi = tmpi
-                continue
-            else:
-                tmpi = tmpi + 1
-
-        tmps = []
-        for ids in ids_g:
-            tmps.append(dut_skt[ids][0])
-        tmps = sorted(tmps)
-        duts = tmps + duts
-
-        return duts, {}, bad_dut_order, ids_goods, ids_bads
-    else:
-        if "Code#" in QCstatus:
-            tmpi = 0
-            while tmpi < len(badchips):
-                skt = badchips[tmpi]
-                for ids in ids_g:
-                    if dut_skt[ids][1] == skt:
-                        chipi=dut_skt[ids][0]
-                        sktn =dut_skt[ids][1] + 1
-                        ids_bads[ids] = dut_skt[ids]
-                        removekey = ids
-                        dut_skt.pop(removekey, None)  
-                        ids_g = list(dut_skt.keys())
-                        break
-                trayc=(chipi%15) +1
-                trayr=(chipi//15) +1
-                trayc=(bad_dut_order%15) +1
-                trayr=(bad_dut_order//15) +1
-                if BypassRTS:
-                    rts.msg = str(int(rts.msg) + 1)
-                    status = 0
-                else:
-                    status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr)
-
-                if status < 0:
-                    RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
-                    tmpi = tmpi
-                    continue
-                else:
-                    ids_bads[rts.msg] = (chipi, skt)
-                    bad_dut_order +=1
-                    tmpi = tmpi + 1
-            return duts,dut_skt, bad_dut_order, ids_goods, ids_bads
-
-        if "PASS" in QCstatus:
-            tmpi = 0
-            while tmpi < 8:
-                for ids in ids_g:
-                    if dut_skt[ids][1] == tmpi:
-                        chipi=dut_skt[ids][0]
-                        sktn =dut_skt[ids][1] + 1
-                        break
-                trayc=(chipi%15) +1
-                trayr=(chipi//15) +1
-                if tmpi in badchips:
-                    trayc=(bad_dut_order%15) +1
-                    trayr=(bad_dut_order//15) +1
-                    if BypassRTS:
-                        rts.msg = str(int(rts.msg) + 1)
-                        status = 0
-                    else:
-                        status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr)
-                else:
-                    if BypassRTS:
-                        rts.msg = str(int(rts.msg) + 1)
-                        status = 0
-                    else:
-                        status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr)
-
-                if status < 0:
-                    RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
-                    tmpi = tmpi
-                    continue
-                else:
-                    if tmpi in badchips:
-                        skt = tmpi 
-                        for ids in ids_g:
-                            if dut_skt[ids][1] == skt:
-                                ids_bads[ids] = dut_skt[ids]
-                                removekey = ids
-                                dut_skt.pop(removekey, None)  
-                                ids_bads[rts.msg] = (chipi, skt)
-                                ids_g = list(dut_skt.keys())
-                                break
-                        bad_dut_order +=1
-                    else:
-                        ids_goods[rts.msg] = (chipi,tmpi)
-                    tmpi = tmpi + 1
-
-            return duts, dut_skt, bad_dut_order, ids_goods, ids_bads
-
 
 #first run
 ################STEP1#################################
@@ -621,7 +534,7 @@ while (len(duts) > 0) or (len(skts) != 8):
     send_rts_email(message="Chips to be tested: " + ','.join(map(str, dut_skt.values())))
 
     if True:
-        QCstatus, badchips = DAT_QC(dut_skt) 
+        QCstatus, badchips = DAT_QC(dut_skt,duttype) 
     else:
         QCstatus = "PASS"
         badchips = []
