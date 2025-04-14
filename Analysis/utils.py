@@ -86,53 +86,86 @@ def gain_inl(x: list, y: list, item='', returnDNL=False):
     x = np.array(x)
     y = np.array(y)
     
-    # Initial fit on all points
+    # # Initial fit on all points
+    # slope, yintercept = np.polyfit(x, y, 1)
+    # ypred = slope * x + yintercept
+    
+    # # Calculate INL for all points
+    # inl_points = []
+    # for i in range(1, len(x)):
+    #     dy = np.abs(y[i] - ypred[i])
+    #     inl = (dy / np.abs(y[i] - y[0])) * 100
+    #     if inl <= 1:
+    #         inl_points.append(i)
+    
+    # # Find longest continuous sequence
+    # sequences = []
+    # current_seq = [inl_points[0]]
+    
+    # for i in range(1, len(inl_points)):
+    #     if inl_points[i] == inl_points[i-1] + 1:
+    #         current_seq.append(inl_points[i])
+    #     else:
+    #         sequences.append(current_seq)
+    #         current_seq = [inl_points[i]]
+    # sequences.append(current_seq)
+    
+    # # Get longest sequence
+    # best_seq = max(sequences, key=len)
+    # print('sequences : ', best_seq)
+    # i0 = best_seq[0]
+    # i1 = best_seq[-1] + 1
+    
+    # # Final calculations for best range
+    # slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
+    # ypred = slope * x + yintercept
+
     slope, yintercept = np.polyfit(x, y, 1)
-    ypred = slope * x + yintercept
+    y_fit = np.array(x) * slope + yintercept
+    delta_y = np.abs(np.array(y) - y_fit)
+    inl = delta_y / (np.max(y) - np.min(y))
+
+    i0 = 0
+    i1 = -1
+
+    # for i1, ii in enumerate(inl):
+    #     if ii > 0.01:
+    #         break
+    posINL = np.where(inl > 0.01)[0]
+    if len(posINL)==0:
+        # if 'ASICDAC' in item:
+        #     i1 = -1
+        # else:
+        #     i1 = 0
+        #     i0 = -1
+        i1 = -1
+    else:
+        i1 = posINL[0]
+        if i1==0:
+            i0 = -1
     
-    # Calculate INL for all points
-    inl_points = []
-    for i in range(1, len(x)):
-        dy = np.abs(y[i] - ypred[i])
-        inl = (dy / np.abs(y[i] - y[0])) * 100
-        if inl <= 1:
-            inl_points.append(i)
-    
-    # Find longest continuous sequence
-    sequences = []
-    current_seq = [inl_points[0]]
-    
-    for i in range(1, len(inl_points)):
-        if inl_points[i] == inl_points[i-1] + 1:
-            current_seq.append(inl_points[i])
-        else:
-            sequences.append(current_seq)
-            current_seq = [inl_points[i]]
-    sequences.append(current_seq)
-    
-    # Get longest sequence
-    best_seq = max(sequences, key=len)
-    i0 = best_seq[0]
-    i1 = best_seq[-1] + 1
-    
-    # Final calculations for best range
-    slope, yintercept = np.polyfit(x[i0:i1], y[i0:i1], 1)
-    ypred = slope * x + yintercept
-    
-    delta_y = np.abs(y[i0:i1] - ypred[i0:i1])
-    inl = delta_y / (np.max(y[i0:i1]) - np.min(y[i0:i1]))
-    if len(y[i0:i1])==1:
-        plt.figure()
-        plt.scatter(x,y)
-        plt.show()
-        sys.exit()
+    # delta_y = np.abs(y[i0:i1] - ypred[i0:i1])
+    # inl = delta_y / (np.max(y[i0:i1]) - np.min(y[i0:i1]))
+    # peakinl = np.max(inl)
     peakinl = np.max(inl)
-    
-    linRange = [y[i0], y[i1-1]] if 'ASICDAC' in item else [y[i1-1], y[i0]]
+    # linRange = [y[i0], y[i1-1]] if 'ASICDAC' in item else [y[i1-1], y[i0]]
+    linRange = [y[i0], y[i1]]
+    # print('-----------', item, len(linRange))
+    # if np.abs(linRange[1]-linRange[0]) < 37:
+    #     print(np.abs(linRange[1]-linRange[0]))
+    #     plt.figure()
+    #     plt.scatter(y, x)
+    #     plt.plot(y_fit, x)
+    #     plt.show()
+    #     sys.exit()
     
     if returnDNL:
         dnl_list = []
-        lsb = np.abs((np.max(y[i0:i1]) - np.min(y[i0:i1])) / (np.max(x[i0:i1]) - np.min(x[i0:i1])))
+        try:
+            lsb = np.abs((np.max(y[i0:i1]) - np.min(y[i0:i1])) / (np.max(x[i0:i1]) - np.min(x[i0:i1])))
+        except:
+            print(i0, i1)
+            sys.exit()
         dnl_list.append(np.abs(((np.abs(y[i0+1] - y[i0])/np.abs(x[i0+1] - x[i0]))-lsb)/lsb))
         
         for i in range(i0+1, i1):
