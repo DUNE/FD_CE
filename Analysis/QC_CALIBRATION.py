@@ -550,7 +550,7 @@ class QC_CALI_Ana(BaseClass_Ana):
                 # sys.exit()
                 print(self.item, '------------', item, BL)
                 slope, yintercept, inl, linRange = gain_inl(y=chdf['DAC'], x=chdf['data'], item=self.item)
-                
+
                 if generatePlot:
                     ypred = slope*chdf['data'] + yintercept
                     # print(slope, yintercept, inl, linRange)
@@ -707,7 +707,159 @@ class QC_CALI_Ana(BaseClass_Ana):
         # self.Amp_vs_DAC()
         self.INL_vs_CH()
         
-    def run_Ana(self, generatePlots=False, path_to_statAna=''):
+    def run_Ana(self, generatePlots=False, path_to_statAna=None):
+        """
+        Analyze calibration data and optionally compare with statistical thresholds.
+        
+        Args:
+            generatePlots (bool): Whether to generate analysis plots
+            path_to_statAna (str, optional): Path to CSV file with statistical thresholds.
+                                        If None, only raw data analysis is performed.
+        """
+        if self.ERROR:
+            return
+
+        if generatePlots:
+            self.makeplots()
+
+        items = ['posAmp', 'negAmp']
+        BLs = ['SNC0', 'SNC1']
+        BL_dict = {'SNC0': '900mV', 'SNC1' : '200mV'}
+        out_dict = {'item': [], 'CFG': [], 'BL': [], 'ch': [], 'gain (fC/ADC bit)': [], 'worstINL (%)': [], 'linRange (fC)': []}
+
+        # Original data processing code remains unchanged
+        for item in items:
+            for BL in BLs:
+                isNegAmp_200BL = (item=='negAmp') & (BL=='SNC1')
+                if not isNegAmp_200BL:
+                    outINL = self.getINL(BL=BL, item=item, generatePlot=generatePlots, returnGain=True)
+                    configurations = list(outINL[0].keys())
+                    all_INLs = outINL[0]
+                    all_GAINs = outINL[1]
+                    all_linearity_range = outINL[2]
+                    df = outINL[3]
+                    for cfg in configurations:
+                        cfg_INL_dict = all_INLs[cfg]
+                        cfg_GAIN_dict = all_GAINs[cfg]
+                        cfg_linRange_dict = all_linearity_range[cfg]
+                        for ich in range(16):
+                            out_dict['ch'].append(ich)
+                            out_dict['item'].append(item)
+                            out_dict['BL'].append(BL)
+                            out_dict['CFG'].append(cfg)
+                            out_dict['gain (fC/ADC bit)'].append(np.round(cfg_GAIN_dict[ich], 4))
+                            out_dict['worstINL (%)'].append(np.round(cfg_INL_dict[ich]*100, 2))
+                            out_dict['linRange (fC)'].append(np.round(cfg_linRange_dict[ich][1]-cfg_linRange_dict[ich][0], 2))
+
+        out_df = pd.DataFrame(out_dict)
+
+        # Statistical analysis is optional
+        result_qc_df = pd.DataFrame()
+        if path_to_statAna is not None:
+            cali_statAna_df = pd.read_csv(path_to_statAna)
+            measItems = cali_statAna_df['measItem'].unique()
+            
+            tmp_out_df = pd.DataFrame()
+            for i in range(len(measItems)):
+                tmp_df = cali_statAna_df[cali_statAna_df['measItem']==measItems[i]].copy().reset_index().drop('index', axis=1)
+                if i==0:
+                    tmp_out_df = tmp_df[['item', 'CFG', 'BL', 'mean', 'std']].copy()
+                else:
+                    tmp_out_df = pd.merge(tmp_out_df, tmp_df[['item', 'CFG', 'BL', 'mean', 'std']], on=['item', 'CFG', 'BL'], how='outer')
+                tmp_out_df.rename(columns={'mean': 'mean_{}'.format(measItems[i]), 'std': 'std_{}'.format(measItems[i])}, inplace=True)
+
+            # Rest of statistical analysis code remains unchanged
+            cali_statAna_new_df = {key: [] for key in tmp_out_df.keys()}
+            cali_statAna_new_df['ch'] = []
+            for i, val in enumerate(tmp_out_df['item']):
+                for ich in range(16):
+                    for measItem in tmp_out_df.keys():
+                        cali_statAna_new_df[measItem].append(tmp_out_df.iloc[i][measItem])
+                    cali_statAna_new_df['ch'].append(ich)
+            cali_statAna_new_df = pd.DataFrame(cali_statAna_new_df)
+
+            combined_df = pd.merge(out_df, cali_statAna_new_df, on=['item', 'CFG', 'BL', 'ch'], how='outer')
+            keys_combined = combined_df.keys()
+
+            for i, measItem in enumerate(measItems):
+                k = [key for key in keys_combined if measItem in key]
+                tmp = combined_df[['item', 'CFG','BL', 'ch']+k].copy().reset_index().drop('index', axis=1)
+                keyval = [t for t in k if ('mean' not in t) & ('std' not in t)]
+                try:
+                    keyval = keyval[0]
+                except:
+                    print('key val = ',keyval)
+                    print('measItem = ', measItem)
+                
+                tmp.rename(columns={keyval: 'value', 'mean_{}'.format(measItem): 'mean', 'std_{}'.format(measItem): 'std'}, inplace=True)
+                if measItem=='INL':
+                    tmp['QC_result'] = (tmp['value'] < 1)
+                else:
+                    tmp['QC_result']= (tmp['value']>= (tmp['mean']-3*tmp['std'])) & (tmp['value'] <= (tmp['mean']+3*tmp['std']))
+                tmp.drop(['mean', 'std'], axis=1, inplace=True)
+                tmp.rename(columns={'value': keyval, 'QC_result': 'QC_result_{}'.format(measItem)}, inplace=True)
+                if i==0:
+                    result_qc_df = tmp.copy().reset_index().drop('index', axis=1)
+                else:
+                    result_qc_df = pd.merge(result_qc_df, tmp, on=['item', 'CFG','BL', 'ch'], how='outer')
+
+        # Choose output based on whether statistical analysis was done
+        final_df = result_qc_df if path_to_statAna is not None else out_df
+        final_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
+
+        # Generate summary with or without QC results
+        if path_to_statAna is not None:
+            # Original QC summary code with pass/fail
+            qc_res_cols = [c for c in final_df.columns if 'QC_result' in c]
+            overall_result = 'PASSED'
+            for c in qc_res_cols:
+                if False in final_df[c]:
+                    overall_result = 'FAILED'
+        
+        # Rest of result formatting code remains unchanged...
+        result_in_list = []
+        for item in ['posAmp', 'negAmp']:
+            tmp_df = pd.DataFrame()
+            BLs = []
+            if item=='posAmp':
+                tmp_df = final_df[final_df['item']=='posAmp']
+                BLs = ['SNC0', 'SNC1']
+            elif item=='negAmp':
+                tmp_df = final_df[final_df['item']=='negAmp']
+                BLs = ['SNC0']
+            for BL in BLs:
+                configurations = tmp_df['CFG'].unique()
+                bl_df = tmp_df[tmp_df['BL']==BL].copy().reset_index().drop('index', axis=1)
+                for cfg in configurations:
+                    cfg_df = bl_df[bl_df['CFG']==cfg].copy().reset_index().drop('index', axis=1)
+                    result_Amp_cfg = []
+                    result_Amp_cfg.append('Test_{}_{}'.format(self.tms, self.item))
+                    
+                    if path_to_statAna is not None:
+                        # Add QC result if statistical analysis was done
+                        item_cfg_result = 'PASSED'
+                        for c in qc_res_cols:
+                            if False in cfg_df[c]:
+                                item_cfg_result = 'FAILED'
+                                break
+                        __BL = '900mV' if BL=='SNC0' else '200mV'
+                        result_Amp_cfg.append('_'.join([__BL, item, cfg]))
+                        result_Amp_cfg.append(item_cfg_result)
+                    else:
+                        # Just add configuration info without QC result
+                        __BL = '900mV' if BL=='SNC0' else '200mV'
+                        result_Amp_cfg.append('_'.join([__BL, item, cfg]))
+
+                    for ich, ch in enumerate(cfg_df['ch']):
+                        gain = cfg_df.iloc[ich]['gain (fC/ADC bit)']
+                        worstINL = cfg_df.iloc[ich]['worstINL (%)']
+                        linRange = cfg_df.iloc[ich]['linRange (fC)']
+                        result_Amp_cfg.append("CH{}=(worstINL={};gain={};linRangeCharge={})".format(ch, worstINL, gain, linRange))
+                    result_in_list.append(result_Amp_cfg)
+
+        return result_in_list
+
+    def run_Ana_withStat(self, generatePlots=False, path_to_statAna=''):
         if self.ERROR:
             return
         if generatePlots:
