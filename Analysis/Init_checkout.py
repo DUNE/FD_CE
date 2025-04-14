@@ -3,7 +3,7 @@
 #   email: radofanantenan.razakamiandra@stonybrook.edu
 #   Analyze the data in QC_INIT_CHK.bin
 ############################################################################################
-import os, sys
+import os, sys, csv
 import numpy as np
 import pickle, json
 import pandas as pd
@@ -163,6 +163,13 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
             return
         tmp_params = [p for p in self.params if ('ASICDAC' in p) or ('DIRECT_PLS' in p)]
         self.params = tmp_params
+        # create output directory
+        self.output_dir = '/'.join([self.output_dir, self.item])
+        print(self.output_dir)
+        try:
+            os.mkdir(self.output_dir)
+        except OSError:
+            pass
 
     def getItems(self):
         output_df = {'testItem': [], 'cfg': [], 'feature': [], 'CH': [], 'data': []}
@@ -248,6 +255,10 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
                     if stat_df is not None:
                         print(result, feature_data)
                         print(stat_feature)
+        # save full results
+        if len(full_result_rows)!=0:
+            with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+                csv.writer(csvfile, delimiter=',').writerows(full_result_rows)
 
         return full_result_rows
 
@@ -328,6 +339,7 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
                     print(stat_feature)
                 item_result_rows += cfg_result_rows
             full_result_rows += item_result_rows
+        
         return full_result_rows
 
 class QC_INIT_CHK_StatAna():
