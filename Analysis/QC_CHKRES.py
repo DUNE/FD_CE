@@ -5,7 +5,7 @@
 ############################################################################################
 
 # from datetime import datetime
-import os, sys
+import os, sys, csv
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -334,7 +334,9 @@ class QC_CHKRES_Ana(BaseClass_Ana):
                         print(stat_feature)
 
                     full_result_rows.append(feature_result_row)
-
+        if len(full_result_rows)!=0:
+            with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+                csv.writer(csvfile, delimiter=',').writerows(full_result_rows)
         return full_result_rows
     # def run_Ana(self, path_to_stat=''):
     #     if self.ERROR:

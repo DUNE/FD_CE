@@ -5,7 +5,7 @@
 ############################################################################################
 
 import numpy as np
-import os, sys, pickle
+import os, sys, csv
 from utils import printItem, createDirs, dumpJson, linear_fit, BaseClass, gain_inl
 import matplotlib.pyplot as plt
 import json, statistics
@@ -217,6 +217,19 @@ class QC_FE_MON_Ana():
         except:
             pass
 
+        self.output_dir = '/'.join([output_path, chipID])
+        try:
+            os.mkdir(self.output_dir)
+        except OSError:
+            # print("Folder already exists...")
+            pass
+        self.output_dir = '/'.join([self.output_dir, self.item])
+        print(self.output_dir)
+        try:
+            os.mkdir(self.output_dir)
+        except OSError:
+            pass
+
     def _FileExist(self, chipdir: str):
         chipDirExist = os.path.isdir(chipdir)
         qcMondirExist = os.path.isdir('/'.join([chipdir, 'QC_MON']))
@@ -238,7 +251,7 @@ class QC_FE_MON_Ana():
         DAC_meas_dict = data['DAC_meas']
         DAC_meas_df = pd.DataFrame()
         configs = [c for c in DAC_meas_dict.keys()]
-        GAIN_INL_DNL_RANGE = {'CFG': [], 'gain': [], 'worstINL': [], 'worstDNL': [], 'linRange': []}
+        GAIN_INL_DNL_RANGE = {'CFG': [], 'gain (mV/ADC bit)': []}#, 'worstINL': [], 'worstDNL': [], 'linRange': []}
         for icfg, cfg in enumerate(configs):
             tmp_df = {}
             # print(DAC_meas_dict[cfg])
@@ -261,31 +274,154 @@ class QC_FE_MON_Ana():
             ## linRange in DAC bit
             gain, yintercept, worstinl, linRange, worstdnl = gain_inl(y=DAC_list, x=data_list*AD_LSB, item='', returnDNL=True)
 
-            # GAIN_INL_DNL_RANGE[cfg] = {'gain': 1/gain, 'worstINL': worstinl*100, 'linRange': np.abs(linRange[1]-linRange[0]), 'worstDNL': worstdnl*100} # gain in mV/ADC bit, worstINL and worstDNL in %, linRange in DAC bit
+            # GAIN_INL_DNL_RANGE[cfg] = {'gain': 1/gain, 'worstINL': worstinl*100, 'linRange': np.abs(linRange[1]-linRange[0]), 'worstDNL': worstdnl*100} 
+            # # gain in mV/ADC bit, worstINL and worstDNL in %, linRange in DAC bit
+            # Only the gain is needed here
             GAIN_INL_DNL_RANGE['CFG'].append(cfg)
-            GAIN_INL_DNL_RANGE['gain'].append(1/gain)
-            GAIN_INL_DNL_RANGE['worstINL'].append(worstinl*100)
-            GAIN_INL_DNL_RANGE['worstDNL'].append(worstdnl*100)
-            GAIN_INL_DNL_RANGE['linRange'].append(np.abs(linRange[1]-linRange[0]))
-            # if np.abs(linRange[1]-linRange[0]) ==7:
-            #     plt.figure()
-            #     plt.scatter(data_list, DAC_list)
-            #     plt.show()
-            #     sys.exit()
-        # print(DAC_meas_df) 
-        # sys.exit()
+            GAIN_INL_DNL_RANGE['gain (mV/ADC bit)'].append(1/gain)
+            # GAIN_INL_DNL_RANGE['worstINL'].append(worstinl*100)
+            # GAIN_INL_DNL_RANGE['worstDNL'].append(worstdnl*100)
+            # GAIN_INL_DNL_RANGE['linRange'].append(np.abs(linRange[1]-linRange[0]))
+            
         GAIN_INL_DNL_RANGE = pd.DataFrame(GAIN_INL_DNL_RANGE)
         # sys.exit()
         
         VBGR_Temp_dict = data['VBGR_Temp']
-        # print(VBGR_Temp_dict)
-        # sys.exit()
-
-        # print(VBGR_Temp_dict)
-        # sys.exit()
         return {'BL': BL_df, 'VBGR_Temp': VBGR_Temp_dict, 'DAC_meas': GAIN_INL_DNL_RANGE}
 
-    def run_Ana(self, path_to_statAna=''):
+    def run_Ana(self, path_to_statAna=None):
+        """
+        Analyze test data and optionally compare with statistical thresholds.
+        
+        Args:
+            path_to_statAna (str, optional): Path to CSV file with statistical thresholds.
+                                        If None, only raw data analysis is performed.
+        """
+        items = self.getItems()
+        if items==None:
+            print('NONE')
+            return None
+
+        # Load statistical data if provided
+        stat_ana_df = None
+        if path_to_statAna is not None:
+            stat_ana_df = pd.read_csv(path_to_statAna)
+            
+        # BL analysis
+        BL_data = items['BL']
+        if stat_ana_df is not None:
+            stat_BL = stat_ana_df[stat_ana_df['testItem']=='BL'].copy().reset_index().drop('index', axis=1)
+            baselines = stat_BL['cfg'].unique()
+            for BL in baselines:
+                tmp = stat_BL[stat_BL['cfg']==BL].copy().reset_index().drop('index', axis=1)
+                mean_stat = tmp['mean'][0]
+                std_stat = tmp['std'][0]
+                mean_stat_bl = []
+                std_stat_bl = []
+                for ich in range(16):
+                    mean_stat_bl.append(mean_stat)
+                    std_stat_bl.append(std_stat)
+                BL_data['mean_{}'.format(BL)] = mean_stat_bl
+                BL_data['std_{}'.format(BL)] = std_stat_bl
+            ## QC result for Baseline
+            for BL in baselines:
+                BL_cols = [c for c in BL_data.columns if BL in c]
+                BL_data['QC_result_{}'.format(BL)]= (BL_data[BL]>= (BL_data['mean_{}'.format(BL)]-3*BL_data['std_{}'.format(BL)])) & (BL_data[BL] <= (BL_data['mean_{}'.format(BL)]+3*BL_data['std_{}'.format(BL)]))
+                BL_data.drop(['mean_{}'.format(BL), 'std_{}'.format(BL)], axis=1, inplace=True)
+        else:
+            baselines = ['200mV', '900mV']
+
+        BL_data['CH'] = BL_data['CH'].apply(lambda x: 'CH{}'.format(x))
+
+        # VBGR_Temp analysis
+        VBGR_Temp_data = items['VBGR_Temp']
+        VBGR_Temp_data_df = pd.DataFrame([VBGR_Temp_data])
+        
+        if stat_ana_df is not None:
+            stat_vbgr_temp = stat_ana_df[stat_ana_df['testItem']=='VBGR_Temp']
+            transformed_vbgr_temp = stat_vbgr_temp.pivot(index='testItem', columns='cfg', values=['mean', 'std']).reset_index()
+            transformed_vbgr_temp.columns = ['_'.join(col).strip() if col[0]!='testItem' else 'testItem' for col in transformed_vbgr_temp.columns.values]
+            combined_vbgr_temp = pd.concat([VBGR_Temp_data_df, transformed_vbgr_temp], axis=1)
+            combined_vbgr_temp.drop(['unit'], axis=1, inplace=True)
+            cols = ['VBGR', 'MON_Temper', 'MON_VBGR']
+            for col in cols:
+                combined_vbgr_temp['QC_result_{}'.format(col)]= (combined_vbgr_temp[col]>= (combined_vbgr_temp['mean_{}'.format(col)]-3*combined_vbgr_temp['std_{}'.format(col)])) & (combined_vbgr_temp[col] <= (combined_vbgr_temp['mean_{}'.format(col)]+3*combined_vbgr_temp['std_{}'.format(col)]))
+                combined_vbgr_temp.drop(['mean_{}'.format(col), 'std_{}'.format(col)], axis=1, inplace=True)
+        else:
+            combined_vbgr_temp = VBGR_Temp_data_df
+
+        # DAC_meas analysis
+        DAC_meas_data = items['DAC_meas'].copy()
+        if stat_ana_df is not None:
+            stat_DAC_meas = stat_ana_df[stat_ana_df['testItem']=='DAC_meas'].copy()
+            stat_DAC_meas[['CFG', 'feature']] = stat_DAC_meas['cfg'].astype(str).str.split('-', expand=True)
+            stat_DAC_meas.drop('cfg', axis=1, inplace=True)
+            
+            transformed_stat_DAC = stat_DAC_meas.pivot(index='CFG', columns='feature', values=['mean', 'std']).reset_index()
+            transformed_stat_DAC.columns = ['_'.join(col).strip() if col[0]!='CFG' else 'CFG' for col in transformed_stat_DAC.columns.values]
+            merged_DAC_meas = DAC_meas_data.merge(transformed_stat_DAC, on='CFG', how='outer')
+            cols = [col for col in merged_DAC_meas.columns if (col!='CFG') & ('mean' not in col) & ('std' not in col)]
+            for col in cols:
+                merged_DAC_meas['QC_result_{}'.format(col)]= (merged_DAC_meas[col]>= (merged_DAC_meas['mean_{}'.format(col)]-3*merged_DAC_meas['std_{}'.format(col)])) & (merged_DAC_meas[col] <= (merged_DAC_meas['mean_{}'.format(col)]+3*merged_DAC_meas['std_{}'.format(col)]))
+                merged_DAC_meas.drop(['mean_{}'.format(col), 'std_{}'.format(col)], axis=1, inplace=True)
+        else:
+            merged_DAC_meas = DAC_meas_data
+
+        ## Transform dataframes to data tables
+        ## Baselines
+        BL_tables = []
+        for BL in baselines:
+            cols = [c for c in BL_data.columns if (c=='CH') | (BL in c)]
+            if stat_ana_df is not None:
+                result = 'PASSED' if False not in BL_data['QC_result_{}'.format(BL)] else 'FAILED'
+                oneBL = list(BL_data['CH'].astype(str).str.cat(BL_data[BL].astype(str), sep='='))
+                BL_tables.append(['Test_{}_{}'.format(self.tms,self.item), 'BL_{}'.format(BL), result] + oneBL)
+            else:
+                oneBL = list(BL_data['CH'].astype(str).str.cat(BL_data[BL].astype(str), sep='='))
+                BL_tables.append(['Test_{}_{}'.format(self.tms,self.item), 'BL_{}'.format(BL)] + oneBL)
+        
+        # VBGR_Temp
+        vbgr_temp_tables = []
+        cols = ['VBGR', 'MON_Temper', 'MON_VBGR']
+        for col in cols:
+            if stat_ana_df is not None:
+                result = 'PASSED' if False not in combined_vbgr_temp['QC_result_{}'.format(col)] else 'FAILED'
+                combined_vbgr_temp[col] = combined_vbgr_temp[col].apply(lambda x: '{}={}'.format(col, x))
+                tmp_result = ['Test_{}_{}'.format(self.tms, self.item), combined_vbgr_temp.iloc[0]['testItem'], result, combined_vbgr_temp.iloc[0][col]]
+            else:
+                combined_vbgr_temp[col] = combined_vbgr_temp[col].apply(lambda x: '{}={}'.format(col, x))
+                tmp_result = ['Test_{}_{}'.format(self.tms, self.item), 'VBGR_Temp', combined_vbgr_temp.iloc[0][col]]
+            vbgr_temp_tables.append(tmp_result)
+        
+        # DAC_meas
+        DAC_meas_table = []
+        configurations = merged_DAC_meas['CFG'].unique()
+        for cfg in configurations:
+            onecfg_data = merged_DAC_meas[merged_DAC_meas['CFG']==cfg].copy()
+            if stat_ana_df is not None:
+                qc_res_cols = [c for c in merged_DAC_meas.columns if 'QC_result' in c]
+                result = 'PASSED'
+                for cc in qc_res_cols:
+                    if False in onecfg_data[cc]:
+                        result = 'FAILED'
+                        break
+                features = [cc for cc in onecfg_data.columns if ('QC_result' not in cc) & (cc!='CFG')]
+                tmp_result = ['Test_{}_{}'.format(self.tms, self.item), cfg, result]
+            else:
+                features = [cc for cc in onecfg_data.columns if cc!='CFG']
+                tmp_result = ['Test_{}_{}'.format(self.tms, self.item), cfg]
+                
+            for feature in features:
+                tmp_result.append('{}={}'.format(feature, onecfg_data.iloc[0][feature]))
+            DAC_meas_table.append(tmp_result)
+
+        output_table = BL_tables + vbgr_temp_tables + DAC_meas_table
+        if len(output_table)!=0:
+            with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+                csv.writer(csvfile, delimiter=',').writerows(output_table)
+        return output_table
+
+    def run_Ana_withStat(self, path_to_statAna=''):
         # stat_ana_df
         stat_ana_df = pd.read_csv(path_to_statAna)
         # print(stat_ana_df)
