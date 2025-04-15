@@ -107,6 +107,7 @@ def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=Non
                 break
 
 def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7], duttype="FE") :
+    print ("DUTtype", duttype)
     dut_skt = {}
     #make sure DAT is powered off
     if BypassRTS:
@@ -212,6 +213,7 @@ def DAT_QC(dut_skt, duttype="FE") :
 
 ################STEP3#################################
 def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
+    print ("DUTtype", duttype)
     ids_goods = {}
     ids_bads = {}
     print ("ChIP ID back to tray")
@@ -526,7 +528,7 @@ else:
 skts=[0,1,2,3,4,5,6,7]
 dut_skt = {}
 while (len(duts) > 0) or (len(skts) != 8):
-    duts, dut_skt_n = MovetoSoket(duts,ids_dict, skts=skts) 
+    duts, dut_skt_n = MovetoSoket(duts,ids_dict, skts=skts,duttype=duttype) 
     print ("Remain chips on tray: ", duts)
 
     dut_skt.update(dut_skt_n)
@@ -541,12 +543,12 @@ while (len(duts) > 0) or (len(skts) != 8):
     print (QCstatus, "Badchips:", badchips)
 
     if "PASS" not in QCstatus :
-        duts, dut_skt, bad_dut_order, ids_goods, ids_bads= MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order) 
+        duts, dut_skt, bad_dut_order, ids_goods, ids_bads= MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order,duttype=duttype) 
         if len(badchips) > 0:
             skts=badchips
         ids_dict_bad.update(ids_bads)
     else: #PASS
-        duts, dut_skt, bad_dut_order, ids_goods, ids_bads = MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order) 
+        duts, dut_skt, bad_dut_order, ids_goods, ids_bads = MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order,duttype=duttype) 
         print ("PASS", dut_skt)
         ids_dict.update(dut_skt)
         ids_dict_good.update(ids_goods)
