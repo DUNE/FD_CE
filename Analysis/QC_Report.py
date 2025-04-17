@@ -8,7 +8,7 @@ import os, sys, csv
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from fpdf import FPDF
+# from fpdf import FPDF
 from datetime import datetime
 
 # Import analysis classes
@@ -46,19 +46,14 @@ class QC_Report():
     
     def get_QC_PWR_CYCLE(self):
         pwrcycle_ana = PWR_CYCLE_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        pwrcycle_data, logs = pwrcycle_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR_CYCLE.csv']))
-        print(self.logs_dict==logs)
-        print(self.logs_dict)
-        # print(logs)
-        # sys.exit()
-        # print(logs)
-        # print(pwrcycle_data)
-        # sys.exit()
+        # pwrcycle_data, logs = pwrcycle_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR_CYCLE.csv']))
+        pwrcycle_data, logs = pwrcycle_ana.run_Ana()
         return pwrcycle_data #, logs
     
     def get_FE_MON(self):
         ana_femon = QC_FE_MON_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
-        fe_mon_data = ana_femon.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_FE_MON.csv']))
+        # fe_mon_data = ana_femon.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_FE_MON.csv']))
+        fe_mon_data = ana_femon.run_Ana()
         return fe_mon_data
     
     def get_QC_CHKRES(self):
@@ -69,7 +64,8 @@ class QC_Report():
 
     def get_QC_CALI(self, cali_item='QC_CALI_ASICDAC'):
         ana_cali = QC_CALI_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID, CALI_item=cali_item)
-        cali_data = ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([self.output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+        # cali_data = ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([self.output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
+        cali_data = ana_cali.run_Ana(generatePlots=False)
         return cali_data # re-run the decoding so that the logs can be updated
 
     def get_QC_RMS(self):
@@ -80,23 +76,25 @@ class QC_Report():
 
     def get_QC_Cap_Meas(self):
         cap_meas = QC_Cap_Meas_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
-        data = cap_meas.run_Ana(path_to_stat='/'.join([self.output_path, 'QC_Cap_Meas.csv']), generatePlots=False)
+        # data = cap_meas.run_Ana(path_to_stat='/'.join([self.output_path, 'QC_Cap_Meas.csv']), generatePlots=False)
+        data = cap_meas.run_Ana(path_to_stat=None, generatePlots=False)
+        # sys.exit()
         return data
     
     def generate_summary_csv(self):
         pwr_data = self.get_QC_PWR()
-        # pwr_cycle_data = self.get_QC_PWR_CYCLE()
+        pwr_cycle_data = self.get_QC_PWR_CYCLE()
         rms_data = self.get_QC_RMS()
-        # capacitance_data = self.get_QC_Cap_Meas()
+        capacitance_data = self.get_QC_Cap_Meas()
         chkres_data = self.get_QC_CHKRES()
-        # fe_mon_data = self.get_FE_MON()
+        fe_mon_data = self.get_FE_MON()
         init_chk_data = self.get_INIT_CHK()
 
         cali_data = []
-        # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
-        # # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_DATDAC']:
-        # # for cali_item in ['QC_CALI_ASICDAC']:
-        #     cali_data += self.get_QC_CALI(cali_item=cali_item)
+        for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']:
+        # for cali_item in ['QC_CALI_ASICDAC', 'QC_CALI_DATDAC']:
+        # for cali_item in ['QC_CALI_ASICDAC']:
+            cali_data += self.get_QC_CALI(cali_item=cali_item)
 
         month_day_year = '_'.join(self.logs_dict['date'].split('_')[:3])
         header = [#[self.logs_dict['item_name'], self.logs_dict['env']],
@@ -127,16 +125,16 @@ class QC_Report():
             csv_data_rows.append(d)
         for d in chkres_data:
             csv_data_rows.append(d)
-        # for d in fe_mon_data:
-        #     csv_data_rows.append(d)
-        # for d in pwr_cycle_data:
-        #     csv_data_rows.append(d)
-        # for d in cali_data:
-        #     csv_data_rows.append(d)
+        for d in fe_mon_data:
+            csv_data_rows.append(d)
+        for d in pwr_cycle_data:
+            csv_data_rows.append(d)
+        for d in cali_data:
+            csv_data_rows.append(d)
         for d in rms_data:
             csv_data_rows.append(d)
-        # csv_data_rows.append(capacitance_data)
-        # print(csv_data_rows)
+        csv_data_rows.append(capacitance_data)
+        print(csv_data_rows)
         with open('/'.join([self.output_path, self.chipID,'{}.csv'.format(self.chipID)]), 'w') as f:
             csvwriter = csv.writer(f, delimiter=',')
             csvwriter.writerows(csv_data_rows)
