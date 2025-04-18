@@ -189,6 +189,34 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
                     output_df['data'].append(d)
         return pd.DataFrame(output_df)
     
+    def generate_plots(self, data_df=None):
+        if data_df is None:
+            return None
+        testItems = data_df['testItem'].unique()
+        for testItem in testItems:
+            item_df = data_df[data_df['testItem']==testItem].copy()
+            cfgs = item_df['cfg'].unique()
+            for cfg in cfgs:
+                cfg_df = item_df[item_df['cfg']==cfg].copy()
+                features = cfg_df['feature'].unique()
+                for feature in features:
+                    feature_df = cfg_df[cfg_df['feature']==feature].copy()
+                    mean = np.round(np.mean(feature_df['data']),2)
+                    std = np.round(np.std(feature_df['data']),2)
+                    
+                    plt.figure(figsize=(6,5))
+                    plt.plot(feature_df['CH'], feature_df['data'], marker='.', markersize=10, label=f'mean = {mean}, std = {std}')
+                    plt.xlabel('CHN')
+                    plt.ylabel('ADC bit')
+                    title = f'item: {'_'.join([self.item, testItem])}, config: {cfg},\n feature: {feature}'
+                    plt.title(title)
+                    plt.legend(loc='upper right')
+                    plt.grid(True)
+                    fig_name = '_'.join([self.item, testItem, cfg, feature + '.png'])
+                    plt.savefig('/'.join([self.output_dir, fig_name]))
+                    plt.close()
+                    # sys.exit()
+
     def run_Ana(self, path_to_stat=None):
         """
         Analyze test data and optionally compare with statistical thresholds
@@ -203,6 +231,11 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
         data_df = self.getItems()
         testItems = data_df['testItem'].unique()
         full_result_rows = []
+        
+        ## TEST
+        self.generate_plots(data_df=data_df)
+        sys.exit()
+        ##
 
         # Load statistical data if provided
         stat_df = None
@@ -251,7 +284,9 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
                         feature_result_row.append(chdata)
 
                     full_result_rows.append(feature_result_row)
-                    
+                    # print(testItem, cfg, feature)
+                    # print(feature_data)
+                    # sys.exit()
                     if stat_df is not None:
                         print(result, feature_data)
                         print(stat_feature)
