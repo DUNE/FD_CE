@@ -232,9 +232,9 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
         testItems = data_df['testItem'].unique()
         full_result_rows = []
         
-        ## TEST
-        self.generate_plots(data_df=data_df)
-        sys.exit()
+        # ## TEST
+        # self.generate_plots(data_df=data_df)
+        # sys.exit()
         ##
 
         # Load statistical data if provided
@@ -441,7 +441,7 @@ class QC_INIT_CHK_StatAna():
                 features = cfg_data['feature'].unique()
                 for feature in features:
                     feature_data = cfg_data[cfg_data['feature']==feature].copy()
-                    print(feature_data['data'].dtypes)
+                    # print(feature_data['data'].dtypes)
                     mean, std = self.get_mean_std(tmpdata=np.array(feature_data['data'].dropna(), dtype=float)) # There are NaN values in the data. We need to verify what does these data correspond to ? Are they real ?
                     stat_ana_df['testItem'].append(testItem)
                     stat_ana_df['cfg'].append(cfg)
