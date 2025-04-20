@@ -10,9 +10,22 @@ from QC_CALIBRATION import QC_CALI, QC_CALI_Ana
 from QC_Cap_Meas import QC_Cap_Meas, QC_Cap_Meas_Ana
 #
 from QC_Report import QC_Report
+#
+# Import classes needed to generate statistical analysis
+from Init_checkout import QC_INIT_CHK_StatAna
+from QC_CALIBRATION import StatAna_cali
+from QC_Cap_Meas import Cap_stat_ana
+from QC_CHKRES import QC_CHKRES_StatAna
+from QC_FE_MON import QC_FE_MON_StatAna
+from QC_PWR_CYCLE import PWR_CYCLE_statAna
+from QC_PWR import QC_PWR_StatAna
+from QC_RMS import RMS_StatAna
+#
 
 DecodeRawData = False
-AnalyzeDecodedData = True
+AnalyzeDecodedData = False
+StatisticalAnalysis = True
+forDB = True
 env='RT'
 
 if __name__ =="__main__":
@@ -65,16 +78,43 @@ if __name__ =="__main__":
             deltaT = (tf - t0).total_seconds()
             print("Decoding time : {} seconds".format(deltaT))
             print("=xx="*20)
+    
+    if StatisticalAnalysis:
+        root_path = f'../../out_B010T0004__{env}'
+        output_path = f'../../analyzed_B010T0004_{env}'
+        list_chipID = os.listdir(root_path)
+        # initial checkout
+        stat_ana = QC_INIT_CHK_StatAna(root_path=root_path, output_path=output_path)
+        stat_ana.run_Ana()
+        # RMS
+        rms_stat = RMS_StatAna(root_path=root_path, output_path=output_path)
+        rms_stat.run_Ana()
+        # calibration
+        calib_item = ['QC_CALI_ASICDAC', 'QC_CALI_ASICDAC_47', 'QC_CALI_DATDAC', 'QC_CALI_DIRECT']
+        for cali_item in calib_item:
+            StatAna_cali(root_path=root_path, output_path=output_path, cali_item=cali_item, saveDist=False)
+        # capacitance measurement
+        Cap_stat_ana(root_path=root_path, output_path=output_path, list_chipID=list_chipID)
+        # checkout response
+        chkres_stat = QC_CHKRES_StatAna(root_path=root_path, output_path=output_path)
+        chkres_stat.run_Ana()
+        # FE monitoring
+        femon_stat = QC_FE_MON_StatAna(root_path=root_path, output_path=output_path)
+        femon_stat.run_Ana()
+        # power consumption
+        pwr_ana_stat = QC_PWR_StatAna(root_path=root_path, output_path=output_path)
+        pwr_ana_stat.run_Ana()
+        # power cycle
+        stat = PWR_CYCLE_statAna(root_path=root_path, output_path=output_path)
+        stat.run_Ana()
+
     if AnalyzeDecodedData:
         ## analysis part
-        decoded_path = '../../out_B010T0004__RT'
-        analyzed_path = '../../analyzed_B010T0004_RT'
+        decoded_path = f'../../out_B010T0004__{env}'
+        analyzed_path = f'../../analyzed_B010T0004_{env}'
         # decoded_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
         # analyzed_path = '../../Analysis'
         list_chipID = os.listdir(decoded_path)
         for chipID in list_chipID:
-            report = QC_Report(root_path=decoded_path, chipID=chipID, output_path=analyzed_path)
+            report = QC_Report(root_path=decoded_path, chipID=chipID, output_path=analyzed_path, forDB=forDB)
             report.generate_summary_csv()
-            print(chipID)
-            sys.exit()
-    pass
