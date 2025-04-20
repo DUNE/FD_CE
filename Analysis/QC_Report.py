@@ -8,7 +8,6 @@ import os, sys, csv
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-# from fpdf import FPDF
 from datetime import datetime
 
 # Import analysis classes
@@ -22,62 +21,87 @@ from QC_FE_MON import QC_FE_MON_Ana
 from Init_checkout import QC_INIT_CHK_Ana
 
 class QC_Report():
-    def __init__(self, root_path: str, output_path: str, chipID: str):
+    def __init__(self, root_path: str, output_path: str, chipID: str, forDB=True):
         self.chipID = chipID
         self.root_path = root_path
         self.output_path = output_path
+        self.forDB = forDB
         self.logs_dict = dict()
         self.qc_data = list()
 
     def get_INIT_CHK(self):
+        init_chk_data = None
         init_chk = QC_INIT_CHK_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
-        # init_chk_data = init_chk.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_INIT_CHK.csv']))
-        init_chk_data = init_chk.run_Ana()
+        if self.forDB:
+            init_chk_data = init_chk.run_Ana()
+        else:
+            init_chk_data = init_chk.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_INIT_CHK.csv']))
         return init_chk_data
     
     def get_QC_PWR(self):
+        pwr_cons_data = None
         pwr_ana = QC_PWR_analysis(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        # pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR.csv']))
-        pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna=None)
+        if self.forDB:
+            pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna=None)
+        else:
+            pwr_cons_data, self.logs_dict = pwr_ana.runAnalysis(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR.csv']))
         # print(logs)
         # print(pwr_cons_data)
         # sys.exit()
         return pwr_cons_data
     
     def get_QC_PWR_CYCLE(self):
+        pwrcycle_data = None
         pwrcycle_ana = PWR_CYCLE_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        # pwrcycle_data, logs = pwrcycle_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR_CYCLE.csv']))
-        pwrcycle_data, logs = pwrcycle_ana.run_Ana()
+        if self.forDB:
+            pwrcycle_data, logs = pwrcycle_ana.run_Ana()    
+        else:
+            pwrcycle_data, logs = pwrcycle_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAnaPWR_CYCLE.csv']))
         return pwrcycle_data #, logs
     
     def get_FE_MON(self):
+        fe_mon_data = None
         ana_femon = QC_FE_MON_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
-        # fe_mon_data = ana_femon.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_FE_MON.csv']))
-        fe_mon_data = ana_femon.run_Ana()
+        if self.forDB:
+            fe_mon_data = ana_femon.run_Ana()
+        else:
+            fe_mon_data = ana_femon.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_FE_MON.csv']))
         return fe_mon_data
     
     def get_QC_CHKRES(self):
+        chkres_data = None
         chk_res = QC_CHKRES_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        # chkres_data = chk_res.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_CHKRES.csv']))
-        chkres_data = chk_res.run_Ana()
+        if self.forDB:
+            chkres_data = chk_res.run_Ana()
+        else:
+            chkres_data = chk_res.run_Ana(path_to_stat='/'.join([self.output_path, 'StatAna_CHKRES.csv']))
         return chkres_data
 
     def get_QC_CALI(self, cali_item='QC_CALI_ASICDAC'):
+        cali_data = None
         ana_cali = QC_CALI_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID, CALI_item=cali_item)
-        # cali_data = ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([self.output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
-        cali_data = ana_cali.run_Ana(generatePlots=False)
+        if self.forDB:
+            cali_data = ana_cali.run_Ana(generatePlots=False)    
+        else:
+            cali_data = ana_cali.run_Ana(generatePlots=False, path_to_statAna='/'.join([self.output_path, '{}_GAIN_INL.csv'.format(cali_item)]))
         return cali_data # re-run the decoding so that the logs can be updated
 
     def get_QC_RMS(self):
+        rms_data = None
         rms_ana = RMS_Ana(root_path=self.root_path, chipID=self.chipID, output_path=self.output_path)
-        # rms_data = rms_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_RMS.csv']), generatePlots=False)
-        rms_data = rms_ana.run_Ana(path_to_statAna=None, generatePlots=False)
+        if self.forDB:
+            rms_data = rms_ana.run_Ana(path_to_statAna=None, generatePlots=False)
+        else:
+            rms_data = rms_ana.run_Ana(path_to_statAna='/'.join([self.output_path, 'StatAna_RMS.csv']), generatePlots=False)
         return rms_data
 
     def get_QC_Cap_Meas(self):
+        data = None
         cap_meas = QC_Cap_Meas_Ana(root_path=self.root_path, output_path=self.output_path, chipID=self.chipID)
-        # data = cap_meas.run_Ana(path_to_stat='/'.join([self.output_path, 'QC_Cap_Meas.csv']), generatePlots=False)
-        data = cap_meas.run_Ana(path_to_stat=None, generatePlots=False)
+        if self.forDB:
+            data = cap_meas.run_Ana(path_to_stat=None, generatePlots=False)    
+        else:
+            data = cap_meas.run_Ana(path_to_stat='/'.join([self.output_path, 'QC_Cap_Meas.csv']), generatePlots=False)
         # sys.exit()
         return data
     
@@ -134,43 +158,11 @@ class QC_Report():
         for d in rms_data:
             csv_data_rows.append(d)
         csv_data_rows.append(capacitance_data)
-        print(csv_data_rows)
+        # print(csv_data_rows)
         with open('/'.join([self.output_path, self.chipID,'{}.csv'.format(self.chipID)]), 'w') as f:
             csvwriter = csv.writer(f, delimiter=',')
             csvwriter.writerows(csv_data_rows)
-        print(self.chipID)
-# def create_simple_pdf(filename="sample.pdf"):
-#     """
-#     Creates a simple PDF file using FPDF
-    
-#     Parameters:
-#     filename (str): Name of the output PDF file
-#     """
-#     # Create PDF object
-#     pdf = FPDF()
-    
-#     # Add a page
-#     pdf.add_page()
-    
-#     # Set font
-#     pdf.set_font("Arial", size=16)
-    
-#     # Add title
-#     pdf.cell(200, 10, txt="Sample PDF Document", ln=1, align="C")
-    
-#     # Set font for body text
-#     pdf.set_font("Arial", size=12)
-    
-#     # Add timestamp
-#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#     pdf.cell(200, 10, txt=f"Generated on: {timestamp}", ln=1, align="L")
-    
-#     # Add some content
-#     pdf.cell(200, 10, txt="This is a simple PDF document created using Python.", ln=1, align="L")
-#     pdf.cell(200, 10, txt="You can add more content here.", ln=1, align="L")
-    
-#     # Save the PDF
-#     pdf.output(filename)
+        # print(self.chipID)
 
 if __name__ == "__main__":
     # try:
@@ -179,10 +171,13 @@ if __name__ == "__main__":
     #     print("PDF has been generated successfully!")
     # except Exception as e:
     #     print(f"An error occurred: {str(e)}")
-    root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
-    output_path = '../../Analysis'
+    # root_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
+    # output_path = '../../Analysis'
+    env = 'RT'
+    root_path = f'../../out_B010T0004__{env}'
+    output_path = f'../../analyzed_B010T0004_{env}'
     list_chipID = os.listdir(root_path)
     for chipID in list_chipID:
         report = QC_Report(root_path=root_path, chipID=chipID, output_path=output_path)
         report.generate_summary_csv()
-        sys.exit()
+        # sys.exit()
