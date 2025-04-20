@@ -300,7 +300,7 @@ class QC_Cap_Meas_Ana(BaseClass_Ana):
         if stat_ana_df is not None:
             qc_result = 'FAILED' if False in combined_df[f'QC_result'] else 'PASSED'
 
-        print(combined_df.iloc[0][['BL', 'peakTime', 'gain']])
+        # print(combined_df.iloc[0][['BL', 'peakTime', 'gain']])
         cfg = '_'.join(combined_df.iloc[0][['BL', 'peakTime', 'gain']].dropna())
         if qc_result is not None:
             row_data = ['Test_{}_Capacitance'.format(self.tms), cfg, qc_result]
@@ -388,11 +388,11 @@ def Cap_stat_ana(root_path: str, list_chipID: list, output_path: str, savefig=Fa
     # save Config, Mean, and std in csv file
     config['meanCap'] = np.round(mean, 4)
     config['stdCap'] = np.round(std, 4)
-    print(config)
+    # print(config)
     df = pd.DataFrame({'item': ['Capacitance'], 'BL': [config['BL']], 'peakTime': [config['peakTime']], 'gain': [config['gain']],
                  'meanCap (pF)': [config['meanCap']], 'stdCap (pF)': [config['stdCap']]})
     df.to_csv('/'.join([output_path, 'QC_Cap_Meas.csv']), index=False)
-    print(ratio_caps)
+    # print(ratio_caps)
 
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
