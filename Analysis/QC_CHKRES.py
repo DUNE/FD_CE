@@ -420,7 +420,7 @@ class QC_CHKRES_StatAna():
             if chkres.ERROR==True:
                 continue
             chkres_data, mapping_parms = chkres.extractData()
-            print(chkres_data)
+            # print(chkres_data)
             if FirstData:
                 data_df = chkres_data.copy()
                 FirstData = False
