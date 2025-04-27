@@ -412,8 +412,9 @@ class QC_CALI_Ana(BaseClass_Ana):
         BLs = ['SNC0', 'SNC1']
         outdf = pd.DataFrame()
         for ibl, BL in enumerate(BLs):
-            for item in ['posAmp', 'negAmp']:
-                isNegAmp_SNC1 = (BL=='SNC1') & (item=='negAmp')
+            BLdf = pd.DataFrame()
+            for iitem, item in enumerate(['posAmp', 'negAmp']):
+                isNegAmp_SNC1 = (BL=='SNC1') and (item=='negAmp')
                 if isNegAmp_SNC1:
                     continue
                 # BL_INL_pos/negAmp = [all_INLs, all_GAINs, all_linearity_range, df]
@@ -427,7 +428,6 @@ class QC_CALI_Ana(BaseClass_Ana):
                 list_configs = np.unique(posAmp_df['outputCFG'])
                 DAC_list = np.unique(posAmp_df['DAC'])
 
-                BLdf = pd.DataFrame()
                 for icfg, CFG in enumerate(list_configs):
                     cfgdf = pd.DataFrame()
                     # cfgneg_df = negAmp_df[negAmp_df['outputCFG']==CFG].copy()
@@ -452,7 +452,7 @@ class QC_CALI_Ana(BaseClass_Ana):
                             cfgdf = chndf
                         else:
                             cfgdf = pd.concat([cfgdf, chndf], axis=0)
-                    if icfg==0:
+                    if (iitem==0) and (icfg==0):
                         BLdf = cfgdf
                     else:
                         BLdf = pd.concat([BLdf, cfgdf], axis=0)
@@ -1065,6 +1065,7 @@ def StatAna_cali(root_path: str, output_path: str, cali_item='QC_CALI_ASICDAC', 
     processed_data_df.reset_index(drop=True, inplace=True)
     # print(processed_data_df)
     # print(processed_data_df['item'].unique())
+    # print(processed_data_df[processed_data_df['BL']=='SNC0']['item'].unique())
     # sys.exit()
     
     out_dict = {'testItem': [], 'CFG': [], 'BL': [], 'DAC': [], 'mean': [], 'std': []}
