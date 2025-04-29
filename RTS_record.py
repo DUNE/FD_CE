@@ -54,11 +54,9 @@ class RTS_MANIP():
         msg_full = rts_r[x:]
         msg_rls = msg_full.splitlines()
 
-
         r2s_p = sorted(list(rts_msg['RTS_MSG_R2S_P'].keys()))
         s2r_p = sorted(list(rts_msg['RTS_MSG_S2R_P'].keys()))
         s2r_f = sorted(list(rts_msg['RTS_MSG_S2R_F'].keys()))
-
 
         msgs = r2s_p + s2r_p + s2r_f
 
@@ -73,8 +71,7 @@ class RTS_MANIP():
         with open(self.rootdir + "manip.csv", "a+") as fn:
             for msg in msgs:
                 for x in msg_rls:
-                    #if (msg in x) and (msg not in manip_exist):
-                    if True:
+                    if (msg in x) and (msg not in manip_exist):
                         fn.write(x + "\n")
                         self.pic_copy(x, pic_dir) 
                         break

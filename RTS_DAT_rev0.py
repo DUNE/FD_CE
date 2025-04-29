@@ -36,7 +36,7 @@ from cryo_uart import cryobox
 
 def send_rts_email(message):
     sender_email = "rtshibay@gmail.com"
-    receiver_email = "sgao@bnl.gov; sua8897@gmail.com; gkddk33@gmail.com"
+    receiver_email = "sgao@bnl.gov; "
     #receiver_email = ningxuyang0202@gmail.com
     password = "mbqx qfca voue zwfr"
     subject = "Message from RTS"
@@ -154,7 +154,7 @@ def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7], duttype="FE") :
 
 def DAT_QC(dut_skt, duttype="FE") :
     while True:
-        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype )
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env="LN")
         if QCresult != None:
             QCstatus = QCresult[0]
             badchips = QCresult[1]
@@ -194,7 +194,7 @@ def DAT_QC(dut_skt, duttype="FE") :
         cryo.cryo_lowlevel(waitminutes=10)
         cryo.cryo_highlevel(waitminutes=5)
 
-        LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype="FE", env="LN" )
+        LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env="LN" )
 
         cryo.cryo_warmup(waitminutes=20)
 
@@ -354,7 +354,7 @@ logs = {}
 
 #chiptype = 1
 #print ("RTS only support FE chip testing at the current development phase)")
-chiptype = 2
+chiptype = 1
 
 if chiptype == 1:
     duttype = "FE"
@@ -414,7 +414,7 @@ logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(0,8,1))
+duts = list(range(0,90,1))
 #duts = list(range(0,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)
