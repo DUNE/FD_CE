@@ -154,7 +154,7 @@ def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7], duttype="FE") :
 
 def DAT_QC(dut_skt, duttype="FE") :
     while True:
-        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env="LN")
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env="RT")
         if QCresult != None:
             QCstatus = QCresult[0]
             badchips = QCresult[1]
