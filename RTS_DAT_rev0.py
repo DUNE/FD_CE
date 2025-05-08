@@ -475,9 +475,30 @@ else:
     rts.rts_init(port=2001, host_ip='192.168.0.2')
     rts.MotorOn()
     rts.JumpToCamera()
-
-#rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1, "CD")    
-#rts.MoveChipFromTrayToSocket(2, 2, 1, 2, 2, "CD")    
+#rts.MoveChipFromTrayToSocket(2, 1, 2, 2, 1, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 2, 2, 2, 2, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 3, 2, 2, 3, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 4, 2, 2, 4, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 5, 2, 2, 5, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 6, 2, 2, 6, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 7, 2, 2, 7, "FE")    
+#rts.MoveChipFromTrayToSocket(2, 8, 2, 2, 8, "FE")    
+#
+#
+#rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 2, 1, 2, 2, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 3, 1, 2, 3, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 4, 1, 2, 4, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 5, 1, 2, 5, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 6, 1, 2, 6, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 7, 1, 2, 7, "ADC")    
+#rts.MoveChipFromTrayToSocket(2, 8, 1, 2, 8, "ADC")    
+#
+#
+##rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1, "CD")    
+##rts.MoveChipFromTrayToSocket(2, 2, 1, 2, 2, "CD")    
+#rts.rts_shutdown()
+#exit()
 #rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1, "CD")
 #rts.MoveChipFromSocketToTray(2, 2, 2, 2, 1, "CD")
 #rts.rts_idle()

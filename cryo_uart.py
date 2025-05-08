@@ -145,7 +145,7 @@ class cryobox:
 if __name__=="__main__":
     cryo=cryobox()
     #cryo.cryo_fill()
-    #cryo.cryo_lowlevel(waitminutes=10)
+    #cryo.cryo_lowlevel(waitminutes=5)
     #cryo.cryo_highlevel(waitminutes=5)
     #cryo.cryo_highlevel(waitminutes=1)
 #    input ("Wait...")

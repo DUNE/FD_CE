@@ -310,11 +310,6 @@ class CD_QC_ANA():
                 data = pickle.load( fn)
             
             dkeys = list(data.keys())
-            print (dkeys)
-            print (data['QCstatus'])
-            for key in data['ADC_PWRON'].keys():
-                print ("%08d"%data['ADC_PWRON'][key][1]) 
-            exit()
             
             logsd = data["logs"]
             dkeys.remove("logs")
@@ -884,7 +879,7 @@ if __name__=="__main__":
     fdir = """D:\DAT_CD_QC\RT_CD_031672417_031862417/"""
     fdir = '''D:\DAT_SN_data\SN1\Time_20250103160419_DUT_1000_2000\RT_CD_060602417_060562417/'''
     fdir = '''D:\DAT_CD_QC\Tested\Time_20250109200316_DUT_1000_2000\RT_CD_031702417_031722417/'''
-    fdir = '''C:\SGAO\ColdTest\Tested\DAT_CD_QC\Tested\B001T0006\Time_20250507160531_DUT_0000_1001\LN_CD_031752417_031682417/'''
+    fdir = '''C:\SGAO\ColdTest\Tested\DAT_CD_QC\Tested\Time_20250508183918_DUT_1000_2000\RT_CD_000000001_000000002/'''
 
 
     evl = input ("Analyze all test items? (Y/N) : " )
