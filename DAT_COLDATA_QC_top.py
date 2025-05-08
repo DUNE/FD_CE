@@ -151,9 +151,8 @@ if 0 in tms:
                 dat.dat_pwroff_chk(env = logs['env']) #make sure DAT is off
         if tryi >= 3:
             break
-            
 
-
+    if True:
         if warn_flg:
             datad["QCstatus"] = "Code#E102(COLDATA): Large current of some ASIC chips is observed"
             datad["FE_Fail"] = febads
