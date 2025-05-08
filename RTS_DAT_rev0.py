@@ -75,7 +75,7 @@ def DAT_debug (QCstatus):
                 if "Y" in yorn or "y" in yorn:
                     return "2"
 
-def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=None, sktn=None):
+def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, sinkno=None, sktn=None):
     send_rts_email(message="Please contact tech coordinator (RTS issue)")
     print ("Please check the error information on EPSON RC")
     if "T2S" in info:
@@ -83,7 +83,7 @@ def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=Non
         print ("Chip on orignial TrayNo(1-2)={}, Col(1-15)={}, Row(1-6)={}".format(trayno, trayc, trayr)) 
     elif "S2T" in info:
         print ("Chip is moved from Socket") 
-        print ("Chip on orignial DATno(1-2)={}, Skt(1-8)={} ".format(datno, sktn)) 
+        print ("Chip on orignial Sinkno(1-2)={}, Skt(1-8)={} ".format(sinkno, sktn)) 
 
     rts.rts_idle()
 
@@ -106,7 +106,7 @@ def RTS_debug (info, status=None, trayno=None, trayc=None, trayr=None, datno=Non
                 rts.MotorOn()
                 break
 
-def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7], duttype="FE") :
+def MovetoSoket(sinkno, duts,ids_dict,  skts=[0,1,2,3,4,5,6,7], duttype="FE") :
     print ("DUTtype", duttype)
     dut_skt = {}
     #make sure DAT is powered off
@@ -128,18 +128,22 @@ def MovetoSoket(duts,ids_dict, skts=[0,1,2,3,4,5,6,7], duttype="FE") :
             chipi = ids_dict[ids_g[tmpj]][0]
             tmpj=tmpj+1
 
-        trayc=(chipi%15) +1
-        trayr=(chipi//15) +1
+        if "CD" in duttype:
+            trayc=(chipi%10) +1
+            trayr=(chipi//10) +1
+        else:
+            trayc=(chipi%15) +1
+            trayr=(chipi//15) +1
         sktn = skt + 1
         
         if BypassRTS:
             rts.msg = str(int(rts.msg) + 1)
             status = 0
         else:
-            status = rts.MoveChipFromTrayToSocket(trayno, trayc, trayr, datno, sktn,duttype)    
+            status = rts.MoveChipFromTrayToSocket(trayno, trayc, trayr, sinkno, sktn,duttype)    
 
         if status < 0:
-            RTS_debug ("T2S", status, trayno, trayc, trayr, datno, sktn)
+            RTS_debug ("T2S", status, trayno, trayc, trayr, sinkno, sktn)
             tmpi = tmpi
             duts=[chipi] + duts
             continue
@@ -157,7 +161,14 @@ def DAT_QC(dut_skt, duttype="FE") :
         QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env="RT")
         if QCresult != None:
             QCstatus = QCresult[0]
-            badchips = QCresult[1]
+            if "CD" in duttype:
+                badchips =[]
+                if (0 in QCresult[1]) or (1 in QCresult[1]) or (2 in QCresult[1]) or (3 in QCresult[1]):
+                    badchips.append(0)
+                if (4 in QCresult[1]) or (5 in QCresult[1]) or (6 in QCresult[1]) or (7 in QCresult[1]):
+                    badchips.append(1)
+            else:
+                badchips = QCresult[1]
             break
         else:
             print ("139-> terminate, 2->debugging")
@@ -196,7 +207,7 @@ def DAT_QC(dut_skt, duttype="FE") :
 
         LNQCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env="LN" )
 
-        cryo.cryo_warmup(waitminutes=20)
+        cryo.cryo_warmup(waitminutes=30)
 
         send_rts_email(message="Cold test is done, please open the sink cover ...")
 
@@ -212,7 +223,7 @@ def DAT_QC(dut_skt, duttype="FE") :
     return QCstatus, badchips #badchips range from 0 to7
 
 ################STEP3#################################
-def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
+def MovetoTray(sinkno, duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
     print ("DUTtype", duttype)
     ids_goods = {}
     ids_bads = {}
@@ -225,6 +236,11 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
         DAT_power_off()
         rts.MotorOn()
 
+    if "CD" in duttype:
+        CHIPS = 2
+    else:
+        CHIPS = 8
+
     #if "Terminate" in QCstatus: #move back to original positions
     if ("Code#E001" in QCstatus) or ("Terminate" in QCstatus) : #move back to original positions
         rts.rts_idle()
@@ -236,23 +252,27 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
         rts.MotorOn()
             
         tmpi = 0
-        while tmpi < 8:
+        while tmpi < CHIPS:
             for ids in ids_g:
                 if dut_skt[ids][1] == tmpi:
                     chipi=dut_skt[ids][0]
                     sktn =dut_skt[ids][1] + 1
                     break
-            trayc=(chipi%15) +1
-            trayr=(chipi//15) +1
+            if "CD" in duttype:
+                trayc=(chipi%10) +1
+                trayr=(chipi//10) +1
+            else:
+                trayc=(chipi%15) +1
+                trayr=(chipi//15) +1
             if BypassRTS:
                 rts.msg = str(int(rts.msg) + 1)
                 status = 0
                 pass
             else:
-                status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr, duttype)
+                status = rts.MoveChipFromSocketToTray(sinkno, sktn, trayno, trayc, trayr, duttype)
 
             if status < 0:
-                RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
+                RTS_debug ("S2T", status, trayno, trayc, trayr, sinkno, sktn)
                 tmpi = tmpi
                 continue
             else:
@@ -279,18 +299,20 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
                         dut_skt.pop(removekey, None)  
                         ids_g = list(dut_skt.keys())
                         break
-                trayc=(chipi%15) +1
-                trayr=(chipi//15) +1
-                trayc=(bad_dut_order%15) +1
-                trayr=(bad_dut_order//15) +1
+                if "CD" in duttype:
+                    trayc=(bad_dut_order%10) +1
+                    trayr=(bad_dut_order//10) +1
+                else:
+                    trayc=(bad_dut_order%15) +1
+                    trayr=(bad_dut_order//15) +1
                 if BypassRTS:
                     rts.msg = str(int(rts.msg) + 1)
                     status = 0
                 else:
-                    status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr, duttype)
+                    status = rts.MoveChipFromSocketToTray(sinkno, sktn, badtrayno, trayc, trayr, duttype)
 
                 if status < 0:
-                    RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
+                    RTS_debug ("S2T", status, trayno, trayc, trayr, sinkno, sktn)
                     tmpi = tmpi
                     continue
                 else:
@@ -301,31 +323,39 @@ def MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order, duttype="FE") :
 
         if "PASS" in QCstatus:
             tmpi = 0
-            while tmpi < 8:
+            while tmpi < CHIPS:
                 for ids in ids_g:
                     if dut_skt[ids][1] == tmpi:
                         chipi=dut_skt[ids][0]
                         sktn =dut_skt[ids][1] + 1
                         break
-                trayc=(chipi%15) +1
-                trayr=(chipi//15) +1
+                if "CD" in duttype:
+                    trayc=(chipi%10) +1
+                    trayr=(chipi//10) +1
+                else:
+                    trayc=(chipi%15) +1
+                    trayr=(chipi//15) +1
                 if tmpi in badchips:
-                    trayc=(bad_dut_order%15) +1
-                    trayr=(bad_dut_order//15) +1
+                    if "CD" in duttype:
+                        trayc=(bad_dut_order%10) +1
+                        trayr=(bad_dut_order//10) +1
+                    else:
+                        trayc=(bad_dut_order%15) +1
+                        trayr=(bad_dut_order//15) +1
                     if BypassRTS:
                         rts.msg = str(int(rts.msg) + 1)
                         status = 0
                     else:
-                        status = rts.MoveChipFromSocketToTray(datno, sktn, badtrayno, trayc, trayr, duttype)
+                        status = rts.MoveChipFromSocketToTray(sinkno, sktn, badtrayno, trayc, trayr, duttype)
                 else:
                     if BypassRTS:
                         rts.msg = str(int(rts.msg) + 1)
                         status = 0
                     else:
-                        status = rts.MoveChipFromSocketToTray(datno, sktn, trayno, trayc, trayr, duttype)
+                        status = rts.MoveChipFromSocketToTray(sinkno, sktn, trayno, trayc, trayr, duttype)
 
                 if status < 0:
-                    RTS_debug ("S2T", status, trayno, trayc, trayr, datno, sktn)
+                    RTS_debug ("S2T", status, trayno, trayc, trayr, sinkno, sktn)
                     tmpi = tmpi
                     continue
                 else:
@@ -354,7 +384,7 @@ logs = {}
 
 #chiptype = 1
 #print ("RTS only support FE chip testing at the current development phase)")
-chiptype = 1
+chiptype = 3
 
 if chiptype == 1:
     duttype = "FE"
@@ -401,7 +431,7 @@ trayid = bno
 trayno =2
 badtrayno = 1 #some issue with tray#1
 bad_dut_order=0
-datno =2
+sinkno =2
 rootdir = rootdir + trayid + "/"
 #rootdir = "C:/DAT_LArASIC_QC/Tested/" + trayid + "/"
 
@@ -409,12 +439,12 @@ logs["TrayID"] = trayid
 logs["TrayNo"] = 2
 logs["BadTrayNo"] = 1
 logs["Bad_dut_order"] = bad_dut_order
-logs["DATNo"] = 2
+logs["SinkNo"] = 2
 logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(0,90,1))
+duts = list(range(0,6,1))
 #duts = list(range(0,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)
@@ -446,6 +476,14 @@ else:
     rts.MotorOn()
     rts.JumpToCamera()
 
+#rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1, "CD")    
+#rts.MoveChipFromTrayToSocket(2, 2, 1, 2, 2, "CD")    
+#rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1, "CD")
+#rts.MoveChipFromSocketToTray(2, 2, 2, 2, 1, "CD")
+#rts.rts_idle()
+#exit()
+
+#rts.MoveChipFromSocketToTray(2, 1, 2, 4, 3)
 #sts_tmp = rts.CoverStatus()
 #print (sts_tmp)
 #sts_tmp2 = rts.CoverStatus()
@@ -525,10 +563,14 @@ else:
 
 #first run
 ################STEP1#################################
-skts=[0,1,2,3,4,5,6,7]
+if "CD" in duttype:
+    skts=[0,1]
+else:
+    skts=[0,1,2,3,4,5,6,7]
 dut_skt = {}
-while (len(duts) > 0) or (len(skts) != 8):
-    duts, dut_skt_n = MovetoSoket(duts,ids_dict, skts=skts,duttype=duttype) 
+#while (len(duts) > 0) or (len(skts) != 8):
+while (len(duts) > 0) :
+    duts, dut_skt_n = MovetoSoket(sinkno, duts,ids_dict, skts=skts,duttype=duttype) 
     print ("Remain chips on tray: ", duts)
 
     dut_skt.update(dut_skt_n)
@@ -543,18 +585,21 @@ while (len(duts) > 0) or (len(skts) != 8):
     print (QCstatus, "Badchips:", badchips)
 
     if "PASS" not in QCstatus :
-        duts, dut_skt, bad_dut_order, ids_goods, ids_bads= MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order,duttype=duttype) 
+        duts, dut_skt, bad_dut_order, ids_goods, ids_bads= MovetoTray(sinkno, duts, dut_skt, QCstatus, badchips, bad_dut_order,duttype=duttype) 
         if len(badchips) > 0:
             skts=badchips
         ids_dict_bad.update(ids_bads)
     else: #PASS
-        duts, dut_skt, bad_dut_order, ids_goods, ids_bads = MovetoTray(duts, dut_skt, QCstatus, badchips, bad_dut_order,duttype=duttype) 
+        duts, dut_skt, bad_dut_order, ids_goods, ids_bads = MovetoTray(sinkno, duts, dut_skt, QCstatus, badchips, bad_dut_order,duttype=duttype) 
         print ("PASS", dut_skt)
         ids_dict.update(dut_skt)
         ids_dict_good.update(ids_goods)
         ids_dict_bad.update(ids_bads)
         dut_skt = {}
-        skts=[0,1,2,3,4,5,6,7]
+        if "CD" in duttype:
+            skts=[0,1]
+        else:
+            skts=[0,1,2,3,4,5,6,7]
 
     print ("**********save ID info*************")
     ids_k = list(ids_dict.keys())

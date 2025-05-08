@@ -112,7 +112,9 @@ class RTS_CFG():
         elif "ADC" in duttype:
             sktn = socket_nr + 10
         elif "CD" in duttype:
-            sktn = socket_nr + 2
+#            sktn = socket_nr + 2
+            tray_nr = (tray_nr&0x03) + 10
+            sktn = (socket_nr&0x03)+20
         else:
             sktn = socket_nr
         tryi = 0
@@ -169,13 +171,14 @@ class RTS_CFG():
         return status
 
 
-    def MoveChipFromSocketToTray(self, DAT_nr, socket_nr, tray_nr, col_nr, row_nr, duttype):
+    def MoveChipFromSocketToTray(self, DAT_nr, socket_nr, tray_nr, col_nr, row_nr, duttype="FE"):
         if "FE" in duttype:
             sktn = socket_nr
         elif "ADC" in duttype:
             sktn = socket_nr + 10
         elif "CD" in duttype:
-            sktn = socket_nr + 2
+            tray_nr = (tray_nr&0x03) + 10
+            sktn = (socket_nr&0x03)+20
         else:
             sktn = socket_nr
 
