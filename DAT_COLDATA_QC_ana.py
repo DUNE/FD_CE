@@ -314,7 +314,8 @@ class QC_ANA():
             dkeys.remove("logs")
             
             for onekey in dkeys:
-                if ("DIRECT_PLS_CHK" in onekey) or ("ASICDAC_CALI_CHK" in onekey):
+#dcc                if ("DIRECT_PLS_CHK" in onekey) or ("ASICDAC_CALI_CHK" in onekey):
+                if ("ASICDAC_CALI_CHK" in onekey):
                     cfgdata = data[onekey]
                     fembs = cfgdata[0]
                     rawdata = cfgdata[1]
@@ -845,7 +846,8 @@ class QC_ANA():
                     else:
                         print(Fore.RED + onekey+": Fail")
                         self.qc_stats[onekey] ="FAIL. Programmed %d, reads out %d"%(val,readout)
-
+        
+        return cd1monvs, cd2monvs, pwr_meas, data['U1_CD1'][0], data['U2_CD2'][0]
 
 if __name__=="__main__":
     #fsubdir = "RT_CD_060592417_060542417"
@@ -857,7 +859,7 @@ if __name__=="__main__":
     fdir = '''D:\DAT_SN_data\SN1\Time_20250103160419_DUT_1000_2000\RT_CD_060602417_060562417/'''
     fdir = '''D:\DAT_CD_QC\Tested\Time_20250109200316_DUT_1000_2000\RT_CD_031702417_031722417/'''
     fdir = '''D:\DAT_CD_QC\Tested\Time_20250122214842_DUT_1000_2000\LN_CD_031872417_031822417/'''
-
+    fdir='''C:\dccscratch/'''
 
     evl = input ("Analyze all test items? (Y/N) : " )
     if ("Y" in evl) or ("y" in evl):
@@ -887,6 +889,11 @@ if __name__=="__main__":
     
 
     qc = QC_ANA()
-    qc.dat_cd_qc_ana(fdir=fdir, tms=tms)
+    cd1monvs,cd2monvs, pwr_meas, sn_cd1, sn_cd2 =qc.dat_cd_qc_ana(fdir=fdir, tms=tms)
     print (qc.qc_stats)
-
+    #print(dat_cd_qc_ana.)
+    with open("/Users/RTS/Desktop/hwdb_temp.txt", "w") as hwdb_file:
+        print(pwr_meas, file=hwdb_file)
+        print(cd1monvs, file=hwdb_file)
+        print(cd2monvs, file=hwdb_file)
+        print(qc.qc_stats, file=hwdb_file)

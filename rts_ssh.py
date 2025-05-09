@@ -9,6 +9,7 @@ from DAT_read_cfg import dat_read_cfg
 from DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
 from DAT_COLDATA_QC_ana import QC_ANA 
+from LogInfo import SaveToLog
 just_fix_windows_console()
 
 wibip = "192.168.121.123"
@@ -344,11 +345,13 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
             if not os.path.exists(fddir):
                 try:
                     os.makedirs(fddir)
+                    SaveToLog("QC Test folder created: {fddir}")
                 except OSError:
                     print ("Error to create folder %s"%fddir)
                     print ("Exit anyway")
                     #sys.exit()
-                    return None
+                    return None            
+
             fsrc = wibhost + ":" + fs
             command = ["scp", "-r",fsrc , fddir]
             result=subrun(command, timeout = None)

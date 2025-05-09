@@ -50,7 +50,7 @@ def dat_read_cfg(infile_mode = True, froot = "./tmp_data/" ):
                 fe_id['FE{}'.format(fe)] = festr[0:3]+"0"+festr[4:]
 
     if "CD" in logs['DUT']:
-        fsubdir = "{}_CD_{}_{}".format(logs['env'],cd_id['CD0'],cd_id['CD1']) 
+        fsubdir = "{}_CD".format(logs['env']) #,cd_id['CD0'],cd_id['CD1']) 
     elif "ADC" in logs['DUT']:
         fsubdir = "{}_ADC_{}_{}_{}_{}_{}_{}_{}_{}".format(logs['env'],adc_id['ADC0'],adc_id['ADC1'], adc_id['ADC2'], adc_id['ADC3'], adc_id['ADC4'], adc_id['ADC5'], adc_id['ADC6'], adc_id['ADC7']) 
     elif "FE" in logs['DUT']:

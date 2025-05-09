@@ -378,6 +378,7 @@ def ana_adcpwr(pwr_meas, v2p5 = [2.10, 2.35], v1p2 = [1.05, 1.15], ca2p5=[115,14
 
 def dat_initchk(fdir="/."):
     fp = fdir + "QC_INIT_CHK" + ".bin"
+#    fp="QC_INIT_CHK" + ".bin"
     with open(fp, 'rb') as fn:
         data = pickle.load( fn)
     
@@ -422,7 +423,8 @@ def dat_initchk(fdir="/."):
         datakeys = list(data.keys())
         vkeys = []
         for onekey in datakeys:
-            if "DIRECT_" in onekey or "ASICDAC_" in onekey :
+#            if "DIRECT_" in onekey or "ASICDAC_" in onekey :
+            if "ASICDAC_" in onekey :
                 vkeys.append(onekey)
         for onekey in vkeys:
             cfgdata = data[onekey]
@@ -484,12 +486,17 @@ def dat_initchk(fdir="/."):
 if __name__=="__main__":
     #fdir = '''D:\DAT_CD_QC\Tested\Time_20241015202741_DUT_1000_2000\RT_CD_031702417_031752417/'''
     fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20241205140938_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
-    fdir = '''D:/DAT_CD_QC/Tested/Time_20241205160750_DUT_1000_2000/RT_CD_031712417_031882417/'''
-    fdir = '''D:\DAT_ColdADC_QC\\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+##    fdir = '''D:/DAT_CD_QC/Tested/Time_20241205160750_DUT_1000_2000/RT_CD_031712417_031882417/'''
+##    fdir = '''D:\DAT_ColdADC_QC\\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 #    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20250102143601_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
-    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20250116211125_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
-    fdir = '''S:\RTS_DAT_LArASIC_QC\B009T0005\Time_20250207083952_DUT_0049_1050_2051_3052_4053_5054_6055_7056\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
-    print (fdir)
+##    fdir = '''D:\DAT_LArASIC_QC\Tested\Time_20250116211125_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+##    fdir = '''S:\RTS_DAT_LArASIC_QC\B009T0005\Time_20250207083952_DUT_0049_1050_2051_3052_4053_5054_6055_7056\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
+#dcc##
+#    fdir = "Desktop\dccscratch"
+#   fdir = 'C:\Users\RTS\Desktop\dccscratch/'
+#   fdir = '''C:\Users\RTS\Desktop\dccscratch/'''
+#    print (fdir)
+    fdir='''C:\dccscratch/'''
     QCstatus, bads = dat_initchk(fdir=fdir)
 
     print (QCstatus)

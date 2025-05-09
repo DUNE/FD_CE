@@ -106,13 +106,19 @@ class RTS_CFG():
                 print ("ConnectionAbortedError")
                 self.rts_init(port=2001, host_ip='192.168.0.2')
 
-    def MoveChipFromTrayToSocket(self, tray_nr, col_nr, row_nr, DAT_nr, socket_nr):
+    def MoveChipFromTrayToSocket(self, DAT_nr, socket_nr, tray_nr, col_nr, row_nr):
         tryi = 0
         while True:
             try:
                 print ("Move Chip From Tray#{},col#{},row#{} To DAT#{},Socket{}".format(tray_nr, col_nr, row_nr, DAT_nr, socket_nr))
                 self.msg = "MoveChipFromTrayToSocket"
                 self.s.send(self.msg.encode())
+                self.s.send(b"\r\n")
+
+                self.s.send(str(DAT_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(socket_nr).encode())
                 self.s.send(b"\r\n")
     
                 self.s.send(str(tray_nr).encode())
@@ -122,12 +128,6 @@ class RTS_CFG():
                 self.s.send(b"\r\n")
     
                 self.s.send(str(row_nr).encode())
-                self.s.send(b"\r\n")
-    
-                self.s.send(str(DAT_nr).encode())
-                self.s.send(b"\r\n")
-    
-                self.s.send(str(socket_nr).encode())
                 self.s.send(b"\r\n")
     
                 self.msg = self.s.recv(1024).decode()
