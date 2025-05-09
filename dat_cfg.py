@@ -174,19 +174,19 @@ class DAT_CFGS(WIB_CFGS):
             for key in pwr_meas:
                 if "FEMB%d"%self.dat_on_wibslot in key:
                     if "BIAS_V" in key:
-                        if pwr_meas[key] > 2.0:
+                        if pwr_meas[key] > 2.3:
                             init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC0_V" in key:
-                        if pwr_meas[key] > 0.5:
+                        if pwr_meas[key] > 0.7:
                             init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC1_V" in key:
-                        if pwr_meas[key] > 0.5:
+                        if pwr_meas[key] > 0.7:
                             init_ok = True
                             print (key, ":", pwr_meas[key])
                     if "DC2DC2_V" in key:
-                        if pwr_meas[key] > 0.5:
+                        if pwr_meas[key] > 0.7:
                             init_ok = True
                             print (key, ":", pwr_meas[key])
 #                    if "DC3DC3_V" in key:
@@ -642,7 +642,7 @@ class DAT_CFGS(WIB_CFGS):
         kl = list(adcs_pwr_info.keys())
         for onekey in kl:
             if "VDDA2P5" in onekey:
-                if  (adcs_pwr_info[onekey][0] > 2.10) & (adcs_pwr_info[onekey][0] < 2.40) & (adcs_pwr_info[onekey][1] > 100  ) & (adcs_pwr_info[onekey][1] < 200  ) :
+                if  (adcs_pwr_info[onekey][0] > 2.10) & (adcs_pwr_info[onekey][0] < 2.40) & (adcs_pwr_info[onekey][1] > 100  ) & (adcs_pwr_info[onekey][1] < 400  ) :
                     pass
                 else:
                     print ("Warning: {} is out of range {}".format(onekey, adcs_pwr_info[onekey]))

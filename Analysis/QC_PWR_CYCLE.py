@@ -242,7 +242,132 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
         out_df = pd.DataFrame(out_dict)
         return out_df
 
-    def run_Ana(self, path_to_statAna=''):
+    def run_Ana(self, path_to_statAna=None):
+        """
+        Analyze test data and optionally compare with statistical thresholds.
+        
+        Args:
+            path_to_statAna (str, optional): Path to CSV file with statistical thresholds.
+                                        If None, only raw data analysis is performed.
+        """
+        if self.ERROR:
+            return
+
+        print('0============0', self.chipID)
+        # Load statistical data if provided
+        pwr_stat_ana_df = None
+        chresp_stat_ana_df = None
+        
+        if path_to_statAna is not None:
+            pwrcycle_stat_ana_df = pd.read_csv(path_to_statAna)
+            pwr_stat_ana_df = pwrcycle_stat_ana_df[pwrcycle_stat_ana_df['vdd_cfgs'].isna()==False].copy().reset_index()
+            pwr_stat_ana_df.drop('index', axis=1, inplace=True)
+            tmpchresp_stat_ana_df = pwrcycle_stat_ana_df[pwrcycle_stat_ana_df['vdd_cfgs'].isna()==True].copy().reset_index()
+            tmpchresp_stat_ana_df.drop('index', axis=1, inplace=True)
+            
+            # Create channel response statistics
+            chresp_stat_ana = {'testItem': [], 'Cycle': [], 'CH': [], 'mean': [], 'std': []}
+            for iitem in range(len(tmpchresp_stat_ana_df['testItem'])):
+                tmpdata = tmpchresp_stat_ana_df.iloc[iitem]
+                for ichn in range(16):
+                    chresp_stat_ana['testItem'].append(tmpdata['testItem'])
+                    chresp_stat_ana['Cycle'].append(tmpdata['Cycle'])
+                    chresp_stat_ana['CH'].append(ichn)
+                    chresp_stat_ana['mean'].append(tmpdata['mean'])
+                    chresp_stat_ana['std'].append(tmpdata['std'])
+            chresp_stat_ana_df = pd.DataFrame(chresp_stat_ana)
+
+        # Get power measurement data
+        pwr_out_df = pd.DataFrame({'testItem': [], 'Cycle': [], 'vdd_cfgs': [], 'value': []})
+        for param in ['V', 'I', 'P']:
+            param_df = self.create_dfItem_PWR(param=param, generatePlots=True)
+            pwr_out_df = pd.concat([pwr_out_df, param_df], axis=0)
+        pwr_out_df.reset_index().drop('index',axis=1, inplace=True)
+
+        # Analyze power data with statistics if available
+        if pwr_stat_ana_df is not None:
+            comp_pwrSat_pwrChip_df = pd.merge(pwr_out_df, pwr_stat_ana_df, on=['testItem', 'Cycle', 'vdd_cfgs'], how='outer')
+            comp_pwrSat_pwrChip_df['QC_result'] = (
+                (comp_pwrSat_pwrChip_df['value'] >= (comp_pwrSat_pwrChip_df['mean']-3*comp_pwrSat_pwrChip_df['std'])) & 
+                (comp_pwrSat_pwrChip_df['value'] <= (comp_pwrSat_pwrChip_df['mean']+3*comp_pwrSat_pwrChip_df['std']))
+            )
+            pwr_qc_results = comp_pwrSat_pwrChip_df[['testItem', 'Cycle', 'vdd_cfgs', 'value', 'QC_result']].copy()
+        else:
+            pwr_qc_results = pwr_out_df.copy()
+            pwr_qc_results['QC_result'] = True  # Default pass without statistics
+
+        pwr_qc_results = pwr_qc_results.reset_index().drop('index', axis=1)
+        pwr_qc_results['Cycle'] = pwr_qc_results['Cycle'].astype(int)
+
+        # Get channel response data
+        chresp_out_df = pd.DataFrame({'testItem': [], 'Cycle': [], 'CH': [], 'value': []})
+        for param in ['pedestal', 'rms', 'negpeak', 'pospeak']:
+            param_df = self.create_dfItem_wf(param=param).drop('vdd_cfgs', axis=1).copy()
+            chresp_out_df = pd.concat([chresp_out_df, param_df], axis=0)
+
+        # Analyze channel response with statistics if available
+        if chresp_stat_ana_df is not None:
+            comp_chrespStat_chrespChip_df = pd.merge(chresp_stat_ana_df, chresp_out_df, on=['testItem', 'Cycle', 'CH'], how='outer')
+            comp_chrespStat_chrespChip_df['QC_result'] = (
+                (comp_chrespStat_chrespChip_df['value'] >= (comp_chrespStat_chrespChip_df['mean']-3*comp_chrespStat_chrespChip_df['std'])) & 
+                (comp_chrespStat_chrespChip_df['value'] <= (comp_chrespStat_chrespChip_df['mean']+3*comp_chrespStat_chrespChip_df['std']))
+            )
+            chresp_qc_results = comp_chrespStat_chrespChip_df[['testItem', 'Cycle', 'CH', 'value', 'QC_result']]
+        else:
+            chresp_qc_results = chresp_out_df.copy()
+            chresp_qc_results['QC_result'] = True  # Default pass without statistics
+
+        # Process results cycle by cycle
+        cycles = chresp_qc_results['Cycle'].unique()
+        results_cycles = []
+        for icycle in cycles:
+            tmpdata_pwr = pwr_qc_results[pwr_qc_results['Cycle']==icycle].copy().reset_index().drop('index',axis=1)
+            tmpdata_chresp = chresp_qc_results[chresp_qc_results['Cycle']==icycle].copy().reset_index().drop('index',axis=1)
+
+            # The rest of the code remains the same as original
+            # ...existing code for processing cycle results...
+            cycle_pwr_qc_result = ''
+            cycle_chresp_qc_result = ''
+            if False in list(tmpdata_pwr['QC_result']):
+                cycle_pwr_qc_result = 'FAILED'
+            else:
+                cycle_pwr_qc_result = 'PASSED'
+            if False in list(tmpdata_chresp['QC_result']):
+                cycle_chresp_qc_result = 'FAILED'
+            else:
+                cycle_chresp_qc_result = 'PASSED'
+            
+            # Format power parameters
+            pwr_params = []
+            for i in range(len(tmpdata_pwr)):
+                param = '_'.join([tmpdata_pwr.iloc[i]['vdd_cfgs'], tmpdata_pwr.iloc[i]['testItem']])
+                pwr_params.append('{} = {}'.format(param, tmpdata_pwr.iloc[i]['value']))
+
+            # Format channel results
+            ch_results = []
+            for ichn in range(16):
+                CH = 'CH{}'.format(ichn)
+                posAmp = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='pospeak')]['value']
+                negAmp = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='negpeak')]['value']
+                ped = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='pedestal')]['value']
+                rms = tmpdata_chresp[(tmpdata_chresp['CH']==ichn) & (tmpdata_chresp['testItem']=='rms')]['value']
+                ch_results.append(("{}=(ped={};rms={};posAmp={};negAmp={})".format(CH, ped.iloc[0], rms.iloc[0], posAmp.iloc[0], negAmp.iloc[0])))
+
+            # Determine overall result based on whether we have statistics
+            if path_to_statAna is not None:
+                overall_result = 'PASSED' if cycle_pwr_qc_result == 'PASSED' and cycle_chresp_qc_result == 'PASSED' else 'FAILED'
+                results_cycles.append(['Test_{}_Power_cycle'.format(self.tms), 'Cycle_{}'.format(icycle), overall_result] + pwr_params + ch_results)
+            else:
+                # Without statistics, just record measurements without pass/fail
+                results_cycles.append(['Test_{}_Power_cycle'.format(self.tms), 'Cycle_{}'.format(icycle)] + pwr_params + ch_results)
+
+        # Save results
+        with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+            csv.writer(csvfile, delimiter=',').writerows(results_cycles)
+
+        return results_cycles, self.data['logs']
+
+    def run_Ana_withStat(self, path_to_statAna=''):
         if self.ERROR:
             return
         

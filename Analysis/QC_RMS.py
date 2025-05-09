@@ -131,67 +131,159 @@ class RMS_Ana(BaseClass_Ana):
         plt.savefig('/'.join([self.output_dir, config + '.png']))
         plt.close()
 
-    def run_Ana(self, path_to_statAna='', generatePlots=False):
-        if self._FileExist():
-            stat_csv = pd.read_csv(path_to_statAna)
-                        
-            result_df = pd.DataFrame({'cfg': []})
-            for icfg, config in enumerate(self.params):
-                data ,cfg = self.getItem(config=config)
-                # stat_config_df = new_stat_csv[new_stat_csv['cfg']==cfg].copy().reset_index().drop('index', axis=1).copy()
-                stat_config_row = stat_csv[stat_csv['cfg']==config].copy().reset_index().drop('index', axis=1)
+    def run_Ana(self, path_to_statAna=None, generatePlots=False):
+        """
+        Analyze RMS test data and optionally compare with statistical thresholds.
+        
+        Args:
+            path_to_statAna (str, optional): Path to CSV file with statistical thresholds.
+                                            If None, only raw data analysis is performed.
+            generatePlots (bool): Whether to generate plots for each configuration.
+        
+        Returns:
+            list: List of result rows containing test data and analysis results
+        """
+        if not self._FileExist():
+            return None
+
+        data_df = pd.DataFrame({'cfg': []})
+        result_table = []
+
+        # Load statistical data if provided
+        stat_df = None
+        if path_to_statAna:
+            stat_df = pd.read_csv(path_to_statAna)
+
+        for config in self.params:
+            data, cfg = self.getItem(config=config)
+            
+            if generatePlots:
+                self.plot_rms_data(dict_data=data, config=cfg)
+
+            # Create basic dataframe with measurements
+            df = pd.DataFrame({
+                'cfg': [cfg for _ in range(len(data['pedestal']))],
+                'CH': [chn for chn in range(16)],
+                'pedestal': data['pedestal'],
+                'rms': data['rms']
+            })
+
+            # Apply statistical analysis if data available
+            qc_result = None
+            if stat_df is not None:
+                stat_config_row = stat_df[stat_df['cfg']==config].copy().reset_index().drop('index', axis=1)
+                
+                # Add statistical data
                 stat_dict = {
                     'mean_pedestal': [stat_config_row['mean_pedestal'][0] for _ in range(16)],
                     'mean_rms': [stat_config_row['mean_rms'][0] for _ in range(16)],
                     'std_pedestal': [stat_config_row['std_pedestal'][0] for _ in range(16)],
                     'std_rms': [stat_config_row['std_rms'][0] for _ in range(16)]
                 }
-
-                # print(stat_config_row.columns)
-                # sys.exit()
-                # print(data, config)
-                if generatePlots:
-                    self.plot_rms_data(dict_data=data, config=cfg)
-                # print(self.chipID)
-                df = pd.DataFrame({'cfg': [cfg for _ in range(len(data['pedestal']))], 'CH': [chn for chn in range(16)], 'pedestal': data['pedestal'], 'rms': data['rms']})
+                
                 for key, val in stat_dict.items():
                     df[key] = val
-                df['QC_result_pedestal']= (df['pedestal']>= (df['mean_pedestal']-3*df['std_pedestal'])) & (df['pedestal'] <= (df['mean_pedestal']+3*df['std_pedestal']))
-                df['QC_result_rms']= (df['rms']>= (df['mean_rms']-3*df['std_rms'])) & (df['rms'] <= (df['mean_rms']+3*df['std_rms']))
-                # print(df.shape)
-                # print(df)
-                # print(df.columns)
+
+                # Perform QC checks
+                df['QC_result_pedestal'] = (
+                    (df['pedestal'] >= (df['mean_pedestal']-3*df['std_pedestal'])) & 
+                    (df['pedestal'] <= (df['mean_pedestal']+3*df['std_pedestal']))
+                )
+                df['QC_result_rms'] = (
+                    (df['rms'] >= (df['mean_rms']-3*df['std_rms'])) & 
+                    (df['rms'] <= (df['mean_rms']+3*df['std_rms']))
+                )
+
+                # Determine overall result
+                qc_res_ped = 'FAILED' if False in df['QC_result_pedestal'] else 'PASSED'
+                qc_res_rms = 'FAILED' if False in df['QC_result_rms'] else 'PASSED'
+                qc_result = 'FAILED' if 'FAILED' in [qc_res_ped, qc_res_rms] else 'PASSED'
+
+                # Clean up statistical columns
                 for key in stat_dict.keys():
                     df.drop(key, axis=1, inplace=True)
-                # print(df.columns)
-                if icfg==0:
-                    result_df = df.copy()
-                else:
-                    result_df = pd.concat([result_df, df], axis=0).reset_index().drop('index', axis=1)
-            # save dataframe to csv
-            result_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
-            # convert dataframe to an array of arrays
-            result_table = []
-            for config in self.params:
-                qc_res_ped = 'PASSED'
-                qc_res_rms = 'PASSED'
-                tmp_df = result_df[result_df['cfg']==config].copy().reset_index().drop('index', axis=1)
-                if False in tmp_df['QC_result_pedestal']:
-                    qc_res_ped = 'FAILED'
-                if False in tmp_df['QC_result_rms']:
-                    qc_res_rms = 'FAILED'
-                qc_result = 'PASSED'
-                if 'FAILED' in [qc_res_ped, qc_res_rms]:
-                    qc_result = 'FAILED'
-                row_table = ['Test_0{}_RMS'.format(self.tms), config, qc_result]
-                for chn in range(len(tmp_df['CH'])):
-                    ped = tmp_df.iloc[chn]['pedestal']
-                    rms = tmp_df.iloc[chn]['rms']
-                    row_table.append("CH{}=(pedestal={};rms={})".format( chn, ped, rms ))
-                result_table.append(row_table)
-            return result_table
-        else:
-            return
+
+            # Build result row
+            row_table = []
+            if qc_result is not None:
+                row_table = [f'Test_0{self.tms}_RMS', config, qc_result]
+            else:
+                row_table = [f'Test_0{self.tms}_RMS', config]
+            for chn in range(len(df['CH'])):
+                ped = df.iloc[chn]['pedestal']
+                rms = df.iloc[chn]['rms']
+                row_table.append(f"CH{chn}=(pedestal={ped};rms={rms})")
+            result_table.append(row_table)
+
+            # Concatenate to main dataframe
+            data_df = df if data_df.empty else pd.concat([data_df, df], axis=0).reset_index().drop('index', axis=1)
+
+        # Save results
+        if not data_df.empty:
+            data_df.to_csv(f'{self.output_dir}/{self.item}.csv', index=False)
+
+        return result_table
+    # def run_Ana(self, path_to_statAna='', generatePlots=False):
+    #     if self._FileExist():
+    #         stat_csv = pd.read_csv(path_to_statAna)
+                        
+    #         result_df = pd.DataFrame({'cfg': []})
+    #         for icfg, config in enumerate(self.params):
+    #             data ,cfg = self.getItem(config=config)
+    #             # stat_config_df = new_stat_csv[new_stat_csv['cfg']==cfg].copy().reset_index().drop('index', axis=1).copy()
+    #             stat_config_row = stat_csv[stat_csv['cfg']==config].copy().reset_index().drop('index', axis=1)
+    #             stat_dict = {
+    #                 'mean_pedestal': [stat_config_row['mean_pedestal'][0] for _ in range(16)],
+    #                 'mean_rms': [stat_config_row['mean_rms'][0] for _ in range(16)],
+    #                 'std_pedestal': [stat_config_row['std_pedestal'][0] for _ in range(16)],
+    #                 'std_rms': [stat_config_row['std_rms'][0] for _ in range(16)]
+    #             }
+
+    #             # print(stat_config_row.columns)
+    #             # sys.exit()
+    #             # print(data, config)
+    #             if generatePlots:
+    #                 self.plot_rms_data(dict_data=data, config=cfg)
+    #             # print(self.chipID)
+    #             df = pd.DataFrame({'cfg': [cfg for _ in range(len(data['pedestal']))], 'CH': [chn for chn in range(16)], 'pedestal': data['pedestal'], 'rms': data['rms']})
+    #             for key, val in stat_dict.items():
+    #                 df[key] = val
+    #             df['QC_result_pedestal']= (df['pedestal']>= (df['mean_pedestal']-3*df['std_pedestal'])) & (df['pedestal'] <= (df['mean_pedestal']+3*df['std_pedestal']))
+    #             df['QC_result_rms']= (df['rms']>= (df['mean_rms']-3*df['std_rms'])) & (df['rms'] <= (df['mean_rms']+3*df['std_rms']))
+    #             # print(df.shape)
+    #             # print(df)
+    #             # print(df.columns)
+    #             for key in stat_dict.keys():
+    #                 df.drop(key, axis=1, inplace=True)
+    #             # print(df.columns)
+    #             if icfg==0:
+    #                 result_df = df.copy()
+    #             else:
+    #                 result_df = pd.concat([result_df, df], axis=0).reset_index().drop('index', axis=1)
+    #         # save dataframe to csv
+    #         result_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
+    #         # convert dataframe to an array of arrays
+    #         result_table = []
+    #         for config in self.params:
+    #             qc_res_ped = 'PASSED'
+    #             qc_res_rms = 'PASSED'
+    #             tmp_df = result_df[result_df['cfg']==config].copy().reset_index().drop('index', axis=1)
+    #             if False in tmp_df['QC_result_pedestal']:
+    #                 qc_res_ped = 'FAILED'
+    #             if False in tmp_df['QC_result_rms']:
+    #                 qc_res_rms = 'FAILED'
+    #             qc_result = 'PASSED'
+    #             if 'FAILED' in [qc_res_ped, qc_res_rms]:
+    #                 qc_result = 'FAILED'
+    #             row_table = ['Test_0{}_RMS'.format(self.tms), config, qc_result]
+    #             for chn in range(len(tmp_df['CH'])):
+    #                 ped = tmp_df.iloc[chn]['pedestal']
+    #                 rms = tmp_df.iloc[chn]['rms']
+    #                 row_table.append("CH{}=(pedestal={};rms={})".format( chn, ped, rms ))
+    #             result_table.append(row_table)
+    #         return result_table
+    #     else:
+    #         return
 
 class RMS_StatAna():
     def __init__(self, root_path: str, output_path: str):

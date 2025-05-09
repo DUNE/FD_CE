@@ -58,6 +58,7 @@ elif chiptype == 3:
     duttype = "CD"
     rootdir = rootdir_cs(duttype)
 
+env = input ("RT/LN : ")
 while True:
     print ("\033[96m Root folder of test data is: "+ "\033[93m" + rootdir + "\033[0m")
     yns = input ("\033[96m Is path correct (Y/N): " + "\033[95m" )
@@ -71,9 +72,9 @@ while True:
 pc_wrcfg_fn = "./asic_info.csv"
 ############################################################
 
-def DAT_QC(rootdir, dut_skt, duttype="FE") :
+def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT" ) :
     while True:
-        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype)
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env)
         if QCresult != None:
             QCstatus = QCresult[0]
             badchips = QCresult[1]
@@ -182,7 +183,7 @@ dut0 = int(now.strftime("%Y%m%d%H%M%S"))&0xFFFFFFFFFFFFFFFF
 ################STEP1#################################
 skts=[0,1,2,3,4,5,6,7]
 dut_skt = {str(dut0):(0,1), str(dut0+1):(0,2), str(dut0+2):(0,3), str(dut0+3):(0,4), str(dut0+4):(0,5), str(dut0+5):(0,6), str(dut0+6):(0,7), str(dut0+7):(0,8) }
-QCstatus, badchips = DAT_QC(rootdir, dut_skt, duttype) 
+QCstatus, badchips = DAT_QC(rootdir, dut_skt, duttype, env) 
 
 if "PASS" in QCstatus :
     print (QCstatus)

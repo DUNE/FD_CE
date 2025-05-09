@@ -5,7 +5,7 @@
 ############################################################################################
 
 # from datetime import datetime
-import os, sys
+import os, sys, csv
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -260,45 +260,123 @@ class QC_CHKRES_Ana(BaseClass_Ana):
         # sys.exit()
         return pd.DataFrame(data_dict), mapping_params
 
-    def run_Ana(self, path_to_stat=''):
+    def run_Ana(self, path_to_stat=None):
+        """
+        Analyze test data and optionally compare with statistical thresholds.
+        
+        Args:
+            path_to_stat (str, optional): Path to CSV file with statistical thresholds.
+                                        If None, only raw data analysis is performed.
+        
+        Returns:
+            list: List of result rows containing test data and analysis results
+        """
         if self.ERROR:
             return None
-        stat_ana_df = pd.read_csv(path_to_stat)
-        #
+
         data_df, mapping_params = self.extractData()
-        # print(mapping_params)
         dumpJson(output_path=self.output_dir, output_name=self.chipID+'_mapping', data_to_dump=mapping_params)
-        #
+
+        # Load statistical data if provided
+        stat_df = None
+        if path_to_stat:
+            stat_df = pd.read_csv(path_to_stat)
+
         testItems = data_df['testItem'].unique()
         full_result_rows = []
+
         for testItem in testItems:
-            item_result_rows = []
-            itemData = data_df[data_df['testItem']==testItem].copy()
-            stat_ana_item = stat_ana_df[stat_ana_df['testItem']==testItem].copy()
-            configurations = itemData['cfg'].unique()
-            for cfg in configurations:
-                cfg_result_rows = []
-                cfg_data = itemData[itemData['cfg']==cfg].copy()
-                stat_ana_cfg = stat_ana_item[stat_ana_item['cfg']==cfg].copy()
-                features = cfg_data['feature'].unique()
-                for feature in features:
+            item_data = data_df[data_df['testItem']==testItem].copy()
+            stat_item = stat_df[stat_df['testItem']==testItem].copy() if stat_df is not None else None
+            
+            for cfg in item_data['cfg'].unique():
+                cfg_data = item_data[item_data['cfg']==cfg].copy()
+                stat_cfg = stat_item[stat_item['cfg']==cfg].copy() if stat_df is not None else None
+                
+                for feature in cfg_data['feature'].unique():
                     feature_data = cfg_data[cfg_data['feature']==feature].copy()
-                    stat_ana_feature = stat_ana_cfg[stat_ana_cfg['feature']==feature].copy()
-                    feature_data['mean'] = [stat_ana_feature.iloc[0]['mean'] for _ in range(16)]
-                    feature_data['std'] = [stat_ana_feature.iloc[0]['std'] for _ in range(16)]
-                    feature_data['QC_result_{}'.format(testItem)]= (feature_data['data']>= (feature_data['mean']-3*feature_data['std'])) & (feature_data['data'] <= (feature_data['mean']+3*feature_data['std']))
-                    result = 'PASSED'
-                    if False in feature_data['QC_result_{}'.format(testItem)]:
-                        result = 'FAILED'
-                    feature_data.drop(['mean', 'std', 'QC_result_{}'.format(testItem)], axis=1, inplace=True)
-                    feature_result_row = ['Test_{}_{}'.format(self.tms, self.item), cfg+'_'+feature, result]
+                    
+                    # Apply statistical analysis if data available
+                    result = None
+                    if stat_df is not None:
+                        stat_feature = stat_cfg[stat_cfg['feature']==feature].copy()
+                        feature_data['mean'] = [stat_feature.iloc[0]['mean'] for _ in range(16)]
+                        feature_data['std'] = [stat_feature.iloc[0]['std'] for _ in range(16)]
+                        feature_data[f'QC_result_{testItem}'] = (
+                            (feature_data['data'] >= (feature_data['mean']-3*feature_data['std'])) & 
+                            (feature_data['data'] <= (feature_data['mean']+3*feature_data['std']))
+                        )
+                        result = 'FAILED' if False in feature_data[f'QC_result_{testItem}'] else 'PASSED'
+                        feature_data.drop(['mean', 'std', f'QC_result_{testItem}'], axis=1, inplace=True)
+
+                    if result is not None:
+                        # Create result row
+                        feature_result_row = [
+                            f'Test_{self.tms}_{self.item}',
+                            f'{cfg}_{feature}',
+                            result
+                        ]
+                    else:
+                        # Create result row
+                        feature_result_row = [
+                            f'Test_{self.tms}_{self.item}',
+                            f'{cfg}_{feature}'
+                        ]
+
+                    # Add channel data
                     for ch in feature_data['CH']:
-                        chdata = 'CH{}={}'.format(ch, feature_data.iloc[ch]['data'])
+                        chdata = f'CH{ch}={feature_data.iloc[ch]["data"]}'
                         feature_result_row.append(chdata)
-                    cfg_result_rows.append(feature_result_row)
-                item_result_rows += cfg_result_rows
-            full_result_rows += item_result_rows
+
+                    # Optional debug output
+                    if stat_df is not None and stat_feature is not None:
+                        print(result, feature_data)
+                        print(stat_feature)
+
+                    full_result_rows.append(feature_result_row)
+        if len(full_result_rows)!=0:
+            with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+                csv.writer(csvfile, delimiter=',').writerows(full_result_rows)
         return full_result_rows
+    # def run_Ana(self, path_to_stat=''):
+    #     if self.ERROR:
+    #         return None
+    #     stat_ana_df = pd.read_csv(path_to_stat)
+    #     #
+    #     data_df, mapping_params = self.extractData()
+    #     # print(mapping_params)
+    #     dumpJson(output_path=self.output_dir, output_name=self.chipID+'_mapping', data_to_dump=mapping_params)
+    #     #
+    #     testItems = data_df['testItem'].unique()
+    #     full_result_rows = []
+    #     for testItem in testItems:
+    #         item_result_rows = []
+    #         itemData = data_df[data_df['testItem']==testItem].copy()
+    #         stat_ana_item = stat_ana_df[stat_ana_df['testItem']==testItem].copy()
+    #         configurations = itemData['cfg'].unique()
+    #         for cfg in configurations:
+    #             cfg_result_rows = []
+    #             cfg_data = itemData[itemData['cfg']==cfg].copy()
+    #             stat_ana_cfg = stat_ana_item[stat_ana_item['cfg']==cfg].copy()
+    #             features = cfg_data['feature'].unique()
+    #             for feature in features:
+    #                 feature_data = cfg_data[cfg_data['feature']==feature].copy()
+    #                 stat_ana_feature = stat_ana_cfg[stat_ana_cfg['feature']==feature].copy()
+    #                 feature_data['mean'] = [stat_ana_feature.iloc[0]['mean'] for _ in range(16)]
+    #                 feature_data['std'] = [stat_ana_feature.iloc[0]['std'] for _ in range(16)]
+    #                 feature_data['QC_result_{}'.format(testItem)]= (feature_data['data']>= (feature_data['mean']-3*feature_data['std'])) & (feature_data['data'] <= (feature_data['mean']+3*feature_data['std']))
+    #                 result = 'PASSED'
+    #                 if False in feature_data['QC_result_{}'.format(testItem)]:
+    #                     result = 'FAILED'
+    #                 feature_data.drop(['mean', 'std', 'QC_result_{}'.format(testItem)], axis=1, inplace=True)
+    #                 feature_result_row = ['Test_{}_{}'.format(self.tms, self.item), cfg+'_'+feature, result]
+    #                 for ch in feature_data['CH']:
+    #                     chdata = 'CH{}={}'.format(ch, feature_data.iloc[ch]['data'])
+    #                     feature_result_row.append(chdata)
+    #                 cfg_result_rows.append(feature_result_row)
+    #             item_result_rows += cfg_result_rows
+    #         full_result_rows += item_result_rows
+    #     return full_result_rows
 
 #---------------------------
 # Class for statistical analysis
@@ -342,7 +420,7 @@ class QC_CHKRES_StatAna():
             if chkres.ERROR==True:
                 continue
             chkres_data, mapping_parms = chkres.extractData()
-            print(chkres_data)
+            # print(chkres_data)
             if FirstData:
                 data_df = chkres_data.copy()
                 FirstData = False

@@ -3,7 +3,7 @@
 #   email: radofanantenan.razakamiandra@stonybrook.edu
 #   Analyze the data in QC_INIT_CHK.bin
 ############################################################################################
-import os, sys
+import os, sys, csv
 import numpy as np
 import pickle, json
 import pandas as pd
@@ -163,6 +163,13 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
             return
         tmp_params = [p for p in self.params if ('ASICDAC' in p) or ('DIRECT_PLS' in p)]
         self.params = tmp_params
+        # create output directory
+        self.output_dir = '/'.join([self.output_dir, self.item])
+        print(self.output_dir)
+        try:
+            os.mkdir(self.output_dir)
+        except OSError:
+            pass
 
     def getItems(self):
         output_df = {'testItem': [], 'cfg': [], 'feature': [], 'CH': [], 'data': []}
@@ -182,7 +189,157 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
                     output_df['data'].append(d)
         return pd.DataFrame(output_df)
     
-    def run_Ana(self, path_to_stat=''):
+    def generate_plots(self, data_df=None):
+        if data_df is None:
+            return None
+        testItems = data_df['testItem'].unique()
+        for testItem in testItems:
+            item_df = data_df[data_df['testItem']==testItem].copy()
+            cfgs = item_df['cfg'].unique()
+            for cfg in cfgs:
+                cfg_df = item_df[item_df['cfg']==cfg].copy()
+                features = cfg_df['feature'].unique()
+                for feature in features:
+                    feature_df = cfg_df[cfg_df['feature']==feature].copy()
+                    mean = np.round(np.mean(feature_df['data']),2)
+                    std = np.round(np.std(feature_df['data']),2)
+                    
+                    plt.figure(figsize=(6,5))
+                    plt.plot(feature_df['CH'], feature_df['data'], marker='.', markersize=10, label=f'mean = {mean}, std = {std}')
+                    plt.xlabel('CHN')
+                    plt.ylabel('ADC bit')
+                    title = f'item: {'_'.join([self.item, testItem])}, config: {cfg},\n feature: {feature}'
+                    plt.title(title)
+                    plt.legend(loc='upper right')
+                    plt.grid(True)
+                    fig_name = '_'.join([self.item, testItem, cfg, feature + '.png'])
+                    plt.savefig('/'.join([self.output_dir, fig_name]))
+                    plt.close()
+                    # sys.exit()
+
+    def run_Ana(self, path_to_stat=None):
+        """
+        Analyze test data and optionally compare with statistical thresholds
+        
+        Args:
+            path_to_stat (str, optional): Path to CSV file with statistical thresholds.
+                                        If None, only raw data analysis is performed.
+        
+        Returns:
+            list: List of result rows containing test data and analysis results
+        """
+        data_df = self.getItems()
+        testItems = data_df['testItem'].unique()
+        full_result_rows = []
+        
+        # ## TEST
+        # self.generate_plots(data_df=data_df)
+        # sys.exit()
+        ##
+
+        # Load statistical data if provided
+        stat_df = None
+        if path_to_stat:
+            stat_df = pd.read_csv(path_to_stat)
+
+        for testItem in testItems:
+            item_data = data_df[data_df['testItem']==testItem].copy()
+            stat_item = stat_df[stat_df['testItem']==testItem].copy() if stat_df is not None else None
+            
+            for cfg in item_data['cfg'].unique():
+                cfg_data = item_data[item_data['cfg']==cfg].copy()
+                stat_cfg = stat_item[stat_item['cfg']==cfg].copy() if stat_df is not None else None
+                
+                for feature in cfg_data['feature'].unique():
+                    feature_data = cfg_data[cfg_data['feature']==feature].copy()
+                    
+                    result = None
+                    # Apply statistical analysis if data available
+                    if stat_df is not None:
+                        stat_feature = stat_cfg[stat_cfg['feature']==feature].copy()
+                        feature_data = self._apply_statistical_analysis(feature_data, stat_feature, testItem)
+                        result = 'FAILED' if False in feature_data[f'QC_result_{testItem}'] else 'PASSED'
+                        feature_data.drop(['mean', 'std', f'QC_result_{testItem}'], axis=1, inplace=True)
+                    # else:
+                    #     result = 'NO_STAT'  # Indicate no statistical analysis was performed
+                    
+                    feature_result_row = []
+                    if result is None:
+                        # Create result row
+                        feature_result_row = [
+                            f'Test_{self.tms}_{self.item}',
+                            f'{cfg}_{feature}'
+                        ]
+                    else:
+                        # Create result row
+                        feature_result_row = [
+                            f'Test_{self.tms}_{self.item}',
+                            f'{cfg}_{feature}',
+                            result
+                        ]
+
+                    # Add channel data
+                    for ch in feature_data['CH']:
+                        chdata = f'CH{ch}={feature_data.iloc[ch]["data"]}'
+                        feature_result_row.append(chdata)
+
+                    full_result_rows.append(feature_result_row)
+                    # print(testItem, cfg, feature)
+                    # print(feature_data)
+                    # sys.exit()
+                    if stat_df is not None:
+                        print(result, feature_data)
+                        print(stat_feature)
+        # save full results
+        if len(full_result_rows)!=0:
+            with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+                csv.writer(csvfile, delimiter=',').writerows(full_result_rows)
+
+        return full_result_rows
+
+    def _apply_statistical_analysis(self, feature_data, stat_feature, testItem):
+        """
+        Apply statistical analysis to feature data
+        
+        Args:
+            feature_data (pd.DataFrame): Data for specific feature
+            stat_feature (pd.DataFrame): Statistical thresholds for feature
+            testItem (str): Name of test item
+            
+        Returns:
+            pd.DataFrame: Feature data with statistical analysis results
+        """
+        feature_data['mean'] = [stat_feature.iloc[0]['mean'] for _ in range(16)]
+        feature_data['std'] = [stat_feature.iloc[0]['std'] for _ in range(16)]
+        feature_data[f'QC_result_{testItem}'] = (
+            (feature_data['data'] >= (feature_data['mean']-3*feature_data['std'])) & 
+            (feature_data['data'] <= (feature_data['mean']+3*feature_data['std']))
+        )
+        return feature_data
+
+    
+    def run_Ana_RequireStat(self, path_to_stat=''):
+        """
+            Analyze test data using statistical thresholds from a required CSV file.
+            Similar to run_Ana_ but requires statistical data and doesn't handle the case
+            where statistical data is missing.
+            
+            Args:
+                path_to_stat (str): Path to CSV file containing statistical thresholds.
+                                The file must contain columns for testItem, cfg, feature,
+                                mean, and std values.
+            
+            Returns:
+                list: List of result rows where each row contains:
+                    - Test identifier (Test_{tms}_{item})
+                    - Configuration and feature combination (cfg_feature)
+                    - Result status ('PASSED' or 'FAILED')
+                    - Channel data (CH{n}={value} for each channel)
+                    
+            Raises:
+                FileNotFoundError: If path_to_stat file doesn't exist
+                pd.errors.EmptyDataError: If CSV file is empty
+        """
         stat_df = pd.read_csv(path_to_stat)
         data_df = self.getItems()
         testItems = data_df['testItem'].unique()
@@ -217,6 +374,7 @@ class QC_INIT_CHK_Ana(BaseClass_Ana):
                     print(stat_feature)
                 item_result_rows += cfg_result_rows
             full_result_rows += item_result_rows
+        
         return full_result_rows
 
 class QC_INIT_CHK_StatAna():
@@ -283,7 +441,7 @@ class QC_INIT_CHK_StatAna():
                 features = cfg_data['feature'].unique()
                 for feature in features:
                     feature_data = cfg_data[cfg_data['feature']==feature].copy()
-                    print(feature_data['data'].dtypes)
+                    # print(feature_data['data'].dtypes)
                     mean, std = self.get_mean_std(tmpdata=np.array(feature_data['data'].dropna(), dtype=float)) # There are NaN values in the data. We need to verify what does these data correspond to ? Are they real ?
                     stat_ana_df['testItem'].append(testItem)
                     stat_ana_df['cfg'].append(cfg)
@@ -323,10 +481,11 @@ if __name__ == '__main__':
     # output_path = '../../Analysis'
     root_path = '../../out_B010T0004_'
     output_path = '../../analyzed_B010T0004_'
-    # list_chipID = os.listdir(root_path)
-    # for chipID in list_chipID:
-    #     init_chk_ana = QC_INIT_CHK_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
-    #     init_chk_ana.run_Ana(path_to_stat='/'.join([output_path, 'StatAna_INIT_CHK.csv']))
-    #     sys.exit()
-    stat_ana = QC_INIT_CHK_StatAna(root_path=root_path, output_path=output_path)
-    stat_ana.run_Ana()
+    list_chipID = os.listdir(root_path)
+    for chipID in list_chipID:
+        init_chk_ana = QC_INIT_CHK_Ana(root_path=root_path, chipID=chipID, output_path=output_path)
+        init_chk_ana.run_Ana(path_to_stat='/'.join([output_path, 'StatAna_INIT_CHK.csv']))
+        print(chipID)
+        sys.exit()
+    # stat_ana = QC_INIT_CHK_StatAna(root_path=root_path, output_path=output_path)
+    # stat_ana.run_Ana()

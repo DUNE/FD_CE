@@ -13,10 +13,10 @@ from utils import BaseClass_Ana
 from scipy.stats import norm
 
 class QC_Cap_Meas(BaseClass):
-    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf=False, env='RT'):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, generateWf_plot=False, env='RT'):
         printItem("Capacitance measurement")
-        self.generateWf = generateWf
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf, env=env)
+        self.generateWf_plot = generateWf_plot
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=8, QC_filename="QC_Cap_Meas.bin", generateWaveForm=self.generateWf_plot, env=env)
         self.suffixName = "Cap_Meas"
         # print(self.params)
         self.period = 1000
@@ -161,7 +161,7 @@ class QC_Cap_Meas(BaseClass):
                         tmp = arranged_data[FE_ID][c][fechn][bl]
                         wf = tmp['waveform']
                         chipdata[c][fechn][bl] = {'ppeak': tmp['ppeak'], 'npeak': tmp['npeak'], 'pedestal': tmp['pedestal'], 'rms': tmp['rms']}
-                        if self.generateWf:
+                        if self.generateWf_plot:
                             self.saveWaveform(wf_data=wf, FE_ID=FE_ID, chn=fechn, V=bl, cali_input=c)
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name=self.suffixName, data_to_dump=chipdata, indent=4)
         # sys.exit()
@@ -253,7 +253,65 @@ class QC_Cap_Meas_Ana(BaseClass_Ana):
         plt.savefig('/'.join([self.output_dir, self.item + '_' + self.chipID + '.png']))
         plt.close()
 
-    def run_Ana(self, path_to_stat='', generatePlots=False):
+    def run_Ana(self, path_to_stat=None, generatePlots=False):
+        if generatePlots:
+            self.plotRatioCap()
+
+        stat_ana_df = None
+        if path_to_stat is not None:
+            stat_ana_df = pd.read_csv(path_to_stat)
+            # print(stat_ana_df['gain'])
+            # print(stat_ana_df.columns)
+
+        Cap_df = self.getRatioCapacitance(returnDF=True)
+        combined_df = pd.DataFrame({
+            'item': [stat_ana_df.iloc[0]['item'] if stat_ana_df is not None else None for _ in range(16)],
+            'BL': [stat_ana_df.iloc[0]['BL'] if stat_ana_df is not None else Cap_df.iloc[0]['BL'] for _ in range(16)],
+            'peakTime': [stat_ana_df.iloc[0]['peakTime'] if stat_ana_df is not None else Cap_df.iloc[0]['peakTime'] for _ in range(16)],
+            'gain': [stat_ana_df.iloc[0]['gain'] if stat_ana_df is not None else Cap_df.iloc[0]['gain'] for _ in range(16)],
+            'meanCap (pF)': [stat_ana_df.iloc[0]['meanCap (pF)'] if stat_ana_df is not None else None for _ in range(16)],
+            'stdCap (pF)': [stat_ana_df.iloc[0]['stdCap (pF)'] if stat_ana_df is not None else None for _ in range(16)],
+            'Cap (pF)': Cap_df['Cap'],
+            'CH': Cap_df['CH']
+        })
+        # print(Cap_df)
+        # print(combined_df)
+        # print(combined_df.columns)
+
+        if stat_ana_df is not None:
+            combined_df['QC_result'] = (
+                (combined_df['Cap (pF)'] >= (combined_df['meanCap (pF)'] - 3 * combined_df['stdCap (pF)'])) &
+                (combined_df['Cap (pF)'] <= (combined_df['meanCap (pF)'] + 3 * combined_df['stdCap (pF)']))
+            )
+        else:
+            combined_df['QC_result'] = None
+
+        # print(combined_df)
+        combined_df.drop(['meanCap (pF)', 'stdCap (pF)'], axis=1, inplace=True, errors='ignore')
+        # print(combined_df)
+        combined_df.to_csv('/'.join([self.output_dir, self.item + '.csv']), index=False)
+
+        # combined_df, which is the result of the QC, row
+        qc_result = None
+        # if (stat_ana_df is not None) and (False in combined_df['QC_result']):
+        #     qc_result = 'FAILED'
+        # else:
+        #     qc_result = 'PASSED'
+        if stat_ana_df is not None:
+            qc_result = 'FAILED' if False in combined_df[f'QC_result'] else 'PASSED'
+
+        # print(combined_df.iloc[0][['BL', 'peakTime', 'gain']])
+        cfg = '_'.join(combined_df.iloc[0][['BL', 'peakTime', 'gain']].dropna())
+        if qc_result is not None:
+            row_data = ['Test_{}_Capacitance'.format(self.tms), cfg, qc_result]
+        else:
+            row_data = ['Test_{}_Capacitance'.format(self.tms), cfg]
+        for chn in combined_df['CH']:
+            row_data.append('CH{}=(Cap (pF)={})'.format(chn, combined_df.iloc[chn]['Cap (pF)']))
+
+        return row_data
+    
+    def run_Ana_withStat(self, path_to_stat='', generatePlots=False):
         if generatePlots:
             self.plotRatioCap
         stat_ana_df = pd.read_csv(path_to_stat)
@@ -330,11 +388,11 @@ def Cap_stat_ana(root_path: str, list_chipID: list, output_path: str, savefig=Fa
     # save Config, Mean, and std in csv file
     config['meanCap'] = np.round(mean, 4)
     config['stdCap'] = np.round(std, 4)
-    print(config)
+    # print(config)
     df = pd.DataFrame({'item': ['Capacitance'], 'BL': [config['BL']], 'peakTime': [config['peakTime']], 'gain': [config['gain']],
                  'meanCap (pF)': [config['meanCap']], 'stdCap (pF)': [config['stdCap']]})
     df.to_csv('/'.join([output_path, 'QC_Cap_Meas.csv']), index=False)
-    print(ratio_caps)
+    # print(ratio_caps)
 
 if __name__ == '__main__':
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
@@ -347,7 +405,7 @@ if __name__ == '__main__':
     # for i, data_dir in enumerate(list_data_dir):
     #     # if i==1:
     #         print(data_dir)
-    #         cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf=True)
+    #         cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, generateWf_plot=True)
     #         decodedData = cap.decode()
     #         cap.saveData(decodedData=decodedData)
     #         # sys.exit()

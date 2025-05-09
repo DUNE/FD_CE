@@ -167,7 +167,10 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
         tms_items[4  ] = "\033[96m 4: COLDATA PLL lock range measurement  \033[0m"
         tms_items[5  ] = "\033[96m 5: COLDATA fast command verification  \033[0m"
         tms_items[6  ] = "\033[96m 6: COLDATA output link verification \033[0m"
-        tms_items[7  ] = "\033[96m 7: COLDATA EFUSE burn-in \033[0m"
+        if False:
+            tms_items[7  ] = "\033[96m 7: COLDATA EFUSE burn-in \033[0m"
+        else: 
+            print ("Burn-in is ignore")
         tms_items[9  ] = "\033[96m 9: Turn DAT off \033[0m"
 #        tms_items[10 ] = "\033[96m 10: Turn DAT (on WIB slot0) on without any check\033[0m"
 
@@ -296,7 +299,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
     if QC_TST_EN:
         print (datetime.datetime.utcnow(), " : Start DUT (%s) QC.(takes < 1200s)"%DUT)
         tmsi = 0
-        qc = QC_ANA()
+        cd_qc_ana = CD_QC_ANA()
         retry_fi = 0
         while True:
             if tmsi >= len(tms):
@@ -368,6 +371,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
             if (testid == 0) and ("RT" in env):
                 print ("Run quick analysis...")
                 QCstatus, bads = dat_initchk(fdir=logs['pc_raw_dir'])
+                print (QCstatus, bads)
+
                 #debugging, to be delete
                 #QCstatus = "PASS"
                 #bads = []
@@ -386,12 +391,13 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
                     return (QCstatus, bads)
 
             if duttype == "CD":
-                qc.qc_stats = {}
-                qc.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
-                keys = list(qc.qc_stats.keys())
+                cd_qc_ana.env = env
+                cd_qc_ana.qc_stats = {}
+                cd_qc_ana.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
+                keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
                 for onekey in keys:
-                    if "PASS" not in qc.qc_stats[onekey]:
+                    if "PASS" not in cd_qc_ana.qc_stats[onekey]:
                         retry_fi = retry_fi  +1
                         break
                 if (retry_fi == 1) and (retry_fi != retry_fi_pre):

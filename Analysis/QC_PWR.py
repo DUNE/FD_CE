@@ -181,7 +181,7 @@ class QC_PWR(BaseClass):
                 suffixFilename = '_'.join([self.param_meanings[config['SNC']], self.param_meanings[config['SDD']], self.param_meanings[config['SDF']]])
                 # suffixFilename = '_'.join(tmp_config)
                 chipID = self.logs_dict['FE{}'.format(ichip)]
-                larasic = LArASIC_ana(dataASIC=decodedData[ichip], output_dir=self.FE_outputDIRs[chipID], chipID=chipID, tms=1, param=suffixFilename, generateQCresult=False, generatePlots=True, period=self.period)
+                larasic = LArASIC_ana(dataASIC=decodedData[ichip], output_dir=self.FE_outputDIRs[chipID], chipID=chipID, tms=1, param=suffixFilename, generateQCresult=False, generatePlots=False, period=self.period)
                 data_asic = larasic.runAnalysis(getWaveforms=getWaveforms, getPulseResponse=True)
                 outdata[chipID][suffixFilename] = data_asic
         return outdata
@@ -453,110 +453,229 @@ class QC_PWR_analysis(BaseClass_Ana):
             plt.close()
             # sys.exit()
 
-    def runAnalysis(self, path_to_statAna: str):
+    
+    def runAnalysis(self, path_to_statAna=None):
+        """
+        Analyze test data with optional statistical analysis
+        
+        Args:
+            path_to_statAna (str, optional): Path to CSV file with statistical thresholds.
+                                        If None, only raw data analysis is performed.
+        Returns:
+            tuple: (results_CFGs, logs) containing test results and log information 
+        """
         if self.ERROR:
             return
 
-        # peddata = self.ChResp_ana(item='pedestal')
-        # print(peddata)
-        # sys.exit()
+        # Get raw measurements
         pwr_df, chresp_df = self.PWR_consumption_ana()
-        pwr_stat_ana_df = pd.read_csv(path_to_statAna)
-
-        pwr_item_cond = (pwr_stat_ana_df['testItem']=='I (mA/LArASIC)') | (pwr_stat_ana_df['testItem']=='V (V/LArASIC)') | (pwr_stat_ana_df['testItem']=='P (mW/LArASIC)')
-        chresp_cond = pwr_stat_ana_df['testItem']=='ChResp'
-        
-        chresp_stat_df = pwr_stat_ana_df[chresp_cond].copy().reset_index()
-        # print(chresp_stat_df)
-        chresp_stat_modified = {'testItem': [], 'cfgs': [], 'cfg_item': [], 'chn' : [], 'mean': [], 'std': [], 'min': [], 'max': []}
-        for index in chresp_stat_df.index:
-            row = chresp_stat_df.iloc[index]
-            for ichn in range(16):
-                chresp_stat_modified['testItem'].append(row['testItem'])
-                chresp_stat_modified['cfgs'].append(row['cfgs'])
-                chresp_stat_modified['cfg_item'].append(row['cfg_item'])
-                chresp_stat_modified['chn'].append(ichn)
-                chresp_stat_modified['mean'].append(row['mean'])
-                chresp_stat_modified['std'].append(row['std'])
-                chresp_stat_modified['min'].append(row['min'])
-                chresp_stat_modified['max'].append(row['max'])
-        # sys.exit()
-        # Power consumption
-        # print(pwr_stat_ana_df)
-        # print(pwr_df)
-        pwr_out_df = pd.merge(pwr_stat_ana_df[pwr_item_cond], pwr_df, on=['testItem', 'cfgs', 'cfg_item'], how='outer')
-        pwr_out_df['QC_result']= (pwr_out_df['value']>= (pwr_out_df['mean']-3*pwr_out_df['std'])) & (pwr_out_df['value'] <= (pwr_out_df['mean']+3*pwr_out_df['std']))
-        pwr_qc_result = pwr_out_df[['testItem', 'cfgs', 'cfg_item','value', 'QC_result']]
-        # Channel response
-        chresp_out_df = pd.merge(pd.DataFrame(chresp_stat_modified), chresp_df, on=['testItem', 'cfgs', 'cfg_item', 'chn'], how='outer')
-        # print(pd.DataFrame(chresp_stat_modified))
-        # print(chresp_df)
-        chresp_out_df['QC_result'] = (chresp_out_df['value']>= (chresp_out_df['mean']-3*chresp_out_df['std'])) & (chresp_out_df['value'] <= (chresp_out_df['mean']+3*chresp_out_df['std']))
-        chresp_qc_result = chresp_out_df[['testItem', 'cfgs', 'cfg_item', 'chn', 'value', 'QC_result']]
-        # print(chresp_qc_result)
-        # sys.exit()
-        # print(pwr_qc_result.sort_values(by='cfgs'))
-        unique_cfgs = pwr_qc_result['cfgs'].unique()
         results_CFGs = []
-        for cfg in unique_cfgs:
-            # power
-            tmp_pwr_df = pwr_qc_result[pwr_qc_result['cfgs']==cfg]
-            tmp_pwr_df = tmp_pwr_df.reset_index().copy()
-            # ch resp
-            tmp_chresp_df = chresp_qc_result[chresp_qc_result['cfgs']==cfg].copy().reset_index()
-            # print(tmp_chresp_df)
-            # sys.exit()
-            # power
-            cfg_qc_pwr_result = ''
-            if False in list(tmp_pwr_df['QC_result']):
-                cfg_qc_pwr_result = 'FAILED'
-            else:
-                cfg_qc_pwr_result = 'PASSED'
-            # ch resp
-            cfg_qc_chresp_result = ''
-            if False in list(tmp_chresp_df['QC_result']):
-                cfg_qc_chresp_result = 'FAILED'
-            else:
-                cfg_qc_chresp_result = 'PASSED'
 
-            # power
-            pwr_params = []
-            for i in range(len(tmp_pwr_df)):
-                param = '_'.join([tmp_pwr_df.iloc[i]['cfg_item'], tmp_pwr_df.iloc[i]['testItem'].split(' ')[0] ])
-                pwr_params.append('{} = {}'.format(param, tmp_pwr_df.iloc[i]['value']))
-            # ch resp
-            ch_results = [] # = [(posAmp=, negAmp=, rms=, ped=)]
-            for ichn in range(16):
-                CH = 'CH{}'.format(ichn)
-                posAmp = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='pospeak')]['value']
-                negAmp = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='negpeak')]['value']
-                ped = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='pedestal')]['value']
-                rms = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='rms')]['value']
-                # print(float(posAmp), float(negAmp), float(ped), float(rms), CH)
-                ch_results.append(("{}=(ped={};rms={};posAmp={};negAmp={})".format(CH, ped.iloc[0], rms.iloc[0], posAmp.iloc[0], negAmp.iloc[0])))
-            # print(cfg_qc_chresp_result, ch_results)
-            # sys.exit()
-            # for i in range(len(tmp_chresp_df)):
-            #     # param = '_'.join([tmp_chresp_df.iloc[i]['cfg_item'], 'CH{}'.format(tmp_chresp_df.iloc[i]['chn'])])
-            #     # print(cfg, param, cfg_qc_chresp_result)
-            #     print(tmp_chresp_df.iloc[i])
-            #     sys.exit()
-            # print(cfg, pwr_params, cfg_qc_pwr_result)
-            overall_result = ''
-            if 'FAILED' in [cfg_qc_pwr_result, cfg_qc_chresp_result]:
-                overall_result = 'FAILED'
-            else:
-                overall_result = 'PASSED'
-            results_CFGs.append(['Test_{}_Power_Consumption'.format(self.tms), cfg, overall_result] + pwr_params + ch_results)
-        # print(results_CFGs)
-        # print(unique_cfgs)
-        with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
-            csvwriter = csv.writer(csvfile, delimiter=',')
-            csvwriter.writerows(results_CFGs)
-        # print(pwr_qc_result)
-        # print(self.chipID)
-        # sys.exit()
+        # Process without statistical analysis if not provided
+        if path_to_statAna is None:
+            unique_cfgs = pwr_df['cfgs'].unique()
+            for cfg in unique_cfgs:
+                # Get power data
+                cfg_pwr_data = pwr_df[pwr_df['cfgs']==cfg].copy()
+                
+                # Get channel response data  
+                cfg_chresp_data = chresp_df[chresp_df['cfgs']==cfg].copy()
+
+                # Build power parameters string
+                pwr_params = []
+                for _, row in cfg_pwr_data.iterrows():
+                    param = '_'.join([row['cfg_item'], row['testItem'].split(' ')[0]])
+                    pwr_params.append('{} = {}'.format(param, row['value']))
+
+                # Build channel response strings
+                ch_results = []
+                for ichn in range(16):
+                    ch_data = cfg_chresp_data[cfg_chresp_data['chn']==ichn]
+                    posAmp = float(ch_data[ch_data['cfg_item']=='pospeak']['value'].iloc[0])
+                    negAmp = float(ch_data[ch_data['cfg_item']=='negpeak']['value'].iloc[0])
+                    ped = float(ch_data[ch_data['cfg_item']=='pedestal']['value'].iloc[0])
+                    rms = float(ch_data[ch_data['cfg_item']=='rms']['value'].iloc[0])
+                    ch_results.append(f"CH{ichn}=(ped={ped};rms={rms};posAmp={posAmp};negAmp={negAmp})")
+
+                # Add result row without statistical analysis
+                results_CFGs.append([f'Test_{self.tms}_Power_Consumption', cfg] + pwr_params + ch_results)
+
+        else:
+            # Original statistical analysis code
+            pwr_stat_ana_df = pd.read_csv(path_to_statAna)
+
+            pwr_item_cond = (pwr_stat_ana_df['testItem']=='I (mA/LArASIC)') | (pwr_stat_ana_df['testItem']=='V (V/LArASIC)') | (pwr_stat_ana_df['testItem']=='P (mW/LArASIC)')
+            chresp_cond = pwr_stat_ana_df['testItem']=='ChResp'
+            
+            chresp_stat_df = pwr_stat_ana_df[chresp_cond].copy().reset_index()
+            chresp_stat_modified = {'testItem': [], 'cfgs': [], 'cfg_item': [], 'chn' : [], 'mean': [], 'std': [], 'min': [], 'max': []}
+            for index in chresp_stat_df.index:
+                row = chresp_stat_df.iloc[index]
+                for ichn in range(16):
+                    chresp_stat_modified['testItem'].append(row['testItem'])
+                    chresp_stat_modified['cfgs'].append(row['cfgs'])
+                    chresp_stat_modified['cfg_item'].append(row['cfg_item'])
+                    chresp_stat_modified['chn'].append(ichn)
+                    chresp_stat_modified['mean'].append(row['mean'])
+                    chresp_stat_modified['std'].append(row['std'])
+                    chresp_stat_modified['min'].append(row['min'])
+                    chresp_stat_modified['max'].append(row['max'])
+
+            pwr_out_df = pd.merge(pwr_stat_ana_df[pwr_item_cond], pwr_df, on=['testItem', 'cfgs', 'cfg_item'], how='outer')
+            pwr_out_df['QC_result']= (pwr_out_df['value']>= (pwr_out_df['mean']-3*pwr_out_df['std'])) & (pwr_out_df['value'] <= (pwr_out_df['mean']+3*pwr_out_df['std']))
+            pwr_qc_result = pwr_out_df[['testItem', 'cfgs', 'cfg_item','value', 'QC_result']]
+
+            chresp_out_df = pd.merge(pd.DataFrame(chresp_stat_modified), chresp_df, on=['testItem', 'cfgs', 'cfg_item', 'chn'], how='outer')
+            chresp_out_df['QC_result'] = (chresp_out_df['value']>= (chresp_out_df['mean']-3*chresp_out_df['std'])) & (chresp_out_df['value'] <= (chresp_out_df['mean']+3*chresp_out_df['std']))
+            chresp_qc_result = chresp_out_df[['testItem', 'cfgs', 'cfg_item', 'chn', 'value', 'QC_result']]
+
+            unique_cfgs = pwr_qc_result['cfgs'].unique()
+            
+            for cfg in unique_cfgs:
+                # power
+                tmp_pwr_df = pwr_qc_result[pwr_qc_result['cfgs']==cfg]
+                tmp_pwr_df = tmp_pwr_df.reset_index().copy()
+                
+                # ch resp
+                tmp_chresp_df = chresp_qc_result[chresp_qc_result['cfgs']==cfg].copy().reset_index()
+                
+                # power QC result
+                cfg_qc_pwr_result = 'FAILED' if False in list(tmp_pwr_df['QC_result']) else 'PASSED'
+                
+                # ch resp QC result
+                cfg_qc_chresp_result = 'FAILED' if False in list(tmp_chresp_df['QC_result']) else 'PASSED'
+
+                # power parameters
+                pwr_params = []
+                for i in range(len(tmp_pwr_df)):
+                    param = '_'.join([tmp_pwr_df.iloc[i]['cfg_item'], tmp_pwr_df.iloc[i]['testItem'].split(' ')[0]])
+                    pwr_params.append('{} = {}'.format(param, tmp_pwr_df.iloc[i]['value']))
+
+                # channel results
+                ch_results = []
+                for ichn in range(16):
+                    CH = 'CH{}'.format(ichn)
+                    posAmp = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='pospeak')]['value']
+                    negAmp = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='negpeak')]['value']
+                    ped = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='pedestal')]['value']
+                    rms = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='rms')]['value']
+                    ch_results.append("{}=(ped={};rms={};posAmp={};negAmp={})".format(
+                        CH, ped.iloc[0], rms.iloc[0], posAmp.iloc[0], negAmp.iloc[0]))
+
+                overall_result = 'FAILED' if 'FAILED' in [cfg_qc_pwr_result, cfg_qc_chresp_result] else 'PASSED'
+                results_CFGs.append(['Test_{}_Power_Consumption'.format(self.tms), cfg, overall_result] + pwr_params + ch_results)
+
+        # Save results
+        if results_CFGs:
+            with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+                csv.writer(csvfile, delimiter=',').writerows(results_CFGs)
+
         return results_CFGs, self.data['logs']
+    
+    # def runAnalysis(self, path_to_statAna: str):
+    #     if self.ERROR:
+    #         return
+
+    #     # peddata = self.ChResp_ana(item='pedestal')
+    #     # print(peddata)
+    #     # sys.exit()
+    #     pwr_df, chresp_df = self.PWR_consumption_ana()
+    #     pwr_stat_ana_df = pd.read_csv(path_to_statAna)
+
+    #     pwr_item_cond = (pwr_stat_ana_df['testItem']=='I (mA/LArASIC)') | (pwr_stat_ana_df['testItem']=='V (V/LArASIC)') | (pwr_stat_ana_df['testItem']=='P (mW/LArASIC)')
+    #     chresp_cond = pwr_stat_ana_df['testItem']=='ChResp'
+        
+    #     chresp_stat_df = pwr_stat_ana_df[chresp_cond].copy().reset_index()
+    #     # print(chresp_stat_df)
+    #     chresp_stat_modified = {'testItem': [], 'cfgs': [], 'cfg_item': [], 'chn' : [], 'mean': [], 'std': [], 'min': [], 'max': []}
+    #     for index in chresp_stat_df.index:
+    #         row = chresp_stat_df.iloc[index]
+    #         for ichn in range(16):
+    #             chresp_stat_modified['testItem'].append(row['testItem'])
+    #             chresp_stat_modified['cfgs'].append(row['cfgs'])
+    #             chresp_stat_modified['cfg_item'].append(row['cfg_item'])
+    #             chresp_stat_modified['chn'].append(ichn)
+    #             chresp_stat_modified['mean'].append(row['mean'])
+    #             chresp_stat_modified['std'].append(row['std'])
+    #             chresp_stat_modified['min'].append(row['min'])
+    #             chresp_stat_modified['max'].append(row['max'])
+    #     # sys.exit()
+    #     # Power consumption
+    #     # print(pwr_stat_ana_df)
+    #     # print(pwr_df)
+    #     pwr_out_df = pd.merge(pwr_stat_ana_df[pwr_item_cond], pwr_df, on=['testItem', 'cfgs', 'cfg_item'], how='outer')
+    #     pwr_out_df['QC_result']= (pwr_out_df['value']>= (pwr_out_df['mean']-3*pwr_out_df['std'])) & (pwr_out_df['value'] <= (pwr_out_df['mean']+3*pwr_out_df['std']))
+    #     pwr_qc_result = pwr_out_df[['testItem', 'cfgs', 'cfg_item','value', 'QC_result']]
+    #     # Channel response
+    #     chresp_out_df = pd.merge(pd.DataFrame(chresp_stat_modified), chresp_df, on=['testItem', 'cfgs', 'cfg_item', 'chn'], how='outer')
+    #     # print(pd.DataFrame(chresp_stat_modified))
+    #     # print(chresp_df)
+    #     chresp_out_df['QC_result'] = (chresp_out_df['value']>= (chresp_out_df['mean']-3*chresp_out_df['std'])) & (chresp_out_df['value'] <= (chresp_out_df['mean']+3*chresp_out_df['std']))
+    #     chresp_qc_result = chresp_out_df[['testItem', 'cfgs', 'cfg_item', 'chn', 'value', 'QC_result']]
+    #     # print(chresp_qc_result)
+    #     # sys.exit()
+    #     # print(pwr_qc_result.sort_values(by='cfgs'))
+    #     unique_cfgs = pwr_qc_result['cfgs'].unique()
+    #     results_CFGs = []
+    #     for cfg in unique_cfgs:
+    #         # power
+    #         tmp_pwr_df = pwr_qc_result[pwr_qc_result['cfgs']==cfg]
+    #         tmp_pwr_df = tmp_pwr_df.reset_index().copy()
+    #         # ch resp
+    #         tmp_chresp_df = chresp_qc_result[chresp_qc_result['cfgs']==cfg].copy().reset_index()
+    #         # print(tmp_chresp_df)
+    #         # sys.exit()
+    #         # power
+    #         cfg_qc_pwr_result = ''
+    #         if False in list(tmp_pwr_df['QC_result']):
+    #             cfg_qc_pwr_result = 'FAILED'
+    #         else:
+    #             cfg_qc_pwr_result = 'PASSED'
+    #         # ch resp
+    #         cfg_qc_chresp_result = ''
+    #         if False in list(tmp_chresp_df['QC_result']):
+    #             cfg_qc_chresp_result = 'FAILED'
+    #         else:
+    #             cfg_qc_chresp_result = 'PASSED'
+
+    #         # power
+    #         pwr_params = []
+    #         for i in range(len(tmp_pwr_df)):
+    #             param = '_'.join([tmp_pwr_df.iloc[i]['cfg_item'], tmp_pwr_df.iloc[i]['testItem'].split(' ')[0] ])
+    #             pwr_params.append('{} = {}'.format(param, tmp_pwr_df.iloc[i]['value']))
+    #         # ch resp
+    #         ch_results = [] # = [(posAmp=, negAmp=, rms=, ped=)]
+    #         for ichn in range(16):
+    #             CH = 'CH{}'.format(ichn)
+    #             posAmp = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='pospeak')]['value']
+    #             negAmp = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='negpeak')]['value']
+    #             ped = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='pedestal')]['value']
+    #             rms = tmp_chresp_df[(tmp_chresp_df['chn']==ichn) & (tmp_chresp_df['cfg_item']=='rms')]['value']
+    #             # print(float(posAmp), float(negAmp), float(ped), float(rms), CH)
+    #             ch_results.append(("{}=(ped={};rms={};posAmp={};negAmp={})".format(CH, ped.iloc[0], rms.iloc[0], posAmp.iloc[0], negAmp.iloc[0])))
+    #         # print(cfg_qc_chresp_result, ch_results)
+    #         # sys.exit()
+    #         # for i in range(len(tmp_chresp_df)):
+    #         #     # param = '_'.join([tmp_chresp_df.iloc[i]['cfg_item'], 'CH{}'.format(tmp_chresp_df.iloc[i]['chn'])])
+    #         #     # print(cfg, param, cfg_qc_chresp_result)
+    #         #     print(tmp_chresp_df.iloc[i])
+    #         #     sys.exit()
+    #         # print(cfg, pwr_params, cfg_qc_pwr_result)
+    #         overall_result = ''
+    #         if 'FAILED' in [cfg_qc_pwr_result, cfg_qc_chresp_result]:
+    #             overall_result = 'FAILED'
+    #         else:
+    #             overall_result = 'PASSED'
+    #         results_CFGs.append(['Test_{}_Power_Consumption'.format(self.tms), cfg, overall_result] + pwr_params + ch_results)
+    #     # print(results_CFGs)
+    #     # print(unique_cfgs)
+    #     with open('/'.join([self.output_dir, '{}_{}.csv'.format(self.item, self.chipID)]), 'w') as csvfile:
+    #         csvwriter = csv.writer(csvfile, delimiter=',')
+    #         csvwriter.writerows(results_CFGs)
+    #     # print(pwr_qc_result)
+    #     # print(self.chipID)
+    #     # sys.exit()
+    #     return results_CFGs, self.data['logs']
 
 
 

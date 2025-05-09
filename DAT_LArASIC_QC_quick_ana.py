@@ -1048,7 +1048,7 @@ def dat_larasic_qc_quick_ana(fdir="/."):
     
 
 if __name__=="__main__":
-    fdir = '''Z:\RTS_DAT_LArASIC_QC\B009T0005_noise\Time_20250210160850_DUT_0081_1082_2083_3084_4085_5086_6087_7088\LN_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008_11_unchanged/'''
+    fdir = '''C:\SGAO\ColdTest\Tested\DAT_LArASIC_QC\Tested\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
     dat_larasic_qc_quick_ana(fdir=fdir)
     #QCstatus, bads = dat_larasic_initchk(fdir)
     #print (bads)

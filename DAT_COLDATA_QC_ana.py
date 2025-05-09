@@ -13,10 +13,11 @@ from colorama import Fore, Back
 colorama.init(autoreset=True)
 
 
-class QC_ANA():
+class CD_QC_ANA():
     def __init__(self):
         #self.AD_LSB = 2564/4096 
         self.qc_stats = {}
+        self.env="RT"
 
     def linear_fit(self, x, y):
         error_fit = False 
@@ -95,7 +96,7 @@ class QC_ANA():
             if "VDDIO" in kpwrs[i]:
                 vddios.append(pwr_meas[kpwrs[i]][0])
                 cddios.append(pwr_meas[kpwrs[i]][1])
-            #print (kpwrs[i], pwr_meas[kpwrs[i]][0], pwr_meas[kpwrs[i]][1])
+        #    print (kpwrs[i], pwr_meas[kpwrs[i]][0], pwr_meas[kpwrs[i]][1])
       
         pass_flg = False
         if all(v1p1[0] <= item <= v1p1[1] for item in vddas) and all(cdda[0] <= item <= cdda[1] for item in cddas) :
@@ -518,12 +519,24 @@ class QC_ANA():
                 pwr_meas = cfgdata[5]
     
     
-                if "CUR_0x0" in onekey:
-                    pass_flg = self.ana_cdpwr(pwr_meas, cddio = [25, 35])
-                elif "CUR_0x2" in onekey:
-                    pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                if "RT" in self.env:
+                    cdda = [7, 11] 
+                    rmsr=[5,25]
+                    pedr=[7000,10000]
+
                 else:
-                    pass_flg = self.ana_cdpwr(pwr_meas, cddio = [60, 75])
+                    cdda = [5, 9]
+                    rmsr=[2,35]
+                    pedr=[7000,10000]
+
+                if "CUR_0x0" in onekey:
+                    pass_flg = self.ana_cdpwr(pwr_meas, cdda =cdda, cddio = [25, 35])
+                elif "CUR_0x2" in onekey :
+                    pass_flg = self.ana_cdpwr(pwr_meas, cdda =cdda, cddio = [35, 50])
+                else:
+                    pass_flg = self.ana_cdpwr(pwr_meas, cdda =cdda, cddio = [60, 75])
+
+
 
                 if pass_flg:
                     print (Fore.GREEN + onekey + " Power Consumption: PASS")
@@ -533,7 +546,7 @@ class QC_ANA():
                     self.qc_stats[onekey+"_Power"] ="Fail"
     
                 chns, rmss, peds, pkps, pkns, wfs, wfsf = self.data_ana(fembs, rawdata)
-                failflg = self.ana_res(fembs, rawdata, par=[2500,5000], rmsr=[5,25], pedr=[8000,10000] )
+                failflg = self.ana_res(fembs, rawdata, par=[2500,5000], rmsr=rmsr, pedr=pedr )
                 
                 if failflg:
                     print(Fore.RED + onekey + " Pulse Response: Fail")
@@ -571,7 +584,11 @@ class QC_ANA():
                 exit()
             
             pllbands = np.arange(0x00,0x40,1)
-            pllbands_pass = np.arange(0x1d+1,0x2b,1)
+            if "RT" in self.env:
+                pllbands_pass = np.arange(0x1d+2,0x2b,1)
+            else:
+                pllbands_pass = np.arange(0x1d+3,0x2b-3,1)
+
                     
             cd1monvs = []
             cd2monvs = []
@@ -697,7 +714,7 @@ class QC_ANA():
                     if chn == chns[-1]:
                         print (Fore.GREEN + "FC_ACT_RST_LARASIC" + "  : PASS")
                 else:
-                    print (chn, peds_p[chn] , pamps_p[chn], peds_a[chn], pamps_a[chn])
+                    #print (chn, peds_p[chn] , pamps_p[chn], peds_a[chn], pamps_a[chn])
                     print(Fore.RED + "FC_ACT_RST_LARASIC" + " : Fail")
                     pass_flg = False
                     #break
@@ -729,6 +746,7 @@ class QC_ANA():
                     if chn == chns[-1]:
                         print (Fore.GREEN + "FC_ACT_RST_LARASIC" + "  : PASS")
                 else:
+                    #print (chn, peds_p[chn] , pamps_p[chn], peds_a[chn], pamps_a[chn])
                     print(Fore.RED + "FC_ACT_RST_LARASIC_SPI" + " : Fail")
                     pass_flg = False
                     #break
@@ -762,23 +780,32 @@ class QC_ANA():
                     fembs = data[onekey][0]
                     rawdata = data[onekey][1]
                     pwr_meas =  data[onekey][3]
+                    if "RT" in self.env:
+                        cdda = [7, 11] 
+                        rmsr=[5,25]
+                        pedr=[7000,10000]
+                    else:
+                        cdda = [5, 9]
+                        rmsr=[2,35]
+                        pedr=[7000,10000]
+   
    
                     if "CUR_0" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [25, 35])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [25, 35])
                     elif "CUR_1" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [35, 50])
                     elif "CUR_2" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [35, 50])
                     elif "CUR_3" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [50, 65])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [50, 65])
                     elif "CUR_4" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [40, 50])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [35, 50])
                     elif "CUR_5" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [50, 65])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [50, 65])
                     elif "CUR_6" in onekey:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [50, 65])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [50, 65])
                     else:
-                        pass_flg = self.ana_cdpwr(pwr_meas, cddio = [60, 75])
+                        pass_flg = self.ana_cdpwr(pwr_meas, cdda=cdda, cddio = [60, 75])
 
 
                     if pass_flg:

@@ -110,9 +110,30 @@ This script converts binary data files (.bin) from LArASIC QC (Quality Control) 
 - **Parameters**: `data`: Input binary data
 - **Returns**: Fully processed dictionary ready for HDF5 conversion
 - **Process**:
+
   - Separates and processes general and specific keys
   - Handles power-on data specially
   - Combines all processed data into a single dictionary
+
+### Adding an attribute to the data structure
+
+An attribute for each variables in the hdf5 file can be included anywhere in the script. Since the file saves a dictionary  (most of the time dictionaries inside dictionaries), the attribute can be added in a dictionary by giving it the key **"attrs"** and a **dictionary (key: val)** as a value. This new dictionary can be anything you want/need.
+
+**Example:**
+
+```python
+new_pwrcons_dict  = {}
+for key, val in pwrcons.items():
+   val_np = np.array(tuple(val), dtype=np.dtype([('V', np.float32), ('I', np.float32), ('P', np.float32)]))
+   new_pwrcons_dict[key] = val_np
+new_pwrcons_dict['attrs'] = {'Info': 'Power consumption for each ASIC for each power rail',
+                                         'unit_V': 'V',
+                                         'unit_I': 'mA',
+                                         'unit_P': 'mW'}
+
+```
+
+
 
 ## Usage Example
 
