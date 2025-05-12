@@ -384,7 +384,7 @@ logs = {}
 
 #chiptype = 1
 #print ("RTS only support FE chip testing at the current development phase)")
-chiptype = 3
+chiptype = 2
 
 if chiptype == 1:
     duttype = "FE"
@@ -444,7 +444,7 @@ logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(0,6,1))
+duts = list(range(16,24,1))
 #duts = list(range(0,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)

@@ -120,42 +120,32 @@ if 10 in tms:
 
 if 0 in tms:
     print ("Init check after chips are installed")
-    datad = {}
-    pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat(env = logs['env'])
-    datad["WIB_PWR"] = pwr_meas
-    datad["WIB_LINK"] = link_mask
-    if not init_ok:
-        datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
-    else:
-        fes_pwr_info = dat.fe_pwr_meas()
-        datad["FE_PWRON"] = fes_pwr_info
-        adcs_pwr_info = dat.adc_pwr_meas()
-        datad["ADC_PWRON"] = adcs_pwr_info
-        cds_pwr_info = dat.dat_cd_pwr_meas()
-        datad["CD_PWRON"] = cds_pwr_info
-        warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
-        #while True:
-        #    fes_pwr_info = dat.fe_pwr_meas()
-        #    datad["FE_PWRON"] = fes_pwr_info
-        #    #for key in datad["FE_PWRON"].keys():
-        #    #    print (key, datad["FE_PWRON"][key])
-        #    adcs_pwr_info = dat.adc_pwr_meas()
-        #    datad["ADC_PWRON"] = adcs_pwr_info
-        #    #for key in datad["ADC_PWRON"].keys():
-        #    #    #if "ADC3-0xB_VDDD2P5" in key:
-        #    #    if "ADC2-0xA" in key:
-        #    #        print (key, datad["ADC_PWRON"][key])
-        #    #    if "ADC3-0xB" in key:
-        #    #        print (key, datad["ADC_PWRON"][key])
-        #    #print (datad["ADC_PWRON"])
-        #    cds_pwr_info = dat.dat_cd_pwr_meas()
-        #    datad["CD_PWRON"] = cds_pwr_info
-        #    #print (datad["CD_PWRON"])
-        #    warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
-        #    #input ("aa")
-        #    time.sleep(3)
-        #    print ("####################################################")
+    for tryi in range(5)
+        datad = {}
+        pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat(env = logs['env'])
+        datad["WIB_PWR"] = pwr_meas
+        datad["WIB_LINK"] = link_mask
+        if not init_ok:
+            datad["FE_Fail"] = [0,1,2,3,4,5,6,7]
+            datad["ADC_Fail"] = [] 
+            datad["CD_Fail"] = []
+            datad["QCstatus"] = "Code#E001: large current or HS link error when DAT is powered on"
+        else:
+            fes_pwr_info = dat.fe_pwr_meas()
+            datad["FE_PWRON"] = fes_pwr_info
+            adcs_pwr_info = dat.adc_pwr_meas()
+            datad["ADC_PWRON"] = adcs_pwr_info
+            cds_pwr_info = dat.dat_cd_pwr_meas()
+            datad["CD_PWRON"] = cds_pwr_info
+            warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+            if not warn_flg:
+                break
+            else:
+                dat.dat_pwroff_chk(env = logs['env']) #make sure DAT is off
+        if tryi >3:
+            break
 
+    if True:
         if warn_flg:
             datad["QCstatus"] = "Code#E002: Large current of some ASIC chips is observed"
             datad["FE_Fail"] = febads

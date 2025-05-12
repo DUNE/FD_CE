@@ -26,7 +26,7 @@ froot = os.getcwd() + "\\tmp_data\\"
 fdir = froot + fsubdir + "\\"
 fdir = '''D:\DAT_SN_data\SN9\Time_20250103212716_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
 fdir = '''D:\DAT_SN_data\SN9\Time_20250106163307_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
-fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\Time_20250508221430_DUT_1000_2000_3000_4000_5000_6000_7000_8000\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\B002T1006\Time_20250509161341_DUT_0016_1017_2018_3019_4020_5021_6022_7023\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 
 evl = input ("Analyze all test items? (Y/N) : " )
 if ("Y" in evl) or ("y" in evl):
@@ -46,7 +46,7 @@ else:
     print ("\033[96m 9: ADC ring oscillator frequency readout \033[0m")
 
     while True:
-        testnostr = input ("Please input a number (0, 1, 2, 3, 4, 5, 6, 7, 8, 9) for one test item: " )
+        testnostr = input ("Please input a number (0, 1, 2, 3, 4, 5, 6, 7, 8, 11, 12) for one test item: " )
         try:
             testno = int(testnostr)
             tms = [testno]
@@ -395,6 +395,8 @@ if 0 in tms:
         data = pickle.load( fn)
         
     dkeys = list(data.keys())
+    print (dkeys)
+    print (data["QCstatus"])
     
     logsd = data["logs"]
     dkeys.remove("logs")
@@ -1162,7 +1164,7 @@ if 8 in tms:
                 plt.tight_layout()
                 plt.show()
             
-if 9 in tms:
+if 11 in tms:
     print ("-------------------------------------------------------------------------")
     print ("9: ADC ring oscillator frequency readout  ")
     print ("command on WIB terminal to retake data for this test item is as bellow :")
@@ -1184,7 +1186,7 @@ if 9 in tms:
             for chip, freq in enumerate(freqs):
                 print("ADC"+str(chip)+": "+str(freq)+" Hz ("+str(freq/1000000)+" MHz)")
                 
-if 10 in tms:
+if 12 in tms:
     print ("-------------------------------------------------------------------------")
     print ("10: ADC triangle test  ")
     print ("command on WIB terminal to retake data for this test item is as bellow :")
