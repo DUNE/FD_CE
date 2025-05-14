@@ -120,7 +120,7 @@ if 10 in tms:
 
 if 0 in tms:
     print ("Init check after chips are installed")
-    for tryi in range(5)
+    for tryi in range(5):
         datad = {}
         pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat(env = logs['env'])
         datad["WIB_PWR"] = pwr_meas

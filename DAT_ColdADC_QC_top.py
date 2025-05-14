@@ -494,7 +494,8 @@ if 12 in tms:
     datad['fembs'] = dat.fembs
     datad['waveform'] = 'RAMP' 
     datad['num_samples'] = 16384
-    datad['source'] = 'WIB'
+    #datad['source'] = 'WIB'
+    datad['source'] = 'P6SE'
     datad['freq'] = 400 #Hz
     datad['voltage_low'] = -0.2 # V
     datad['voltage_high'] = 2.2 #V

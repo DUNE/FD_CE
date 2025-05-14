@@ -27,10 +27,11 @@ fdir = froot + fsubdir + "\\"
 fdir = '''D:\DAT_SN_data\SN9\Time_20250103212716_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_FE_001000001_001000002_001000003_001000004_001000005_001000006_001000007_001000008/'''
 fdir = '''D:\DAT_SN_data\SN9\Time_20250106163307_DUT_1000_2000_3000_4000_5000_6000_7000_8000\RT_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\B002T1006\Time_20250509161341_DUT_0016_1017_2018_3019_4020_5021_6022_7023\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
+fdir = '''C:\SGAO\ColdTest\Tested\DAT_ColdADC_QC\Tested\B001T2008\Time_20250513110404_DUT_0045_1046_2047_3048_4049_5050_6051_7052\LN_ADC_000100001_000100002_000100003_000100004_000100005_000100006_000100007_000100008/'''
 
 evl = input ("Analyze all test items? (Y/N) : " )
 if ("Y" in evl) or ("y" in evl):
-    tms = [0,1,2,3,4,5,6,7,8,9,10]
+    tms = [0,1,2,3,4,5,6,7,8,9,10, 11, 12]
     pass
 else:
     print ("\033[93m  QC task list   \033[0m")
@@ -1140,15 +1141,15 @@ if 8 in tms:
                     num_16bwords = 0x8000 / 2
                     words16b = list(struct.unpack_from("<%dH"%(num_16bwords),raw))
     
-                    #if ch == 84:
-                    #    import matplotlib.pyplot as plt
-                    #    plt.plot(words16b)
-                    #    plt.show()
-                    #    plt.close()
-                    #    ffig = True
-                    #else:
-                    #    ffig = False
-                    ffig = False
+                    if ch == 0:
+                        import matplotlib.pyplot as plt
+                        plt.plot(words16b)
+                        plt.show()
+                        plt.close()
+                        ffig = True
+                    else:
+                        ffig = False
+                    #ffig = False
                     ENOB, NAD, SFDR, SINAD, psd_dbfs, points_dbfs = adc_enob(chndata=words16b, fs=1953125, Ntot=2**12, Vfullscale=1.4, Vinput=1.2, ffig=ffig)
                     chsenob.append(ENOB)
                 import matplotlib.pyplot as plt
@@ -1235,7 +1236,8 @@ if 12 in tms:
                 chdata.append(words16b)
                 # if any(word == 0x0 for word in words16b):
                     # print("Channel",ch,"has a glitch")
-                chplot.append(ax.plot(words16b,label='Ch%d'%(ch))[0])#, extent=extent))
+                #chplot.append(ax.plot(words16b,label='Ch%d'%(ch))[0])#, extent=extent))
+                ax.plot(words16b,label='Ch%d'%(ch))[0]
                 # if ch != 0:
                     # chplot[-1].set_visible(False)
                 
@@ -1251,15 +1253,15 @@ if 12 in tms:
                 leg.set_picker(True)
                 leg.set_pickradius(10)   
                 
-            for ch, plot in enumerate(chplot):
-                if ch != 0:
-                    plot.set_visible(False)
-                    legends[ch].set_visible(False)
+            #for ch, plot in enumerate(chplot):
+            #    if ch != 0:
+            #        plot.set_visible(False)
+            #        legends[ch].set_visible(False)
 
             graphs = {}
             #for i in range(128):
-            for i in [0]:
-                graphs[legends[i]] = chplot[i]
+            #for i in [0]:
+            #    graphs[legends[i]] = chplot[i]
                 
             plt.tight_layout()
             plt.ylim((-1000,17000))
