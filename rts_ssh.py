@@ -8,7 +8,7 @@ import os
 from DAT_read_cfg import dat_read_cfg
 from DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
-from DAT_COLDATA_QC_ana import QC_ANA 
+from DAT_COLDATA_QC_ana import CD_QC_ANA 
 from LogInfo import SaveToLog
 just_fix_windows_console()
 

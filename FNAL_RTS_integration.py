@@ -34,11 +34,11 @@ just_fix_windows_console()
 
 #start robot
 from RTS_CFG import RTS_CFG
-from rts_ssh import DAT_power_off
-from rts_ssh import Sinkcover
-from rts_ssh import rts_ssh
-from set_rootpath import rootdir_cs
-from cryo_uart import cryobox
+#from rts_ssh import DAT_power_off
+#from rts_ssh import Sinkcover
+#from rts_ssh import rts_ssh
+#from set_rootpath import rootdir_cs
+#from cryo_uart import cryobox
 
 ############# Global variables #################
 ### Configure these based on your setup and run
@@ -122,22 +122,10 @@ if __name__ == "__main__":
     if email_progress:
         send_email("Starting RTS!", sender_email=email, receiver_email=receiver_email, password=pw)
 
-    if chiptype == 1:
-        duttype = "FE"
-        rootdir = rootdir_cs(duttype)
-    elif chiptype == 2:
-        duttype = "ADC"
-        rootdir = rootdir_cs(duttype)
-    elif chiptype == 3:
-        duttype = "CD"
-        rootdir = rootdir_cs(duttype)
-
-
     # Connect to the robot
     if not BypassRTS:
         rts = RTS_CFG()
         rts.rts_init(port=201, host_ip=robot_ip) 
-        #rts.MotorOn()
 
     tray = 2
     col = 1
@@ -145,24 +133,11 @@ if __name__ == "__main__":
     dat = 2
     dat_socket = 21
 
-    # chip_image = FindChipImage(image_directory, tray, col, row)
-
-    # image_name = "20250402162345_SN.bmp"
-    # results_file = "20250402162345.txt"
-
-    #    with open(ocr_results_dir + results_file) as f:
-        # Read the contents of the file into a variable
-    #        ocr_result = f.read()
-
-    p_MoveChipFromTrayToSocket = mp.Process(target=rts.MoveChipFromTrayToSocket, args=(dat, dat_socket, tray, col, row))
     if not BypassRTS:
+        p_MoveChipFromTrayToSocket = mp.Process(target=rts.MoveChipFromTrayToSocket, args=(dat, dat_socket, tray, col, row))
         rts.MotorOn()
         p_MoveChipFromTrayToSocket.start()
     print('Commands sent')
-    # Run the OCR program once the RTS is done with taking a picture of the chip
-    #p_RunOCR = mp.Process(target=cpm.RunOCR, args=(image_directory, chip_image, ocr_results_dir))
-    #p_RunOCR.start() # Start OCR 
-    #p_RunOCR.join() # waits till process is done
 
     # Check the RobotLog to see if the chip picture is ready before running OCR
     RobotLog_dir = "/Users/RTS/RTS_data/"
@@ -173,11 +148,11 @@ if __name__ == "__main__":
     while not picture_ready:
 
         robotlog = ReadLastLog(RobotLog_file, RobotLog_dir)
-        print("-------- RobotLog:" + robotlog)
+        #print("-------- RobotLog:" + robotlog)
         if "Picture of chip in tray taken" in robotlog:
             picture_ready = True
-            #image_id = robotlog.split(" ")[-1]
-            image_id = '20250402112328' # for testing while we can't run full OCR
+            image_id = robotlog.split(" ")[-1].rstrip("\n")
+            #image_id = '20250402112328' # for testing while we can't run full OCR
 
         # Break if its been too long
         if timepassed > 180:
@@ -187,12 +162,17 @@ if __name__ == "__main__":
         timepassed += 0.5
  
     if picture_ready:
-        p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
-        p_ShowOCRResult.start()
-        p_ShowOCRResult.join()
+        p_RunOCR = mp.Process(target=cpm.RunOCR, args=(image_directory, image_id, ocr_results_dir))
+        p_RunOCR.start() # Start OCR 
+        p_RunOCR.join() # waits till process is done
+        
+        # Use ShowOCRResult to test the process without actually runing OCR
+        #p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
+        #p_ShowOCRResult.start()
+        #p_ShowOCRResult.join()
 
-    p_MoveChipFromTrayToSocket.join()
     if not BypassRTS:
+        p_MoveChipFromTrayToSocket.join() # wait till the RTS is done moving chips to shutdown
         rts.rts_shutdown()
 
     if email_progress:
