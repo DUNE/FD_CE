@@ -302,12 +302,12 @@ def RunOCR(image_directory, image_file, ocr_results_dir):
         image_file [str]: file name of image
         ocr_results_dir [str]: directory to save results
     """
-
+    print("Running OCR...")
     # Extract image_number from the filename (assuming it's before the first '_')
     image_number = image_file.split('_')[0]
     
     # Preprocess image for best OCR results
-    temp_image_path = preprocess_image(image_file, image_directory, ocr_results_dir)
+    temp_image_path = preprocess_image(image_file + ".bmp", image_directory, ocr_results_dir)
     
     if temp_image_path:
         # Perform OCR using MiniCPM
@@ -396,8 +396,10 @@ if __name__=="__main__":
 
     start_time = time.time()
 
+    image_file = "20250402133112_SN.bmp"
+    RunOCR(image_directory, image_file, ocr_results_dir)
     #image_id = "20250402170946"
     #ShowOCRResult(image_id, ocr_results_dir)
-    CheckAllOCRResults(ocr_results_dir)
+    #CheckAllOCRResults(ocr_results_dir)
 
     print("### %s seconds ###" % (time.time() - start_time))
