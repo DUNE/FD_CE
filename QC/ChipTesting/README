@@ -1,0 +1,9 @@
+This is the directory branch for work related to chip testing for the Robotic Test Stand (RTS)
+
+# RTS_Robot #
+This contains code pertaining to the robot operation of the RTS
+The directory of the robot code, ``RTS_Robot'' must match the name of the project files inside
+to be recognized by the EPSON proprietary RC+ software which builds the programs for the robot
+
+# CryoControls #
+Code for the microcontroller for the RTS cryogenics
