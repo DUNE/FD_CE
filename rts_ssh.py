@@ -167,7 +167,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
         tms_items[4  ] = "\033[96m 4: COLDATA PLL lock range measurement  \033[0m"
         tms_items[5  ] = "\033[96m 5: COLDATA fast command verification  \033[0m"
         tms_items[6  ] = "\033[96m 6: COLDATA output link verification \033[0m"
-        if False:
+        if True:
             tms_items[7  ] = "\033[96m 7: COLDATA EFUSE burn-in \033[0m"
         else: 
             print ("Burn-in is ignore")

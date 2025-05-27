@@ -110,7 +110,7 @@ class RTS_CFG():
         tryi = 0
         while True:
             try:
-                print ("Move Chip From Tray#{},col#{},row#{} To DAT#{},Socket{}".format(tray_nr, col_nr, row_nr, DAT_nr, sktn))
+                print ("Move Chip From Tray#{},col#{},row#{} To DAT#{},Socket{}".format(tray_nr, col_nr, row_nr, DAT_nr, socket_nr))
                 self.msg = "MoveChipFromTrayToSocket"
                 self.s.send(self.msg.encode())
                 self.s.send(b"\r\n")
@@ -175,7 +175,7 @@ class RTS_CFG():
         tryi = 0
         while True:
             try:
-                print ("Move Chip From DAT#{},Socket{} To Tray#{},col#{},row#{}".format(DAT_nr, sktn, tray_nr, col_nr, row_nr))
+                print ("Move Chip From DAT#{},Socket{} To Tray#{},col#{},row#{}".format(DAT_nr, socket_nr, tray_nr, col_nr, row_nr))
                 self.msg = "MoveChipFromSocketToTray"
                 self.s.send(self.msg.encode())
                 self.s.send(b"\r\n")
@@ -183,7 +183,7 @@ class RTS_CFG():
                 self.s.send(str(DAT_nr).encode())
                 self.s.send(b"\r\n")
     
-                self.s.send(str(sktn).encode())
+                self.s.send(str(socket_nr).encode())
                 self.s.send(b"\r\n")
     
                 self.s.send(str(tray_nr).encode())
@@ -203,7 +203,7 @@ class RTS_CFG():
                     if (status < 0) and (status != -200) :
                         tryi = tryi + 1
                         print ("Move chip to orignal position")
-                        self.JumpToSocket(DAT_nr, sktn)    
+                        self.JumpToSocket(DAT_nr, socket_nr)    
                         self.InsertIntoSocket()    
                         self.JumpToCamera()
                         self.rts_idle() 
