@@ -85,30 +85,30 @@ class PWR_CYCLE(BaseClass):
             return
         N_pwrcycle = 8
         PwrCycle_data = {self.logs_dict['FE{}'.format(ichip)]: {} for ichip in range(8)}
-        for ichip in range(8):
-            PwrCycle_data[self.logs_dict['FE{}'.format(ichip)]]['logs'] = {
-                    "item_name" : self.item,
-                    "RTS_timestamp" : self.logs_dict['FE{}'.format(ichip)],
-                    'Test Site' : self.logs_dict['testsite'],
-                    'RTS_Property_ID' : 'BNL001',
-                    'RTS chamber' : 1,
-                    'DAT_ID' : self.logs_dict['DAT_SN'],
-                    'DAT rev' : self.logs_dict['DAT_Revision'],
-                    'Tester' : self.logs_dict['tester'],
-                    'DUT' : self.logs_dict['DUT'],
-                    # 'Tray ID' : self.logs_dict['TrayID'],
-                    'Tray ID' : '0', #[d for d in self.input_dir.split('/') if 'B0' in d][0],
-                    'SN' : '',
-                    'DUT_location_on_tray' : '0', #self.logs_dict['position']['on Tray']['FE{}'.format(ichip)],
-                    'DUT_location_on_DAT' : '0', #self.logs_dict['position']['on DAT']['FE{}'.format(ichip)],
-                    'Chip_Mezzanine_1_in_use' : 'ADC_XXX_XXX',
-                    'Chip_Mezzanine_2_in_use' : 'CD_XXXX_XXXX',
-                    "date": self.logs_dict['date'],
-                    "env": self.logs_dict['env'],
-                    "note": self.logs_dict['note'],
-                    "DAT_SN": self.logs_dict['DAT_SN'],
-                    "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
-                }
+        #for ichip in range(8):
+        #    PwrCycle_data[self.logs_dict['FE{}'.format(ichip)]]['logs'] = {
+        #            "item_name" : self.item,
+        #            "RTS_timestamp" : self.logs_dict['FE{}'.format(ichip)],
+        #            'Test Site' : self.logs_dict['testsite'],
+        #            'RTS_Property_ID' : 'BNL001',
+        #            'RTS chamber' : 1,
+        #            'DAT_ID' : self.logs_dict['DAT_SN'],
+        #            'DAT rev' : self.logs_dict['DAT_Revision'],
+        #            'Tester' : self.logs_dict['tester'],
+        #            'DUT' : self.logs_dict['DUT'],
+        #            # 'Tray ID' : self.logs_dict['TrayID'],
+        #            'Tray ID' : '0', #[d for d in self.input_dir.split('/') if 'B0' in d][0],
+        #            'SN' : '',
+        #            'DUT_location_on_tray' : '0', #self.logs_dict['position']['on Tray']['FE{}'.format(ichip)],
+        #            'DUT_location_on_DAT' : '0', #self.logs_dict['position']['on DAT']['FE{}'.format(ichip)],
+        #            'Chip_Mezzanine_1_in_use' : 'ADC_XXX_XXX',
+        #            'Chip_Mezzanine_2_in_use' : 'CD_XXXX_XXXX',
+        #            "date": self.logs_dict['date'],
+        #            "env": self.logs_dict['env'],
+        #            "note": self.logs_dict['note'],
+        #            "DAT_SN": self.logs_dict['DAT_SN'],
+        #            "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
+        #        }
             # tray_id = [d for d in self.input_dir.split('/') if 'B0' in d][0]
             # print(tray_id)
         # PwrCycle_data = {self.logs_dict['FE{}'.format(ichip)]: {"logs": logs} for ichip in range(8)}
@@ -370,7 +370,7 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
         with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
             csv.writer(csvfile, delimiter=',').writerows(results_cycles)
 
-        return results_cycles, self.data['logs']
+        #return results_cycles, self.data['logs']
 
     def run_Ana_withStat(self, path_to_statAna=''):
         if self.ERROR:

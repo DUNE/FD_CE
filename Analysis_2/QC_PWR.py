@@ -103,20 +103,20 @@ class QC_PWR(BaseClass):
             tmpdata_onechip = pwr_all_chips[chip_id]
   
             oneChip_data = {
-                'logs' : {
-                    "date": self.logs_dict['date'],
-                    "FE_ID":FE_ID,
-                    "tester": self.logs_dict['tester'],
-                    "testsite": self.logs_dict['testsite'],
-                    "env": self.logs_dict['env'],
-                    "note": self.logs_dict['note'],
-                    "DAT_Rev": self.logs_dict['DAT_Revision'],
-                    "DAT_SN": self.logs_dict['DAT_SN'],
-                    "WIB_slot": self.logs_dict['DAT_on_WIB_slot'],
-                    "Tray_ID":tray_id,
-                    "CD_on_DAT":CD_on_DAT,
-                    "ADC_on_DAT":ADC_on_DAT,
-
+#                'logs' : {
+#                    "date": self.logs_dict['date'],
+#                    "FE_ID":FE_ID,
+#                    "tester": self.logs_dict['tester'],
+#                    "testsite": self.logs_dict['testsite'],
+#                    "env": self.logs_dict['env'],
+#                    "note": self.logs_dict['note'],
+#                    "DAT_Rev": self.logs_dict['DAT_Revision'],
+#                    "DAT_SN": self.logs_dict['DAT_SN'],
+#                    "WIB_slot": self.logs_dict['DAT_on_WIB_slot'],
+#                    "Tray_ID":tray_id,
+#                    "CD_on_DAT":CD_on_DAT,
+#                    "ADC_on_DAT":ADC_on_DAT,
+#
 #                    "item_name" : self.item,
 #                    "RTS_timestamp" : self.logs_dict['FE{}'.format(ichip)],
 #                    'Test Site' : self.logs_dict['testsite'],
@@ -137,7 +137,7 @@ class QC_PWR(BaseClass):
 #                    "note": self.logs_dict['note'],
 #                    "DAT_SN": self.logs_dict['DAT_SN'],
 #                    "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
-                }
+#                }
             }
             Baselines = ['200mV', '900mV']
             params = ['V', 'I', 'P']
@@ -574,7 +574,7 @@ class QC_PWR_analysis(BaseClass_Ana):
             with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
                 csv.writer(csvfile, delimiter=',').writerows(results_CFGs)
 
-        return results_CFGs, self.data['logs']
+        #return results_CFGs
     
     # def runAnalysis(self, path_to_statAna: str):
     #     if self.ERROR:
