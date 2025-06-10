@@ -9,10 +9,19 @@
         - HDF5 format version of the binary file.
 '''
 
-import os, sys
+import os, sys, platform
 import h5py, pickle
 import numpy as np
 import re
+system_info = platform.system()
+print("Operating system: ", system_info)
+if system_info=='Linux':
+    # print('IN')
+    sys.path.append('./decode')
+    from dunedaq_decode import wib_dec_onetrigger
+    sys.path.append('../')
+elif system_info=='Windows':
+    from spymemory_decode_copy import wib_dec_onetrigger
 # import matplotlib.pyplot as plt
 
 # from utils import decodeRawData # can be ignored, only used for test
@@ -271,29 +280,52 @@ def bin2dict(data): # for binary files except QC.log and QC_MON.bin
     for key, val in data.items():
         out_data[key] = val
     return out_data
-    
+
+# EXAMPLE OF CODE READING THE HDF5 FILE
+import matplotlib.pyplot as plt
+def read_HDF5(path_to_file=None):
+    with h5py.File(path_to_file, 'r') as hdf:
+        data_config0 = hdf['ASICDAC_47mV_CHK']
+        #
+        # READ POWER CONSUMPTION OF ONE ASIC for one configuration
+        pwrcons_VDDA_FE0 = data_config0['pwrcons']['FE0_VDDA']
+        print(pwrcons_VDDA_FE0.dtype)
+        print(f"P = {pwrcons_VDDA_FE0['P']} mW, I = {pwrcons_VDDA_FE0['I']} mA, V = {pwrcons_VDDA_FE0['V']} V")
+        #
+        # decode one trigger data
+        fembs = data_config0['fembs']
+        triggerdata  = data_config0['rawdata']['trigger0']
+        decoded_triggerdata = wib_dec_onetrigger(triggerdata=triggerdata, fembs=fembs)
+        chresp = decoded_triggerdata[0]
+        plt.figure()
+        plt.plot(chresp[0])
+        plt.show()
 
 if __name__ == '__main__':
+    # # CONVERT BIN TO HDF5
     # root_path = 'D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
-    root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000/'
-    output_path = 'tmp'
-    try:
-        os.makedirs(output_path)
-    except:
-        pass
-    # binFileName = 'QC_MON.bin'
-    list_bin_files = os.listdir(root_path)
-    # print(list_bin_files)
-    # sys.exit()
-    for binFileName in list_bin_files:
-        hdf5_name = binFileName.split('.')[0] + '.hdf5'
-        # with h5py.File('/'.join(['D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000', hdf5_name]), 'w') as f:
-        with h5py.File('/'.join([output_path, hdf5_name]), 'w') as f:
-            data = read_bin(filename=binFileName, path_to_file=root_path)
-            try:    
-                data0 = bin2dict(data=data)
-                print(hdf5_name)
-                write_hdf5(f=f, data=data0)
-            except:
-                data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
-                write_hdf5(f=f, data=data1)
+    # root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000/'
+    # output_path = 'tmp'
+    # try:
+    #     os.makedirs(output_path)
+    # except:
+    #     pass
+    # # binFileName = 'QC_MON.bin'
+    # list_bin_files = os.listdir(root_path)
+    # # print(list_bin_files)
+    # # sys.exit()
+    # for binFileName in list_bin_files:
+    #     hdf5_name = binFileName.split('.')[0] + '.hdf5'
+    #     # with h5py.File('/'.join(['D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000', hdf5_name]), 'w') as f:
+    #     with h5py.File('/'.join([output_path, hdf5_name]), 'w') as f:
+    #         data = read_bin(filename=binFileName, path_to_file=root_path)
+    #         try:    
+    #             data0 = bin2dict(data=data)
+    #             print(hdf5_name)
+    #             write_hdf5(f=f, data=data0)
+    #         except:
+    #             data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
+    #             write_hdf5(f=f, data=data1)
+
+    # READ HDF5
+    read_HDF5(path_to_file='HDF5_data/QC_INIT_CHK.hdf5')

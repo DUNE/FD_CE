@@ -133,8 +133,6 @@ new_pwrcons_dict['attrs'] = {'Info': 'Power consumption for each ASIC for each p
 
 ```
 
-
-
 ## Usage Example
 
 ```python
@@ -150,6 +148,33 @@ list_bin_files = os.listdir(root_path)
             except:
                 data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
                 write_hdf5(f=f, data=data1)
+```
+
+## How to read the hdf5 file and extract the information we need
+
+The function **read_hdf5** is an example of code reading the hdf5 file 'QC_INIT_CHK.hdf5' and extract the power consumed by one LArASIC for one configuration. It also decode one trigger data and plot the corresponding waveforms.
+
+A function named "wib_dec_onetrigger" was created in the scripts dunedaq.py and spymemory_decode_copy.py in order to decode the trigger data.
+
+```python
+import matplotlib.pyplot as plt
+def read_HDF5(path_to_file=None):
+    with h5py.File(path_to_file, 'r') as hdf:
+        data_config0 = hdf['ASICDAC_47mV_CHK']
+        #
+        # READ POWER CONSUMPTION OF ONE ASIC for one configuration
+        pwrcons_VDDA_FE0 = data_config0['pwrcons']['FE0_VDDA']
+        print(pwrcons_VDDA_FE0.dtype)
+        print(f"P = {pwrcons_VDDA_FE0['P']} mW, I = {pwrcons_VDDA_FE0['I']} mA, V = {pwrcons_VDDA_FE0['V']} V")
+        #
+        # decode one trigger data
+        fembs = data_config0['fembs']
+        triggerdata  = data_config0['rawdata']['trigger0']
+        decoded_triggerdata = wib_dec_onetrigger(triggerdata=triggerdata, fembs=fembs)
+        chresp = decoded_triggerdata[0]
+        plt.figure()
+        plt.plot(chresp[0])
+        plt.show()
 ```
 
 ## Dependencies
