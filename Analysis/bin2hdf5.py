@@ -9,10 +9,17 @@
         - HDF5 format version of the binary file.
 '''
 
-import os, sys
+import os, sys, platform
 import h5py, pickle
 import numpy as np
 import re
+system_info = platform.system()
+print("Operating system: ", system_info)
+if system_info=='Linux':
+    # print('IN')
+    sys.path.append('./decode')
+    from dunedaq_decode import wib_dec_onetrigger
+    sys.path.append('../')
 # import matplotlib.pyplot as plt
 
 # from utils import decodeRawData # can be ignored, only used for test
@@ -271,9 +278,22 @@ def bin2dict(data): # for binary files except QC.log and QC_MON.bin
     for key, val in data.items():
         out_data[key] = val
     return out_data
-    
+
+import matplotlib.pyplot as plt
+def read_HDF5(path_to_file=None):
+    with h5py.File(path_to_file, 'r') as hdf:
+        data_config0 = hdf['ASICDAC_47mV_CHK']
+        # print(data_config0.keys())
+        fembs = data_config0['fembs']
+        triggerdata  = data_config0['rawdata']['trigger0']
+        decoded_triggerdata = wib_dec_onetrigger(triggerdata=triggerdata, fembs=fembs)
+        chresp = decoded_triggerdata[0]
+        plt.figure()
+        plt.plot(chresp[0])
+        plt.show()
 
 if __name__ == '__main__':
+    # # CONVERT BIN TO HDF5
     # root_path = 'D:/RTS_tmp/B010T0001/Time_20240701171351_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000'
     root_path = '../../B010T0004_/Time_20240703122319_DUT_0000_1001_2002_3003_4004_5005_6006_7007/RT_FE_002010000_002020000_002030000_002040000_002050000_002060000_002070000_002080000/'
     output_path = 'tmp'
@@ -297,3 +317,6 @@ if __name__ == '__main__':
             except:
                 data1 = binWithoutRAW2dict(data=data, FileName=binFileName)
                 write_hdf5(f=f, data=data1)
+
+    # READ HDF5
+    read_HDF5(path_to_file='HDF5_data/QC_INIT_CHK.hdf5')
