@@ -36,7 +36,7 @@ from cryo_uart import cryobox
 
 def send_rts_email(message):
     sender_email = "rtshibay@gmail.com"
-    receiver_email = "sgao@bnl.gov; "
+    receiver_email = "sgao@bnl.gov;gao33.bnl@gmail.com;lke@bnl.gov"
     #receiver_email = ningxuyang0202@gmail.com
     password = "mbqx qfca voue zwfr"
     subject = "Message from RTS"
@@ -384,7 +384,7 @@ logs = {}
 
 #chiptype = 1
 #print ("RTS only support FE chip testing at the current development phase)")
-chiptype = 3
+chiptype = 1
 
 if chiptype == 1:
     duttype = "FE"
@@ -444,7 +444,7 @@ logs["rootdir"] = rootdir
 
 print ("start trayID: {}".format(trayid))
 status = 0
-duts = list(range(0,2,1))
+duts = [47,48,49,66,67,68,69,82,83,84,85,86,87] # list(range(47,484950,88,1))
 #duts = list(range(0,90,1))
 #duts = [82,83,84,2,86,87,88,89]
 duts = sorted(duts)
@@ -473,8 +473,26 @@ if BypassRTS:
     pass
 else:
     rts.rts_init(port=2001, host_ip='192.168.0.2')
+    rts.RootDirSet(rootdir=rootdir)
     rts.MotorOn()
     rts.JumpToCamera()
+    rts.ScanTray_Lar(rootdir=rootdir)
+    #rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1, "FE")    
+    #rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1, "FE")
+#    rmsg = rts.ScanTray_Lar(rootdir=rootdir)
+#    with open(rootdir  + "/chips_on_tray.txt", "w") as fp:
+#        fp.write(rmsg)
+rts.rts_shutdown()
+exit()
+
+#rts.MoveChipFromSocketToTray(2, 1, 2, 8, 6, "FE")
+#rts.MoveChipFromSocketToTray(2, 1, 2, 9, 6, "FE")
+#rts.MoveChipFromSocketToTray(2, 1, 2, , 5, "FE")
+#rts.MoveChipFromSocketToTray(2, 1, 2, , 5, "FE")
+#rts.MoveChipFromSocketToTray(2, 1, 2, , 5, "FE")
+#rts.MoveChipFromTrayToSocket(2, 7, 1, 2, 7, "FE")    
+#rts.MoveChipFromSocketToTray(2, 7, 2, 7, 1, "FE")
+#rts.MoveChipFromSocketToTray(2, 1, 2, 4, 3)
 #rts.MoveChipFromTrayToSocket(2, 1, 2, 2, 1, "FE")    
 #rts.MoveChipFromTrayToSocket(2, 2, 2, 2, 2, "FE")    
 #rts.MoveChipFromTrayToSocket(2, 3, 2, 2, 3, "FE")    
