@@ -50,30 +50,30 @@ def DecodeRawData_func(root_path, data_dir, env, tms):
     if tms == 61:
         # # ASICDAC Calibration
         from QC_CALIBRATION import QC_CALI
-        asicdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_ASICDAC.bin', generateWf=False)
+        asicdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_ASICDAC.bin')
         FE_IDs =asicdac.runASICDAC_cali(saveWfData=False)
 
     if tms == 64:
         from QC_CALIBRATION import QC_CALI
         tmpdir = os.listdir('/'.join([root_path, data_dir]))[0]
         if 'QC_CALI_ASICDAC_47.bin' in os.listdir('/'.join([root_path, data_dir, tmpdir])):
-            asic47dac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_ASICDAC_47.bin', generateWf=False)
+            asic47dac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_ASICDAC_47.bin')
             FE_IDs = asic47dac.runASICDAC_cali(saveWfData=False)
 
     if tms == 62:
         from QC_CALIBRATION import QC_CALI
-        datdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_DATDAC.bin', generateWf=False)
+        datdac = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_DATDAC.bin')
         FE_IDs = datdac.runASICDAC_cali(saveWfData=False)
 
     if tms == 63:
         from QC_CALIBRATION import QC_CALI
-        direct_cali = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_DIRECT.bin', generateWf=False)
+        direct_cali = QC_CALI(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, tms=tms, QC_filename='QC_CALI_DIRECT.bin')
         FE_IDs = direct_cali.runASICDAC_cali(saveWfData=False)
 
     if tms == 8:
         from QC_Cap_Meas import QC_Cap_Meas
         ## Calibration capacitor measurement
-        cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env, generateWf_plot=False)
+        cap = QC_Cap_Meas(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env)
         FE_IDs = cap.decode_CapMeas()
     
 def DecodeJson2csv(root_path, FE_ID, env):
@@ -108,7 +108,6 @@ def DecodeJson2csv(root_path, FE_ID, env):
     from QC_CHKRES import QC_CHKRES_Ana
     ana_femon =  QC_CHKRES_Ana(root_path=root_path, chipID=FE_ID, output_path=output_path)
     tmp = ana_femon.run_Ana()
-    csv_results = csv_results + tmp
     if type(tmp) == list:
         csv_results += tmp
 
@@ -157,7 +156,7 @@ def DecodeJson2csv(root_path, FE_ID, env):
     if type(tmp) == list:
         csv_results += tmp
 
-    with open('/'.join([results_path, '{}.csv'.format(FE_ID)]), 'w') as f:
+    with open('/'.join([results_path, '{}_{}.csv'.format(FE_ID, env)]), 'w') as f:
         csvwriter = csv.writer(f, delimiter=',')
         csvwriter.writerows(csv_results)
 

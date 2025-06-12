@@ -208,8 +208,12 @@ class QC_FE_MON_Ana():
         path_to_chipID = '/'.join([self.output_path, self.chipID])
         #if not self._FileExist(chipdir=path_to_chipID):
         #    return None
-        path_to_file = '/'.join([path_to_chipID, 'QC_FE_MON.json'])
-        data = json.load(open(path_to_file))
+        try:
+            path_to_file = '/'.join([path_to_chipID, 'QC_FE_MON.json'])
+            data = json.load(open(path_to_file))
+        except: 
+            print('Error: QC_FE_MON.json not exist for chip = {}'.format(self.chipID))
+            return None
         #logs = data['logs']
         BL_dict = data['BL']
         BL_dict['CH'] = [ich for ich in range(16)]

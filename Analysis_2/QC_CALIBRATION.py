@@ -36,7 +36,7 @@ class QC_CALI(BaseClass):
             printItem('DIRECT calibration')
             self.period = 1000
         self.generateWf = generateWf
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=tms, QC_filename=QC_filename, generateWaveForm=self.generateWf, env=env)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=tms, QC_filename=QC_filename, env=env)
         if self.ERROR:
             return
             
@@ -130,8 +130,6 @@ class QC_CALI(BaseClass):
 
         # organize the data
         decodedData = self.decode(getWaveform_data=self.generateWf)
-        # print(decodedData['SNC0'].keys())
-        # sys.exit()
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]            
             for BL in decodedData.keys():
