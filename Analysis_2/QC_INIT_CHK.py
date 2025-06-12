@@ -8,7 +8,6 @@ import datetime
 import os, sys, csv
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import json, pickle
 from utils import printItem, createDirs, dumpJson, decodeRawData, LArASIC_ana, BaseClass
 from utils import BaseClass_Ana
@@ -17,10 +16,10 @@ class QC_INIT_CHK(BaseClass):
     '''
         Raw data ("QC_PWR.bin") from one DAT board -> 8x decoded data for each LArASIC
     '''
-    def __init__(self, root_path: str, data_dir: str, output_dir: str, env='RT'):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, env='RT'):
         printItem('Initialization checkout')
         self.item = "QC_INIT_CHK"
-        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_dir, tms=1, QC_filename='QC_INIT_CHK.bin', env=env)
+        super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, tms=1, QC_filename='QC_INIT_CHK.bin', env=env)
         if self.ERROR:
             return
         tmps = root_path.split("/")
@@ -245,6 +244,24 @@ class QC_INIT_CHKAna(BaseClass_Ana):
             P_total_dict['data'][param] = vdda + vddo + vddp
         return P_vdda_dict, P_vddo_dict, P_vddp_dict, P_total_dict
 
+    def ChResp_ana(self, item='rms'):
+        '''
+            item could be 'pedestal', 'rms'
+        '''
+        chipData = {'200mV': {}, '900mV': {}}
+        colors = ['r', 'b']
+        ylim = []
+        if item=='rms':
+            ylim = [0, 25]
+        elif item=='pedestal':
+            ylim = [500, 10000]
+        itemData = dict()
+        for param in self.params:
+            BL, cfg = self.get_cfg(config=param, separateBL=True)
+            data = self.getoneConfigData(config=param)
+            itemData[param] = data[item]
+        return itemData
+
     def PWR_consumption_ana(self):
         V_vdda, V_vddo, V_vddp = self.get_V()
         I_vdda, I_vddo, I_vddp = self.get_I()
@@ -282,7 +299,7 @@ class QC_INIT_CHKAna(BaseClass_Ana):
                 outdata['value'].append(val)
         chresp_dict = {'testItem': [], 'cfgs': [], 'cfg_item': [], 'chn': [], 'value': []}
         for item in ['rms', 'pedestal', 'pospeak', 'negpeak']:
-            chres_data = self.ChResp_ana(item=item, returnData=True)
+            chres_data = self.ChResp_ana(item=item)
             for config, listval in chres_data.items():
                 testItems = ['ChResp' for _ in range(len(listval))]
                 cfgs = [config for _ in range(len(listval))]

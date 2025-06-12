@@ -392,7 +392,7 @@ def getpedestal_rms(oneCHdata: list, pureNoise=False, period=500):
 
 #_______BASE_CLASS________________
 class BaseClass:
-    def __init__(self, root_path: str, data_dir: str, output_path: str, tms: int, QC_filename: str, generateWaveForm=False, env='RT'):
+    def __init__(self, root_path: str, data_dir: str, output_path: str, tms: int, QC_filename: str, env='RT'):
         self.tms = tms
         # self.input_dir = '/'.join([root_path, data_dir])
         tmpdata_dir = [f for f in os.listdir('/'.join([root_path, data_dir])) if env in f][0]
@@ -432,14 +432,6 @@ class BaseClass:
                 os.mkdir(dir)
             except OSError:
                 pass
-        if generateWaveForm:
-            #self.FE_outputPlots_DIRs = {self.logs_dict['FE{}'.format(ichip)] :'/'.join([output_path, self.logs_dict['FE{}'.format(ichip)], self.foldername]) for ichip in range(8)}
-            self.FE_outputPlots_DIRs = {self.logs_dict['FE{}'.format(ichip)] :'/'.join([output_path, self.logs_dict['FE{}'.format(ichip)]]) for ichip in range(8)}
-            for FE_ID, dir in self.FE_outputPlots_DIRs.items():
-                try:
-                    os.mkdir(dir)
-                except OSError:
-                    pass
 
     def __openLog__(self):
         # Update the internal logs of each test item -> Use the timestamp as an ID for each FE ASIC
