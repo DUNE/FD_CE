@@ -145,14 +145,14 @@ class QC_Cap_Meas(BaseClass):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
             #print('----{}---'.format(FE_ID))
             chipdata = dict()
-            chipdata['logs'] = {
-                    "date": self.logs_dict['date'],
-                    "testsite": self.logs_dict['testsite'],
-                    "env": self.logs_dict['env'],
-                    "note": self.logs_dict['note'],
-                    "DAT_SN": self.logs_dict['DAT_SN'],
-                    "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
-                }
+            #chipdata['logs'] = {
+            #        "date": self.logs_dict['date'],
+            #        "testsite": self.logs_dict['testsite'],
+            #        "env": self.logs_dict['env'],
+            #        "note": self.logs_dict['note'],
+            #        "DAT_SN": self.logs_dict['DAT_SN'],
+            #        "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
+            #    }
             for c in arranged_data[FE_ID].keys():
                 chipdata[c] = dict()
                 for fechn in arranged_data[FE_ID][c].keys():
@@ -178,6 +178,7 @@ class QC_Cap_Meas(BaseClass):
 class QC_Cap_Meas_Ana(BaseClass_Ana):
     def __init__(self, root_path: str, output_path: str, chipID: str):
         self.item = 'QC_Cap_Meas'
+        print (self.item)
         self.tms = '08'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
         self.root_path = root_path
@@ -314,8 +315,9 @@ class QC_Cap_Meas_Ana(BaseClass_Ana):
 
         #return row_data
         row_data = [row_data]
-        with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
-            csv.writer(csvfile, delimiter=',').writerows(row_data)    
+        #with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
+        #    csv.writer(csvfile, delimiter=',').writerows(row_data)    
+        return row_data 
 
     
     def run_Ana_withStat(self, path_to_stat='', generatePlots=False):

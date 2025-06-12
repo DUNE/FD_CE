@@ -194,6 +194,7 @@ class QC_PWR_analysis(BaseClass_Ana):
     def __init__(self, root_path: str, chipID: str, output_path: str):
         self.item = 'QC_PWR'
         self.tms = '01'
+        print (self.item)
         super().__init__(root_path=root_path, chipID=chipID, item=self.item, output_path=output_path)
         self.root_path = root_path
         self.output_path = output_path
@@ -349,7 +350,7 @@ class QC_PWR_analysis(BaseClass_Ana):
         
         chresp_df = pd.DataFrame(chresp_dict)
         pwr_cons_df = pd.DataFrame(outdata)
-        pwr_cons_df.to_csv('/'.join([self.output_path, self.item+'.csv']), index=False)
+        #pwr_cons_df.to_csv('/'.join([self.output_path, self.item+'.csv']), index=False)
         # Generate plots
         #self.plot_PWR(data_dict_list=V_list, xlabel='Configurations', ylabel='Voltage ({}/LArASIC)'.format(V_vdda['unit']), item_to_plot='Voltage')
         #self.plot_PWR(data_dict_list=I_list, xlabel='Configurations', ylabel='Current ({}/LArASIC)'.format(I_vdda['unit']), item_to_plot='Current')
@@ -570,11 +571,11 @@ class QC_PWR_analysis(BaseClass_Ana):
                 results_CFGs.append(['Test_{}_Power_Consumption'.format(self.tms), cfg, overall_result] + pwr_params + ch_results)
 
         # Save results
-        if results_CFGs:
-            with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
-                csv.writer(csvfile, delimiter=',').writerows(results_CFGs)
+        #if results_CFGs:
+        #    with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
+        #        csv.writer(csvfile, delimiter=',').writerows(results_CFGs)
 
-        #return results_CFGs
+        return results_CFGs
     
     # def runAnalysis(self, path_to_statAna: str):
     #     if self.ERROR:

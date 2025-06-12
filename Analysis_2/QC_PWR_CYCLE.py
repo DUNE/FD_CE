@@ -135,6 +135,7 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
     '''
     def __init__(self, root_path: str, chipID: str, output_path: str):
         self.item = 'QC_PWR_CYCLE'
+        print (self.item)
         self.tms = '04'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
         self.root_path = root_path
@@ -367,10 +368,10 @@ class PWR_CYCLE_Ana(BaseClass_Ana):
                 results_cycles.append(['Test_{}_Power_cycle'.format(self.tms), 'Cycle_{}'.format(icycle)] + pwr_params + ch_results)
 
         # Save results
-        with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
-            csv.writer(csvfile, delimiter=',').writerows(results_cycles)
+        #with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
+        #    csv.writer(csvfile, delimiter=',').writerows(results_cycles)
 
-        #return results_cycles, self.data['logs']
+        return results_cycles
 
     def run_Ana_withStat(self, path_to_statAna=''):
         if self.ERROR:

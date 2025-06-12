@@ -173,14 +173,14 @@ class FE_MON(BaseClass):
     def decodeFE_MON(self):
         if self.ERROR:
             return
-        logs = {
-            "date": self.logs_dict['date'],
-            "testsite": self.logs_dict['testsite'],
-            "env": self.logs_dict['env'],
-            "note": self.logs_dict['note'],
-            "DAT_SN": self.logs_dict['DAT_SN'],
-            "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
-        }
+        #logs = {
+        #    "date": self.logs_dict['date'],
+        #    "testsite": self.logs_dict['testsite'],
+        #    "env": self.logs_dict['env'],
+        #    "note": self.logs_dict['note'],
+        #    "DAT_SN": self.logs_dict['DAT_SN'],
+        #    "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
+        #}
         BL = self.getBaselines()
         vbgr_temp = self.getvgbr_temp(unitOutput='mV')
         dac_meas = self.mon_dac()
@@ -197,7 +197,7 @@ class FE_MON(BaseClass):
                 dac_meas_chip[config]['unit_of_gain'] = 'mV/bit' # mV / DAC bit
                 dac_meas_chip[config]['INL'] = np.round(INL,4)*100
             oneChipData = {
-                "logs" : logs,
+                #"logs" : logs,
                 "BL": BL[FE_ID],
                 "VBGR_Temp": vbgr_temp[FE_ID],
                 "DAC_meas": dac_meas_chip
@@ -209,6 +209,7 @@ class FE_MON(BaseClass):
 class QC_FE_MON_Ana():
     def __init__(self, root_path: str, output_path: str, chipID=''):
         self.item = 'FE_MON'
+        print (self.item)
         self.tms = '03'
         self.chipID = chipID
         self.root_path = root_path
@@ -244,7 +245,7 @@ class QC_FE_MON_Ana():
         #    return None
         path_to_file = '/'.join([path_to_chipID, 'QC_FE_MON.json'])
         data = json.load(open(path_to_file))
-        logs = data['logs']
+        #logs = data['logs']
         BL_dict = data['BL']
         BL_dict['CH'] = [ich for ich in range(16)]
         BL_df = pd.DataFrame(BL_dict)
@@ -417,9 +418,9 @@ class QC_FE_MON_Ana():
             DAC_meas_table.append(tmp_result)
 
         output_table = BL_tables + vbgr_temp_tables + DAC_meas_table
-        if len(output_table)!=0:
-            with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
-                csv.writer(csvfile, delimiter=',').writerows(output_table)
+        #if len(output_table)!=0:
+        #    with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
+        #        csv.writer(csvfile, delimiter=',').writerows(output_table)
         return output_table
 
     def run_Ana_withStat(self, path_to_statAna=''):

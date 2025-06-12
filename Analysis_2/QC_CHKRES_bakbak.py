@@ -11,9 +11,9 @@ from utils import dumpJson, createDirs, decodeRawData, printItem, LArASIC_ana, B
 import matplotlib.pyplot as plt
 import pandas as pd
 
-class RMS(BaseClass):
+class QC_CHKRES(BaseClass):
     def __init__(self, root_path: str, data_dir: str, output_path: str, env='RT'):
-        printItem("FE noise measurement")
+        printItem("FE Response measurement")
         super().__init__(root_path=root_path, data_dir=data_dir, output_path=output_path, QC_filename='QC_RMS.bin', tms=5, env=env)
         if self.ERROR:
             return
@@ -47,29 +47,32 @@ class RMS(BaseClass):
             cfg_dict[config]  = tmp_cfg[config]
         return cfg_dict
 
-    def decode_oneRMS(self, config: str):
+    def decode_oneRES(self, config: str):
         fembs = self.raw_data[config][0]
         raw_data = self.raw_data[config][1]
         cfg_info = self.raw_data[config][2]
-        decodedRMS = decodeRawData(fembs=fembs, rawdata=raw_data, period=self.period)
+        decodedRES = decodeRawData(fembs=fembs, rawdata=raw_data, period=self.period)
         out_dict = {self.logs_dict['FE{}'.format(ichip)]: dict() for ichip in range(8)}
+
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
-            larasic = LArASIC_ana(dataASIC=decodedRMS[ichip], output_dir=self.FE_outputDIRs[FE_ID], chipID=FE_ID, tms=self.tms, param=config, generatePlots=False, generateQCresult=False, period=self.period)
-            pedrms = larasic.runAnalysis(getPulseResponse=True, isRMSNoise=True)
+            larasic = LArASIC_ana(dataASIC=decodedRES[ichip], output_dir=self.FE_outputDIRs[FE_ID], chipID=FE_ID, tms=self.tms, param=config, generatePlots=False, generateQCresult=False, period=self.period)
+            pedchk = larasic.runAnalysis(getPulseResponse=True, isRMSNoise=True)
             out_dict[FE_ID][config] = {
-                'pedestal': pedrms['pedrms']['pedestal']['data'],
-                'rms': pedrms['pedrms']['rms']['data']
+                'pedestal': pedchk['pedrms']['pedestal']['data'],
+                'rms': pedchk['pedrms']['rms']['data'],
+                'pospeak': pedchk['pulseResponse']['pospeak']['data'],
+                'negpeak': pedchk['pulseResponse']['negpeak']['data']
             }
         return out_dict
 
-    def decodeRMS(self):
+    def decode_CHKRES(self):
         if self.ERROR:
             return
         out_dict = {self.logs_dict['FE{}'.format(ichip)]: dict() for ichip in range(8)}
         for config in self.params:
             print("configuration : {}".format(config))
-            tmp = self.decode_oneRMS(config=config) 
+            tmp = self.decode_oneRES(config=config) 
             for ichip in range(8):
                 FE_ID = self.logs_dict['FE{}'.format(ichip)]
                 out_dict[FE_ID][config] = tmp[FE_ID][config]
@@ -95,11 +98,11 @@ class RMS(BaseClass):
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='QC_RMS', data_to_dump=pedrms_dict)
         return FE_IDs
 
-class RMS_Ana(BaseClass_Ana):
+class QC_CHKRES_Ana(BaseClass_Ana):
     def __init__(self, root_path: str, output_path: str, chipID: str):
-        self.item = 'QC_RMS'
+        self.item = 'QC_CHKRES'
         print (self.item)
-        self.tms = 5
+        self.tms = '02'
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=self.item)
         self.root_path = root_path
         self.output_path = output_path
@@ -233,195 +236,14 @@ class RMS_Ana(BaseClass_Ana):
 
         return result_table
 
-    # def run_Ana(self, path_to_statAna='', generatePlots=False):
-    #     if self._FileExist():
-    #         stat_csv = pd.read_csv(path_to_statAna)
-                        
-    #         result_df = pd.DataFrame({'cfg': []})
-    #         for icfg, config in enumerate(self.params):
-    #             data ,cfg = self.getItem(config=config)
-    #             # stat_config_df = new_stat_csv[new_stat_csv['cfg']==cfg].copy().reset_index().drop('index', axis=1).copy()
-    #             stat_config_row = stat_csv[stat_csv['cfg']==config].copy().reset_index().drop('index', axis=1)
-    #             stat_dict = {
-    #                 'mean_pedestal': [stat_config_row['mean_pedestal'][0] for _ in range(16)],
-    #                 'mean_rms': [stat_config_row['mean_rms'][0] for _ in range(16)],
-    #                 'std_pedestal': [stat_config_row['std_pedestal'][0] for _ in range(16)],
-    #                 'std_rms': [stat_config_row['std_rms'][0] for _ in range(16)]
-    #             }
-
-    #             # print(stat_config_row.columns)
-    #             # sys.exit()
-    #             # print(data, config)
-    #             if generatePlots:
-    #                 self.plot_rms_data(dict_data=data, config=cfg)
-    #             # print(self.chipID)
-    #             df = pd.DataFrame({'cfg': [cfg for _ in range(len(data['pedestal']))], 'CH': [chn for chn in range(16)], 'pedestal': data['pedestal'], 'rms': data['rms']})
-    #             for key, val in stat_dict.items():
-    #                 df[key] = val
-    #             df['QC_result_pedestal']= (df['pedestal']>= (df['mean_pedestal']-3*df['std_pedestal'])) & (df['pedestal'] <= (df['mean_pedestal']+3*df['std_pedestal']))
-    #             df['QC_result_rms']= (df['rms']>= (df['mean_rms']-3*df['std_rms'])) & (df['rms'] <= (df['mean_rms']+3*df['std_rms']))
-    #             # print(df.shape)
-    #             # print(df)
-    #             # print(df.columns)
-    #             for key in stat_dict.keys():
-    #                 df.drop(key, axis=1, inplace=True)
-    #             # print(df.columns)
-    #             if icfg==0:
-    #                 result_df = df.copy()
-    #             else:
-    #                 result_df = pd.concat([result_df, df], axis=0).reset_index().drop('index', axis=1)
-    #         # save dataframe to csv
-    #         result_df.to_csv('/'.join([self.output_dir, self.item+'.csv']), index=False)
-    #         # convert dataframe to an array of arrays
-    #         result_table = []
-    #         for config in self.params:
-    #             qc_res_ped = 'PASSED'
-    #             qc_res_rms = 'PASSED'
-    #             tmp_df = result_df[result_df['cfg']==config].copy().reset_index().drop('index', axis=1)
-    #             if False in tmp_df['QC_result_pedestal']:
-    #                 qc_res_ped = 'FAILED'
-    #             if False in tmp_df['QC_result_rms']:
-    #                 qc_res_rms = 'FAILED'
-    #             qc_result = 'PASSED'
-    #             if 'FAILED' in [qc_res_ped, qc_res_rms]:
-    #                 qc_result = 'FAILED'
-    #             row_table = ['Test_0{}_RMS'.format(self.tms), config, qc_result]
-    #             for chn in range(len(tmp_df['CH'])):
-    #                 ped = tmp_df.iloc[chn]['pedestal']
-    #                 rms = tmp_df.iloc[chn]['rms']
-    #                 row_table.append("CH{}=(pedestal={};rms={})".format( chn, ped, rms ))
-    #             result_table.append(row_table)
-    #         return result_table
-    #     else:
-    #         return
-
-class RMS_StatAna():
-    def __init__(self, root_path: str, output_path: str):
-        self.root_path = root_path
-        self.output_path = output_path
-        self.output_fig = '/'.join([output_path, 'fig'])
-        try:
-            os.mkdir(self.output_fig)
-        except:
-            pass
-        
-    def _FileExist(self, chipDir:str):
-        chipDirExist = os.path.isdir(chipDir)
-        qcMondirExist = os.path.isdir('/'.join([chipDir, 'QC_RMS']))
-        feMonFileExist = os.path.isfile('/'.join([chipDir, 'QC_RMS/RMS_Noise.json']))
-        return chipDirExist and qcMondirExist and feMonFileExist
-    
-    def getItems(self):
-        list_chipID = os.listdir(self.root_path)
-        cfg_map = dict()
-        i = 0
-        out_dict = dict()
-        keys = []
-        for chipID in list_chipID:
-            path_to_chip = '/'.join([self.root_path, chipID])
-            if not self._FileExist(chipDir=path_to_chip):
-                continue
-            path_to_file = '/'.join([path_to_chip, 'QC_RMS/RMS_Noise.json'])
-            data = json.load(open(path_to_file))
-            if i==0:
-                keys = [k for k in data.keys() if k!='logs']
-                # get configurations
-                for key in keys:
-                    cfg_map[key] = data[key]['CFG']
-                    out_dict[key] = {'pedestal': np.array([]), 'rms': np.array([])}
-            for key in keys:
-                out_dict[key]['pedestal'] = np.append(out_dict[key]['pedestal'], data[key]['pedestal'])
-                out_dict[key]['rms'] = np.append(out_dict[key]['rms'], data[key]['rms'])
-            i += 1
-        return out_dict, cfg_map
-
-    def run_Ana(self):
-        ######################################
-        print("QC RMS statistical analysis....")
-        ######################################
-        data, configurations = self.getItems()
-        cfg_list = []
-        mean_ped, std_ped = [], []
-        mean_rms, std_rms = [], []
-        for cfg in configurations.keys():
-            print('CFG = {}...'.format(cfg))
-            # Pedestal
-            tmpdata = data[cfg]['pedestal']
-            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-            for _ in range(100):
-                if xmin < median-3*std:
-                    posMin = np.where(tmpdata==xmin)[0]
-                    # del tmpdata[posMin]
-                    tmpdata = np.delete(np.array(tmpdata), posMin)
-                if xmax > median+3*std:
-                    posMax = np.where(tmpdata==xmax)[0]
-                    # del tmpdata[posMax]
-                    tmpdata = np.delete(np.array(tmpdata), posMax)
-
-                xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-            median, std = np.round(median, 4), np.round(std, 4)
-
-            # cfg_list.append(cfg)
-            mean_ped.append(median)
-            std_ped.append(std)
-            # print(median, std)
-
-            x = np.linspace(xmin, xmax, len(tmpdata))
-            p = norm.pdf(x, median, std)
-            plt.figure()
-            plt.hist(tmpdata, bins=len(tmpdata)//128, density=True)
-            plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
-            plt.xlabel('-'.join(['Pedestal', cfg]));plt.ylabel('#')
-            plt.legend()
-            plt.savefig('/'.join([self.output_fig, 'QC_RMS_Pedestal_{}.png'.format(cfg)]))
-            plt.close()
-            # sys.exit()
-            #
-            # RMS
-            tmpdata = data[cfg]['rms']
-            median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-            xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-            for _ in range(350):
-                if xmin < median-3*std:
-                    posMin = np.where(tmpdata==xmin)[0]
-                    # del tmpdata[posMin]
-                    tmpdata = np.delete(np.array(tmpdata), posMin)
-                if xmax > median+3*std:
-                    posMax = np.where(tmpdata==xmax)[0]
-                    # del tmpdata[posMax]
-                    tmpdata = np.delete(np.array(tmpdata), posMax)
-
-                xmin, xmax = np.min(tmpdata), np.max(tmpdata)
-                median, std = statistics.median(tmpdata), statistics.stdev(tmpdata)
-            median, std = np.round(median, 4), np.round(std, 4)
-
-            cfg_list.append(cfg)
-            mean_rms.append(median)
-            std_rms.append(std)
-            
-            x = np.linspace(xmin, xmax, len(tmpdata))
-            p = norm.pdf(x, median, std)
-            plt.figure()
-            plt.hist(tmpdata, bins=len(tmpdata)//128, density=True)
-            plt.plot(x, p, 'r', label='mean = {}, std = {}'.format(median, std))
-            plt.xlabel('-'.join(['RMS', cfg]));plt.ylabel('#')
-            plt.legend()
-            plt.savefig('/'.join([self.output_fig, 'QC_RMS_RMS_{}.png'.format(cfg)]))
-            plt.close()
-
-        OUTPUT_DF = pd.DataFrame({'cfg': cfg_list, 'mean_pedestal': mean_ped, 'std_pedestal': std_ped, 'mean_rms': mean_rms, 'std_rms': std_rms})
-        OUTPUT_DF.to_csv('/'.join([self.output_path, 'StatAna_RMS.csv']), index=False)
-        pd.DataFrame(configurations).to_csv('/'.join([self.output_path, 'QC_RMS_CONFIG_MAP.csv']))
 
 if __name__ == '__main__':
     root_path = "E:/B009T0008/"
     output_path = root_path + "Ana"
     data_dir = "Time_20250527114445_DUT_0000_1001_2002_3003_4004_5005_6006_7007"
     env = 'RT'
-    rms = RMS(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env)
-    rms.decodeRMS()
+    qc_checkres = QC_CHKRES(root_path=root_path, data_dir=data_dir, output_path=output_path, env=env)
+    qc_checkres.decode_CHKRES()
     # root_path = '../../Data_BNL_CE_WIB_SW_QC'
     # output_path = '../../Analyzed_BNL_CE_WIB_SW_QC'
     # # list_data_dir = [dir for dir in os.listdir(root_path) if '.zip' not in dir]

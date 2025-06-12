@@ -165,14 +165,14 @@ class QC_CALI(BaseClass):
 
     def getAmplitudes(self, organizedData: dict):
         # logs
-        logs = {
-                "date": self.logs_dict['date'],
-                "testsite": self.logs_dict['testsite'],
-                "env": self.logs_dict['env'],
-                "note": self.logs_dict['note'],
-                "DAT_SN": self.logs_dict['DAT_SN'],
-                "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
-            }
+        #logs = {
+        #        "date": self.logs_dict['date'],
+        #        "testsite": self.logs_dict['testsite'],
+        #        "env": self.logs_dict['env'],
+        #        "note": self.logs_dict['note'],
+        #        "DAT_SN": self.logs_dict['DAT_SN'],
+        #        "WIB_slot": self.logs_dict['DAT_on_WIB_slot']
+        #    }
         
         # Pedestal
         pedestals = dict()
@@ -192,7 +192,8 @@ class QC_CALI(BaseClass):
         amplitudes = dict()
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
-            amplitudes[FE_ID] = {'logs': logs}
+            #amplitudes[FE_ID] = {'logs': logs}
+            amplitudes[FE_ID] = {}
             for BL in ['SNC0', 'SNC1']:
                 amplitudes[FE_ID][BL] = dict()
                 for chn in range(16):
@@ -205,10 +206,13 @@ class QC_CALI(BaseClass):
                         amplitudes[FE_ID][BL]['CH{}'.format(chn)].append({'DAC': dac, 'pedestal': ped, 'std': std,'posAmp': posAmp, 'negAmp': negAmp})
         
         # save data
+        FE_IDs = []
         for ichip in range(8):
             FE_ID = self.logs_dict['FE{}'.format(ichip)]
+            FE_IDs.append(FE_ID)
             print('Save amplitudes of {} ...'.format(FE_ID))
             dumpJson(output_path=self.FE_outputDIRs[FE_ID], output_name='QC_CALI_{}'.format(self.suffixName), data_to_dump=amplitudes[FE_ID], indent=4)
+        return FE_IDs
         
 
     def plotWaveForms(self, organizedData: dict):
@@ -243,12 +247,14 @@ class QC_CALI(BaseClass):
         organizedData = self.organizeData(saveWaveformData=saveWfData)
         if self.generateWf:
             self.plotWaveForms(organizedData=organizedData)
-        self.getAmplitudes(organizedData=organizedData)
+        FE_IDs = self.getAmplitudes(organizedData=organizedData)
+        return FE_IDs
 
 #@ Analysis of the decoded data
 class QC_CALI_Ana(BaseClass_Ana):
     def __init__(self, root_path: str, output_path: str, chipID: str, CALI_item: str):
         self.item = CALI_item 
+        print (self.item)
         super().__init__(root_path=root_path, chipID=chipID, output_path=output_path, item=CALI_item)
         self.root_path = root_path
         self.output_path = output_path
@@ -797,8 +803,9 @@ class QC_CALI_Ana(BaseClass_Ana):
                     result_in_list.append(result_Amp_cfg)
 
         # Save results
-        with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
-            csv.writer(csvfile, delimiter=',').writerows(result_in_list)        
+        #with open('/'.join([self.output_path, self.chipID, '{}.csv'.format(self.item)]), 'w') as csvfile:
+        #    csv.writer(csvfile, delimiter=',').writerows(result_in_list)        
+        return result_in_list
 
 
     def run_Ana_withStat(self, generatePlots=False, path_to_statAna=''):
