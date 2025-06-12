@@ -497,13 +497,12 @@ class BaseClass_Ana:
         #    pass
         self.ERROR = False # to check if the json file exists    
         self.item_to_ana = item
-        self.filename = [f for f in os.listdir('/'.join([self.output_path, self.chipID])) if ((f'{self.item_to_ana}.json' in f) and ('json' in f[-4:])) ][0]
-        
-        if len(self.filename) == 0:
-            print('No file .json for chip = {}'.format(chipID))
+        try:
+            self.filename = [f for f in os.listdir('/'.join([self.output_path, self.chipID])) if ((f'{self.item_to_ana}.json' in f) and ('json' in f[-4:])) ][0]
+            self.data, self.params = self.read_json()
+        except:
+            print('Error: {}.json not exist for chip = {}'.format(self.item_to_ana,chipID))
             self.ERROR = True
-            return
-        self.data, self.params = self.read_json()
 
     def read_json(self):
         #path_to_file = '/'.join([self.root_path, self.chipID, self.item_to_ana, self.filename])
@@ -559,7 +558,7 @@ class BaseClass_Ana:
 
 # Analyze one LArASIC --Decoding
 class LArASIC_ana:
-    def __init__(self, dataASIC: list, output_dir: str, chipID: str, tms=0, param='ASICDAC_CALI_CHK', generateQCresult=True, generatePlots=True, period=500):
+    def __init__(self, dataASIC: list, output_dir: str, chipID: str, tms=0, param='ASICDAC_CALI_CHK', generateQCresult=True, generatePlots=False, period=500):
         self.generateQCresult = generateQCresult
         self.generatePlots = generatePlots
         ## chipID : from the logs
