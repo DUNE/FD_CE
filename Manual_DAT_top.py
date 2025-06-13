@@ -35,6 +35,9 @@ from rts_ssh import DAT_power_off
 #Black = '\033[90m'
 #Default = '\033[99m'
 
+# Burn in serial number for COLDATA (or don't)
+burnin_sn = True
+
 try:
     chiptype = int (input ("\033[96m Chips under test. 1-FE, 2-ADC, 3-CD:  \033[95m"))
     if chiptype > 0 and chiptype <= 3:
@@ -74,7 +77,7 @@ pc_wrcfg_fn = "./asic_info.csv"
 
 def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT" ) :
     while True:
-        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env)
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_sn=burnin_sn)
         if QCresult != None:
             QCstatus = QCresult[0]
             badchips = QCresult[1]

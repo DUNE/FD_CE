@@ -20,7 +20,7 @@ import FNAL_CPM as cpm
 from colorama import just_fix_windows_console
 just_fix_windows_console()
 
-####### Input test information #######
+####### Colors for terminal output #######
 #Red = '\033[91m'
 #Green = '\033[92m'
 #Blue = '\033[94m'
@@ -34,6 +34,7 @@ just_fix_windows_console()
 
 #start robot
 from RTS_CFG import RTS_CFG
+from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
