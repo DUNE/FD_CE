@@ -5,7 +5,7 @@ import datetime
 import filecmp
 import pickle
 import os
-from DAT_read_cfg import dat_read_cfg
+from DAT_read_cfg import dat_read_cfg, dat_read_cfg_auto
 from DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
 from DAT_COLDATA_QC_ana import CD_QC_ANA 
@@ -89,7 +89,7 @@ def Sinkcover():
         else:
             print ("Please close the covers and continue...")
 
-def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" ):
+def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", auto=True):
 
     QC_TST_EN =  True 
     
@@ -277,7 +277,10 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
                 logs['CFG_rbfrom_WIB'] = [command, result.stdout]
                 logs['PC_RBCFG_fn'] = pcdst + "asic_info.csv"
     
-                logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
+                if auto: 
+                    logsd, fdir =  dat_read_cfg_auto(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
+                else:
+                    logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
                 DUT = logsd['DUT']
     
                 result = filecmp.cmp(logs['PC_WRCFG_FN'], logs['PC_RBCFG_fn'])
