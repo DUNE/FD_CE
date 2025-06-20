@@ -48,6 +48,7 @@ BypassRTS = False
 robot_ip = '192.168.121.1'
 
 chiptype = 1 # LArASIC=1, ColdADC=2, COLDATA=3
+config_file = 'asic_info.csv'
 
 email_progress = False
 email = "rtsfnal@gmail.com"
@@ -114,6 +115,31 @@ def FindChipImage(image_dir, tray_nr, col_nr, row_nr):
 
     return image_files[-1]
 
+def MoveChipsAndTest(queue, chip_positions, duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/"):
+    """
+    This function moves two chips from a tray to the sockets and runs the QC tests for COLDATA.
+    Inputs:
+        chip_positions [dict]: dictionary describing the chip positions in the tray 
+                               and where to put them in the DAT board
+        duttype [str]: hardware type to test (CD=COLDATA)
+        env [str]: room/cold environment for tests
+        rootdir [str]: directory to save results
+    """
+
+    for i in range(len(chip_positions['dat'])):
+        dat = chip_positions['dat'][i]
+        dat_socket = chip_positions['dat_socket'][i]
+        tray = chip_positions['tray'][i]
+        col = chip_positions['col'][i]
+        row = chip_positions['row'][i]
+        rts.MoveChipFromTrayToSocket(dat, dat_socket, tray, col, row)
+
+    print('Done moving')
+
+    logs = RunCOLDATA_QC(duttype, env, rootdir)
+
+    return logs
+
 if __name__ == "__main__":
     print("Starting RTS integration script")
     
@@ -128,53 +154,64 @@ if __name__ == "__main__":
         rts = RTS_CFG()
         rts.rts_init(port=201, host_ip=robot_ip) 
 
-    tray = 2
-    col = 1
-    row = 1
-    dat = 2
-    dat_socket = 21
+    chip_positions = {'tray':[2,2], 'col':[1,1], 'row':[1,2], 'dat':[2,2], 'dat_socket':[21,22], 'labels':['CD0','CD1']}
 
+    qc_queue = mp.Queue()
     if not BypassRTS:
-        p_MoveChipFromTrayToSocket = mp.Process(target=rts.MoveChipFromTrayToSocket, args=(dat, dat_socket, tray, col, row))
+        p_MoveChipsAndTest = mp.Process(target=MoveChipsAndTest, args=(qc_queue, chip_positions))
         rts.MotorOn()
-        p_MoveChipFromTrayToSocket.start()
+        p_MoveChipsAndTest.start()
     print('Commands sent')
 
     # Check the RobotLog to see if the chip picture is ready before running OCR
     RobotLog_dir = "/Users/RTS/RTS_data/"
     RobotLog_file = "RobotLog.txt"
     robotlog = ReadLastLog(RobotLog_file, RobotLog_dir)
-    picture_ready = False
+    pictures_ready = False
+    pictures = []
     timepassed = 0
-    while not picture_ready:
+    while not pictures_ready:
 
         robotlog = ReadLastLog(RobotLog_file, RobotLog_dir)
         #print("-------- RobotLog:" + robotlog)
         if "Picture of chip in tray taken" in robotlog:
-            picture_ready = True
             image_id = robotlog.split(" ")[-1].rstrip("\n")
+            if image_id not in pictures:
+                pictures.append(image_id)
             #image_id = '20250402112328' # for testing while we can't run full OCR
+
+            if len(pictures) == len(chip_positions['dat_socket']):
+                pictures_ready = True
 
         # Break if its been too long
         if timepassed > 180:
-            print("ERROR: Picture of chip has still not been taken.")
+            print("ERROR: Pictures of chip has still not been taken.")
             break
         time.sleep(0.5)
         timepassed += 0.5
  
-    if picture_ready:
-        p_RunOCR = mp.Process(target=cpm.RunOCR, args=(image_directory, image_id, ocr_results_dir))
-        p_RunOCR.start() # Start OCR 
-        p_RunOCR.join() # waits till process is done
-        
-        # Use ShowOCRResult to test the process without actually runing OCR
-        #p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
-        #p_ShowOCRResult.start()
-        #p_ShowOCRResult.join()
+    ocr_queue = mp.Queue()
+    if pictures_ready:
+        for i in range(len(pictures)):
+            p_RunOCR = mp.Process(target=cpm.RunOCR, args=(image_directory, pictures[i], ocr_results_dir,
+                                                           False, chip_positions['label'][i], config_file, ocr_queue))
+            p_RunOCR.start() # Start OCR 
+            
+            # Use ShowOCRResult to test the process without actually runing OCR
+            #p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
+            #p_ShowOCRResult.start()
+            #p_ShowOCRResult.join()
 
     if not BypassRTS:
-        p_MoveChipFromTrayToSocket.join() # wait till the RTS is done moving chips to shutdown
+        p_MoveChipsAndTest.join() # wait till the RTS is done moving chips to shutdown
         rts.rts_shutdown()
+
+    # Make sure OCR is done for all pictures
+    [ocr_queue.get() for i in range(len(pictures))]
+
+    # Burn in the serial number found from the OCR
+    logs = qc_queue.get()
+    BurninSN(logs) 
 
     if email_progress:
         send_email("Finished running!", sender_email=email, receiver_email=receiver_email, password=pw)
