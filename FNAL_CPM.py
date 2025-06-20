@@ -19,7 +19,7 @@ h = 450
 x = 900
 y = 720
 crop_box = (x, y, x + w, y + h)
-image_directory = "/Users/RTS/RTS_data/images/"
+image_directory = '/Users/tcontrer/Downloads/' #"/Users/RTS/RTS_data/images/"
 ocr_results_dir = "Tested/fnal_cpm_results/"
 #################################################
 
@@ -236,6 +236,8 @@ def SaveChipInfo(image_id, serial_number, wafer_id, output_dir):
         serial_number [str]: serial number of the chip, in the form XXXX-YYYYY
         wafer_id [str]: wafer lot number, in the form AAAAXX.YY
         output_dir [str]: Directory to save the chip info to
+    Returns:
+        chipinfo_file [str]: full path to file that the SN was saved to.
     """
 
     chipinfo_file = output_dir + "ChipInfo_" + image_id + ".csv"
@@ -244,12 +246,14 @@ def SaveChipInfo(image_id, serial_number, wafer_id, output_dir):
                 "Wafer":wafer_id,
                 "image":image_id}
 
+    print(f'Saving chip info to {chipinfo_file}.')
+
     with open(chipinfo_file, 'w') as f:
         writer = csv.DictWriter(f, chipinfo.keys())
         writer.writeheader()
         writer.writerow(chipinfo)
 
-    return
+    return chipinfo_file
 
 def ShowOCRResult(image_id, ocr_results_dir, chipinfo_dir):
     """
@@ -264,15 +268,16 @@ def ShowOCRResult(image_id, ocr_results_dir, chipinfo_dir):
         chipinfo_dir [str]: directory of the csv file containing
                             the chip information
     """
-    image_file = image_id + ".png"
-    chipinfo_file = "ChipInfo_" + image_id + ".csv"
+
+    image_file = image_id.split("_")[0] + ".png"
+    chipinfo_file = "ChipInfo_" + image_id.split("_")[0] + ".csv"
 
     print(f"Opening files {image_file} and {chipinfo_file}")
 
     try:
-        f = open(ocr_results_dir + chipinfo_file, 'r')
+        f = open(chipinfo_dir + chipinfo_file, 'r')
     except OSError:
-        print(f"ERROR!! Could not open/read file: {ocr_results_dir + chipinfo_file}")
+        print(f"ERROR!! Could not open/read file: {chipinfo_dir + chipinfo_file}")
         return
 
     with f:
@@ -292,7 +297,7 @@ def ShowOCRResult(image_id, ocr_results_dir, chipinfo_dir):
     
     return
 
-def RunOCR(image_directory, image_file, ocr_results_dir):
+def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, socket_label='CD0', config_file='asic_info.csv'):
     """
     Preprocess a given image, perform the ocr, and write
     the result to a file upon success.
@@ -317,10 +322,40 @@ def RunOCR(image_directory, image_file, ocr_results_dir):
             serial_number, wafer_id, warnings = validate_COLDATA_OCR(ocr_result, image_number)
             [print(w) for w in warnings]
             
-            SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir)
+            chipinfo_file = SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir, to_rts_config=True)
+
+    if to_rts_config:
+        WriteToRTSConfig(chipinfo_file, config_file, socket_label)
 
     return
-        
+
+def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
+    """
+    Write the serial number of a given chip to the RTS config file.
+    Inputs:
+        chipinfo_file [str]: file with chip information
+        config_file [str]: RTS config file
+        socket_label [str]: label of chip socket (ex. CD0 or CD1)
+    """
+
+    chip_df = pd.read_csv(chipinfo_file)
+    sn = str(chip_df['SN'][0])
+
+    config_df = pd.read_csv(config_file)
+
+    # Find corresponding socket label and overwrite with new SN
+    row_num = 0
+    for i in config_df['Item']:
+        if i == socket_label: 
+            config_df.loc[row_num, 'Value'] = sn
+            break
+        row_num += 1
+
+    # Overwrite existing csv
+    config_df.to_csv(config_file)
+
+    return
+   
 def RunOverDir(ocr_results_dir, image_directory):
     """
     Run OCR over all bmp images with '_SN' in the name in a given directory.
@@ -396,10 +431,10 @@ if __name__=="__main__":
 
     start_time = time.time()
 
-    image_file = "20250402133112_SN.bmp"
-    RunOCR(image_directory, image_file, ocr_results_dir)
+    image_id = "20250402142447_SN"
+    RunOCR(image_directory, image_id, ocr_results_dir)
     #image_id = "20250402170946"
-    #ShowOCRResult(image_id, ocr_results_dir)
+    ShowOCRResult(image_id, ocr_results_dir, ocr_results_dir)
     #CheckAllOCRResults(ocr_results_dir)
 
     print("### %s seconds ###" % (time.time() - start_time))
