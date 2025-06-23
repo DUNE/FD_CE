@@ -21,7 +21,7 @@ from colorama import just_fix_windows_console
 just_fix_windows_console()
 
 #def dat_chk_cfgfile(froot = "./tmp_data/" ):
-def dat_chk_cfgfile(fcfg = "./asic_info.csv", duttype='FE' ):
+def dat_chk_cfgfile(fcfg = "./asic_info.csv", duttype='FE'):
     logs={}
     #tester=input("please input your name:  ")
     #logs['tester']=tester
@@ -184,6 +184,142 @@ def dat_chk_cfgfile(fcfg = "./asic_info.csv", duttype='FE' ):
     #fdir = froot + fsubdir + "/"
 
     #return logs,  fdir
+
+def dat_chk_cfgfile_auto(fcfg = "./asic_info.csv", duttype='FE' ):
+    """
+    Checks the config file for the correct formats and hardware types.
+    Inputs:
+        fcfg [str]: Name of config file as relative path in QC folder
+        duttype [str]: hardware to be tested (FE,CD,ADC)
+    Returns:
+        True if successful, False if the config is not correct.
+    """
+    logs={}
+   
+
+    logs['date']=datetime.datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+
+    with open(fcfg, 'r') as fp:
+        for cl in fp:
+            tmp = cl.split(",")
+            tmp = tmp[:-1]
+            logs[tmp[0]] = tmp[1]
+
+
+    print ("Tester  :  ", "\033[91m {} \033[0m".format(logs['tester']))
+    print ("\033[0m Test Site  :     ", logs['testsite'])
+    print ("Enviroment :     ", logs['env'])
+    print ("DAT SN     :     ", logs['DAT_SN'])
+    print ("DAT_on_WIB_slot: ", logs['DAT_on_WIB_slot'])
+    print ("DUT        :     ", logs['DUT'])
+    if "CD" in logs['DUT']:
+        print ("\033[92m COLDATA0  : {} \033[0m".format(logs['CD0']))
+        print ("\033[92m COLDATA1  : {} \033[0m".format(logs['CD1']))
+    elif "ADC" in logs['DUT']:
+        print ("\033[92m ColdADC0  : {} \033[0m".format(logs['ADC0']))
+        print ("\033[92m ColdADC1  : {} \033[0m".format(logs['ADC1']))
+        print ("\033[92m ColdADC2  : {} \033[0m".format(logs['ADC2']))
+        print ("\033[92m ColdADC3  : {} \033[0m".format(logs['ADC3']))
+        print ("\033[92m ColdADC4  : {} \033[0m".format(logs['ADC4']))
+        print ("\033[92m ColdADC5  : {} \033[0m".format(logs['ADC5']))
+        print ("\033[92m ColdADC6  : {} \033[0m".format(logs['ADC6']))
+        print ("\033[92m ColdADC7  : {} \033[0m".format(logs['ADC7']))
+    elif "FE" in logs['DUT']:
+        print ("\033[92m LArASIC0  : {} \033[0m".format(logs['FE0']))
+        print ("\033[92m LArASIC2  : {} \033[0m".format(logs['FE1']))
+        print ("\033[92m LArASIC2  : {} \033[0m".format(logs['FE2']))
+        print ("\033[92m LArASIC3  : {} \033[0m".format(logs['FE3']))
+        print ("\033[92m LArASIC4  : {} \033[0m".format(logs['FE4']))
+        print ("\033[92m LArASIC5  : {} \033[0m".format(logs['FE5']))
+        print ("\033[92m LArASIC6  : {} \033[0m".format(logs['FE6']))
+        print ("\033[92m LArASIC7  : {} \033[0m".format(logs['FE7']))
+
+    if duttype not in logs['DUT'] :
+        print ("\033[93m DUT type in file is wrong, please correct \033[0m") 
+        return False
+
+    cd_id = {}
+    for cd in range(2):
+        dkey = "CD%d"%cd
+        cdstr=logs[dkey]
+        try:
+            int(cdstr[0:9])
+            cd_id['CD{}'.format(cd)] = cdstr[0:9]
+        except ValueError:
+            print ("\033[93m COLDATA Serial number is not in right format (XXXXXXXXX), please correct\033[0m") 
+            return False
+
+    adc_id = {}
+    for adc in range(8):
+        dkey = "ADC%d"%adc
+        adcstr=logs[dkey]
+        if (len(adcstr) == 10) :
+            adcexist_flg = False
+            adcks = list(adc_id.keys())
+            for adck in adcks:
+                adcexist = adc_id[adck]
+                if (adcstr[5] == ("-")) :
+                    if (adcstr[0:4] in adcexist)  and (adcstr[5:] in adcexist):
+                        adcexist_flg = True
+                else:
+                    if (adcstr == adcexist):
+                        adcexist_flg = True
+                    
+            if adcexist_flg:
+                print ("\033[93m ColdADC Serial number exists, please correct \033[0m") 
+                return False
+            elif adcstr[4] == ("-")  :
+                try: 
+                    adc_id['ADC{}'.format(adc)] = adcstr[0:4]+adcstr[5:]
+                except ValueError:
+                    print ("\033[93m ColdADC Serial number is not in right format (XXXX-XXXXX), please correct\033[0m") 
+                    return False
+            else:
+                print ("\033[93m ColdADC Serial number is not in right format (XXXX-XXXXX), please correct\033[0m") 
+                return False
+        else:
+            print ("\033[93m ColdADC Serial number is not in right format (XXXX-XXXXX), please correct\033[0m") 
+            return False
+
+    fe_id = {}
+    for fe in range(8):
+        dkey = "FE%d"%fe
+        festr=logs[dkey]
+        if (len(festr) == 9) :
+            feexist_flg = False
+            feks = list(fe_id.keys())
+            for fek in feks:
+                feexist = fe_id[fek]
+                if (festr[3] == ("-")) :
+                    if (festr[0:3] in feexist)  and (festr[3] == '0')and (festr[4:] in feexist):
+                        feexist_flg = True
+                else:
+                    if (festr == feexist):
+                        feexist_flg = True
+                    
+            if feexist_flg:
+                print ("\033[93m FE Serial number exists, please correct \033[0m") 
+                return False
+            elif festr[3] == ("-") or festr[3] == ("1") :
+                try: 
+                    febatch = int(festr[0:3])
+                    fesn = int(festr[4:])
+                    if festr[3] == ("1") :
+                        fe_id['FE{}'.format(fe)] = festr[0:3]+"1"+festr[4:]
+                    else:
+                        fe_id['FE{}'.format(fe)] = festr[0:3]+"0"+festr[4:]
+                except ValueError:
+                    print ("\033[93m FE Serial number is not in right format (XXX-XXXXX), please correct\033[0m") 
+                    return False
+            else:
+                print ("\033[93m FE Serial number is not in right format (XXX-XXXXX), please correct\033[0m") 
+                return False
+        else:
+            print ("\033[93m FE Serial number is not in right format (XXX-XXXXX), please correct\033[0m") 
+            return False
+
+    return True
+
 
 
 

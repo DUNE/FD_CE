@@ -5,7 +5,7 @@ import datetime
 import filecmp
 import pickle
 import os
-from DAT_read_cfg import dat_read_cfg
+from DAT_read_cfg import dat_read_cfg, dat_read_cfg_auto
 from DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
 from DAT_COLDATA_QC_ana import CD_QC_ANA 
@@ -89,7 +89,7 @@ def Sinkcover():
         else:
             print ("Please close the covers and continue...")
 
-def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" ):
+def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True):
 
     QC_TST_EN =  True 
     
@@ -167,7 +167,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
         tms_items[4  ] = "\033[96m 4: COLDATA PLL lock range measurement  \033[0m"
         tms_items[5  ] = "\033[96m 5: COLDATA fast command verification  \033[0m"
         tms_items[6  ] = "\033[96m 6: COLDATA output link verification \033[0m"
-        if True:
+        if burnin_in_tests:
             tms_items[7  ] = "\033[96m 7: COLDATA EFUSE burn-in \033[0m"
         else: 
             print ("Burn-in is ignore")
@@ -277,7 +277,10 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
                 logs['CFG_rbfrom_WIB'] = [command, result.stdout]
                 logs['PC_RBCFG_fn'] = pcdst + "asic_info.csv"
     
-                logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
+                if auto: 
+                    logsd, fdir =  dat_read_cfg_auto(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
+                else:
+                    logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
                 DUT = logsd['DUT']
     
                 result = filecmp.cmp(logs['PC_WRCFG_FN'], logs['PC_RBCFG_fn'])
@@ -313,7 +316,13 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
             elif "ADC" in DUT:
                 command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_ColdADC_QC_top.py -t {}".format(testid)]
             elif "CD" in DUT:
-                command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
+                # Allows burnin as separate step
+                if testid==7 and not burnin_now:
+                    tmsi = tmsi + 1
+                    continue
+                else: 
+                    command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
+
             result=subrun(command, timeout = None) #rewrite with Popen later
             if result != None:
                 resultstr = result.stdout
@@ -458,7 +467,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT" 
     #chip_passed = [0,1,2,3,4,5,6,7]
     #chip_failed = []
 
-    return QCstatus, bads 
+    return QCstatus, bads, logs 
 
 if __name__=="__main__":
    fdirdel = "/home/root/BNL_CE_WIB_SW_QC/tmp_data/RT_CD_031702417_031752417/"
