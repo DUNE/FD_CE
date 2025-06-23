@@ -303,6 +303,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     the result to a file upon success.
 
     Inputs:
+        ocr_queue [Queue]: multiprocessing queue for threading
         image_directory [str]: directory of image
         image_file [str]: file name of image
         ocr_results_dir [str]: directory to save results
@@ -322,7 +323,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
             serial_number, wafer_id, warnings = validate_COLDATA_OCR(ocr_result, image_number)
             [print(w) for w in warnings]
             
-            chipinfo_file = SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir, to_rts_config=True)
+            chipinfo_file = SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir)
 
     if to_rts_config:
         WriteToRTSConfig(chipinfo_file, config_file, socket_label)
