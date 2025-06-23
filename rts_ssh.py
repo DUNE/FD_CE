@@ -5,7 +5,7 @@ import datetime
 import filecmp
 import pickle
 import os
-from DAT_read_cfg import dat_read_cfg, dat_read_cfg_auto
+from DAT_read_cfg import dat_read_cfg #, dat_read_cfg_auto # TODO: Why did I want an auto version?
 from DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
 from DAT_COLDATA_QC_ana import CD_QC_ANA 
@@ -92,7 +92,7 @@ def Sinkcover():
 def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True):
 
     QC_TST_EN =  True 
-    
+    print('Running rts_ssh')
     logs = {}
     logs['RTS_IDs'] = dut_skt
     x = list(dut_skt.keys())
@@ -277,8 +277,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                 logs['CFG_rbfrom_WIB'] = [command, result.stdout]
                 logs['PC_RBCFG_fn'] = pcdst + "asic_info.csv"
     
-                if auto: 
-                    logsd, fdir =  dat_read_cfg_auto(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
+                if auto: # TODO: Why did I add this? 
+                    logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
                 else:
                     logsd, fdir =  dat_read_cfg(infile_mode=True,  froot = logs['PC_RBCFG_fn'])
                 DUT = logsd['DUT']

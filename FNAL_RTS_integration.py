@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys 
 import os
 import subprocess
@@ -5,6 +6,7 @@ import time
 import random
 import pickle
 import multiprocessing as mp
+import pandas as pd
 
 # To send notification email
 import smtplib
@@ -12,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 from LogInfo import SaveToLog, ReadLastLog
+from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 
 # adding OCR folder to the system path
 sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
@@ -34,7 +37,6 @@ just_fix_windows_console()
 
 #start robot
 from RTS_CFG import RTS_CFG
-from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
@@ -115,10 +117,11 @@ def FindChipImage(image_dir, tray_nr, col_nr, row_nr):
 
     return image_files[-1]
 
-def MoveChipsAndTest(queue, chip_positions, duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/"):
+def MoveChipsAndTest(rts, chip_positions, duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/"):
     """
     This function moves two chips from a tray to the sockets and runs the QC tests for COLDATA.
     Inputs:
+        queue [Queue]: multiprocessing queue for threading
         chip_positions [dict]: dictionary describing the chip positions in the tray 
                                and where to put them in the DAT board
         duttype [str]: hardware type to test (CD=COLDATA)
@@ -134,11 +137,12 @@ def MoveChipsAndTest(queue, chip_positions, duttype="CD", env="RT", rootdir="C:/
         row = chip_positions['row'][i]
         rts.MoveChipFromTrayToSocket(dat, dat_socket, tray, col, row)
 
+    rts.rts_shutdown()
     print('Done moving')
 
-    logs = RunCOLDATA_QC(duttype, env, rootdir)
+    #logs = RunCOLDATA_QC(duttype, env, rootdir)
 
-    return logs
+    return #logs
 
 if __name__ == "__main__":
     print("Starting RTS integration script")
@@ -154,14 +158,17 @@ if __name__ == "__main__":
         rts = RTS_CFG()
         rts.rts_init(port=201, host_ip=robot_ip) 
 
-    chip_positions = {'tray':[2,2], 'col':[1,1], 'row':[1,2], 'dat':[2,2], 'dat_socket':[21,22], 'labels':['CD0','CD1']}
+    # Dictionary to hold chip positions and chip labels
+    chip_positions = {'tray':[2,2], 'col':[1,2], 'row':[4,1], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
 
-    qc_queue = mp.Queue()
+    # Start moving chips and then QC testing
+    #qc_queue = mp.Queue()
     if not BypassRTS:
-        p_MoveChipsAndTest = mp.Process(target=MoveChipsAndTest, args=(qc_queue, chip_positions))
+        #p_MoveChipsAndTest = mp.Process(target=MoveChipsAndTest, args=(qc_queue, rts, chip_positions))
         rts.MotorOn()
-        p_MoveChipsAndTest.start()
-    print('Commands sent')
+        MoveChipsAndTest(rts, chip_positions)
+        #p_MoveChipsAndTest.start()
+        print('Commands sent')
 
     # Check the RobotLog to see if the chip picture is ready before running OCR
     RobotLog_dir = "/Users/RTS/RTS_data/"
@@ -173,14 +180,16 @@ if __name__ == "__main__":
     while not pictures_ready:
 
         robotlog = ReadLastLog(RobotLog_file, RobotLog_dir)
-        #print("-------- RobotLog:" + robotlog)
+        print("-------- RobotLog:" + robotlog)
         if "Picture of chip in tray taken" in robotlog:
             image_id = robotlog.split(" ")[-1].rstrip("\n")
             if image_id not in pictures:
                 pictures.append(image_id)
             #image_id = '20250402112328' # for testing while we can't run full OCR
 
+            # Stop once we have pictures for each chip
             if len(pictures) == len(chip_positions['dat_socket']):
+                print('Pictures ready!')
                 pictures_ready = True
 
         # Break if its been too long
@@ -190,27 +199,36 @@ if __name__ == "__main__":
         time.sleep(0.5)
         timepassed += 0.5
  
-    ocr_queue = mp.Queue()
+    # Queue the OCR process to get SN for each chip
+    #ocr_queue = mp.Queue()
     if pictures_ready:
         for i in range(len(pictures)):
-            p_RunOCR = mp.Process(target=cpm.RunOCR, args=(image_directory, pictures[i], ocr_results_dir,
-                                                           False, chip_positions['label'][i], config_file, ocr_queue))
-            p_RunOCR.start() # Start OCR 
+            #p_RunOCR = mp.Process(target=cpm.RunOCR, args=(ocr_queue, image_directory, pictures[i], ocr_results_dir,
+            #                                               False, chip_positions['label'][i], config_file))
+            #p_RunOCR.start() # Start OCR 
+            cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
+                       False, chip_positions['label'][i], config_file)
             
             # Use ShowOCRResult to test the process without actually runing OCR
             #p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
             #p_ShowOCRResult.start()
             #p_ShowOCRResult.join()
 
-    if not BypassRTS:
-        p_MoveChipsAndTest.join() # wait till the RTS is done moving chips to shutdown
-        rts.rts_shutdown()
+    #if not BypassRTS:
+    #    p_MoveChipsAndTest.join() # wait till the RTS is done moving chips to shutdown
 
     # Make sure OCR is done for all pictures
-    [ocr_queue.get() for i in range(len(pictures))]
+    #[ocr_queue.get() for i in range(len(pictures))]
+
+    print('About to run COLDATA_QC')
+    #_ = qc_queue.get() # waiting for process to end
+    logs = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
+    #log_path = "/Users/RTS/Tested/Time_20250623190731_DUT_1000_2000/RT_CD_033432506_033392506/QC.log"
+    #logs = pd.read_pickle(log_path)
 
     # Burn in the serial number found from the OCR
-    logs = qc_queue.get()
+    print('About to run burn in')
+    #logs = qc_queue.get() # gets the output from the last process queued
     BurninSN(logs) 
 
     if email_progress:
