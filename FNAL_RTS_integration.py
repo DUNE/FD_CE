@@ -13,15 +13,15 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from LogInfo import SaveToLog, ReadLastLog
+from LogInfo import WaitForPictures
 from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 
 # adding OCR folder to the system path
 sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
 import FNAL_CPM as cpm
 
-from colorama import just_fix_windows_console
-just_fix_windows_console()
+#from colorama import just_fix_windows_console
+#just_fix_windows_console()
 
 ####### Colors for terminal output #######
 #Red = '\033[91m'
@@ -170,44 +170,22 @@ if __name__ == "__main__":
         #p_MoveChipsAndTest.start()
         print('Commands sent')
 
-    # Check the RobotLog to see if the chip picture is ready before running OCR
-    RobotLog_dir = "/Users/RTS/RTS_data/"
-    RobotLog_file = "RobotLog.txt"
-    robotlog = ReadLastLog(RobotLog_file, RobotLog_dir)
-    pictures_ready = False
-    pictures = []
-    timepassed = 0
-    while not pictures_ready:
-
-        robotlog = ReadLastLog(RobotLog_file, RobotLog_dir)
-        print("-------- RobotLog:" + robotlog)
-        if "Picture of chip in tray taken" in robotlog:
-            image_id = robotlog.split(" ")[-1].rstrip("\n")
-            if image_id not in pictures:
-                pictures.append(image_id)
-            #image_id = '20250402112328' # for testing while we can't run full OCR
-
-            # Stop once we have pictures for each chip
-            if len(pictures) == len(chip_positions['dat_socket']):
-                print('Pictures ready!')
-                pictures_ready = True
-
-        # Break if its been too long
-        if timepassed > 180:
-            print("ERROR: Pictures of chip has still not been taken.")
-            break
-        time.sleep(0.5)
-        timepassed += 0.5
+    # Check the RobotLog to see if the chip pictures are ready before running OCR
+    print('Waiting for chip pictures...')
+    pictures_ready, pictures = WaitForPictures(chip_positions, threading=False)
  
     # Queue the OCR process to get SN for each chip
     #ocr_queue = mp.Queue()
+    sn_ready = True
     if pictures_ready:
+        print('Pictures ready!')
         for i in range(len(pictures)):
             #p_RunOCR = mp.Process(target=cpm.RunOCR, args=(ocr_queue, image_directory, pictures[i], ocr_results_dir,
             #                                               False, chip_positions['label'][i], config_file))
             #p_RunOCR.start() # Start OCR 
-            cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
-                       False, chip_positions['label'][i], config_file)
+            success = cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
+                                 False, chip_positions['label'][i], config_file)
+            sn_ready = sn_ready and success # only True if all RunOCR's are successful
             
             # Use ShowOCRResult to test the process without actually runing OCR
             #p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
@@ -227,9 +205,12 @@ if __name__ == "__main__":
     #logs = pd.read_pickle(log_path)
 
     # Burn in the serial number found from the OCR
-    print('About to run burn in')
-    #logs = qc_queue.get() # gets the output from the last process queued
-    BurninSN(logs) 
+    if sn_ready:
+        print('About to run burn in')
+        #logs = qc_queue.get() # gets the output from the last process queued
+        BurninSN(logs) 
+    else:
+        print('OCR failed, skipping burning in  of SN.')
 
     if email_progress:
         send_email("Finished running!", sender_email=email, receiver_email=receiver_email, password=pw)
