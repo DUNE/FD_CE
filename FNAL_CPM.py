@@ -309,6 +309,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
         ocr_results_dir [str]: directory to save results
     """
     print("Running OCR...")
+    success = False
     # Extract image_number from the filename (assuming it's before the first '_')
     image_number = image_file.split('_')[0]
     
@@ -324,11 +325,12 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
             [print(w) for w in warnings]
             
             chipinfo_file = SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir)
+            success = True
 
     if to_rts_config:
         WriteToRTSConfig(chipinfo_file, config_file, socket_label)
 
-    return
+    return success
 
 def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
     """
