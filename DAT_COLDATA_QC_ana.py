@@ -299,7 +299,41 @@ class CD_QC_ANA():
         ax4.set_ylabel("Amplitude / bit", fontsize=8)
         ax1.grid()
         ax2.grid()
+
+    def WriteToHWDBLog(self, label, var, fdir="/.", hwdb_file_name="hwdb_CD0.txt"):
+        """
+        Writes to a log file to be used to upload to the hardware database.
+        Inputs:
+            label [str]: label of variable to write
+            var: variable to write to database
+            fdir [str]: directory to write file
+            hwdb_file_name [str]: name of file to write to
+        """
+        with open(fdir+ hwdb_file_name, "w") as hwdb_file:
+             print(label,var, file=hwdb_file)
+        return
     
+    def GetPLL(self, cd1monvs):
+        """
+        Finds and returns the upper and lower index of the PLL log range.
+        Inputs:
+            cd1monvs [?]: ?
+        """
+        lower_index = -999
+        upper_index = -999
+        for index, pll in enumerate(cd1monvs):
+            if (index > 1 and index < 62):
+                diff1a = abs(pll - cd1monvs[index+1])
+                diff1b = abs(pll - cd1monvs[index-1])
+                if (pll > 1200.0 and((diff1a < 1.0) ^ (diff1b < 1.0)) ):
+                    if(diff1a < 1.0):
+                        if(lower_index == -999):
+                            lower_index = index
+                    else:
+                        upper_index = index
+
+        return lower_index, upper_index
+
     def dat_cd_qc_ana(self, fdir="/.", tms=[0,1,2,3,4,5,6,7]):
         if 0 in tms:
             print ("-------------------------------------------------------------------------")
@@ -667,6 +701,15 @@ class CD_QC_ANA():
             #plt.show()
             plt.savefig( fp[0:-4] + "_" + "PLL_LOCK" + ".png")
             plt.close()
+
+            # Saving PLL values for HWDB for CD0
+            lower_index, upper_index = self.GetPLL(cd1monvs)
+            self.WriteToHWDBLog("PLL Lock Range (Lower Bound):", lower_index, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("PLL Lock Range (Upper Bound):", upper_index, fdir, hwdb_file_name="hwdb_CD0.txt")
+
+            lower_index, upper_index = self.GetPLL(cd2monvs)
+            self.WriteToHWDBLog("PLL Lock Range (Lower Bound):", lower_index, fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("PLL Lock Range (Upper Bound):", upper_index, fdir, hwdb_file_name="hwdb_CD1.txt")
     
         
         if 5 in tms:
@@ -844,6 +887,20 @@ class CD_QC_ANA():
                         plt.plot()
                         plt.savefig( fp[0:-4] + "_" + onekey + ".png")
                         plt.close()
+
+            # Saving CD0 info to HWDB log
+            self.WriteToHWDBLog("CD VDDA:", pwr_meas['CD0-0x3_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("FE VDDA:", pwr_meas['CD0-0x3_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDD:", pwr_meas['CD0-0x3_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDIO:", pwr_meas['CD0-0x3_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDCORE:", pwr_meas['CD0-0x3_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+
+            # Saving CD1 info to HWDB log
+            self.WriteToHWDBLog("CD VDDA:", pwr_meas['CD1-0x2_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("FE VDDA:", pwr_meas['CD1-0x2_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDD:", pwr_meas['CD1-0x2_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDIO:", pwr_meas['CD1-0x2_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDCORE:", pwr_meas['CD1-0x2_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
     
         if 7 in tms:
             print ("-------------------------------------------------------------------------")
