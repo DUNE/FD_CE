@@ -146,9 +146,8 @@ def MoveChipsAndTest(rts, chip_positions, duttype="CD", env="RT", rootdir="C:/Us
 
 if __name__ == "__main__":
     print("Starting RTS integration script")
+    start_time = time.time()
     
-    logs = {}
-
     # Log progress of script over email
     if email_progress:
         send_email("Starting RTS!", sender_email=email, receiver_email=receiver_email, password=pw)
@@ -184,7 +183,7 @@ if __name__ == "__main__":
             #                                               False, chip_positions['label'][i], config_file))
             #p_RunOCR.start() # Start OCR 
             success = cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
-                                 False, chip_positions['label'][i], config_file)
+                                 True, chip_positions['label'][i], config_file)
             sn_ready = sn_ready and success # only True if all RunOCR's are successful
             
             # Use ShowOCRResult to test the process without actually runing OCR
@@ -206,7 +205,7 @@ if __name__ == "__main__":
 
     # Burn in the serial number found from the OCR
     if sn_ready:
-        print('About to run burn in')
+        print('About to run burning in of SN')
         #logs = qc_queue.get() # gets the output from the last process queued
         BurninSN(logs) 
     else:
@@ -214,3 +213,6 @@ if __name__ == "__main__":
 
     if email_progress:
         send_email("Finished running!", sender_email=email, receiver_email=receiver_email, password=pw)
+
+    end_time = (time.time() - start_time) / 60 # convert to minutes
+    print(f"--- FNAL_RTS_integration.,py took {end_time} minutes to run ---")

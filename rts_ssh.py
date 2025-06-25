@@ -406,8 +406,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
 
                 # Write qc stats to log for HWDB
                 for test in cd_qc_ana.qc_stats:    
-                    cd_qc_ana.WriteToHWDBLog(test + ":", cd_qc_ana.qc_stats[test], fdir, hwdb_file_name="hwdb_CD0.txt")
-                    cd_qc_ana.WriteToHWDBLog(test + ":", cd_qc_ana.qc_stats[test], fdir, hwdb_file_name="hwdb_CD1.txt")
+                    cd_qc_ana.WriteToHWDBLog(test + ":", cd_qc_ana.qc_stats[test], fddir, hwdb_file_name="hwdb_CD0.txt")
+                    cd_qc_ana.WriteToHWDBLog(test + ":", cd_qc_ana.qc_stats[test], fddir, hwdb_file_name="hwdb_CD1.txt")
 
                 keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
