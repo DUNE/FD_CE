@@ -174,7 +174,7 @@ def validate_COLDATA_OCR(ocr_result, process_id):
                           OCR tests.
     Returns:
         serial_number [str]: Returns a string of the serial number in
-                             the format YYYY-XXXXX, or None if failed
+                             the format XXXXXYYYY, or None if failed
         wafer_id [str]: Returns a string of the wafer lot id, in the
                         format AAAAXX.XX, or None if failed
         warnings [list of str]: A list of all warnings from validation
@@ -211,7 +211,7 @@ def validate_COLDATA_OCR(ocr_result, process_id):
     if not len(sn) == 9:
         warnings.append(f"WARNING: Incorrection length of serial number. Needed 9, found {len(sn)}")
     elif sn.isnumeric():
-        serial_number = sn[5:] + "-" + sn[0:5]
+        serial_number = sn
     else:
         warnings.append(f"ERROR: serial number could not be found. OCR found '{sn}'")
         return None, wafer_id, warnings
@@ -343,6 +343,7 @@ def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
 
     chip_df = pd.read_csv(chipinfo_file)
     sn = str(chip_df['SN'][0])
+    print(f'Writing new SN ({sn}) for {socket_label} to {config_file}...')
 
     config_df = pd.read_csv(config_file)
 
@@ -355,7 +356,7 @@ def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
         row_num += 1
 
     # Overwrite existing csv
-    config_df.to_csv(config_file)
+    config_df.to_csv(config_file, index=False)
 
     return
    
