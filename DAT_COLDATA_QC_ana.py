@@ -309,8 +309,8 @@ class CD_QC_ANA():
             fdir [str]: directory to write file
             hwdb_file_name [str]: name of file to write to
         """
-        with open(fdir+ hwdb_file_name, "w") as hwdb_file:
-             print(label,var, file=hwdb_file)
+        with open(fdir+ hwdb_file_name, "a") as hwdb_file:
+            hwdb_file.write(f"{label}: {var}\n")
         return
     
     def GetPLL(self, cd1monvs):
@@ -704,12 +704,12 @@ class CD_QC_ANA():
 
             # Saving PLL values for HWDB for CD0
             lower_index, upper_index = self.GetPLL(cd1monvs)
-            self.WriteToHWDBLog("PLL Lock Range (Lower Bound):", lower_index, fdir, hwdb_file_name="hwdb_CD0.txt")
-            self.WriteToHWDBLog("PLL Lock Range (Upper Bound):", upper_index, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("PLL Lock Range (Lower Bound)", lower_index, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("PLL Lock Range (Upper Bound)", upper_index, fdir, hwdb_file_name="hwdb_CD0.txt")
 
             lower_index, upper_index = self.GetPLL(cd2monvs)
-            self.WriteToHWDBLog("PLL Lock Range (Lower Bound):", lower_index, fdir, hwdb_file_name="hwdb_CD1.txt")
-            self.WriteToHWDBLog("PLL Lock Range (Upper Bound):", upper_index, fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("PLL Lock Range (Lower Bound)", lower_index, fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("PLL Lock Range (Upper Bound)", upper_index, fdir, hwdb_file_name="hwdb_CD1.txt")
     
         
         if 5 in tms:
@@ -889,18 +889,18 @@ class CD_QC_ANA():
                         plt.close()
 
             # Saving CD0 info to HWDB log
-            self.WriteToHWDBLog("CD VDDA:", pwr_meas['CD0-0x3_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
-            self.WriteToHWDBLog("FE VDDA:", pwr_meas['CD0-0x3_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
-            self.WriteToHWDBLog("CD VDDD:", pwr_meas['CD0-0x3_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
-            self.WriteToHWDBLog("CD VDDIO:", pwr_meas['CD0-0x3_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
-            self.WriteToHWDBLog("CD VDDCORE:", pwr_meas['CD0-0x3_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDA", pwr_meas['CD0-0x3_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("FE VDDA", pwr_meas['CD0-0x3_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDD", pwr_meas['CD0-0x3_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDIO", pwr_meas['CD0-0x3_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("CD VDDCORE", pwr_meas['CD0-0x3_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
 
             # Saving CD1 info to HWDB log
-            self.WriteToHWDBLog("CD VDDA:", pwr_meas['CD1-0x2_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
-            self.WriteToHWDBLog("FE VDDA:", pwr_meas['CD1-0x2_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
-            self.WriteToHWDBLog("CD VDDD:", pwr_meas['CD1-0x2_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
-            self.WriteToHWDBLog("CD VDDIO:", pwr_meas['CD1-0x2_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
-            self.WriteToHWDBLog("CD VDDCORE:", pwr_meas['CD1-0x2_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDA", pwr_meas['CD1-0x2_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("FE VDDA", pwr_meas['CD1-0x2_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDD", pwr_meas['CD1-0x2_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDIO", pwr_meas['CD1-0x2_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+            self.WriteToHWDBLog("CD VDDCORE", pwr_meas['CD1-0x2_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
     
         if 7 in tms:
             print ("-------------------------------------------------------------------------")

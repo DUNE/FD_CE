@@ -37,6 +37,7 @@ import FNAL_CPM as cpm
 
 #start robot
 from RTS_CFG import RTS_CFG
+from rts_ssh import subrun
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
@@ -117,18 +118,16 @@ def FindChipImage(image_dir, tray_nr, col_nr, row_nr):
 
     return image_files[-1]
 
-def MoveChipsAndTest(rts, chip_positions, duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/"):
+def MoveChipsToSockets(rts, chip_positions):
     """
-    This function moves two chips from a tray to the sockets and runs the QC tests for COLDATA.
+    This function turns the robot motor on, moves all chips from a tray to the sockets, 
+    moves the robot back to home, and turns the motor off.
     Inputs:
         queue [Queue]: multiprocessing queue for threading
         chip_positions [dict]: dictionary describing the chip positions in the tray 
                                and where to put them in the DAT board
-        duttype [str]: hardware type to test (CD=COLDATA)
-        env [str]: room/cold environment for tests
-        rootdir [str]: directory to save results
     """
-
+    rts.MotorOn()
     for i in range(len(chip_positions['dat'])):
         dat = chip_positions['dat'][i]
         dat_socket = chip_positions['dat_socket'][i]
@@ -136,13 +135,79 @@ def MoveChipsAndTest(rts, chip_positions, duttype="CD", env="RT", rootdir="C:/Us
         col = chip_positions['col'][i]
         row = chip_positions['row'][i]
         rts.MoveChipFromTrayToSocket(dat, dat_socket, tray, col, row)
+    rts.JumpToCamera()
+    rts.PumpOff()
+    rts.MotorOff()
 
-    rts.rts_shutdown()
-    print('Done moving')
+    return
 
-    #logs = RunCOLDATA_QC(duttype, env, rootdir)
+def MoveChipsToTray(rts, chip_positions):
+    """
+    This function turns the robot motor on, moves all chipsfrom the sockets to the tray, 
+    moves the robot back to home, and turns the motor off.
+    Inputs:
+        queue [Queue]: multiprocessing queue for threading
+        chip_positions [dict]: dictionary describing the chip positions in the tray 
+                               and where to put them in the DAT board
+    """
+    rts.MotorOn()
+    for i in range(len(chip_positions['dat'])):
+        dat = chip_positions['dat'][i]
+        dat_socket = chip_positions['dat_socket'][i]
+        tray = chip_positions['tray'][i]
+        col = chip_positions['col'][i]
+        row = chip_positions['row'][i]
+        rts.MoveChipFromSocketToTray(dat, dat_socket, tray, col, row)
+    rts.JumpToCamera()
 
-    return #logs
+    return
+
+def RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file):
+    """
+    Runs an entire cycle of chip testing: move chips from the tray to the sockets,
+    performs OCR to get serial numbers, runs the QC tests, burn the SN into the 
+    chip, and moves the chips back to the tray. 
+    Inputs:
+        rts [RTS_CFG]: a class defining the rts and functions used to move the robot
+        chip_positions [dict]: dictionary of chip positions and socket labels
+        ocr_results_dur [str]: directory of ocr output
+        config_file [str]: directory and file name of RTS config file.
+    """
+
+    # Move all chips to sockets
+    if not BypassRTS:
+        MoveChipsToSockets(rts, chip_positions)
+
+    # Check the RobotLog to see if the chip pictures are ready before running OCR
+    print('Waiting for chip pictures...')
+    pictures_ready, pictures = WaitForPictures(chip_positions, threading=False)
+ 
+    # Queue the OCR process to get SN for each chip
+    sn_ready = True
+    if pictures_ready:
+        print('Pictures ready!')
+        for i in range(len(pictures)):
+            success = cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
+                                 True, chip_positions['label'][i], config_file)
+            sn_ready = sn_ready and success # only True if all RunOCR's are successful
+    # Kill Ollama used by OCR (TODO: Why does Ollama not close after OCR is done??)
+    subrun("taskkill /F /IM ollama.exe")
+
+    print('About to run COLDATA_QC')
+    logs = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
+
+    # Burn in the serial number found from the OCR
+    if sn_ready:
+        print('About to run burning in of SN')
+        BurninSN(logs) 
+    else:
+        print('OCR failed, skipping burning in  of SN.')
+
+    # Move all chips to tray
+    if not BypassRTS:
+        MoveChipsToTray(rts, chip_positions)
+
+    return
 
 if __name__ == "__main__":
     print("Starting RTS integration script")
@@ -152,64 +217,17 @@ if __name__ == "__main__":
     if email_progress:
         send_email("Starting RTS!", sender_email=email, receiver_email=receiver_email, password=pw)
 
-    # Connect to the robot
     if not BypassRTS:
         rts = RTS_CFG()
         rts.rts_init(port=201, host_ip=robot_ip) 
 
-    # Dictionary to hold chip positions and chip labels
-    chip_positions = {'tray':[2,2], 'col':[1,2], 'row':[4,1], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
+    # Dictionary to hold chip positions and chip labels 
+    chip_positions = {'tray':[2,2], 'col':[1,1], 'row':[2,3], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
 
-    # Start moving chips and then QC testing
-    #qc_queue = mp.Queue()
+    RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file)
+
     if not BypassRTS:
-        #p_MoveChipsAndTest = mp.Process(target=MoveChipsAndTest, args=(qc_queue, rts, chip_positions))
-        rts.MotorOn()
-        MoveChipsAndTest(rts, chip_positions)
-        #p_MoveChipsAndTest.start()
-        print('Commands sent')
-
-    # Check the RobotLog to see if the chip pictures are ready before running OCR
-    print('Waiting for chip pictures...')
-    pictures_ready, pictures = WaitForPictures(chip_positions, threading=False)
- 
-    # Queue the OCR process to get SN for each chip
-    #ocr_queue = mp.Queue()
-    sn_ready = True
-    if pictures_ready:
-        print('Pictures ready!')
-        for i in range(len(pictures)):
-            #p_RunOCR = mp.Process(target=cpm.RunOCR, args=(ocr_queue, image_directory, pictures[i], ocr_results_dir,
-            #                                               False, chip_positions['label'][i], config_file))
-            #p_RunOCR.start() # Start OCR 
-            success = cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
-                                 True, chip_positions['label'][i], config_file)
-            sn_ready = sn_ready and success # only True if all RunOCR's are successful
-            
-            # Use ShowOCRResult to test the process without actually runing OCR
-            #p_ShowOCRResult = mp.Process(target=cpm.ShowOCRResult, args=(image_id, ocr_results_dir, ocr_results_dir))
-            #p_ShowOCRResult.start()
-            #p_ShowOCRResult.join()
-
-    #if not BypassRTS:
-    #    p_MoveChipsAndTest.join() # wait till the RTS is done moving chips to shutdown
-
-    # Make sure OCR is done for all pictures
-    #[ocr_queue.get() for i in range(len(pictures))]
-
-    print('About to run COLDATA_QC')
-    #_ = qc_queue.get() # waiting for process to end
-    logs = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
-    #log_path = "/Users/RTS/Tested/Time_20250623190731_DUT_1000_2000/RT_CD_033432506_033392506/QC.log"
-    #logs = pd.read_pickle(log_path)
-
-    # Burn in the serial number found from the OCR
-    if sn_ready:
-        print('About to run burning in of SN')
-        #logs = qc_queue.get() # gets the output from the last process queued
-        BurninSN(logs) 
-    else:
-        print('OCR failed, skipping burning in  of SN.')
+        rts.rts_shutdown()
 
     if email_progress:
         send_email("Finished running!", sender_email=email, receiver_email=receiver_email, password=pw)
