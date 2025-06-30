@@ -16,14 +16,14 @@ Function main
   		Exit Function
 	EndIf
 	
-	LoadPositionFiles
-		
-	VacuumValveClose
-	PumpOn
-	Wait 3
-
-	Motor On
-	Power Low
+'	LoadPositionFiles
+'		
+'	VacuumValveClose
+'	PumpOn
+'	Wait 3
+'
+'	Motor On
+'	Power Low
 
 	SetSpeed
 	
@@ -52,7 +52,11 @@ Function main
 
 
 	On 12
-
+	Print FindChipDirectionWithDF
+	Print "Found chip position and orientation is "
+	Print "(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	
+	
 '	Print "TRAY TO TRAY MOVEMENT 1"
 '	RunMoveChipTrayToTray(2, 15, 1, 2, 15, 3, GetBoundAnglePM180(CU(Pallet(2, 15, 3)) + 0))
 '	Wait 2
@@ -68,12 +72,12 @@ Function main
 '	Print "TRAY TO TRAY MOVEMENT 4"
 '	RunMoveChipTrayToTray(2, 15, 1, 2, 15, 1, GetBoundAnglePM180(CU(Pallet(2, 15, 1)) + 0))
 
-	RunMoveChipTrayToSocket(2, 15, 1, 1, 8)
-	JumpToCamera
-	Wait 5
-	RunMoveChipSocketToTray(1, 8, 2, 15, 1)
-	PumpOff
-	Off 12
+'	RunMoveChipTrayToSocket(2, 15, 1, 1, 8)
+'	JumpToCamera
+'	Wait 5
+'	RunMoveChipSocketToTray(1, 8, 2, 15, 1)
+'	PumpOff
+'	Off 12
 
 	
 Fend

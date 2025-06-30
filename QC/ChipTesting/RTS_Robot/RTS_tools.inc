@@ -59,5 +59,8 @@ Global Double SocketChipOrientation(3) ' Default direction for chips in sockets 
 
 ' Define the distance between the fiducial markers on LArASIC
 #define LArASICDimension 14.0 ' Need to measure
+#define COLDATATextOffset 4.6 ' Need to measure
 
+#define TolXY 0.5
+#define TolAngle 2.
 
