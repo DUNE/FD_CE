@@ -55,6 +55,9 @@ Function main
 	Print FindChipDirectionWithDF
 	Print "Found chip position and orientation is "
 	Print "(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	Print FindSocketDirectionWithDF
+	Print "Found socket position and orientation is "
+	Print "(", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
 	
 	
 '	Print "TRAY TO TRAY MOVEMENT 1"

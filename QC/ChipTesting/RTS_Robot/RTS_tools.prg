@@ -354,11 +354,11 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 		check = (x_p1 - x_p2) * (x_p3 - x_p2) - (y_p1 - y_p2) * (y_p3 - y_p2)
@@ -3027,7 +3027,7 @@ Function DFFindCOLDATA As Boolean
 		'Print "Found outline"
 		FoundFeatures = FoundFeatures + 1
 	EndIf
-	Print "FoundFeatures = ", FoundFeatures
+	' Print "FoundFeatures = ", FoundFeatures
 	If FoundFeatures < 111 And Not AllowPartial Then
 		Print "Could not find all features" ' : ", FoundFeatures
 		Exit Function
@@ -3292,15 +3292,28 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 
 Fend
 
-
-
 Function FindSocketDirectionWithDF As Boolean
+	FindSocketDirectionWithDF = False
+	
+	Select CHIPTYPE$
+		Case "LArASIC"
+			FindSocketDirectionWithDF = DFFindLArASICSocket
+		Case "ColdADC"
+			Print "ColdADC not yet implemented, check if LArASIC socket works?"
+		Case "COLDATA"
+			FindSocketDirectionWithDF = DFFindCOLDATASocket
+		Default
+			Print "Unsupported chip type: ", CHIPTYPE$
+	Send
+Fend
+
+Function DFFindLArASICSocket As Boolean
 	Double USocket
 
 	VRun MSU_SocketFind2
 	
 	Boolean isFoundTR, isFoundBR, isFoundBL, isFoundTL
-	Boolean isFound1, isFound2, isFound3, isFound4 ' For some reason callin geom.RobotXYU overwrites found bool
+	Boolean isFound1, isFound2, isFound3, isFound4
 	Double xTR, yTR, uTR
 	Double xBR, yBR, uBR
 	Double xBL, yBL, uBL
@@ -3311,7 +3324,7 @@ Function FindSocketDirectionWithDF As Boolean
 	VGet MSU_SocketFind2.Geom03.Found, isFoundBL
 	VGet MSU_SocketFind2.Geom04.Found, isFoundTL
 
-	FindSocketDirectionWithDF = False
+	DFFindLArASICSocket = False
 	Int32 nFound
 	nFound = 0
 	If isFoundTR Then
@@ -3390,7 +3403,7 @@ Function FindSocketDirectionWithDF As Boolean
 
 
 	If Not ThreeCornerFindDirection(isFoundTL, xTL, yTL, isFoundTR, xTR, yTR, isFoundBR, xBR, yBR, isFoundBL, xBL, yBL) Then
-		FindSocketDirectionWithDF = False
+		DFFindLArASICSocket = False
 		Exit Function
 	EndIf
 	
@@ -3398,10 +3411,127 @@ Function FindSocketDirectionWithDF As Boolean
 	SockPos(2) = CornerVar(2)
 	SockPos(3) = CornerVar(3)
 
-	FindSocketDirectionWithDF = True
+	DFFindLArASICSocket = True
 
 Fend
 
+Function DFFindCOLDATASocket As Boolean
+		
+	Select SITE$
+		Case "MSU"
+			VRun MSU_SocketFindL
+					
+			' Mounting points, should have found all of these
+			Boolean isFound1, isFound2, isFound3, isFound4
+			Double xMTR, yMTR, uMTR
+			Double xMBR, yMBR, uMBR
+			Double xMBL, yMBL, uMBL
+			Double xMTL, yMTL, uMTL
+
+			VGet MSU_SocketFindL.Geom01.RobotXYU, isFound1, xMTR, yMTR, uMTR
+			VGet MSU_SocketFindL.Geom02.RobotXYU, isFound2, xMBR, yMBR, uMBR
+			VGet MSU_SocketFindL.Geom03.RobotXYU, isFound3, xMBL, yMBL, uMBL
+			VGet MSU_SocketFindL.Geom04.RobotXYU, isFound4, xMTL, yMTL, uMTL
+			
+			If Not isFound1 Or Not isFound2 Or Not isFound3 Or Not isFound4 Then
+				DFFindCOLDATASocket = False
+				Exit Function
+			EndIf
+
+			' Fiducial markers, should find exactly three of these
+			Boolean isFoundTR, isFoundBR, isFoundBL, isFoundTL
+			Boolean isFound5, isFound6, isFound7, isFound8
+			Double xTR, yTR, uTR
+			Double xBR, yBR, uBR
+			Double xBL, yBL, uBL
+			Double xTL, yTL, uTL
+
+			VGet MSU_SocketFindL.Geom05.Found, isFoundTR
+			VGet MSU_SocketFindL.Geom06.Found, isFoundBR
+			VGet MSU_SocketFindL.Geom07.Found, isFoundBL
+			VGet MSU_SocketFindL.Geom08.Found, isFoundTL
+		Default
+			
+	Send
+	
+	DFFindCOLDATASocket = False
+	Int32 nFound
+	nFound = 0
+	If isFoundTR Then
+		nFound = nFound + 1
+	EndIf
+	If isFoundBR Then
+		nFound = nFound + 1
+	EndIf
+	If isFoundBL Then
+		nFound = nFound + 1
+	EndIf
+	If isFoundTL Then
+		nFound = nFound + 1
+	EndIf
+
+	If nFound <> 3 Then
+		Print "ERROR: Should find exactly 3 fiducial marks, found ", nFound
+		Exit Function
+	EndIf
+
+	If isFoundTL Then
+		VGet MSU_SocketFindL.Geom08.RobotXYU, isFound4, xTL, yTL, uTL
+'		Print "TL : x=", xTL, ", y=", yTL
+	Else
+		xTL = -9999.
+		yTL = -9999.
+	EndIf
+	
+	If isFoundTR Then
+		VGet MSU_SocketFindL.Geom05.RobotXYU, isFound1, xTR, yTR, uTR
+'		Print "TR : x=", xTR, ", y=", yTR		
+	Else
+		xTR = -9999.
+		yTR = -9999.
+	EndIf
+
+	If isFoundBR Then
+		VGet MSU_SocketFindL.Geom06.RobotXYU, isFound2, xBR, yBR, uBR
+'		Print "BR : x=", xBR, ", y=", yBR
+	Else
+		xBR = -9999.
+		yBR = -9999.
+	EndIf
+
+	If isFoundBL Then
+		VGet MSU_SocketFindL.Geom07.RobotXYU, isFound3, xBL, yBL, uBL
+'		Print "BL : x=", xBL, ", y=", yBL
+	Else
+		xBL = -9999.
+		yBL = -9999.
+	EndIf
+
+
+	If Not ThreeCornerFindDirection(isFoundTL, xTL, yTL, isFoundTR, xTR, yTR, isFoundBR, xBR, yBR, isFoundBL, xBL, yBL) Then
+		DFFindCOLDATASocket = False
+		Exit Function
+	EndIf
+	
+	' Check consistency with four mounting points	
+	Double AvMX, AvMY
+	AvMX = (xMTR + xMBR + xMBL + xMTL) /4
+	AvMY = (yMTR + yMBR + yMBL + yMTL) /4
+	
+	If Abs(Sqr((CornerVar(1) - AvMX) * (CornerVar(1) - AvMX) + (CornerVar(2) - AvMY) * (CornerVar(2) - AvMY))) > TolXY Then
+		Print "Corner mounting point average and fiducial method socket positions are inconsistent"
+		Print
+		DFFindCOLDATASocket = False
+		Exit Function
+	EndIf
+	
+	SockPos(1) = CornerVar(1)
+	SockPos(2) = CornerVar(2)
+	SockPos(3) = CornerVar(3)
+
+	DFFindCOLDATASocket = True
+	
+Fend
 
 '''' Angle helper functions ''''
 
