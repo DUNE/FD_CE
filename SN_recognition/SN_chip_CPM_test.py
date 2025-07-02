@@ -233,7 +233,7 @@ def ocr_chip(image_fp, image_fn, ocr_image_dir):
 
 if __name__ == '__main__':
 
-    fp = """C:/Users/sgao.BNL/Documents/GitHub/DUNE-rts-sn-rec/Tested/B011T0001/images/"""
-    fn = """20240711181215_SN.bmp"""
+    fp = """./Tested/B011T0001/images/"""
+    fn = """20240711181524_SN.bmp"""
     x = ocr_chip(image_fp=fp, image_fn = fn, ocr_image_dir = "./Tested/a.png")
     print (x)

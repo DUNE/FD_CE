@@ -1,6 +1,7 @@
 import sys
 import os
 import numpy as np
+from SN_chip_CPM_scan import ocr_chip
 
 class SN_CLASS():
     def __init__(self):
@@ -28,11 +29,15 @@ class SN_CLASS():
 
     def chip_ocr(self, rootdir):
         imagedir = rootdir + "/images/"
-        ocrdirs = [d for d in os.listdir(imagedir) if "_OCR" in d]
+        ocrdirs = [d for d in os.listdir(imagedir) if "_OCR" in d[-4:]]
         ocrdirs.sort()
         if len(ocrdirs) > 0:
             nocrdir =ocrdirs[-1]
         ocr_imgdir = "/".join([imagedir, nocrdir])
+        post_ocr_imgdir = ocr_imgdir  + "_POST"
+        if not os.path.exists(post_ocr_imgdir):  # Check if the folder already exists
+            os.mkdir(post_ocr_imgdir)
+
         image_fns = [d for d in os.listdir(ocr_imgdir) ]
         for ifn in image_fns:
             if "tray_label" in ifn:
@@ -46,6 +51,7 @@ class SN_CLASS():
         for key in chips:
             fn = "/".join([ocr_imgdir , self.chip_ds[key]["fn"]])
             print (fn)
+            ocr_chip(image_fp = ocr_imgdir, image_fn = self.chip_ds[key]["fn"], ocr_image_dir = "/".join([post_ocr_imgdir, self.chip_ds[key]["fn"]]))
             
 
         #print ( self.chip_ds)

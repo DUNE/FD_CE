@@ -148,7 +148,7 @@ def validate_ocr_result(ocr_result, process_id):
 ###################################################################################
 
 def ocr_chip(image_fp, image_fn, ocr_image_dir):
-    image_path = image_fp + image_fn
+    image_path ="/".join([ image_fp , image_fn])
 #    if "_SN" not in image_fn:
 #        print (f"{image_fn} is wrong")
     if os.path.isfile(image_path): 
@@ -175,7 +175,7 @@ def ocr_chip(image_fp, image_fn, ocr_image_dir):
         print (image_path)
         image = Image.open(image_path)
     except IOError as e:
-        print(f"Process ID #{image_number}: ERROR (cannot open image). {e}")
+        #print(f"Process ID #{image_number}: ERROR (cannot open image). {e}")
         return None
     
     # Rotate the image 180 degrees
@@ -206,7 +206,7 @@ def ocr_chip(image_fp, image_fn, ocr_image_dir):
 
 if __name__ == '__main__':
 
-    fp = """D:/RTS_tmp/new/"""
-    fn = """1.png"""
+    fp = """C:/SGAO/ColdTest/Tested/DAT_LArASIC_QC/Tested/B099T0097/images/20250612163810_OCR/"""
+    fn = """tray_1_180.bmp"""
     x = ocr_chip(image_fp=fp, image_fn = fn, ocr_image_dir = fp + "/1_ocr.png")
     print (x)
