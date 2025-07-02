@@ -97,7 +97,7 @@ class CD_QC_ANA():
                 vddios.append(pwr_meas[kpwrs[i]][0])
                 cddios.append(pwr_meas[kpwrs[i]][1])
         #    print (kpwrs[i], pwr_meas[kpwrs[i]][0], pwr_meas[kpwrs[i]][1])
-      
+            
         pass_flg = False
         if all(v1p1[0] <= item <= v1p1[1] for item in vddas) and all(cdda[0] <= item <= cdda[1] for item in cddas) :
             if all(vddfe[0] <= item <= vddfe[1] for item in fe_vddas) and all(cddfe[0] <= item <= cddfe[1] for item in fe_cddas) :
@@ -105,8 +105,9 @@ class CD_QC_ANA():
                     if all(v1p1[0] <= item <= v1p1[1] for item in vddds) and all(cddd[0] <= item <= cddd[1] for item in cddds) :
                         if all(vddio[0] <= item <= vddio[1] for item in vddios) and all(cddio[0] <= item <= cddio[1] for item in cddios) : 
                             pass_flg = True
+        
         return pass_flg
-    
+        
     
     def plt_cdpwr(self, plt, pwr_meas):
         kpwrs = list(pwr_meas.keys())
@@ -384,7 +385,10 @@ class CD_QC_ANA():
                         self.qc_stats[onekey] ="Fail"
                         #break
             print ("#########################################################################")
-    
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 0 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 0 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
     
         if 1 in tms:
             print ("-------------------------------------------------------------------------")
@@ -441,7 +445,11 @@ class CD_QC_ANA():
                     print (Fore.GREEN + onekey + "  : PASS")
                     self.qc_stats[onekey] ="PASS"
     
-    
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 1 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 1 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
+        
         if 2 in tms:
             print ("-------------------------------------------------------------------------")
             print ("2: COLDATA primary/secondary swap check  ")
@@ -529,7 +537,12 @@ class CD_QC_ANA():
                     else:
                         print(Fore.RED + onekey + " : Fail")
                         self.qc_stats[onekey] ="Fail"
-                      
+           
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 2 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 2 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
+                  
         if 3 in tms:
             print ("-------------------------------------------------------------------------")
             print ("3: COLDATA power cycling measurement  ")
@@ -602,6 +615,11 @@ class CD_QC_ANA():
                     plt.close()
     
             print ("#########################################################################")   
+            
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 3 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 3 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
         
         if 4 in tms:
             print ("-------------------------------------------------------------------------")
@@ -711,7 +729,11 @@ class CD_QC_ANA():
             self.WriteToHWDBLog("PLL Lock Range (Lower Bound)", lower_index, fdir, hwdb_file_name="hwdb_CD1.txt")
             self.WriteToHWDBLog("PLL Lock Range (Upper Bound)", upper_index, fdir, hwdb_file_name="hwdb_CD1.txt")
     
-        
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 4 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 4 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
+            
         if 5 in tms:
             print ("-------------------------------------------------------------------------")
             print ("5: COLDATA fast command verification  ")
@@ -798,7 +820,11 @@ class CD_QC_ANA():
             else:
                 self.qc_stats[onekey] ="FAIL"
 
-    
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 5 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 5 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
+        
         if 6 in tms:
             print ("-------------------------------------------------------------------------")
             print ("6: COLDATA output link verification  ")
@@ -887,21 +913,27 @@ class CD_QC_ANA():
                         plt.plot()
                         plt.savefig( fp[0:-4] + "_" + onekey + ".png")
                         plt.close()
-
+                        
+                    self.WriteToHWDBLog("CD VDDIO (CUR_%d)"%curi, pwr_meas['CD0-0x3_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
+                    self.WriteToHWDBLog("CD VDDIO (CUR_%d)"%curi, pwr_meas['CD1-0x2_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
+           
             # Saving CD0 info to HWDB log
             self.WriteToHWDBLog("CD VDDA", pwr_meas['CD0-0x3_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
             self.WriteToHWDBLog("FE VDDA", pwr_meas['CD0-0x3_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
             self.WriteToHWDBLog("CD VDDD", pwr_meas['CD0-0x3_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
-            self.WriteToHWDBLog("CD VDDIO", pwr_meas['CD0-0x3_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
             self.WriteToHWDBLog("CD VDDCORE", pwr_meas['CD0-0x3_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD0.txt")
 
             # Saving CD1 info to HWDB log
             self.WriteToHWDBLog("CD VDDA", pwr_meas['CD1-0x2_CD_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
             self.WriteToHWDBLog("FE VDDA", pwr_meas['CD1-0x2_FE_VDDA'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
             self.WriteToHWDBLog("CD VDDD", pwr_meas['CD1-0x2_CD_VDDD'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
-            self.WriteToHWDBLog("CD VDDIO", pwr_meas['CD1-0x2_CD_VDDIO'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
             self.WriteToHWDBLog("CD VDDCORE", pwr_meas['CD1-0x2_CD_VDDCORE'][1], fdir, hwdb_file_name="hwdb_CD1.txt")
-    
+            
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 6 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 6 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
+        
         if 7 in tms:
             print ("-------------------------------------------------------------------------")
             print ("7: COLDATA EFUSE burn-in  ")
@@ -928,9 +960,18 @@ class CD_QC_ANA():
                     if (readout & 0x7fffffff) == val: 
                         print (Fore.GREEN + onekey + "  : PASS")
                         self.qc_stats[onekey] ="PASS. Programmed %d, reads out %d"%(val,readout)
+                        #print(f"{onekey}", val, self.qc_stats[onekey])
+                        #self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
+                        self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_CD0.txt")
+                        self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_CD1.txt")
                     else:
                         print(Fore.RED + onekey+": Fail")
                         self.qc_stats[onekey] ="FAIL. Programmed %d, reads out %d"%(val,readout)
+            
+            now = datetime.datetime.now(datetime.UTC)
+            timestamp = now.strftime("%H:%M:%S")
+            self.WriteToHWDBLog("Test 7 Time", timestamp, fdir, hwdb_file_name="hwdb_CD0.txt")
+            self.WriteToHWDBLog("Test 7 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
         
         return #cd1monvs, cd2monvs, pwr_meas, data['U1_CD1'][0], data['U2_CD2'][0]
 
@@ -973,12 +1014,8 @@ if __name__=="__main__":
                 print ("Wrong value, please re-enter...")
     
 
-    qc = QC_ANA()
-    cd1monvs,cd2monvs, pwr_meas, sn_cd1, sn_cd2 =qc.dat_cd_qc_ana(fdir=fdir, tms=tms)
-    print (qc.qc_stats)
+    qc = CD_QC_ANA()
+    cd1monvs,cd2monvs, pwr_meas =qc.dat_cd_qc_ana(fdir=fdir, tms=tms)
+    #print (qc.qc_stats)
     #print(dat_cd_qc_ana.)
-    with open("/Users/RTS/Desktop/hwdb_temp.txt", "w") as hwdb_file:
-        print(pwr_meas, file=hwdb_file)
-        print(cd1monvs, file=hwdb_file)
-        print(cd2monvs, file=hwdb_file)
-        print(qc.qc_stats, file=hwdb_file)
+

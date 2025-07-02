@@ -222,7 +222,7 @@ if __name__ == "__main__":
         rts.rts_init(port=201, host_ip=robot_ip) 
 
     # Dictionary to hold chip positions and chip labels 
-    chip_positions = {'tray':[2,2], 'col':[1,1], 'row':[2,3], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
+    chip_positions = {'tray':[2,2], 'col':[2,2], 'row':[2,3], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
 
     RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file)
 
