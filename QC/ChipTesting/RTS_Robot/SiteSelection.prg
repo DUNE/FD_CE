@@ -58,7 +58,7 @@ Function SelectSite
 '  		Print "***ERROR Can't create directory [" + RTS_DATA$ + "]"
 '  		Exit Function
 '	EndIf
-
+	
 	
 	If (HAND_U0 * HAND_U0 + DF_CAM_X_OFF_U0 * DF_CAM_X_OFF_U0 + DF_CAM_Y_OFF_U0 * DF_CAM_Y_OFF_U0 + DF_CAM_FOCUS * DF_CAM_FOCUS) < 1. Then
 		Print "WARNING: DF CAMERA OFFSETS NEED SETTING"
