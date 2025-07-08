@@ -477,6 +477,7 @@ else:
     rts.MotorOn()
     rts.JumpToCamera()
     rts.ScanTray_Lar(rootdir=rootdir)
+
     #rts.MoveChipFromTrayToSocket(2, 1, 1, 2, 1, "FE")    
     #rts.MoveChipFromSocketToTray(2, 1, 2, 1, 1, "FE")
 #    rmsg = rts.ScanTray_Lar(rootdir=rootdir)

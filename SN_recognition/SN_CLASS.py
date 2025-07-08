@@ -43,7 +43,8 @@ class SN_CLASS():
             if "tray_label" in ifn:
                 pass
             else:
-                if "NAN" not in ifn:
+                if ("NAN" not in ifn) and (".bmp" in ifn) and ("tray_" in ifn):
+                    print (ifn)
                     tmps = ifn[0:-4].split("_")
                     self.chip_ds[int(tmps[1])] = {"Degree":int(tmps[2]), "fn":ifn}
         chips = list(self.chip_ds.keys())
@@ -51,7 +52,7 @@ class SN_CLASS():
         for key in chips:
             fn = "/".join([ocr_imgdir , self.chip_ds[key]["fn"]])
             print (fn)
-            ocr_chip(image_fp = ocr_imgdir, image_fn = self.chip_ds[key]["fn"], ocr_image_dir = "/".join([post_ocr_imgdir, self.chip_ds[key]["fn"]]))
+            ocr_chip(image_fp = ocr_imgdir, image_fn = self.chip_ds[key]["fn"], ocr_image_dir = "/".join([post_ocr_imgdir, self.chip_ds[key]["fn"]]), degree=self.chip_ds[key]["Degree"])
             
 
         #print ( self.chip_ds)
