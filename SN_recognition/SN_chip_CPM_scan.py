@@ -114,13 +114,15 @@ def validate_ocr_result(ocr_result, process_id, ocr_image_dir):
 
     if serial_number_match:
         serial_number = serial_number_match.group()
-        print(f"-----> Process ID #{process_id}. Serial Number (SN): {serial_number}")
+        #print(f"-----> Process ID #{process_id}. Serial Number (SN): {serial_number}")
     else:
         warnings.append(f"\n\n(!) ERROR (problem reading Serial Number). Please check the output .txt file and correct.")
 
     # Check for 5 spaces (6 words)
     space_count = ocr_result.count(' ')
     ocr_text = ocr_result.replace(' ', '')
+    ocr_text = ocr_text.replace('.', '')
+    ocr_text = ocr_text.replace('7', 'A')
     #warnings.append(f"(!) Warning: incorrect number of spaces.")
     #BNLLAASICVersionP5B24/19009-05518
     #words = [ocr_text[0:3],ocr_text[3:3+7],ocr_text[3+7:3+7+7],ocr_text[3+7+7:3+7+7+3],ocr_text[3+7+7+3:3+7+7+3+5],ocr_text[3+7+7+3+5:]]
@@ -142,24 +144,23 @@ def validate_ocr_result(ocr_result, process_id, ocr_image_dir):
         pat2_flg = False
 
     if (bnl_pos >= 0) and (lar_pos > 0) and (ver_pos > 0) and (p5b_pos > 0) and (sls_pos > 0) and pat1_flg and pat2_flg:
-        return [True,chip_sn, chip_wf,'BNL','LArASIC', 'Version', 'P5B']   
+        return [True,chip_sn, chip_wf,'BNL','LArASIC', 'Version', 'P5B', ocr_image_dir ]   
     else:
         if (p5b_pos<=0):
             print ("\033[91m Not recognized as P5B ASIC chip, marked as bad chip \033[0m")
-            return [False, "00/00", "000-00000",'BNL','LArASIC', 'Version', 'BAD']   
+            return [False, ocr_text, ocr_text,'BNL','LArASIC', 'Version', 'BAD', ocr_image_dir]   
 
         if (p5b_pos>0) and pat1_flg and pat2_flg:
-            return [False,chip_sn, chip_wf,'BNL','LArASIC', 'Version', 'P5B']   
+            return [True,chip_sn, chip_wf,'BNL','LArASIC', 'Version', 'P5B', ocr_image_dir]   
         else:
-
-
-            yorn = input (f"\033[91m {chip_wf} {chip_sn} correct? (Y/N): \033[0m")
-            if "Y" in yorn or "y" in yorn:
-                return [True,chip_sn, chip_wf,'BNL','LArASIC', 'Version', 'P5B']   
-            else:
-                return [False, "00/00", "000-00000",'BNL','LArASIC', 'Version', 'BAD']   
-        else:
-            return [False, "00/00", "000-00000",'BNL','LArASIC', 'Version', 'BAD']   
+            print ("\033[91m SN not recognized, marked as bad chip \033[0m")
+            return [False, ocr_text, ocr_text, 'BNL','LArASIC', 'Version', 'BAD', ocr_image_dir]   
+#            yorn = input (f"\033[91m {chip_wf} {chip_sn} correct? (Y/N): \033[0m")
+#            if "Y" in yorn or "y" in yorn:
+#                return [True,chip_sn, chip_wf,'BNL','LArASIC', 'Version', 'P5B']   
+#            else:
+#        else:
+#            return [False, "00/00", "000-00000",'BNL','LArASIC', 'Version', 'BAD']   
 #                if not pat1_flg:
 #                    while True:
 #                        chip_wf = input (f"\033[92m input ??\?? shown in picture: \033[95m")
@@ -390,7 +391,7 @@ def ocr_chip(image_fp, image_fn, ocr_image_dir, degree):
     
     try:
         # Open the image
-        print (image_path)
+        #print (image_path)
         image = Image.open(image_path)
     except IOError as e:
         #print(f"Process ID #{image_number}: ERROR (cannot open image). {e}")
