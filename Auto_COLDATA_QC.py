@@ -12,6 +12,7 @@ from colorama import just_fix_windows_console
 just_fix_windows_console()
 from DAT_chk_cfgfile import dat_chk_cfgfile_auto
 from LogInfo import SaveToLog
+from DAT_COLDATA_QC_ana import CD_QC_ANA
 
 wibip = "192.168.121.123"
 wibhost = "root@{}".format(wibip)
@@ -52,13 +53,14 @@ def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burn
         QCstatus = QCresult[0]
         badchips = QCresult[1] #badchips range from 0 to7
         logs = QCresult[2]
+        cd_qc_ana = QCresult[3] # class holding qc test results
     else:
         print('Error, QCresult empty')
         exit()
 
-    return QCstatus, badchips, logs 
+    return QCstatus, badchips, logs, cd_qc_ana 
 
-def BurninSN(logs):
+def BurninSN(logs, cd_qc_ana):
     """
     Burns in the serial number of a COLDATA chip.
     Input: logs [dict]: dictionary holding QC test information
@@ -126,6 +128,10 @@ def BurninSN(logs):
     if result != None:
         print ("WIB folder {} is deleted!".format(fdirdel))
 
+    # Check output from test
+    #cd_qc_ana = CD_QC_ANA()
+    cd_qc_ana.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
+
     # Turn the DAT board off
     testid = 9
     command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
@@ -181,7 +187,7 @@ def RunCOLDATA_QC(duttype, env, rootdir):
 
     ################STEP1#################################
     dut_skt = {str(dut0):(0,1), str(dut0+1):(0,2), str(dut0+2):(0,3), str(dut0+3):(0,4), str(dut0+4):(0,5), str(dut0+5):(0,6), str(dut0+6):(0,7), str(dut0+7):(0,8) }
-    QCstatus, badchips, logs = DAT_QC(rootdir, dut_skt, duttype, env, burnin_in_tests=True, burnin_now=False) 
+    QCstatus, badchips, logs, cd_qc_ana = DAT_QC(rootdir, dut_skt, duttype, env, burnin_in_tests=True, burnin_now=False) 
 
     if "PASS" in QCstatus :
         print(QCstatus)
@@ -200,4 +206,4 @@ def RunCOLDATA_QC(duttype, env, rootdir):
         else:
             print("\033[93m " +"Please contact the tech coordinator" +"\033[0m")
 
-    return logs
+    return logs, cd_qc_ana

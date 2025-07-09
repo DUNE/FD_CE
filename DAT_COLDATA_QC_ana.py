@@ -961,12 +961,15 @@ class CD_QC_ANA():
                         print (Fore.GREEN + onekey + "  : PASS")
                         self.qc_stats[onekey] ="PASS. Programmed %d, reads out %d"%(val,readout)
                         #print(f"{onekey}", val, self.qc_stats[onekey])
-                        #self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
+                        self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
                         self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_CD0.txt")
                         self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_CD1.txt")
                     else:
                         print(Fore.RED + onekey+": Fail")
                         self.qc_stats[onekey] ="FAIL. Programmed %d, reads out %d"%(val,readout)
+                        self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
+                        self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_CD0.txt")
+                        self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_CD1.txt")
             
             now = datetime.datetime.now(datetime.UTC)
             timestamp = now.strftime("%H:%M:%S")
@@ -974,6 +977,21 @@ class CD_QC_ANA():
             self.WriteToHWDBLog("Test 7 Time", timestamp, fdir, hwdb_file_name="hwdb_CD1.txt")
         
         return #cd1monvs, cd2monvs, pwr_meas, data['U1_CD1'][0], data['U2_CD2'][0]
+    
+    def ChipsPass(self):
+        """
+        Checks if there are any failed tests in the QC tests for CD0 or CD1, 
+        returning False if any failed and True if none failed for each chip.
+        """
+        chips_pass = True
+        for key in self.qc_stats:
+            if 'FAIL' or 'Fail' or 'fail' in self.qc_stats[key]:
+                chips_pass = False
+                print(f'Failed test: {key}:{self.qc_stats[key]}')
+        print(f'Overall Pass/Fail: {chips_pass}')
+
+        return chips_pass
+
 
 if __name__=="__main__":
     #fsubdir = "RT_CD_060592417_060542417"

@@ -473,7 +473,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
     #chip_passed = [0,1,2,3,4,5,6,7]
     #chip_failed = []
 
-    return QCstatus, bads, logs 
+    return QCstatus, bads, logs, cd_qc_ana
 
 if __name__=="__main__":
    fdirdel = "/home/root/BNL_CE_WIB_SW_QC/tmp_data/RT_CD_031702417_031752417/"
