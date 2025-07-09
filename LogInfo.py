@@ -81,7 +81,7 @@ def WaitForPictures(chip_positions, threading=False):
             line = pic_lines[-1*(i+1)] # Start at the end of the list and go up
             image_id = line.split(" ")[-1].rstrip("\n")
             if image_id not in pictures:
-                pictures.append(image_id)
+                pictures.insert(0,image_id) # add to the front of the list
 
         # Check we have pictures for each chip
         if len(pictures) == len(chip_positions['dat_socket']):
