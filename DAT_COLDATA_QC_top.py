@@ -149,7 +149,7 @@ if 0 in tms:
                 break
             else:
                 dat.dat_pwroff_chk(env = logs['env']) #make sure DAT is off
-        if tryi >= 3:
+        if tryi > 3:
             break
 
     if True:

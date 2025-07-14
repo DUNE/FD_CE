@@ -101,25 +101,33 @@ if 0 in tms:
     print ("Init check after chips are installed")
 
     wibfw_ver = dat.wib_fw()
-    datad = {}
     if "ADC" in logsd['DUT'] and wibfw_ver == 0x9630BC38:
-        pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
-        datad["WIB_PWR"] = pwr_meas
-        datad["WIB_LINK"] = link_mask
-        if not init_ok:
-            #datad["FE_Fail"] = []
-            #datad["ADC_Fail"] = [0,1,2,3,4,5,6,7] 
-            #datad["CD_Fail"] = []
-            datad["QCstatus"] = "Code#E201(ColdADC): large current or HS link error when DAT is powered on"
-        else:
-            fes_pwr_info = dat.fe_pwr_meas()
-            datad["FE_PWRON"] = fes_pwr_info
-            adcs_pwr_info = dat.adc_pwr_meas()
-            datad["ADC_PWRON"] = adcs_pwr_info
-            cds_pwr_info = dat.dat_cd_pwr_meas()
-            datad["CD_PWRON"] = cds_pwr_info
-            warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+        for tryi in range(5):
+            datad = {}
+            pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat()
+            datad["WIB_PWR"] = pwr_meas
+            datad["WIB_LINK"] = link_mask
+            if not init_ok:
+                datad["FE_Fail"] = []
+                datad["ADC_Fail"] = [0,1,2,3,4,5,6,7] 
+                datad["CD_Fail"] = []
+                datad["QCstatus"] = "Code#E201(ColdADC): large current or HS link error when DAT is powered on"
+            else:
+                fes_pwr_info = dat.fe_pwr_meas()
+                datad["FE_PWRON"] = fes_pwr_info
+                adcs_pwr_info = dat.adc_pwr_meas()
+                datad["ADC_PWRON"] = adcs_pwr_info
+                cds_pwr_info = dat.dat_cd_pwr_meas()
+                datad["CD_PWRON"] = cds_pwr_info
+                warn_flg, febads, adcbads, cdbads = dat.asic_init_pwrchk(fes_pwr_info, adcs_pwr_info, cds_pwr_info)
+                if not warn_flg:
+                    break
+                else:
+                    dat.dat_pwroff_chk(env = logs['env']) #make sure DAT is off
+            if tryi > 3:
+                break
     
+        if True:
             if warn_flg:
                 datad["QCstatus"] = "Code#E202(ColdADC): Large current of some ASIC chips is observed"
                 datad["FE_Fail"] = febads
@@ -486,7 +494,8 @@ if 12 in tms:
     datad['fembs'] = dat.fembs
     datad['waveform'] = 'RAMP' 
     datad['num_samples'] = 16384
-    datad['source'] = 'WIB'
+    #datad['source'] = 'WIB'
+    datad['source'] = 'P6SE'
     datad['freq'] = 400 #Hz
     datad['voltage_low'] = -0.2 # V
     datad['voltage_high'] = 2.2 #V

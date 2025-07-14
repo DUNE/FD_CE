@@ -8,15 +8,27 @@ FE4,001-00005,
 FE5,001-00006,
 FE6,001-00007,
 FE7,001-00008,
+<<<<<<< HEAD
 testsite,FNAL,
 env,rt, 
 note, QC,
+=======
+testsite,BNL,
+env,RT, 
+note, QC robot demo ,
+>>>>>>> DAT_V3_QC
 DAT_Revision,1,
-DAT_SN,7,
+DAT_SN,10,
 DAT_on_WIB_slot,0,
+<<<<<<< HEAD
 DUT,CD,
 CD0,033112506,
 CD1,032982506,
+=======
+DUT,FE,
+CD0,000000001,
+CD1,000000002,
+>>>>>>> DAT_V3_QC
 ADC0,0001-00001,
 ADC1,0001-00002,
 ADC2,0001-00003,
