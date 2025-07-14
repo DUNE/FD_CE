@@ -73,9 +73,11 @@ Function SetSpeedSetting(Setting$ As String)
 	Speed 1
 	Accel 1, 1
 	
-	' Currently keeping non MSU speeds low until enclosures are shipped/higher speeds are allowed by safety
+	' Currently keeping non MSU or FNAL speeds low until enclosures are shipped/higher speeds are allowed by safety
 	If SITE$ <> "MSU" Then
-		Exit Function
+		If SITE$ <> "FNAL" Then
+			Exit Function
+		EndIf
 	EndIf
 	
 	Select Setting$
@@ -92,8 +94,8 @@ Function SetSpeedSetting(Setting$ As String)
 			Speed 1
 			Accel 1, 1
 		Default
-			Speed 1
-			Accel 1, 1
+			Speed 25
+			Accel 2, 2
 	Send
 
 Fend
@@ -237,7 +239,7 @@ Function isChipInTrayTouch(pallet_nr As Integer, col_nr As Integer, row_nr As In
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
 	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
 	isChipInTrayTouch = TouchSuccess
-'	SetSpeedSetting("")
+	SetSpeedSetting("")
 Fend
 
 Function PickupFromTray As Boolean
@@ -413,6 +415,7 @@ Function isChipInSocketTouch(DAT_nr As Integer, socket_nr As Integer) As Boolean
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
 	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
 	isChipInSocketTouch = TouchSuccess
+	SetSpeedSetting("")
 Fend
 
 
@@ -530,7 +533,7 @@ Function PickupFromSocket As Boolean
 	
 	PlungerOn
 	Wait 1
-	Go Here -Z(14)
+	'Go Here -Z(14)
 
 
     SetSpeedSetting("PickAndPlace")
@@ -585,8 +588,8 @@ Function JumpToSocket_camera(DAT_nr As Integer, socket_nr As Integer)
 	If Dist(Here, XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU)) < 0.1 Then
 		Exit Function
 	EndIf
-	
-	Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) LimZ JUMP_LIMIT
+	' TODO: FNAL needed to add /L becuase it flips to right handed for some reason and I don't know why
+	Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /L LimZ JUMP_LIMIT
 Fend
 
 Function UF_take_picture$(basename$ As String) As String
@@ -1454,6 +1457,8 @@ Fend
 
 Function MoveChipFromSocketToTray(DAT_nr As Integer, socket_nr As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Int64
 	
+	UpdateRobotLog$("Starting MoveChipFromTrayToSocket")
+	
 	String ts$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 	
@@ -1876,9 +1881,9 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 		VRun skt_cali_test
 		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 
@@ -2796,7 +2801,7 @@ Function FindChipDirectionWithDF As Boolean
 	Double xL, yL, uL, xS, yS, uS
 	Select SITE$
 		Case "MSU"
-			' Check for overall chip shape
+		' Check for overall chip shape
 			VRun GetChipDir
 			VGet GetChipDir.Corr01.RobotXYU, isFoundChip, cx1, cy1, cu1
 
@@ -3013,7 +3018,7 @@ Function FindSocketDirectionWithDF As Boolean
 	EndIf
 	
 	If isFoundTR Then
-		VGet MSU_SocketFind2.Geom01.RobotXYU, Isfound1, xTR, yTR, uTR
+		VGet MSU_SocketFind2.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
 '		Print "TR : x=", xTR, ", y=", yTR		
 	Else
 		xTR = -9999.
