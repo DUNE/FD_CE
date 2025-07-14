@@ -7,6 +7,7 @@ import random
 import pickle
 import multiprocessing as mp
 import pandas as pd
+import csv
 
 # To send notification email
 ## import smtplib
@@ -162,7 +163,7 @@ def MoveChipsToTray(rts, chip_positions):
 
     return
 
-def RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file):
+def RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True):
     """
     Runs an entire cycle of chip testing: move chips from the tray to the sockets,
     performs OCR to get serial numbers, runs the QC tests, burn the SN into the 
@@ -184,30 +185,129 @@ def RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file):
  
     # Queue the OCR process to get SN for each chip
     sn_ready = True
-    if pictures_ready:
+    if pictures_ready and run_ocr:
         print('Pictures ready!')
         for i in range(len(pictures)):
             success = cpm.RunOCR(image_directory, pictures[i], ocr_results_dir,
                                  True, chip_positions['label'][i], config_file)
             sn_ready = sn_ready and success # only True if all RunOCR's are successful
-    # Kill Ollama used by OCR (TODO: Why does Ollama not close after OCR is done??)
-    subrun("taskkill /F /IM ollama.exe")
+        # Kill Ollama used by OCR (TODO: Why does Ollama not close after OCR is done??)
+        subrun("taskkill /F /IM ollama.exe")
+    elif not run_ocr:
+        print('Skipping OCR...')
 
     print('About to run COLDATA_QC')
-    logs = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
+    logs, cd_qc_ana = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
 
     # Burn in the serial number found from the OCR
     if sn_ready:
         print('About to run burning in of SN')
-        BurninSN(logs) 
+        BurninSN(logs, cd_qc_ana) 
     else:
         print('OCR failed, skipping burning in  of SN.')
 
-    # Move all chips to tray
-    if not BypassRTS:
-        MoveChipsToTray(rts, chip_positions)
+    # Check if chips passed or failed
+    chips_pass = cd_qc_ana.ChipsPass()
+
+    if True: #chips_pass:
+        # Move all chips to tray
+        if not BypassRTS:
+            MoveChipsToTray(rts, chip_positions)
+    #else:
+    #    if not BypassRTS:
+    #        MoveBadChipsToTray(rts, chip_positions)
 
     return
+
+
+def ResetBadTray(badtray_file, max_row, max_col):
+    """
+    Creates or resets a file that saves the ids of chips
+    placed in the bad tray, with a (row,col) as the key.
+    If there is no chip there, it is False, otherwise it
+    holds some id of the chip.
+    Inputs:
+        badtray_file [str]: name of file to write
+        max_row [int]: max row number of tray
+        max_col [int]: max column number of tray
+    """
+
+    chip_dict = {}
+    for col in range(1,max_col+1):
+        for row in range(1,max_row+1):
+            chip_dict[(col,row)] = False
+
+    with open(badtray_file, 'wb') as f:
+        pickle.dump(chip_dict, f)
+
+    return
+
+def GetNextBadTrayPosition(badtray_file):
+    """
+    Gets the next available spot in the bad tray.
+    Inputs:
+        badtray_file [str]: name of file to read
+    Returns:
+        key [tuple]: tuple holding (column,row) of
+                     free position in bad tray
+    """
+
+    with open(badtray_file, "rb") as f:
+        chip_dict = pickle.load(f)
+
+    for key in chip_dict.keys():
+        if chip_dict[key] == False:
+            return key
+    
+    print('ERROR! Bad tray is full')
+
+    return False
+
+def WriteBadTrayPosition(badtray_file, chip_pos, chip_id):
+    """
+    Write a chip id to a given chip position of the bad tray
+    file, showing that it is no longer a free spot.
+    Inputs:
+        badtray_file [str]: file for saving bad tray info
+        chip_pos [tuple]: Tuple of integers representing the
+                          row and column of the chip
+        chip_id [?]: id of chip to be placed
+    """
+
+    with open(badtray_file, "rb") as f:
+        chip_dict = pickle.load(f)
+
+    if chip_pos in chip_dict.keys():
+        chip_dict[chip_pos] = chip_id
+    else:
+        print(f'ERROR! chip position {chip_pos} is not in the file {badtray_file}')
+
+    with open(badtray_file, 'wb') as f:
+        pickle.dump(chip_dict, f)
+
+    return
+
+def MoveBadChipsToTray(rts, chip_positions, badtray_file):
+    """
+    Gets two free positions in the bad tray, sets those as the 
+    chip positions to place chips, and calls MoveChipsToTray.
+    Inputs:
+        rts [RTS_CFG]: class for controlling RTS robot
+        chip_positions [dict]: dictionary holding chip positions
+        badtray_file [str]: file holding badtray chip info
+    """
+
+    for i in range(len(chip_positions['label'])):
+        new_pos = GetNextBadTrayPosition(badtray_file)
+        WriteBadTrayPosition(badtray_file, new_pos, chip_positions['label'][i])
+        chip_positions['tray'][i] = 1
+        chip_positions['col'][i] = new_pos[0]
+        chip_positions['row'][i] = new_pos[1]
+    
+    MoveChipsToTray(rts, chip_positions)
+
+    return
+
 
 if __name__ == "__main__":
     print("Starting RTS integration script")
@@ -217,14 +317,16 @@ if __name__ == "__main__":
     if email_progress:
         send_email("Starting RTS!", sender_email=email, receiver_email=receiver_email, password=pw)
 
+    rts = False
     if not BypassRTS:
         rts = RTS_CFG()
         rts.rts_init(port=201, host_ip=robot_ip) 
 
     # Dictionary to hold chip positions and chip labels 
-    chip_positions = {'tray':[2,2], 'col':[1,1], 'row':[2,3], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
+    chip_positions = {'tray':[2,2], 'col':[6,6], 'row':[1,2], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
 
-    RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file)
+    RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True)
+    #MoveBadChipsToTray(rts, chip_positions, 'BadTray.csv')
 
     if not BypassRTS:
         rts.rts_shutdown()
@@ -233,4 +335,4 @@ if __name__ == "__main__":
         send_email("Finished running!", sender_email=email, receiver_email=receiver_email, password=pw)
 
     end_time = (time.time() - start_time) / 60 # convert to minutes
-    print(f"--- FNAL_RTS_integration.,py took {end_time} minutes to run ---")
+    print(f"--- FNAL_RTS_integration.py took {end_time} minutes to run ---")

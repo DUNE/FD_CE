@@ -68,10 +68,13 @@ The system automatically tracks the last normal state for precise resume functio
 
 ```bash
 # Install
-pip install -r requirements.txt
+pip3 install -r requirements.txt
+
+# Note: you may need to force pip to install into the current python
+python3 -m pip install pandas
 
 # Run
-python main.py
+python3 main.py
 ```
 
 ## Usage
@@ -137,10 +140,8 @@ sm.set_chip_data(5, col=3, row=2)
 
 ## Status
 
-### TODO
-- **Log-Driven State Transitions:** Add support for monitoring a log file and triggering state transitions automatically when a log line matches a state name, enabling seamless integration with external robot software.
-
 ## Recent Changes
+- **Log-Driven State Transitions:** Added support for monitoring a log file and triggering state transitions automatically when a log line matches a state name, enabling seamless integration with external robot software.
 - **Chip Position Population:** Added interactive user input for populating chip positions. Users can choose between manual entry (one chip at a time) or automatic full tray population. Manual mode includes input validation for all fields (tray: 1-2, column: 1-10, row: 1-4, DAT: 1-2, DAT socket: 21-22, label: CD0/CD1).
 - **MoveChipsToTray Implementation:** Added `MoveChipsToTray()` function integration in the "Moving Chip to Tray" state, matching the pattern used for `MoveChipsToSockets()`. Both functions now receive individual chip data rather than the entire chip_positions dictionary.
 - **Consistent Chip Advancement:** Chip position advancement now occurs only in `run_full_cycle()`, ensuring each chip completes a full testing cycle before moving to the next position.
