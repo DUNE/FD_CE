@@ -10,7 +10,7 @@ Classes:
 """
 
 from statemachine import StateMachine, State
-from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray
+from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray
 from RTS_CFG import RTS_CFG
 import sys
 import os
@@ -248,6 +248,18 @@ class RTSStateMachine(StateMachine):
 
     def on_enter_moving_chip_to_bad_tray(self):
         print("Moved defective chip to bad tray")
+
+        badtray_file = "path/to/BadTray.csv"
+
+        if self.BypassRTS:
+            print("[SIMULATION] Moving bad chip(s) to bad tray")
+            print(f"Would have moved chip(s): {self.chip_positions['label'][self.current_chip_index]}")
+        else:
+            try:
+                MoveBadChipsToTray(self.rts, self.chip_positions, badtray_file)
+                self.advance_chip_position()
+            except Exception as e:
+                print(f"Error calling MoveBadChipsToTray: {e}")
 
     def on_enter_no_server_connection(self):
         print("Error: No server connection detected")

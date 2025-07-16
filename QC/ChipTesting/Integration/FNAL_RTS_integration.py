@@ -10,16 +10,16 @@ import pandas as pd
 import csv
 
 # To send notification email
-## import smtplib
-## from email.mime.text import MIMEText
-## from email.mime.multipart import MIMEMultipart
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-## from LogInfo import WaitForPictures
-## from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from LogInfo import WaitForPictures
+from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 
 # adding OCR folder to the system path
-## sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
-## import FNAL_CPM as cpm
+sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
+import FNAL_CPM as cpm
 
 #from colorama import just_fix_windows_console
 #just_fix_windows_console()
@@ -38,7 +38,7 @@ import csv
 
 #start robot
 from RTS_CFG import RTS_CFG
-## from rts_ssh import subrun
+from rts_ssh import subrun
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
