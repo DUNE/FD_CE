@@ -51,6 +51,23 @@ class RTSStateMachine(StateMachine):
         self.max_col = 10
         self.max_row = 4
         self.current_chip_index = 0
+
+                # Ask user if they want to bypass the robot (simulation mode)
+        while True:
+            bypass_input = input("Bypass robot (simulation mode)? (y/n): ").strip().lower()
+            if bypass_input in ['y', 'yes']:
+                self.BypassRTS = True
+                break
+            elif bypass_input in ['n', 'no']:
+                self.BypassRTS = False
+                break
+            else:
+                print("Please enter 'y' or 'n'.")
+
+        # Only initialize the robot if not bypassing
+        if not self.BypassRTS:
+            self.rts = RTS_CFG()
+            self.rts.rts_init(port=201, host_ip='192.168.121.1')
         
         while True:
             choice = input("Populate chip positions manually (m) or use full tray (f)? ").strip().lower()
@@ -62,9 +79,6 @@ class RTSStateMachine(StateMachine):
                 break
             else:
                 print("Please enter 'm' for manual or 'f' for full tray.")
-
-        self.rts = RTS_CFG()
-        self.rts.rts_init(port=201, host_ip='192.168.121.1')
         
     # State definitions
     ground = State("Ground", initial=True)
