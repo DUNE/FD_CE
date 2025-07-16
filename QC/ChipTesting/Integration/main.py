@@ -9,3 +9,5 @@ if __name__ == "__main__":
 
     # sm.run_full_cycle()
     sm.handle_tray()
+
+    sm.end_state_machine()

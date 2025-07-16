@@ -36,7 +36,7 @@ class RTSStateMachine(StateMachine):
         """Initialize the state machine and prompt for chip population method."""
         super().__init__()
 
-        self.BypassRTS = True
+        self.BypassRTS = False
         self.last_normal_state = None
 
         self.chip_positions = {
@@ -63,8 +63,8 @@ class RTSStateMachine(StateMachine):
             else:
                 print("Please enter 'm' for manual or 'f' for full tray.")
 
-        # self.rts = RTS_CFG()
-        # self.rts.rts_init(port=201, host_ip='192.168.121.1')
+        self.rts = RTS_CFG()
+        self.rts.rts_init(port=201, host_ip='192.168.121.1')
         
     # State definitions
     ground = State("Ground", initial=True)
@@ -204,7 +204,7 @@ class RTSStateMachine(StateMachine):
             print("Error: No more chips to process")
             return
 
-        chip_data = {key: self.chip_positions[key][self.current_chip_index] for key in self.chip_positions}
+        chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
         
         if self.BypassRTS:
             print("[SIMULATION] Moving chip to socket")
@@ -228,13 +228,13 @@ class RTSStateMachine(StateMachine):
         print("Moving chip to tray")
         self.last_normal_state = self.current_state
 
+        chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
+        
         if self.BypassRTS:
             print("[SIMULATION] Moving chip to tray")
-            chip_data = {key: self.chip_positions[key][self.current_chip_index] for key in self.chip_positions}
             print(f"Would have moved chip to tray: {chip_data['label']} from DAT {chip_data['dat']} socket {chip_data['dat_socket']} to tray {chip_data['tray']}, position ({chip_data['col']}, {chip_data['row']})")
         else:
             try:
-                chip_data = {key: self.chip_positions[key][self.current_chip_index] for key in self.chip_positions}
                 MoveChipsToTray(self.rts, chip_data)
             except Exception as e:
                 print(f"Error calling MoveChipsToTray: {e}")
@@ -608,3 +608,9 @@ class RTSStateMachine(StateMachine):
                 break
         
         print(f"Manual population complete. Added {len(self.chip_positions['tray'])} chips.")
+
+    def end_state_machine(self):
+        if not self.BypassRTS:
+            self.rts.rts_shutdown()
+        else:
+            print("[SIMULATION] Disconnecting from robot")
