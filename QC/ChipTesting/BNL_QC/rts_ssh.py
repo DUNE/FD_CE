@@ -5,11 +5,11 @@ import datetime
 import filecmp
 import pickle
 import os
-from DAT_read_cfg import dat_read_cfg #, dat_read_cfg_auto # TODO: Why did I want an auto version?
-from DAT_InitChk import dat_initchk
+from .DAT_read_cfg import dat_read_cfg
+from .DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
-from DAT_COLDATA_QC_ana import CD_QC_ANA 
-from LogInfo import SaveToLog
+from .DAT_COLDATA_QC_ana import CD_QC_ANA 
+from .LogInfo import SaveToLog
 just_fix_windows_console()
 
 wibip = "192.168.121.123"
