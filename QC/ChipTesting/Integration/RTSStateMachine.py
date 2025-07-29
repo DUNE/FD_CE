@@ -10,7 +10,7 @@ Classes:
 """
 
 from statemachine import StateMachine, State
-from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray
+from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cyle
 from RTS_CFG import RTS_CFG
 import sys
 import os
@@ -211,18 +211,19 @@ class RTSStateMachine(StateMachine):
         self.last_normal_state = self.current_state
 
     def on_enter_moving_chip_to_socket(self):
-        print("Moving chip to test socket")
+        print("Moving chips to test socket")
         self.last_normal_state = self.current_state
 
         if self.current_chip_index >= len(self.chip_positions['col']):
             print("Error: No more chips to process")
             return
 
-        chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
+        chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                           self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
         if self.BypassRTS:
-            print("[SIMULATION] Moving chip to socket")
-            print(f"Would have moved chip to socket: {chip_data['label']} from tray {chip_data['tray']}, position ({chip_data['col']}, {chip_data['row']}) to DAT {chip_data['dat']} socket {chip_data['dat_socket']}")
+            print("[SIMULATION] Moving chips to sockets")
+            print(f"Would have moved chips to sockets: {chip_data['label'][0]} and {chip_data['label'][1]} from tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]}) to DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]}")
         else:
             try:
                 MoveChipsToSockets(self.rts, chip_data)
@@ -239,14 +240,15 @@ class RTSStateMachine(StateMachine):
         self.last_normal_state = self.current_state
 
     def on_enter_moving_chip_to_tray(self):
-        print("Moving chip to tray")
+        print("Moving chips to tray")
         self.last_normal_state = self.current_state
 
-        chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
+        chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                          self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
         if self.BypassRTS:
-            print("[SIMULATION] Moving chip to tray")
-            print(f"Would have moved chip to tray: {chip_data['label']} from DAT {chip_data['dat']} socket {chip_data['dat_socket']} to tray {chip_data['tray']}, position ({chip_data['col']}, {chip_data['row']})")
+            print("[SIMULATION] Moving chips to tray")
+            print(f"Would have moved chips to tray: {chip_data['label'][0]} and {chip_data['label'][1]} from DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]} to tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]})")
         else:
             try:
                 MoveChipsToTray(self.rts, chip_data)
@@ -264,13 +266,14 @@ class RTSStateMachine(StateMachine):
         print("Moved defective chip to bad tray")
 
         badtray_file = "path/to/BadTray.csv"
+        chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
 
         if self.BypassRTS:
             print("[SIMULATION] Moving bad chip(s) to bad tray")
             print(f"Would have moved chip(s): {self.chip_positions['label'][self.current_chip_index]}")
         else:
             try:
-                MoveBadChipsToTray(self.rts, self.chip_positions, badtray_file)
+                MoveBadChipsToTray(self.rts, chip_data, badtray_file)
                 self.advance_chip_position()
             except Exception as e:
                 print(f"Error calling MoveBadChipsToTray: {e}")
@@ -399,12 +402,47 @@ class RTSStateMachine(StateMachine):
         return self.current_chip_index == len(self.chip_positions['col']) - 1
 
     def run_full_cycle(self):
-        """Run a complete test cycle for one chip and advance position."""
+        # """Run a complete test cycle for one chip and advance position."""
+        # for i in range(6):
+        #     self.cycle()
+        # print("Full cycle complete, advancing chip position")
+        # self.advance_chip_position()
+
+        """Run a complete test cycle for two chips and advance positions."""
         print(f"Starting full cycle at position {self.get_position()}")
-        for i in range(6):
-            self.cycle()
-        print("Full cycle complete, advancing chip position")
-        self.advance_chip_position()
+        
+        # Check if we have at least 2 chips to process
+        if self.current_chip_index + 1 >= len(self.chip_positions['col']):
+            error_msg = f"ERROR: Only one chip remaining at position {self.get_position()}. Two-chip cycle requires at least 2 chips."
+            print(error_msg)
+            raise ValueError(error_msg)
+        
+        if self.BypassRTS:
+            # Simulation mode
+            print("[SIMULATION] Running RTS cycle")
+            print(f"Would have called RTS_Cyle() with chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
+        else:
+            # Real hardware mode - call the RTS_Cyle function
+            try:
+                # Two chips in current cycle
+                chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                                  self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+                print(f"Processing chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
+                
+                # Call the RTS cycle function
+                # TODO: Update RTS_Cyle to change states
+                RTS_Cyle(self.rts, chip_data, "/images/", "asic_info.csv", run_ocr=True)
+                
+            except Exception as e:
+                print(f"Error calling RTS_Cyle: {e}")
+                return
+
+        print("Full cycle complete, advancing chip position by 2")
+        # Advance by 2 positions since we processed 2 chips
+        self.current_chip_index += 2
+        if self.current_chip_index >= len(self.chip_positions['col']):
+            print("Reached the end of the tray.")
+            self.current_chip_index = 0
     
     def handle_tray(self):
         """Process all chips on the tray with full test cycles."""
