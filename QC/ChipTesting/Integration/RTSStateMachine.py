@@ -10,7 +10,8 @@ Classes:
 """
 
 from statemachine import StateMachine, State
-from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cyle
+from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
+from Integration.Auto_COLDATA_QC import RunCOLDATA_QC
 from RTS_CFG import RTS_CFG
 import sys
 import os
@@ -235,6 +236,18 @@ class RTSStateMachine(StateMachine):
         print("Starting chip testing")
         self.last_normal_state = self.current_state
 
+        if self.BypassRTS:
+            print("[SIMULATION] Running COLDATA QC tests")
+            print("Would have called RunCOLDATA_QC(duttype='CD', env='RT', rootdir='C:/Users/RTS/Tested/')")
+        else:
+            print("Running COLDATA QC tests...")
+            self.logs, self.cd_qc_ana = RunCOLDATA_QC(
+                duttype="CD", 
+                env="RT", 
+                rootdir="C:/Users/RTS/Tested/"
+            )
+            print("COLDATA QC tests completed successfully")
+
     def on_enter_writing_to_hwdb(self):
         print("Writing test results to HWDB")
         self.last_normal_state = self.current_state
@@ -420,9 +433,9 @@ class RTSStateMachine(StateMachine):
         if self.BypassRTS:
             # Simulation mode
             print("[SIMULATION] Running RTS cycle")
-            print(f"Would have called RTS_Cyle() with chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
+            print(f"Would have called RTS_Cycle() with chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
         else:
-            # Real hardware mode - call the RTS_Cyle function
+            # Real hardware mode - call the RTS_Cycle function
             try:
                 # Two chips in current cycle
                 chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
@@ -430,11 +443,11 @@ class RTSStateMachine(StateMachine):
                 print(f"Processing chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
                 
                 # Call the RTS cycle function
-                # TODO: Update RTS_Cyle to change states
-                RTS_Cyle(self.rts, chip_data, "/images/", "asic_info.csv", run_ocr=True)
+                # TODO: Update RTS_Cycle to change states
+                RTS_Cycle(self.rts, chip_data, "/images/", "asic_info.csv", run_ocr=True)
                 
             except Exception as e:
-                print(f"Error calling RTS_Cyle: {e}")
+                print(f"Error calling RTS_Cycle: {e}")
                 return
 
         print("Full cycle complete, advancing chip position by 2")
