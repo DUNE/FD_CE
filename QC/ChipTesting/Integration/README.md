@@ -6,7 +6,7 @@ This project implements a state machine for chip handling and testing automation
 ## What it does
 - **Automated Chip Testing:** The system automatically moves chips from a tray to test sockets, performs testing, and returns them to the tray.
 - **State Management:** Uses a state machine to manage the testing workflow, including normal operations, error handling, and pause/resume functionality.
-- **Hardware Integration:** Designed to integrate with robotic test stands and hardware components (currently in simulation mode).
+- **Hardware Integration:** Designed to integrate with robotic test stands and hardware components with simulation mode support.
 
 ## States
 
@@ -15,6 +15,7 @@ This project implements a state machine for chip handling and testing automation
 - **Surveying Sockets**: Finding available test positions
 - **Moving Chip to Socket**: Robot placing chip
 - **Testing**: Running WIB tests
+- **Burning Serial Number**: Burning serial number into chip
 - **Writing to HWDB**: Saving results
 - **Moving Chip to Tray**: Robot moving tested chip
 
@@ -133,7 +134,7 @@ sm.set_chip_data(5, col=3, row=2)
 
 ## Transitions
 
-- **cycle**: Normal operation flow (ground → surveying → moving → testing → writing → moving to tray → ground)
+- **cycle**: Normal operation flow (ground → surveying → moving → testing → burning serial number → writing to HWDB → moving to tray → ground)
 - **test_cycle**: Test mode with pauses between each step
 - **pause_cycle**: Pause transitions from any state
 - **error_cycle**: Error handling and recovery transitions
@@ -141,6 +142,11 @@ sm.set_chip_data(5, col=3, row=2)
 ## Status
 
 ## Recent Changes
+
+- **Burning Serial Number State:** Added new "Burning Serial Number" state between testing and writing to HWDB. This state automatically calls the `BurninSN()` function from `Auto_COLDATA_QC.py` to burn serial numbers into COLDATA chips after successful testing.
+- **Simulation Mode Rename:** Renamed `BypassRTS` boolean to `simulation_mode` for better clarity. When `True`, the system runs in simulation mode without hardware interaction.
+
+### Previous Updates
 - **Log-Driven State Transitions:** Added support for monitoring a log file and triggering state transitions automatically when a log line matches a state name, enabling seamless integration with external robot software.
 - **Chip Position Population:** Added interactive user input for populating chip positions. Users can choose between manual entry (one chip at a time) or automatic full tray population. Manual mode includes input validation for all fields (tray: 1-2, column: 1-10, row: 1-4, DAT: 1-2, DAT socket: 21-22, label: CD0/CD1).
 - **MoveChipsToTray Implementation:** Added `MoveChipsToTray()` function integration in the "Moving Chip to Tray" state, matching the pattern used for `MoveChipsToSockets()`. Both functions now receive individual chip data rather than the entire chip_positions dictionary.

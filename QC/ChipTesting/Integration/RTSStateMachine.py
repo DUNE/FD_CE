@@ -11,7 +11,7 @@ Classes:
 
 from statemachine import StateMachine, State
 from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
-from Integration.Auto_COLDATA_QC import RunCOLDATA_QC
+from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 from RTS_CFG import RTS_CFG
 import sys
 import os
@@ -27,7 +27,7 @@ class RTSStateMachine(StateMachine):
     data recording, and error handling. Supports both simulation and hardware modes.
     
     Attributes:
-        BypassRTS (bool): When True, runs in simulation mode
+        simulation_mode (bool): When True, runs in simulation mode
         chip_positions (dict): Dictionary containing chip position data
         current_chip_index (int): Index of current chip being processed
         last_normal_state (State): Last normal state for resume functionality
@@ -37,7 +37,7 @@ class RTSStateMachine(StateMachine):
         """Initialize the state machine and prompt for chip population method."""
         super().__init__()
 
-        self.BypassRTS = False
+        self.simulation_mode = False
         self.last_normal_state = None
 
         self.chip_positions = {
@@ -53,20 +53,20 @@ class RTSStateMachine(StateMachine):
         self.max_row = 4
         self.current_chip_index = 0
 
-                # Ask user if they want to bypass the robot (simulation mode)
+                # Ask user if they want to run in simulation mode
         while True:
-            bypass_input = input("Bypass robot (simulation mode)? (y/n): ").strip().lower()
-            if bypass_input in ['y', 'yes']:
-                self.BypassRTS = True
+            simulation_input = input("Run in simulation mode? (y/n): ").strip().lower()
+            if simulation_input in ['y', 'yes']:
+                self.simulation_mode = True
                 break
-            elif bypass_input in ['n', 'no']:
-                self.BypassRTS = False
+            elif simulation_input in ['n', 'no']:
+                self.simulation_mode = False
                 break
             else:
                 print("Please enter 'y' or 'n'.")
 
-        # Only initialize the robot if not bypassing
-        if not self.BypassRTS:
+        # Only initialize the robot if not in simulation mode
+        if not self.simulation_mode:
             self.rts = RTS_CFG()
             self.rts.rts_init(port=201, host_ip='192.168.121.1')
         
@@ -86,6 +86,7 @@ class RTSStateMachine(StateMachine):
     surveying_sockets = State("Surveying Sockets")
     moving_chip_to_socket = State("Moving Chip to Socket")
     testing = State("Testing")
+    burning_serial_number = State("Burning Serial Number")
     writing_to_hwdb = State("Writing to HWDB")
     moving_chip_to_tray = State("Moving Chip to Tray")
 
@@ -113,7 +114,8 @@ class RTSStateMachine(StateMachine):
         ground.to(surveying_sockets)
         | surveying_sockets.to(moving_chip_to_socket)
         | moving_chip_to_socket.to(testing)
-        | testing.to(writing_to_hwdb)
+        | testing.to(burning_serial_number)
+        | burning_serial_number.to(writing_to_hwdb)
         | writing_to_hwdb.to(moving_chip_to_tray)
         | moving_chip_to_tray.to(ground)
     )
@@ -126,6 +128,8 @@ class RTSStateMachine(StateMachine):
         | moving_chip_to_socket.to(pause)
         | pause.to(testing)
         | testing.to(pause)
+        | pause.to(burning_serial_number)
+        | burning_serial_number.to(pause)
         | pause.to(writing_to_hwdb)
         | writing_to_hwdb.to(pause)
         | pause.to(moving_chip_to_tray)
@@ -140,6 +144,7 @@ class RTSStateMachine(StateMachine):
         | surveying_sockets.to(pause)
         | moving_chip_to_socket.to(pause)
         | testing.to(pause)
+        | burning_serial_number.to(pause)
         | writing_to_hwdb.to(pause)
         | moving_chip_to_tray.to(pause)
         | moving_chip_to_bad_tray.to(pause)
@@ -222,7 +227,7 @@ class RTSStateMachine(StateMachine):
         chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
                            self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
-        if self.BypassRTS:
+        if self.simulation_mode:
             print("[SIMULATION] Moving chips to sockets")
             print(f"Would have moved chips to sockets: {chip_data['label'][0]} and {chip_data['label'][1]} from tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]}) to DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]}")
         else:
@@ -236,7 +241,7 @@ class RTSStateMachine(StateMachine):
         print("Starting chip testing")
         self.last_normal_state = self.current_state
 
-        if self.BypassRTS:
+        if self.simulation_mode:
             print("[SIMULATION] Running COLDATA QC tests")
             print("Would have called RunCOLDATA_QC(duttype='CD', env='RT', rootdir='C:/Users/RTS/Tested/')")
         else:
@@ -247,6 +252,21 @@ class RTSStateMachine(StateMachine):
                 rootdir="C:/Users/RTS/Tested/"
             )
             print("COLDATA QC tests completed successfully")
+
+    def on_enter_burning_serial_number(self):
+        print("Starting serial number burn-in process")
+        self.last_normal_state = self.current_state
+
+        if self.simulation_mode:
+            print("[SIMULATION] Burning serial number into chip")
+            print("Would have called BurninSN() with logs and cd_qc_ana from testing phase")
+        else:
+            try:
+                print("Burning serial number into chip...")
+                BurninSN(self.logs, self.cd_qc_ana)
+                print("Serial number burn-in completed successfully")
+            except Exception as e:
+                print(f"Error during serial number burn-in: {e}")
 
     def on_enter_writing_to_hwdb(self):
         print("Writing test results to HWDB")
@@ -259,7 +279,7 @@ class RTSStateMachine(StateMachine):
         chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
                           self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
-        if self.BypassRTS:
+        if self.simulation_mode:
             print("[SIMULATION] Moving chips to tray")
             print(f"Would have moved chips to tray: {chip_data['label'][0]} and {chip_data['label'][1]} from DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]} to tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]})")
         else:
@@ -281,7 +301,7 @@ class RTSStateMachine(StateMachine):
         badtray_file = "path/to/BadTray.csv"
         chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
 
-        if self.BypassRTS:
+        if self.simulation_mode:
             print("[SIMULATION] Moving bad chip(s) to bad tray")
             print(f"Would have moved chip(s): {self.chip_positions['label'][self.current_chip_index]}")
         else:
@@ -430,7 +450,7 @@ class RTSStateMachine(StateMachine):
             print(error_msg)
             raise ValueError(error_msg)
         
-        if self.BypassRTS:
+        if self.simulation_mode:
             # Simulation mode
             print("[SIMULATION] Running RTS cycle")
             print(f"Would have called RTS_Cycle() with chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
@@ -514,6 +534,7 @@ class RTSStateMachine(StateMachine):
             "MoveChipFromTrayToSocket": self.moving_chip_to_socket,
             "Jumped to DAT": self.testing,
             "testing": self.testing,
+            # "burning_serial_number": self.burning_serial_number,
             "writing_to_hwdb": self.writing_to_hwdb,
             "moving_chip_to_tray": self.moving_chip_to_tray,
             "Picked up chip from tray": self.moving_chip_to_socket,
@@ -675,7 +696,7 @@ class RTSStateMachine(StateMachine):
         print(f"Manual population complete. Added {len(self.chip_positions['tray'])} chips.")
 
     def end_state_machine(self):
-        if not self.BypassRTS:
+        if not self.simulation_mode:
             self.rts.rts_shutdown()
         else:
             print("[SIMULATION] Disconnecting from robot")

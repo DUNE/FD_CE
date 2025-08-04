@@ -8,6 +8,6 @@ if __name__ == "__main__":
     # sm.read_log_and_transition(log_file)
 
     # sm.run_full_cycle()
-    sm.handle_tray()
+    # sm.handle_tray()
 
-    sm.end_state_machine()
+    # sm.end_state_machine()
