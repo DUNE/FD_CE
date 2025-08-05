@@ -27,7 +27,8 @@ class RTSStateMachine(StateMachine):
     data recording, and error handling. Supports both simulation and hardware modes.
     
     Attributes:
-        simulation_mode (bool): When True, runs in simulation mode
+        simulation_mode (bool): When True, runs in simulation mode for testing/burning serial number
+        BypassRTS (bool): When True, bypasses chip movement operations and RTS server operations
         chip_positions (dict): Dictionary containing chip position data
         current_chip_index (int): Index of current chip being processed
         last_normal_state (State): Last normal state for resume functionality
@@ -38,6 +39,7 @@ class RTSStateMachine(StateMachine):
         super().__init__()
 
         self.simulation_mode = False
+        self.BypassRTS = False
         self.last_normal_state = None
 
         self.chip_positions = {
@@ -53,7 +55,7 @@ class RTSStateMachine(StateMachine):
         self.max_row = 4
         self.current_chip_index = 0
 
-                # Ask user if they want to run in simulation mode
+        # Ask user if they want to run in simulation mode
         while True:
             simulation_input = input("Run in simulation mode? (y/n): ").strip().lower()
             if simulation_input in ['y', 'yes']:
@@ -65,8 +67,20 @@ class RTSStateMachine(StateMachine):
             else:
                 print("Please enter 'y' or 'n'.")
 
-        # Only initialize the robot if not in simulation mode
-        if not self.simulation_mode:
+        # Ask user if they want to bypass RTS operations
+        while True:
+            bypass_input = input("Bypass RTS operations? (y/n): ").strip().lower()
+            if bypass_input in ['y', 'yes']:
+                self.BypassRTS = True
+                break
+            elif bypass_input in ['n', 'no']:
+                self.BypassRTS = False
+                break
+            else:
+                print("Please enter 'y' or 'n'.")
+
+        # Only initialize the robot if not bypassing RTS
+        if not self.BypassRTS:
             self.rts = RTS_CFG()
             self.rts.rts_init(port=201, host_ip='192.168.121.1')
         
@@ -230,7 +244,8 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Moving chips to sockets")
             print(f"Would have moved chips to sockets: {chip_data['label'][0]} and {chip_data['label'][1]} from tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]}) to DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]}")
-        else:
+        
+        if not self.BypassRTS:
             try:
                 MoveChipsToSockets(self.rts, chip_data)
             except Exception as e:
@@ -282,11 +297,18 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Moving chips to tray")
             print(f"Would have moved chips to tray: {chip_data['label'][0]} and {chip_data['label'][1]} from DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]} to tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]})")
-        else:
+        
+        if not self.BypassRTS:
             try:
                 MoveChipsToTray(self.rts, chip_data)
             except Exception as e:
                 print(f"Error calling MoveChipsToTray: {e}")
+        
+        # Advance by 2 positions since we processed 2 chips
+        self.current_chip_index += 2
+        if self.current_chip_index >= len(self.chip_positions['col']):
+            print("Reached the end of the tray.")
+            self.current_chip_index = 0
 
     def on_enter_pause(self):
         print("System paused - awaiting resume command")
@@ -304,7 +326,8 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Moving bad chip(s) to bad tray")
             print(f"Would have moved chip(s): {self.chip_positions['label'][self.current_chip_index]}")
-        else:
+        
+        if not self.BypassRTS:
             try:
                 MoveBadChipsToTray(self.rts, chip_data, badtray_file)
                 self.advance_chip_position()
@@ -435,47 +458,21 @@ class RTSStateMachine(StateMachine):
         return self.current_chip_index == len(self.chip_positions['col']) - 1
 
     def run_full_cycle(self):
-        # """Run a complete test cycle for one chip and advance position."""
-        # for i in range(6):
-        #     self.cycle()
-        # print("Full cycle complete, advancing chip position")
-        # self.advance_chip_position()
 
         """Run a complete test cycle for two chips and advance positions."""
-        print(f"Starting full cycle at position {self.get_position()}")
-        
+
         # Check if we have at least 2 chips to process
         if self.current_chip_index + 1 >= len(self.chip_positions['col']):
             error_msg = f"ERROR: Only one chip remaining at position {self.get_position()}. Two-chip cycle requires at least 2 chips."
             print(error_msg)
             raise ValueError(error_msg)
         
-        if self.simulation_mode:
-            # Simulation mode
-            print("[SIMULATION] Running RTS cycle")
-            print(f"Would have called RTS_Cycle() with chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
-        else:
-            # Real hardware mode - call the RTS_Cycle function
-            try:
-                # Two chips in current cycle
-                chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
-                                  self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
-                print(f"Processing chips at positions {self.get_position()} and ({self.chip_positions['col'][self.current_chip_index + 1]}, {self.chip_positions['row'][self.current_chip_index + 1]})")
-                
-                # Call the RTS cycle function
-                # TODO: Update RTS_Cycle to change states
-                RTS_Cycle(self.rts, chip_data, "/images/", "asic_info.csv", run_ocr=True)
-                
-            except Exception as e:
-                print(f"Error calling RTS_Cycle: {e}")
-                return
+        print(f"Starting full cycle at position {self.get_position()}")
 
-        print("Full cycle complete, advancing chip position by 2")
-        # Advance by 2 positions since we processed 2 chips
-        self.current_chip_index += 2
-        if self.current_chip_index >= len(self.chip_positions['col']):
-            print("Reached the end of the tray.")
-            self.current_chip_index = 0
+        for i in range(7):
+            self.cycle()
+        
+        print("Full cycle complete")
     
     def handle_tray(self):
         """Process all chips on the tray with full test cycles."""
@@ -680,14 +677,23 @@ class RTSStateMachine(StateMachine):
                 else:
                     print("Label must be CD0 or CD1.")
             
-            self.chip_positions['tray'].append(tray)
-            self.chip_positions['col'].append(col)
-            self.chip_positions['row'].append(row)
-            self.chip_positions['dat'].append(dat)
-            self.chip_positions['dat_socket'].append(dat_socket)
-            self.chip_positions['label'].append(label)
-            
-            print(f"Added chip: {label} at tray {tray}, position ({col}, {row})")
+            # Check for duplicate chip (same position, label, and socket)
+            for i in range(len(self.chip_positions['tray'])):
+                if (self.chip_positions['tray'][i] == tray and 
+                    self.chip_positions['col'][i] == col and 
+                    self.chip_positions['row'][i] == row and
+                    self.chip_positions['label'][i] == label and
+                    self.chip_positions['dat_socket'][i] == dat_socket):
+                    print(f"Error: Chip {label} at position (tray {tray}, col {col}, row {row}) with socket {dat_socket} already exists!")
+                    break
+            else:
+                self.chip_positions['tray'].append(tray)
+                self.chip_positions['col'].append(col)
+                self.chip_positions['row'].append(row)
+                self.chip_positions['dat'].append(dat)
+                self.chip_positions['dat_socket'].append(dat_socket)
+                self.chip_positions['label'].append(label)
+                print(f"Added chip: {label} at tray {tray}, position ({col}, {row})")
             
             continue_input = input("Add another chip? (y/n): ").strip().lower()
             if continue_input not in ['y', 'yes']:
@@ -696,7 +702,8 @@ class RTSStateMachine(StateMachine):
         print(f"Manual population complete. Added {len(self.chip_positions['tray'])} chips.")
 
     def end_state_machine(self):
-        if not self.simulation_mode:
+        if not self.BypassRTS:
             self.rts.rts_shutdown()
-        else:
+        
+        if self.simulation_mode:
             print("[SIMULATION] Disconnecting from robot")

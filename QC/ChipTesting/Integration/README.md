@@ -143,6 +143,10 @@ sm.set_chip_data(5, col=3, row=2)
 
 ## Recent Changes
 
+- **Dual Flag System:** Implemented separate control flags for different system aspects:
+  - **`simulation_mode`**: Controls simulation messages and testing/burning operations
+  - **`BypassRTS`**: Controls robot movement operations (moving chips to/from sockets, bad tray operations, and RTS server startup/shutdown)
+  - Both flags are set via user input during initialization and can be used independently
 - **Burning Serial Number State:** Added new "Burning Serial Number" state between testing and writing to HWDB. This state automatically calls the `BurninSN()` function from `Auto_COLDATA_QC.py` to burn serial numbers into COLDATA chips after successful testing.
 - **Simulation Mode Rename:** Renamed `BypassRTS` boolean to `simulation_mode` for better clarity. When `True`, the system runs in simulation mode without hardware interaction.
 
