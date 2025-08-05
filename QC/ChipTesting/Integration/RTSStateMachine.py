@@ -303,12 +303,6 @@ class RTSStateMachine(StateMachine):
                 MoveChipsToTray(self.rts, chip_data)
             except Exception as e:
                 print(f"Error calling MoveChipsToTray: {e}")
-        
-        # Advance by 2 positions since we processed 2 chips
-        self.current_chip_index += 2
-        if self.current_chip_index >= len(self.chip_positions['col']):
-            print("Reached the end of the tray.")
-            self.current_chip_index = 0
 
     def on_enter_pause(self):
         print("System paused - awaiting resume command")
@@ -471,6 +465,12 @@ class RTSStateMachine(StateMachine):
 
         for i in range(7):
             self.cycle()
+        
+        # Advance by 2 positions since we processed 2 chips
+        self.current_chip_index += 2
+        if self.current_chip_index >= len(self.chip_positions['col']):
+            print("Reached the end of the tray.")
+            self.current_chip_index = 0
         
         print("Full cycle complete")
     
