@@ -14,6 +14,7 @@ This project implements a state machine for chip handling and testing automation
 - **Ground**: Ready to start
 - **Surveying Sockets**: Finding available test positions
 - **Moving Chip to Socket**: Robot placing chip
+- **Running OCR**: Reading serial numbers from chip images
 - **Testing**: Running WIB tests
 - **Burning Serial Number**: Burning serial number into chip
 - **Writing to HWDB**: Saving results
@@ -134,7 +135,7 @@ sm.set_chip_data(5, col=3, row=2)
 
 ## Transitions
 
-- **cycle**: Normal operation flow (ground → surveying → moving → testing → burning serial number → writing to HWDB → moving to tray → ground)
+- **cycle**: Normal operation flow (ground → surveying → moving → OCR → testing → burning serial number → writing to HWDB → moving to tray → ground)
 - **test_cycle**: Test mode with pauses between each step
 - **pause_cycle**: Pause transitions from any state
 - **error_cycle**: Error handling and recovery transitions
@@ -143,6 +144,12 @@ sm.set_chip_data(5, col=3, row=2)
 
 ## Recent Changes
 
+- **OCR Integration:** Added "Running OCR" state with FNAL_CPM integration for automatic serial number reading from chip images. The OCR state:
+  - Waits for chip pictures using `WaitForPictures()`
+  - Runs OCR processing for each chip using `FNAL_CPM.RunOCR()`
+  - Tracks OCR success with `sn_ready` flag
+  - Conditionally skips serial number burning if OCR fails
+  - Includes simulation mode support for OCR operations
 - **Dual Flag System:** Implemented separate control flags for different system aspects:
   - **`simulation_mode`**: Controls simulation messages and testing/burning operations
   - **`BypassRTS`**: Controls robot movement operations (moving chips to/from sockets, bad tray operations, and RTS server startup/shutdown)

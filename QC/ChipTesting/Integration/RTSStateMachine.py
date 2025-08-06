@@ -13,10 +13,16 @@ from statemachine import StateMachine, State
 from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
 from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 from RTS_CFG import RTS_CFG
+from BNL_QC.LogInfo import WaitForPictures
 import sys
 import os
 from datetime import datetime
 import time
+import subprocess
+
+# Add OCR path and import
+sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
+import FNAL_CPM as cpm
 
 
 class RTSStateMachine(StateMachine):
@@ -54,6 +60,12 @@ class RTSStateMachine(StateMachine):
         self.max_col = 10
         self.max_row = 4
         self.current_chip_index = 0
+        
+        # OCR configuration
+        self.image_directory = "/Users/RTS/RTS_data/images/"
+        self.ocr_results_dir = "/Users/RTS/DUNE-rts-sn-rec/Tested/fnal_cpm_results/"
+        self.config_file = "asic_info.csv"
+        self.sn_ready = True  # Track if OCR was successful
 
         # Ask user if they want to run in simulation mode
         while True:
@@ -99,6 +111,7 @@ class RTSStateMachine(StateMachine):
     ground = State("Ground", initial=True)
     surveying_sockets = State("Surveying Sockets")
     moving_chip_to_socket = State("Moving Chip to Socket")
+    running_ocr = State("Running OCR")
     testing = State("Testing")
     burning_serial_number = State("Burning Serial Number")
     writing_to_hwdb = State("Writing to HWDB")
@@ -127,7 +140,8 @@ class RTSStateMachine(StateMachine):
     cycle = (
         ground.to(surveying_sockets)
         | surveying_sockets.to(moving_chip_to_socket)
-        | moving_chip_to_socket.to(testing)
+        | moving_chip_to_socket.to(running_ocr)
+        | running_ocr.to(testing)
         | testing.to(burning_serial_number)
         | burning_serial_number.to(writing_to_hwdb)
         | writing_to_hwdb.to(moving_chip_to_tray)
@@ -140,6 +154,8 @@ class RTSStateMachine(StateMachine):
         | surveying_sockets.to(pause)
         | pause.to(moving_chip_to_socket)
         | moving_chip_to_socket.to(pause)
+        | pause.to(running_ocr)
+        | running_ocr.to(pause)
         | pause.to(testing)
         | testing.to(pause)
         | pause.to(burning_serial_number)
@@ -157,6 +173,7 @@ class RTSStateMachine(StateMachine):
         ground.to(pause)
         | surveying_sockets.to(pause)
         | moving_chip_to_socket.to(pause)
+        | running_ocr.to(pause)
         | testing.to(pause)
         | burning_serial_number.to(pause)
         | writing_to_hwdb.to(pause)
@@ -190,6 +207,7 @@ class RTSStateMachine(StateMachine):
         | moving_chip_to_socket.to(safe_guard)
         | moving_chip_to_socket.to(bad_pins)
         | moving_chip_to_socket.to(no_serial_number)
+        | running_ocr.to(no_serial_number)
         | testing.to(failed_init)
         | testing.to(no_wib_connection)
         | failed_init.to(reseat)
@@ -241,16 +259,49 @@ class RTSStateMachine(StateMachine):
         chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
                            self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
-        if self.simulation_mode:
-            print("[SIMULATION] Moving chips to sockets")
-            print(f"Would have moved chips to sockets: {chip_data['label'][0]} and {chip_data['label'][1]} from tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]}) to DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]}")
-        
         if not self.BypassRTS:
             try:
                 MoveChipsToSockets(self.rts, chip_data)
             except Exception as e:
                 print(f"Error calling MoveChipsToSockets: {e}")
                 return
+        else:
+            print(f"Would have moved chips to sockets: {chip_data['label'][0]} and {chip_data['label'][1]} from tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]}) to DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]}")
+
+    def on_enter_running_ocr(self):
+        print("Starting OCR processing to read serial numbers")
+        self.last_normal_state = self.current_state
+
+        if self.simulation_mode:
+            print("[SIMULATION] Running OCR processing")
+            print("Would have called WaitForPictures() and RunOCR() for chip images")
+            print("Would have killed Ollama process after OCR completion")
+        else:
+            try:
+                # Check the RobotLog to see if the chip pictures are ready before running OCR
+                print('Waiting for chip pictures...')
+                chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                                  self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+                pictures_ready, pictures = WaitForPictures(chip_data, threading=False)
+                
+                if pictures_ready:
+                    print('Pictures ready! Running OCR...')
+                    
+                    for i in range(len(pictures)):
+                        success = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir,
+                                           True, chip_data['label'][i], self.config_file)
+                        self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
+                    
+                    # Kill Ollama used by OCR
+                    subprocess.run("taskkill /F /IM ollama.exe", shell=True)
+                    print("OCR processing completed successfully")
+                else:
+                    print("Pictures not ready, OCR processing failed")
+                    self.sn_ready = False
+                    
+            except Exception as e:
+                print(f"Error during OCR processing: {e}")
+                self.sn_ready = False
 
     def on_enter_testing(self):
         print("Starting chip testing")
@@ -276,12 +327,15 @@ class RTSStateMachine(StateMachine):
             print("[SIMULATION] Burning serial number into chip")
             print("Would have called BurninSN() with logs and cd_qc_ana from testing phase")
         else:
-            try:
-                print("Burning serial number into chip...")
-                BurninSN(self.logs, self.cd_qc_ana)
-                print("Serial number burn-in completed successfully")
-            except Exception as e:
-                print(f"Error during serial number burn-in: {e}")
+            if self.sn_ready:
+                try:
+                    print("Burning serial number into chip...")
+                    BurninSN(self.logs, self.cd_qc_ana)
+                    print("Serial number burn-in completed successfully")
+                except Exception as e:
+                    print(f"Error during serial number burn-in: {e}")
+            else:
+                print("OCR failed, skipping serial number burn-in")
 
     def on_enter_writing_to_hwdb(self):
         print("Writing test results to HWDB")
@@ -294,15 +348,13 @@ class RTSStateMachine(StateMachine):
         chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
                           self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
-        if self.simulation_mode:
-            print("[SIMULATION] Moving chips to tray")
-            print(f"Would have moved chips to tray: {chip_data['label'][0]} and {chip_data['label'][1]} from DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]} to tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]})")
-        
         if not self.BypassRTS:
             try:
                 MoveChipsToTray(self.rts, chip_data)
             except Exception as e:
                 print(f"Error calling MoveChipsToTray: {e}")
+        else:
+            print(f"Would have moved chips to tray: {chip_data['label'][0]} and {chip_data['label'][1]} from DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]} to tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]})")
 
     def on_enter_pause(self):
         print("System paused - awaiting resume command")
@@ -316,10 +368,6 @@ class RTSStateMachine(StateMachine):
 
         badtray_file = "path/to/BadTray.csv"
         chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
-
-        if self.simulation_mode:
-            print("[SIMULATION] Moving bad chip(s) to bad tray")
-            print(f"Would have moved chip(s): {self.chip_positions['label'][self.current_chip_index]}")
         
         if not self.BypassRTS:
             try:
@@ -327,6 +375,8 @@ class RTSStateMachine(StateMachine):
                 self.advance_chip_position()
             except Exception as e:
                 print(f"Error calling MoveBadChipsToTray: {e}")
+        else:
+            print(f"Would have moved chip to bad tray: {self.chip_positions['label'][self.current_chip_index]} from DAT {self.chip_positions['dat'][self.current_chip_index]} socket {self.chip_positions['dat_socket'][self.current_chip_index]}")
 
     def on_enter_no_server_connection(self):
         print("Error: No server connection detected")
@@ -463,7 +513,7 @@ class RTSStateMachine(StateMachine):
         
         print(f"Starting full cycle at position {self.get_position()}")
 
-        for i in range(7):
+        for i in range(8):
             self.cycle()
         
         # Advance by 2 positions since we processed 2 chips
