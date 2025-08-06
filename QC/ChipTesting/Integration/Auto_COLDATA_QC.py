@@ -48,7 +48,7 @@ def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burn
         logs [dict]: dictionary holding QC test information
     """
     print('Running DAT QC')
-    QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_in_tests, burnin_now=burnin_now, auto=True)
+    QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_in_tests, burnin_now=burnin_now, auto=True, config_path="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv")
     if QCresult != None:
         QCstatus = QCresult[0]
         badchips = QCresult[1] #badchips range from 0 to7
@@ -139,7 +139,7 @@ def BurninSN(logs, cd_qc_ana):
 
     return
 
-def RunCOLDATA_QC(duttype, env, rootdir):
+def RunCOLDATA_QC(duttype, env, rootdir, pc_wrcfg_fn="./asic_info.csv"):
     """
     Runs the QC tests for COLDATA (without burnin) such that no user
     input is required. The config file must be up to date prior to 
@@ -151,8 +151,6 @@ def RunCOLDATA_QC(duttype, env, rootdir):
     """
     print('--------------->Running COLDATA QC')
     print("\033[96m Root folder of test data is: "+ "\033[93m" + rootdir + "\033[0m")
-
-    pc_wrcfg_fn = "./asic_info.csv"
 
     # Checking WIB connection
     print("\033[0m ", datetime.datetime.utcnow(), " : Check if WIB is pingable (it takes < 60s)" )

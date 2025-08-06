@@ -89,7 +89,7 @@ def Sinkcover():
         else:
             print ("Please close the covers and continue...")
 
-def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True):
+def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True, config_path = "./asic_info.csv"):
 
     QC_TST_EN =  True 
     print('Running rts_ssh')

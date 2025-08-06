@@ -64,7 +64,7 @@ class RTSStateMachine(StateMachine):
         # OCR configuration
         self.image_directory = "/Users/RTS/RTS_data/images/"
         self.ocr_results_dir = "/Users/RTS/DUNE-rts-sn-rec/Tested/fnal_cpm_results/"
-        self.config_file = "asic_info.csv"
+        self.config_file = "/Users/RTS/FD_CE/QC/ChipTesting/BNL_QC/asic_info.csv"
         self.sn_ready = True  # Track if OCR was successful
 
         # Ask user if they want to run in simulation mode
@@ -289,7 +289,7 @@ class RTSStateMachine(StateMachine):
                     
                     for i in range(len(pictures)):
                         success = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir,
-                                           True, chip_data['label'][i], self.config_file)
+                                           True, chip_data['label'][i])
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                     
                     # Kill Ollama used by OCR
@@ -316,6 +316,7 @@ class RTSStateMachine(StateMachine):
                 duttype="CD", 
                 env="RT", 
                 rootdir="C:/Users/RTS/Tested/"
+                # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
             )
             print("COLDATA QC tests completed successfully")
 
