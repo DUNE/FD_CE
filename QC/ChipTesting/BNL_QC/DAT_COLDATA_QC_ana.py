@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 import copy
 import time, datetime
-from spymemory_decode import wib_dec
+from .spymemory_decode import wib_dec
 #from spymemory_decode import avg_aligned_by_ts
 import statsmodels.api as sm
 import colorama

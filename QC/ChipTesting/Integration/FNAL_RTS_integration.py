@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import sys 
 import os
+
+# Add the parent directory to Python path to find BNL_QC module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import subprocess
 import time 
 import random
@@ -14,12 +18,12 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from LogInfo import WaitForPictures
-from Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from BNL_QC.LogInfo import WaitForPictures
+from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 
 # adding OCR folder to the system path
 sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
-import FNAL_CPM as cpm
+# import FNAL_CPM as cpm
 
 #from colorama import just_fix_windows_console
 #just_fix_windows_console()
@@ -37,8 +41,8 @@ import FNAL_CPM as cpm
 #Default = '\033[99m'
 
 #start robot
-from RTS_CFG import RTS_CFG
-from rts_ssh import subrun
+from BNL_QC.RTS_CFG import RTS_CFG
+from BNL_QC.rts_ssh import subrun
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
@@ -163,7 +167,7 @@ def MoveChipsToTray(rts, chip_positions):
 
     return
 
-def RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True):
+def RTS_Cycle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True, do_burnin=True, BypassRTS=False):
     """
     Runs an entire cycle of chip testing: move chips from the tray to the sockets,
     performs OCR to get serial numbers, runs the QC tests, burn the SN into the 
@@ -200,7 +204,7 @@ def RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True):
     logs, cd_qc_ana = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
 
     # Burn in the serial number found from the OCR
-    if sn_ready:
+    if sn_ready and do_burnin:
         print('About to run burning in of SN')
         BurninSN(logs, cd_qc_ana) 
     else:
@@ -323,9 +327,9 @@ if __name__ == "__main__":
         rts.rts_init(port=201, host_ip=robot_ip) 
 
     # Dictionary to hold chip positions and chip labels 
-    chip_positions = {'tray':[2,2], 'col':[6,6], 'row':[1,2], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
+    chip_positions = {'tray':[2,2], 'col':[3,3], 'row':[1,2], 'dat':[2,2], 'dat_socket':[21,22], 'label':['CD0','CD1']}
 
-    RTS_Cyle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True)
+    RTS_Cycle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=False, do_burnin=False)
     #MoveBadChipsToTray(rts, chip_positions, 'BadTray.csv')
 
     if not BypassRTS:

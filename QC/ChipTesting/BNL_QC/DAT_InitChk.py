@@ -16,7 +16,7 @@ if system_info=='Linux':
     index_tmts=4
     sys.path.append('../../')
 elif system_info=='Windows':
-    from spymemory_decode import wib_dec
+    from .spymemory_decode import wib_dec
     index_tmts=5
 #from spymemory_decode import avg_aligned_by_ts
 #import statsmodels.api as sm
