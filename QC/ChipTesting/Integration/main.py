@@ -1,5 +1,5 @@
-import RTSStateMachine as RTSSM
-from RTSStateMachine import RTSStateMachine
+import ChipTesting.Integration.RTSStateMachine as RTSSM
+from ChipTesting.Integration.RTSStateMachine import RTSStateMachine
 
 if __name__ == "__main__":
     sm = RTSStateMachine()

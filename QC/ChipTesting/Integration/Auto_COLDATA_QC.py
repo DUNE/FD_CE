@@ -10,16 +10,16 @@ import os
 import datetime
 from colorama import just_fix_windows_console
 just_fix_windows_console()
-from BNL_QC.DAT_chk_cfgfile import dat_chk_cfgfile_auto
-from BNL_QC.LogInfo import SaveToLog
-from BNL_QC.DAT_COLDATA_QC_ana import CD_QC_ANA
+from ChipTesting.BNL_QC.DAT_chk_cfgfile import dat_chk_cfgfile_auto
+from ChipTesting.BNL_QC.LogInfo import SaveToLog
+from ChipTesting.BNL_QC.DAT_COLDATA_QC_ana import CD_QC_ANA
 
 wibip = "192.168.121.123"
 wibhost = "root@{}".format(wibip)
 
-from BNL_QC.rts_ssh import subrun
-from BNL_QC.rts_ssh import rts_ssh
-from BNL_QC.rts_ssh import DAT_power_off
+from ChipTesting.BNL_QC.rts_ssh import subrun
+from ChipTesting.BNL_QC.rts_ssh import rts_ssh
+from ChipTesting.BNL_QC.rts_ssh import DAT_power_off
 
 ####### Colors for terminal output #######
 #Red = '\033[91m'

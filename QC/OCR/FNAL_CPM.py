@@ -19,8 +19,6 @@ h = 450
 x = 900
 y = 720
 crop_box = (x, y, x + w, y + h)
-image_directory = '/Users/tcontrer/Downloads/' #"/Users/RTS/RTS_data/images/"
-ocr_results_dir = "Tested/fnal_cpm_results/"
 #################################################
 
 def encode_image(image):
@@ -434,6 +432,9 @@ def CheckAllOCRResults(ocr_results_dir):
 if __name__=="__main__":
 
     start_time = time.time()
+
+    image_directory = '/Users/tcontrer/Downloads/' #"/Users/RTS/RTS_data/images/"
+    ocr_results_dir = "Tested/fnal_cpm_results/"
 
     image_id = "20250402142447_SN"
     RunOCR(image_directory, image_id, ocr_results_dir)
