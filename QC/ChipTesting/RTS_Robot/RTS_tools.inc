@@ -17,7 +17,7 @@ Global Int32 trayNRows
 #define NSOCKETS 22
 Global Int32 nSoc ' Set by chip type for testing
 
-#define CONTACT_DIST 20.0
+#define CONTACT_DIST 10.0
 #define DROP_DIST 2.0
 
 #define JUMP_LIMIT -20.
@@ -59,5 +59,3 @@ Global Double SocketChipOrientation(3) ' Default direction for chips in sockets 
 
 ' Define the distance between the fiducial markers on LArASIC
 #define LArASICDimension 14.0 ' Need to measure
-
-

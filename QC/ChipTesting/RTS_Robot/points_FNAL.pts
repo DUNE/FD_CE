@@ -1,4 +1,4 @@
-ENVT0100,LM:2025/03/26 16:59:09:921,DS:0000016222,CS:04924,MA:14-B3-1F-17-20-A7,EI:           
+ENVT0100,LM:2025/07/03 21:24:00:688,DS:0000016216,CS:30815,MA:14-B3-1F-17-20-A7,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
@@ -62,10 +62,10 @@ Point3 {
 	sLabel="Tray_Left_P1"
 	sDescription="Lower Left Point of left tray"
 	nUndefined=0
-	rX=-301.23
-	rY=444.421
-	rZ=-53.631
-	rU=6.203
+	rX=-299.206
+	rY=446.25
+	rZ=-53.666
+	rU=6.32
 	rV=0
 	rW=0
 	rR=0
@@ -88,10 +88,10 @@ Point4 {
 	sLabel="Tray_Left_P2"
 	sDescription="Lower Right Point of left tray"
 	nUndefined=0
-	rX=-27.177
-	rY=445.023
-	rZ=-53.828
-	rU=6.203
+	rX=-26.69
+	rY=446.82
+	rZ=-53.853
+	rU=6.319
 	rV=0
 	rW=0
 	rR=0
@@ -114,10 +114,10 @@ Point5 {
 	sLabel="Tray_Left_P3"
 	sDescription="Upper Left of left tray"
 	nUndefined=0
-	rX=-301.229
-	rY=538.959
-	rZ=-53.843
-	rU=6.203
+	rX=-298.891
+	rY=541.53
+	rZ=-53.85
+	rU=6.319
 	rV=0
 	rW=0
 	rR=0
@@ -140,10 +140,10 @@ Point6 {
 	sLabel="Tray_Left_P4"
 	sDescription="Upper Right Point of left tray"
 	nUndefined=0
-	rX=-27.177
-	rY=539.542
-	rZ=-53.992
-	rU=6.203
+	rX=-26.968
+	rY=541.322
+	rZ=-53.98
+	rU=6.319
 	rV=0
 	rW=0
 	rR=0

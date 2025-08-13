@@ -1,9 +1,13 @@
 
 Function RTS_server
+	
+	SelectSite
+	LoadPositionFiles
+	
 	Integer portNr
 	portNr = 201
 	String msg$
-	SetNet #portNr, "127.0.0.1", 2001, CRLF, NONE, 0, TCP, 5
+	SetNet #portNr, "192.168.121.1", 201, CRLF, NONE, 0, TCP, 5
 	Print "Starting RTS server..."
 	OpenNet #portNr As Server
 	Print "Waiting connection to port ", portNr
@@ -26,16 +30,16 @@ Function RTS_server
     		Case "MoveChipFromTrayToSocket"
     			PumpOn
     			' Receive source and destination parameters"
+    			Input #portNr, DAT_nr
+    			Input #portNr, socket_nr
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
-    			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
     			Print "Move chip from pallet(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			Print " to DAT board: ", DAT_nr, " socket", socket_nr
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = MoveChipFromTrayToSocket(pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr)
+    			status = MoveChipFromTrayToSocket(DAT_nr, socket_nr, pallet_nr, pallet_col, pallet_row)
     			Print #portNr, Str$(status)
 
     		Case "MoveChipFromSocketToTray"
@@ -69,7 +73,6 @@ Function RTS_server
     			Print #portNr, Str$(status)
     			
      		Case "JumpToTray"
-    			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
@@ -79,6 +82,7 @@ Function RTS_server
     			Print #portNr, "JumpToTray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")"
 
      		Case "PickupFromTray"
+     			PumpOn
                 PickupFromTray
     			Print #portNr, "PickupFromTray"
 
@@ -87,12 +91,17 @@ Function RTS_server
     			Print #portNr, "DropToTray"
 
      		Case "PickupFromSocket"
+     			PumpOn
                 PickupFromSocket
     			Print #portNr, "PickupFromSocket"
 
      		Case "InsertIntoSocket"
                 InsertIntoSocket
     			Print #portNr, "InsertIntoSocket"
+    			
+    		Case "DropToSocket"
+    			DropToSocket
+    			Print #portNr, "DropToSocket"
     			
     		Case "JumpToCamera"
     			JumpToCamera
@@ -102,9 +111,15 @@ Function RTS_server
     			Motor On
     			Print #portNr, "Motor On"
     			
+    		Case "MotorOff"
+    			Motor Off
+    			Print #portNr, "Motor Off"
+    			
+    		Case "PumpOn"
+    			PumpOn
+    			Print #portNr, "PumpOn"
+    			
     		Case "PumpOff"
-    			'Jump Pallet(1, 12, 6) :Z(-10)
-    			'Print("Not implemented")
     			PumpOff
     			Print #portNr, "PumpOff"
 
@@ -122,6 +137,18 @@ Function RTS_server
  				'Print "Connection established"
 				'Print "Sending data to client"
     			'Print #portNr, "RTS ready"
+    			
+    		Case "SelectSite"
+    			SelectSite
+    			Print #portNr, "SelectSite"
+    			
+    		Case "LoadPositionFiles"
+    			LoadPositionFiles
+    			Print #portNr, "LoadPositionFiles"
+    			
+    		Case "UpdatePositionFiles"
+    			UpdatePositionFiles
+    			Print #portNr, "UpdatePositionFiles"
     			
     		Case "Shutdown"
 		    	CloseNet #portNr
@@ -145,5 +172,8 @@ Function RTS_server
 		    	
     	Send
 	Loop
+	
+	UpdatePositionFiles
+	
 Fend
 
