@@ -1,0 +1,18 @@
+{
+    "component_type": {
+        "part_type_id": "D08100100001"
+    },
+    "country_code": "US",
+    "comments": "Picture taken on 2024-07-11 by RTS at BNL",
+    "institution": {
+        "id": 128
+    },
+    "manufacturer": {
+        "id": 58
+    },
+    "specifications": {
+        "LArASIC SN": "011-07045",
+        "RTS Operator": "KARLA F.",
+        "Test Results": "link_to_test_results"
+    }
+}
