@@ -342,6 +342,13 @@ class RTSStateMachine(StateMachine):
         print("Writing test results to HWDB")
         self.last_normal_state = self.current_state
 
+        if self.simulation_mode:
+            print("[SIMULATION] Uploading to HWDB")
+
+        else: 
+            upload_result = subprocess.run(["wsl","bash","-l","-c", """source ~/HWDB/DUNE_CE_HWDB/setup_hwdb.sh && python3 ~/HWDB/DUNE_CE_HWDB/submit_coldata_test.py"""], capture_output=True, text=True, check=True)
+            print(upload_result.stdout)
+
     def on_enter_moving_chip_to_tray(self):
         print("Moving chips to tray")
         self.last_normal_state = self.current_state
