@@ -40,8 +40,8 @@ import OCR.FNAL_CPM as cpm
 #Default = '\033[99m'
 
 #start robot
-from BNL_QC.RTS_CFG import RTS_CFG
-from BNL_QC.rts_ssh import subrun
+from ChipTesting.BNL_QC.RTS_CFG import RTS_CFG
+from ChipTesting.BNL_QC.rts_ssh import subrun
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
