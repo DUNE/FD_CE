@@ -3,7 +3,7 @@ import sys
 import os
 
 # Add the parent directory to Python path to find BNL_QC module
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 import subprocess
 import time 
@@ -18,12 +18,11 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from BNL_QC.LogInfo import WaitForPictures
-from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from ChipTesting.BNL_QC.LogInfo import WaitForPictures
+from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 
 # adding OCR folder to the system path
-sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
-# import FNAL_CPM as cpm
+import OCR.FNAL_CPM as cpm
 
 #from colorama import just_fix_windows_console
 #just_fix_windows_console()

@@ -10,19 +10,17 @@ Classes:
 """
 
 from statemachine import StateMachine, State
-from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
-from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
-from RTS_CFG import RTS_CFG
-from BNL_QC.LogInfo import WaitForPictures
+from ChipTesting.Integration.FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
+from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from ChipTesting.Integration.RTS_CFG import RTS_CFG
+from ChipTesting.BNL_QC.LogInfo import WaitForPictures
 import sys
 import os
 from datetime import datetime
 import time
 import subprocess
 
-# Add OCR path and import
-sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
-import FNAL_CPM as cpm
+import OCR.FNAL_CPM as cpm
 
 
 class RTSStateMachine(StateMachine):
