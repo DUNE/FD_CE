@@ -1,5 +1,5 @@
 #include "RTS_tools.inc"
-
+#include "ErrorDictionary.inc"
 Function PumpOn
     VacuumValveOpen
     Wait 1
@@ -99,34 +99,18 @@ Function SetSpeedSetting(Setting$ As String)
 Fend
 
 
-Function MoveFromPointToImage(dU As Double, RotateFirst As Boolean)
+Function MoveFromPointToImage
 	' Move arm from stinger at point, to chip in focus with some rotation in degrees
 	' Remember point is defined as some offset (10mm from contact)
-	' RotateFirst decides if rotation comes before or after translation in XY
-	' Which may be important to avoid collision
 	Move Here +Z(DF_CAM_Z_OFF)
-	If RotateFirst Then
-		Go Here +U(dU)
-		Move Here +X(XOffset(CU(Here))) +Y(YOffset(CU(Here)))
-	Else
-		Move Here +X(XOffset(CU(Here) + dU)) +Y(YOffset(CU(Here) + dU))
-		Go Here +U(dU)
-	EndIf
-	
+	Move Here +X(XOffset(CU(Here))) +Y(YOffset(CU(Here)))
+
 Fend
 
-Function MoveFromImageToPoint(dU As Double, RotateFirst As Boolean)
+Function MoveFromImageToPoint
 	' Inverse of above function, note rotation is not inverted like other offsets
 	' And order of operations may need to be reversed if this matters for collisions
-	' (Rotations should happen in same XY position)
-	' e.g. MoveFromImageToPoint(-45,1) is inverse of MoveFromPointToImage(45,0)
-	If RotateFirst Then
-		Go Here +U(dU)
-		Move Here -X(XOffset(CU(Here) - dU)) -Y(YOffset(CU(Here) - dU))
-	Else
-		Move Here -X(XOffset(CU(Here))) -Y(YOffset(CU(Here)))
-		Go Here +U(dU)
-	EndIf
+	Move Here -X(XOffset(CU(Here))) -Y(YOffset(CU(Here)))
 	Move Here -Z(DF_CAM_Z_OFF)
 	
 Fend
@@ -171,8 +155,9 @@ Function JumpToTray_camera(pallet_nr As Integer, col_nr As Integer, row_nr As In
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) LimZ JUMP_LIMIT
 
 		ElseIf pallet_nr = 2 Then
-			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) LimZ JUMP_LIMIT
-
+		'	Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) LimZ JUMP_LIMIT
+		
+			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF) LimZ JUMP_LIMIT '  :U(CU(Pallet(pallet_nr, col_nr, row_nr)))
 		EndIf
 
 	EndIf
@@ -220,7 +205,7 @@ Function isChipInTrayCamera(pallet_nr As Integer, col_nr As Integer, row_nr As I
 	isChipInTrayCamera = False
 	JumpToTray_camera(pallet_nr, col_nr, row_nr)
 	Integer Attempts
-	Attempts = 5
+	Attempts = 20
 	Boolean Success
 	Success = False
 	Do While (Attempts > 0) Or Success
@@ -390,7 +375,7 @@ Function isChipInSocketCamera(DAT_nr As Integer, socket_nr As Integer) As Boolea
 	isChipInSocketCamera = False
 	JumpToSocket_camera(DAT_nr, socket_nr)
 	Integer Attempts
-	Attempts = 5
+	Attempts = 20
 	Boolean Success
 	Success = False
 	Do While (Attempts > 0) Or Success
@@ -638,502 +623,502 @@ Fend
 
 'Function ChipBottomAnaly(chip_SN$ As String, fileNum As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer, DAT_NR As Integer, ByRef status As Integer, ByRef res() As Double)
 'Function ChipBottomAnaly(chip_SN$ As String, ByRef idx() As Integer, ByRef status As Integer, ByRef res() As Double)
-Function ChipBottomAnaly(id$ As String, ByRef idx() As Integer, ByRef res() As Double) As Integer
-
-	Integer i, fileNum
-	
-	ChipBottomAnaly = 0
-
-	' reset the array of results
-	For i = 1 To 30
-		res(i) = 0
-	Next i
-	fileNum = idx(1)
-	
-	' sources and targets of the chip
-	Integer src_pallet_nr, src_col_nr, src_row_nr, src_DAT_nr, src_socket_nr
-	Integer tgt_pallet_nr, tgt_col_nr, tgt_row_nr, tgt_DAT_nr, tgt_socket_nr
-	
-	fileNum = idx(1)
-	src_pallet_nr = idx(2)
-	src_col_nr = idx(3)
-	src_row_nr = idx(4)
-	tgt_pallet_nr = idx(5)
-	tgt_col_nr = idx(6)
-	tgt_row_nr = idx(7)
-
-	src_DAT_nr = idx(8)
-	src_socket_nr = idx(9)
-	tgt_DAT_nr = idx(10)
-	tgt_socket_nr = idx(11)
-			
-	'If tgt_DAT_nr = 1 Then
-	'	ChipBottomAnaly = 10
-	'	Print "***ERROR Functionality for DAT board 1 not implemented yet", 10
-    '    Exit Function
-	'EndIf
-		
-	' target position at the camera
-	Double tgt_x0, tgt_y0, tgt_u0
-	' hand rotation at destination
-	Double dst_U
-	If tgt_pallet_nr > 0 And tgt_pallet_nr <= NTRAYS And tgt_col_nr > 0 And tgt_col_nr <= TRAY_NCOLS And tgt_row_nr > 0 And tgt_row_nr <= TRAY_NROWS Then
-		tgt_x0 = tray_X(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-		tgt_y0 = tray_Y(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-		tgt_u0 = tray_U(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-		dst_U = CU(Pallet(tgt_pallet_nr, tgt_col_nr, tgt_row_nr))
-	ElseIf tgt_DAT_nr > 0 And tgt_DAT_nr <= 2 And tgt_socket_nr > 0 And tgt_socket_nr <= NSOCKETS Then
-		tgt_x0 = DAT_X(tgt_DAT_nr, tgt_socket_nr)
-		tgt_y0 = DAT_Y(tgt_DAT_nr, tgt_socket_nr)
-		tgt_u0 = DAT_U(tgt_DAT_nr, tgt_socket_nr)
-		dst_U = CU(P(100 * tgt_DAT_nr + tgt_socket_nr))
-	Else
-		ChipBottomAnaly = 100
-		Exit Function
-	EndIf
-	
-	
-       'JW:
-   If Agl(4) < -45. Then
-           Go Here +U(180)
-'      ElseIf Agl(4) < 0. Then
-'              Go Here +U(135)
-'              Go Here -U(180)
-'              Go Here +U(45)
-   ElseIf Agl(4) <= 45. Then
-           Go Here +U(90)
-   Else
-           Go Here -U(180)
-   EndIf
-	
-	
-	UF_camera_light_ON
-	Wait 0.2
-	String pict_fname$
-	'UF_take_picture(chip_SN$, ByRef pict_fname_0$)
-	pict_fname$ = UF_take_picture$(id$ + "_01")
-    Print #fileNum, ",", pict_fname$,
-	
-	'Double tray_dx, tray_dy, tray_dU
-	VRun ChipBottom_Analy
-
-	Boolean ret_found
-	Double camera_X, camera_Y
-	Double X_0, Y_0, U_0
-	Double X_180, Y_180, U_180
-	Double X_tool, Y_tool
-
-	'VGet ChipBottom_Analy.Final.RobotXYU, ret_found, ret_X, ret_Y, ret_U
-	VGet ChipBottom_Analy.Final.Found, ret_found
-	If ret_found Then
-
-		VGet ChipBottom_Analy.CameraCenter.CameraX, camera_X
-		VGet ChipBottom_Analy.CameraCenter.CameraY, camera_Y
-			
-		VGet ChipBottom_Analy.Final.CameraX, X_0
-		VGet ChipBottom_Analy.Final.CameraY, Y_0
-		VGet ChipBottom_Analy.Final.Angle, U_0
-
-		Print #fileNum, ",", ret_found,
-		Print #fileNum, ",", camera_X, ",", camera_Y,
-		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-		
-		res(1) = camera_X
-		res(2) = camera_Y
-		
-		res(3) = X_0
-		res(4) = Y_0
-		res(5) = U_0
-
-	Else
-		
-		ChipBottomAnaly = 1
-		Print "***ERROR ", 1
-        Exit Function
-		
-	EndIf
-
-	' Repeat measurement for 180 deg. rotation
-'	If CU(Here) < 235 Then
-'		Go Here +U(180)
+'Function ChipBottomAnaly(id$ As String, ByRef idx() As Integer, ByRef res() As Double) As Integer
+'
+'	Integer i, fileNum
+'	
+'	ChipBottomAnaly = 0
+'
+'	' reset the array of results
+'	For i = 1 To 30
+'		res(i) = 0
+'	Next i
+'	fileNum = idx(1)
+'	
+'	' sources and targets of the chip
+'	Integer src_pallet_nr, src_col_nr, src_row_nr, src_DAT_nr, src_socket_nr
+'	Integer tgt_pallet_nr, tgt_col_nr, tgt_row_nr, tgt_DAT_nr, tgt_socket_nr
+'	
+'	fileNum = idx(1)
+'	src_pallet_nr = idx(2)
+'	src_col_nr = idx(3)
+'	src_row_nr = idx(4)
+'	tgt_pallet_nr = idx(5)
+'	tgt_col_nr = idx(6)
+'	tgt_row_nr = idx(7)
+'
+'	src_DAT_nr = idx(8)
+'	src_socket_nr = idx(9)
+'	tgt_DAT_nr = idx(10)
+'	tgt_socket_nr = idx(11)
+'			
+'	'If tgt_DAT_nr = 1 Then
+'	'	ChipBottomAnaly = 10
+'	'	Print "***ERROR Functionality for DAT board 1 not implemented yet", 10
+'    '    Exit Function
+'	'EndIf
+'		
+'	' target position at the camera
+'	Double tgt_x0, tgt_y0, tgt_u0
+'	' hand rotation at destination
+'	Double dst_U
+'	If tgt_pallet_nr > 0 And tgt_pallet_nr <= NTRAYS And tgt_col_nr > 0 And tgt_col_nr <= TRAY_NCOLS And tgt_row_nr > 0 And tgt_row_nr <= TRAY_NROWS Then
+'		tgt_x0 = tray_X(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
+'		tgt_y0 = tray_Y(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
+'		tgt_u0 = tray_U(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
+'		dst_U = CU(Pallet(tgt_pallet_nr, tgt_col_nr, tgt_row_nr))
+'	ElseIf tgt_DAT_nr > 0 And tgt_DAT_nr <= 2 And tgt_socket_nr > 0 And tgt_socket_nr <= NSOCKETS Then
+'		tgt_x0 = DAT_X(tgt_DAT_nr, tgt_socket_nr)
+'		tgt_y0 = DAT_Y(tgt_DAT_nr, tgt_socket_nr)
+'		tgt_u0 = DAT_U(tgt_DAT_nr, tgt_socket_nr)
+'		dst_U = CU(P(100 * tgt_DAT_nr + tgt_socket_nr))
 '	Else
-'		Go Here -U(180)
+'		ChipBottomAnaly = 100
+'		Exit Function
 '	EndIf
-
-'      JW:
-	If Agl(4) <= 45. Then
-	    Go Here -U(180)
-    Else
-        Go Here +U(180)
-    EndIf
-
-	Wait 0.2
-	'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
-	'UF_take_picture(ByRef pict_fname$)
-	pict_fname$ = UF_take_picture$(id$ + "_02")
-	Print #fileNum, ",", pict_fname$,
-
-	VRun ChipBottom_Analy
-	
-	VGet ChipBottom_Analy.Final.Found, ret_found
-	If ret_found Then
-		
-		VGet ChipBottom_Analy.Final.CameraX, X_180
-		VGet ChipBottom_Analy.Final.CameraY, Y_180
-		VGet ChipBottom_Analy.Final.Angle, U_180
-
-		Print #fileNum, ",", ret_found,
-		Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
-
-		res(6) = X_180
-		res(7) = Y_180
-		res(8) = U_180
-
-		X_tool = 0.5 * (X_0 + X_180)
-		Y_tool = 0.5 * (Y_0 + Y_180)
-
-		res(9) = X_tool
-		res(10) = Y_tool
-
-		Print #fileNum, ",", X_tool, ",", Y_tool,
-
-		' chip position relative to the tool
-		res(11) = X_0 - X_tool
-		res(12) = Y_0 - Y_tool
-
-		Print #fileNum, ",", res(11), ",", res(12),
-
-		' record the chip position from the source
-		Double src_x0, src_y0, src_u0
-		' source: 1 - pallet, 2 - socket
-		Integer src
-		If src_pallet_nr > 0 And src_pallet_nr <= NTRAYS And src_col_nr > 0 And src_col_nr <= TRAY_NCOLS And src_row_nr > 0 And src_row_nr <= TRAY_NROWS Then
-			src_x0 = tray_X(src_pallet_nr, src_col_nr, src_row_nr)
-			src_y0 = tray_Y(src_pallet_nr, src_col_nr, src_row_nr)
-			src_u0 = tray_U(src_pallet_nr, src_col_nr, src_row_nr)
-			src = 1
-		ElseIf src_DAT_nr > 0 And src_DAT_nr <= 2 And src_socket_nr > 0 And src_socket_nr <= NSOCKETS Then
-			src_x0 = DAT_X(src_DAT_nr, src_socket_nr)
-			src_y0 = DAT_Y(src_DAT_nr, src_socket_nr)
-			src_u0 = DAT_U(src_DAT_nr, src_socket_nr)
-			src = 2
-		Else
-			ChipBottomAnaly = 101
-			Exit Function
-		EndIf
-
-		If src_x0 = 0 And src_y0 = 0 And src_u0 = 0 Then
-			Print "Recording position of the source: ", res(11), " ", res(12), " ", U_0
-			If src = 1 Then
-				tray_X(src_pallet_nr, src_col_nr, src_row_nr) = res(11)
-				tray_Y(src_pallet_nr, src_col_nr, src_row_nr) = res(12)
-				tray_U(src_pallet_nr, src_col_nr, src_row_nr) = U_0
-			ElseIf src = 2 Then
-				DAT_X(src_DAT_nr, src_socket_nr) = res(11)
-				DAT_Y(src_DAT_nr, src_socket_nr) = res(12)
-				DAT_U(src_DAT_nr, src_socket_nr) = U_0
-			Else
-				ChipBottomAnaly = 102
-				Exit Function
-			EndIf
-		EndIf
-
-	Else
-
-		ChipBottomAnaly = 2
-		Print "***Error ", 2
-        Exit Function
-	EndIf
-	
-    ' JW: need to correct the cases where you do +90, then -180 then +90
-         ' Other angles just do +180, then -180 or vice versa
-	If Agl(4) > -45. And Agl(4) <= 45. Then
-		Go Here +U(90)
-	EndIf
-
-
-	' Change handeness to the target 
-	If tgt_pallet_nr = 1 Or tgt_DAT_nr = 1 Then
-    	Jump P_camera :U(dst_U) /R LimZ JUMP_LIMIT
-    ElseIf tgt_pallet_nr = 2 Or tgt_DAT_nr = 2 Then
-    	Jump P_camera :U(dst_U) /L LimZ JUMP_LIMIT
-    EndIf
-	
-
-	' Rotate the hand to destination orientation Update: Done in a previous step
-	'Go Here :U(dst_U)
-	Wait 0.2
-
-	' Added 2024-06-18
-	' Re-evaluate the position of the tool
-	VRun ChipBottom_Analy
-
-	VGet ChipBottom_Analy.Final.Found, ret_found
-	If ret_found Then
-
-		'VGet ChipBottom_Analy.CameraCenter.CameraX, camera_X
-		'VGet ChipBottom_Analy.CameraCenter.CameraY, camera_Y
-			
-		VGet ChipBottom_Analy.Final.CameraX, X_0
-		VGet ChipBottom_Analy.Final.CameraY, Y_0
-		VGet ChipBottom_Analy.Final.Angle, U_0
-
-		Print #fileNum, ",", ret_found,
-		'Print #fileNum, ",", camera_X, ",", camera_Y,
-		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-		
-		'res(1) = camera_X
-		'res(2) = camera_Y
-		
-		'res(3) = X_0
-		'res(4) = Y_0
-		'res(5) = U_0
-
-	Else
-		
-		ChipBottomAnaly = 301
-		Print "***ERROR ", 301
-        Exit Function
-		
-	EndIf
-
-	' Repeat measurement for 180 deg. rotation
-	'If CU(Here) < 180 Then
-	
-	'If Hand < 1.5 Then ' 1 for right handed, 2 for left handed.
-		Go Here +U(180)
-	'Else
-	'	Go Here -U(180)
-	'EndIf
-	Wait 0.2
-	'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
-	'UF_take_picture(ByRef pict_fname$)
-	'pict_fname$ = UF_take_picture$(id$ + "_02")
-	'Print #fileNum, ",", pict_fname$,
-
-	VRun ChipBottom_Analy
-	
-	VGet ChipBottom_Analy.Final.Found, ret_found
-	If ret_found Then
-		
-		VGet ChipBottom_Analy.Final.CameraX, X_180
-		VGet ChipBottom_Analy.Final.CameraY, Y_180
-		VGet ChipBottom_Analy.Final.Angle, U_180
-
-		Print #fileNum, ",", ret_found,
-		Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
-
-		'res(6) = X_180
-		'res(7) = Y_180
-		'res(8) = U_180
-
-		X_tool = 0.5 * (X_0 + X_180)
-		Y_tool = 0.5 * (Y_0 + Y_180)
-
-		res(9) = X_tool
-		res(10) = Y_tool
-
-		Print #fileNum, ",", X_tool, ",", Y_tool,
-
-		Print "Tool position: X=", X_tool, ", Y=", Y_tool
-
-		' chip position relative to the tool
-		res(11) = X_0 - X_tool
-		res(12) = Y_0 - Y_tool
-
-		Print #fileNum, ",", res(11), ",", res(12),
-
-		' record the chip position from the source
-		'Double src_x0, src_y0, src_u0
-		'' source: 1 - pallet, 2 - socket
-		'Integer src
-		'If src_pallet_nr > 0 And src_pallet_nr <= NTRAYS And src_col_nr > 0 And src_col_nr <= TRAY_NCOLS And src_row_nr > 0 And src_row_nr <= TRAY_NROWS Then
-		'	src_x0 = tray_X(src_pallet_nr, src_col_nr, src_row_nr)
-		'	src_y0 = tray_Y(src_pallet_nr, src_col_nr, src_row_nr)
-		'	src_u0 = tray_U(src_pallet_nr, src_col_nr, src_row_nr)
-		'	src = 1
-		'ElseIf src_DAT_nr > 0 And src_DAT_nr <= 2 And src_socket_nr > 0 And src_socket_nr <= NSOCKETS Then
-	'		src_x0 = DAT_X(src_DAT_nr, src_socket_nr)
-	'		src_y0 = DAT_Y(src_DAT_nr, src_socket_nr)
-	'		src_u0 = DAT_U(src_DAT_nr, src_socket_nr)
-	'		src = 2
-	'	Else
-	'		ChipBottomAnaly = 101
-	'		Exit Function
-	'	EndIf
-
-	'	If src_x0 = 0 And src_y0 = 0 And src_u0 = 0 Then
-	'		Print "Recording position of the source: ", res(11), " ", res(12), " ", U_0
-	'		If src = 1 Then
-	'			tray_X(src_pallet_nr, src_col_nr, src_row_nr) = res(11)
-	'			tray_Y(src_pallet_nr, src_col_nr, src_row_nr) = res(12)
-	'			tray_U(src_pallet_nr, src_col_nr, src_row_nr) = U_0
-	'		ElseIf src = 2 Then
-	'			DAT_X(src_DAT_nr, src_socket_nr) = res(11)
-	'			DAT_Y(src_DAT_nr, src_socket_nr) = res(12)
-	'			DAT_U(src_DAT_nr, src_socket_nr) = U_0
-	'		Else
-	'			ChipBottomAnaly = 102
-	'			Exit Function
-	'		EndIf
-	'	EndIf
-
-	Else
-
-		ChipBottomAnaly = 302
-		Print "***Error ", 302
-        Exit Function
-			
-	EndIf
-
-
-	' End of code added on 2024-06-18
-
-	' re-evaluate chip position with the rotation at destination
-	Go Here :U(dst_U)
-	Wait 0.2
-
-	'UF_take_picture(ByRef pict_fname$)
-	pict_fname$ = UF_take_picture$(id$ + "_03")
-	Print #fileNum, ",", pict_fname$,
-
-	VGet ChipBottom_Analy.Final.Found, ret_found
-	If ret_found Then
-			
-		VGet ChipBottom_Analy.Final.CameraX, X_0
-		VGet ChipBottom_Analy.Final.CameraY, Y_0
-		VGet ChipBottom_Analy.Final.Angle, U_0
-
-		Print #fileNum, ",", ret_found,
-		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-				
-		res(13) = X_0
-		res(14) = Y_0
-		res(15) = U_0
-
-	Else
-		
-		ChipBottomAnaly = 3
-		Print "***ERROR ", 3
-        Exit Function
-		
-	EndIf
-
-
-	Double d_U
-	'd_U = U_0 + 0.2
-	'd_U = U_0 - tgt_u0
-	d_U = tgt_u0 - U_0
-	res(16) = d_U
-	If Abs(d_U) < 2.0 Then
-		Go Here -U(d_U)
-	Else
-		ChipBottomAnaly = 4
-		Print "ERROR 4! : Rotation angle outside of control margin"
-		Exit Function
-	EndIf
-
-	' Remeasure X and Y with correct rotation
-	Wait 0.2
-	'UF_take_picture(ByRef pict_fname$)
-	pict_fname$ = UF_take_picture$(id$ + "_04")
-	Print #fileNum, ",", pict_fname$,
-	
-	VRun ChipBottom_Analy
-		
-	VGet ChipBottom_Analy.Final.Found, ret_found
-	If ret_found Then
-			
-		VGet ChipBottom_Analy.Final.CameraX, X_0
-		VGet ChipBottom_Analy.Final.CameraY, Y_0
-		VGet ChipBottom_Analy.Final.Angle, U_0
-
-		Print #fileNum, ",", ret_found,
-		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-
-		res(17) = X_0
-		res(18) = Y_0
-		res(19) = U_0
-
-	Else
-		
-		ChipBottomAnaly = 5
-		Print "***ERROR ", 5
-        Exit Function
-			
-	EndIf
-
-	Double d_X, d_Y
-	d_X = tgt_x0 - (X_0 - X_tool)
-	d_Y = tgt_y0 - (Y_0 - Y_tool)
-	
-	Print #fileNum, ",", d_X, ",", d_Y, ",", d_U,
-
-	res(20) = d_X
-	res(21) = d_Y
-
-
-	' Analysis of pins
-	d_X = X_0 - X_tool
-	d_Y = Y_0 - Y_tool
-	If Abs(d_X) < 1 And Abs(d_Y) < 1 And Abs(U_0) < 2 Then
-		Print "Positioning the chip for pin analysis: ",
-		Print " dX=", d_X, " dY=", d_Y, " dU=", U_0
-		Go Here -X(d_X) -Y(d_Y) +U(U_0)
-	Else
-		ChipBottomAnaly = 6
-		Print "***ERROR ", 6
-        Exit Function
-	EndIf
-
-	pict_fname$ = UF_take_picture$(id$ + "_pins")
-	Print #fileNum, ",", pict_fname$,
-	VSet pins_analy.ImageFile, pict_fname$
-	
-	Integer status
-	status = PinsAnaly(id$)
-	Print #fileNum, ",", status,
-	If status <> 0 Then
-		ChipBottomAnaly = status
-	EndIf
-		
-	' Analysis of chip key for insertion into socket
-	Boolean res_1, res_2, res_3, res_4
-	If tgt_DAT_nr = 1 Then
-		Print "Checking ASIC key"
-		VSet key_check_1.ImageFile, pict_fname$
-		VRun key_check_1
-		
-		VGet key_check_1.Blob01.Found, res_1
-		VGet key_check_1.Blob02.Found, res_2
-		VGet key_check_1.Blob03.Found, res_3
-		VGet key_check_1.Blob04.Found, res_4
-		
-		If Not (res_1 And (Not res_2) And res_3 And res_4) Then
-			Print "***ERROR! Failed to determine the key position of the ASIC"
-			ChipBottomAnaly = 7
-			Exit Function
-		EndIf
-	ElseIf tgt_DAT_nr = 2 Then
-		Print "Checking ASIC key"
-		VSet key_check.ImageFile, pict_fname$
-		VRun key_check
-		
-		VGet key_check.Blob01.Found, res_1
-		VGet key_check.Blob02.Found, res_2
-		VGet key_check.Blob03.Found, res_3
-		VGet key_check.Blob04.Found, res_4
-		
-		If Not (res_1 And res_2 And res_3 And (Not res_4)) Then
-			Print "***ERROR! Failed to determine the key position of the ASIC"
-			ChipBottomAnaly = 7
-			Exit Function
-		EndIf
-	EndIf
-
-	UF_camera_light_OFF
-	
-Fend
+'	
+'	
+'       'JW:
+'   If Agl(4) < -45. Then
+'           Go Here +U(180)
+''      ElseIf Agl(4) < 0. Then
+''              Go Here +U(135)
+''              Go Here -U(180)
+''              Go Here +U(45)
+'   ElseIf Agl(4) <= 45. Then
+'           Go Here +U(90)
+'   Else
+'           Go Here -U(180)
+'   EndIf
+'	
+'	
+'	UF_camera_light_ON
+'	Wait 0.2
+'	String pict_fname$
+'	'UF_take_picture(chip_SN$, ByRef pict_fname_0$)
+'	pict_fname$ = UF_take_picture$(id$ + "_01")
+'    Print #fileNum, ",", pict_fname$,
+'	
+'	'Double tray_dx, tray_dy, tray_dU
+'	VRun ChipBottom_Analy
+'
+'	Boolean ret_found
+'	Double camera_X, camera_Y
+'	Double X_0, Y_0, U_0
+'	Double X_180, Y_180, U_180
+'	Double X_tool, Y_tool
+'
+'	'VGet ChipBottom_Analy.Final.RobotXYU, ret_found, ret_X, ret_Y, ret_U
+'	VGet ChipBottom_Analy.Final.Found, ret_found
+'	If ret_found Then
+'
+'		VGet ChipBottom_Analy.CameraCenter.CameraX, camera_X
+'		VGet ChipBottom_Analy.CameraCenter.CameraY, camera_Y
+'			
+'		VGet ChipBottom_Analy.Final.CameraX, X_0
+'		VGet ChipBottom_Analy.Final.CameraY, Y_0
+'		VGet ChipBottom_Analy.Final.Angle, U_0
+'
+'		Print #fileNum, ",", ret_found,
+'		Print #fileNum, ",", camera_X, ",", camera_Y,
+'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
+'		
+'		res(1) = camera_X
+'		res(2) = camera_Y
+'		
+'		res(3) = X_0
+'		res(4) = Y_0
+'		res(5) = U_0
+'
+'	Else
+'		
+'		ChipBottomAnaly = 1
+'		Print "***ERROR ", 1
+'        Exit Function
+'		
+'	EndIf
+'
+'	' Repeat measurement for 180 deg. rotation
+''	If CU(Here) < 235 Then
+''		Go Here +U(180)
+''	Else
+''		Go Here -U(180)
+''	EndIf
+'
+''      JW:
+'	If Agl(4) <= 45. Then
+'	    Go Here -U(180)
+'    Else
+'        Go Here +U(180)
+'    EndIf
+'
+'	Wait 0.2
+'	'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
+'	'UF_take_picture(ByRef pict_fname$)
+'	pict_fname$ = UF_take_picture$(id$ + "_02")
+'	Print #fileNum, ",", pict_fname$,
+'
+'	VRun ChipBottom_Analy
+'	
+'	VGet ChipBottom_Analy.Final.Found, ret_found
+'	If ret_found Then
+'		
+'		VGet ChipBottom_Analy.Final.CameraX, X_180
+'		VGet ChipBottom_Analy.Final.CameraY, Y_180
+'		VGet ChipBottom_Analy.Final.Angle, U_180
+'
+'		Print #fileNum, ",", ret_found,
+'		Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
+'
+'		res(6) = X_180
+'		res(7) = Y_180
+'		res(8) = U_180
+'
+'		X_tool = 0.5 * (X_0 + X_180)
+'		Y_tool = 0.5 * (Y_0 + Y_180)
+'
+'		res(9) = X_tool
+'		res(10) = Y_tool
+'
+'		Print #fileNum, ",", X_tool, ",", Y_tool,
+'
+'		' chip position relative to the tool
+'		res(11) = X_0 - X_tool
+'		res(12) = Y_0 - Y_tool
+'
+'		Print #fileNum, ",", res(11), ",", res(12),
+'
+'		' record the chip position from the source
+'		Double src_x0, src_y0, src_u0
+'		' source: 1 - pallet, 2 - socket
+'		Integer src
+'		If src_pallet_nr > 0 And src_pallet_nr <= NTRAYS And src_col_nr > 0 And src_col_nr <= TRAY_NCOLS And src_row_nr > 0 And src_row_nr <= TRAY_NROWS Then
+'			src_x0 = tray_X(src_pallet_nr, src_col_nr, src_row_nr)
+'			src_y0 = tray_Y(src_pallet_nr, src_col_nr, src_row_nr)
+'			src_u0 = tray_U(src_pallet_nr, src_col_nr, src_row_nr)
+'			src = 1
+'		ElseIf src_DAT_nr > 0 And src_DAT_nr <= 2 And src_socket_nr > 0 And src_socket_nr <= NSOCKETS Then
+'			src_x0 = DAT_X(src_DAT_nr, src_socket_nr)
+'			src_y0 = DAT_Y(src_DAT_nr, src_socket_nr)
+'			src_u0 = DAT_U(src_DAT_nr, src_socket_nr)
+'			src = 2
+'		Else
+'			ChipBottomAnaly = 101
+'			Exit Function
+'		EndIf
+'
+'		If src_x0 = 0 And src_y0 = 0 And src_u0 = 0 Then
+'			Print "Recording position of the source: ", res(11), " ", res(12), " ", U_0
+'			If src = 1 Then
+'				tray_X(src_pallet_nr, src_col_nr, src_row_nr) = res(11)
+'				tray_Y(src_pallet_nr, src_col_nr, src_row_nr) = res(12)
+'				tray_U(src_pallet_nr, src_col_nr, src_row_nr) = U_0
+'			ElseIf src = 2 Then
+'				DAT_X(src_DAT_nr, src_socket_nr) = res(11)
+'				DAT_Y(src_DAT_nr, src_socket_nr) = res(12)
+'				DAT_U(src_DAT_nr, src_socket_nr) = U_0
+'			Else
+'				ChipBottomAnaly = 102
+'				Exit Function
+'			EndIf
+'		EndIf
+'
+'	Else
+'
+'		ChipBottomAnaly = 2
+'		Print "***Error ", 2
+'        Exit Function
+'	EndIf
+'	
+'    ' JW: need to correct the cases where you do +90, then -180 then +90
+'         ' Other angles just do +180, then -180 or vice versa
+'	If Agl(4) > -45. And Agl(4) <= 45. Then
+'		Go Here +U(90)
+'	EndIf
+'
+'
+'	' Change handeness to the target 
+'	If tgt_pallet_nr = 1 Or tgt_DAT_nr = 1 Then
+'    	Jump P_camera :U(dst_U) /R LimZ JUMP_LIMIT
+'    ElseIf tgt_pallet_nr = 2 Or tgt_DAT_nr = 2 Then
+'    	Jump P_camera :U(dst_U) /L LimZ JUMP_LIMIT
+'    EndIf
+'	
+'
+'	' Rotate the hand to destination orientation Update: Done in a previous step
+'	'Go Here :U(dst_U)
+'	Wait 0.2
+'
+'	' Added 2024-06-18
+'	' Re-evaluate the position of the tool
+'	VRun ChipBottom_Analy
+'
+'	VGet ChipBottom_Analy.Final.Found, ret_found
+'	If ret_found Then
+'
+'		'VGet ChipBottom_Analy.CameraCenter.CameraX, camera_X
+'		'VGet ChipBottom_Analy.CameraCenter.CameraY, camera_Y
+'			
+'		VGet ChipBottom_Analy.Final.CameraX, X_0
+'		VGet ChipBottom_Analy.Final.CameraY, Y_0
+'		VGet ChipBottom_Analy.Final.Angle, U_0
+'
+'		Print #fileNum, ",", ret_found,
+'		'Print #fileNum, ",", camera_X, ",", camera_Y,
+'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
+'		
+'		'res(1) = camera_X
+'		'res(2) = camera_Y
+'		
+'		'res(3) = X_0
+'		'res(4) = Y_0
+'		'res(5) = U_0
+'
+'	Else
+'		
+'		ChipBottomAnaly = 301
+'		Print "***ERROR ", 301
+'        Exit Function
+'		
+'	EndIf
+'
+'	' Repeat measurement for 180 deg. rotation
+'	'If CU(Here) < 180 Then
+'	
+'	'If Hand < 1.5 Then ' 1 for right handed, 2 for left handed.
+'		Go Here +U(180)
+'	'Else
+'	'	Go Here -U(180)
+'	'EndIf
+'	Wait 0.2
+'	'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
+'	'UF_take_picture(ByRef pict_fname$)
+'	'pict_fname$ = UF_take_picture$(id$ + "_02")
+'	'Print #fileNum, ",", pict_fname$,
+'
+'	VRun ChipBottom_Analy
+'	
+'	VGet ChipBottom_Analy.Final.Found, ret_found
+'	If ret_found Then
+'		
+'		VGet ChipBottom_Analy.Final.CameraX, X_180
+'		VGet ChipBottom_Analy.Final.CameraY, Y_180
+'		VGet ChipBottom_Analy.Final.Angle, U_180
+'
+'		Print #fileNum, ",", ret_found,
+'		Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
+'
+'		'res(6) = X_180
+'		'res(7) = Y_180
+'		'res(8) = U_180
+'
+'		X_tool = 0.5 * (X_0 + X_180)
+'		Y_tool = 0.5 * (Y_0 + Y_180)
+'
+'		res(9) = X_tool
+'		res(10) = Y_tool
+'
+'		Print #fileNum, ",", X_tool, ",", Y_tool,
+'
+'		Print "Tool position: X=", X_tool, ", Y=", Y_tool
+'
+'		' chip position relative to the tool
+'		res(11) = X_0 - X_tool
+'		res(12) = Y_0 - Y_tool
+'
+'		Print #fileNum, ",", res(11), ",", res(12),
+'
+'		' record the chip position from the source
+'		'Double src_x0, src_y0, src_u0
+'		'' source: 1 - pallet, 2 - socket
+'		'Integer src
+'		'If src_pallet_nr > 0 And src_pallet_nr <= NTRAYS And src_col_nr > 0 And src_col_nr <= TRAY_NCOLS And src_row_nr > 0 And src_row_nr <= TRAY_NROWS Then
+'		'	src_x0 = tray_X(src_pallet_nr, src_col_nr, src_row_nr)
+'		'	src_y0 = tray_Y(src_pallet_nr, src_col_nr, src_row_nr)
+'		'	src_u0 = tray_U(src_pallet_nr, src_col_nr, src_row_nr)
+'		'	src = 1
+'		'ElseIf src_DAT_nr > 0 And src_DAT_nr <= 2 And src_socket_nr > 0 And src_socket_nr <= NSOCKETS Then
+'	'		src_x0 = DAT_X(src_DAT_nr, src_socket_nr)
+'	'		src_y0 = DAT_Y(src_DAT_nr, src_socket_nr)
+'	'		src_u0 = DAT_U(src_DAT_nr, src_socket_nr)
+'	'		src = 2
+'	'	Else
+'	'		ChipBottomAnaly = 101
+'	'		Exit Function
+'	'	EndIf
+'
+'	'	If src_x0 = 0 And src_y0 = 0 And src_u0 = 0 Then
+'	'		Print "Recording position of the source: ", res(11), " ", res(12), " ", U_0
+'	'		If src = 1 Then
+'	'			tray_X(src_pallet_nr, src_col_nr, src_row_nr) = res(11)
+'	'			tray_Y(src_pallet_nr, src_col_nr, src_row_nr) = res(12)
+'	'			tray_U(src_pallet_nr, src_col_nr, src_row_nr) = U_0
+'	'		ElseIf src = 2 Then
+'	'			DAT_X(src_DAT_nr, src_socket_nr) = res(11)
+'	'			DAT_Y(src_DAT_nr, src_socket_nr) = res(12)
+'	'			DAT_U(src_DAT_nr, src_socket_nr) = U_0
+'	'		Else
+'	'			ChipBottomAnaly = 102
+'	'			Exit Function
+'	'		EndIf
+'	'	EndIf
+'
+'	Else
+'
+'		ChipBottomAnaly = 302
+'		Print "***Error ", 302
+'        Exit Function
+'			
+'	EndIf
+'
+'
+'	' End of code added on 2024-06-18
+'
+'	' re-evaluate chip position with the rotation at destination
+'	Go Here :U(dst_U)
+'	Wait 0.2
+'
+'	'UF_take_picture(ByRef pict_fname$)
+'	pict_fname$ = UF_take_picture$(id$ + "_03")
+'	Print #fileNum, ",", pict_fname$,
+'
+'	VGet ChipBottom_Analy.Final.Found, ret_found
+'	If ret_found Then
+'			
+'		VGet ChipBottom_Analy.Final.CameraX, X_0
+'		VGet ChipBottom_Analy.Final.CameraY, Y_0
+'		VGet ChipBottom_Analy.Final.Angle, U_0
+'
+'		Print #fileNum, ",", ret_found,
+'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
+'				
+'		res(13) = X_0
+'		res(14) = Y_0
+'		res(15) = U_0
+'
+'	Else
+'		
+'		ChipBottomAnaly = 3
+'		Print "***ERROR ", 3
+'        Exit Function
+'		
+'	EndIf
+'
+'
+'	Double d_U
+'	'd_U = U_0 + 0.2
+'	'd_U = U_0 - tgt_u0
+'	d_U = tgt_u0 - U_0
+'	res(16) = d_U
+'	If Abs(d_U) < 2.0 Then
+'		Go Here -U(d_U)
+'	Else
+'		ChipBottomAnaly = 4
+'		Print "ERROR 4! : Rotation angle outside of control margin"
+'		Exit Function
+'	EndIf
+'
+'	' Remeasure X and Y with correct rotation
+'	Wait 0.2
+'	'UF_take_picture(ByRef pict_fname$)
+'	pict_fname$ = UF_take_picture$(id$ + "_04")
+'	Print #fileNum, ",", pict_fname$,
+'	
+'	VRun ChipBottom_Analy
+'		
+'	VGet ChipBottom_Analy.Final.Found, ret_found
+'	If ret_found Then
+'			
+'		VGet ChipBottom_Analy.Final.CameraX, X_0
+'		VGet ChipBottom_Analy.Final.CameraY, Y_0
+'		VGet ChipBottom_Analy.Final.Angle, U_0
+'
+'		Print #fileNum, ",", ret_found,
+'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
+'
+'		res(17) = X_0
+'		res(18) = Y_0
+'		res(19) = U_0
+'
+'	Else
+'		
+'		ChipBottomAnaly = 5
+'		Print "***ERROR ", 5
+'        Exit Function
+'			
+'	EndIf
+'
+'	Double d_X, d_Y
+'	d_X = tgt_x0 - (X_0 - X_tool)
+'	d_Y = tgt_y0 - (Y_0 - Y_tool)
+'	
+'	Print #fileNum, ",", d_X, ",", d_Y, ",", d_U,
+'
+'	res(20) = d_X
+'	res(21) = d_Y
+'
+'
+'	' Analysis of pins
+'	d_X = X_0 - X_tool
+'	d_Y = Y_0 - Y_tool
+'	If Abs(d_X) < 1 And Abs(d_Y) < 1 And Abs(U_0) < 2 Then
+'		Print "Positioning the chip for pin analysis: ",
+'		Print " dX=", d_X, " dY=", d_Y, " dU=", U_0
+'		Go Here -X(d_X) -Y(d_Y) +U(U_0)
+'	Else
+'		ChipBottomAnaly = 6
+'		Print "***ERROR ", 6
+'        Exit Function
+'	EndIf
+'
+'	pict_fname$ = UF_take_picture$(id$ + "_pins")
+'	Print #fileNum, ",", pict_fname$,
+'	VSet pins_analy.ImageFile, pict_fname$
+'	
+'	Integer status
+'	status = PinsAnaly(id$)
+'	Print #fileNum, ",", status,
+'	If status <> 0 Then
+'		ChipBottomAnaly = status
+'	EndIf
+'		
+'	' Analysis of chip key for insertion into socket
+'	Boolean res_1, res_2, res_3, res_4
+'	If tgt_DAT_nr = 1 Then
+'		Print "Checking ASIC key"
+'		VSet key_check_1.ImageFile, pict_fname$
+'		VRun key_check_1
+'		
+'		VGet key_check_1.Blob01.Found, res_1
+'		VGet key_check_1.Blob02.Found, res_2
+'		VGet key_check_1.Blob03.Found, res_3
+'		VGet key_check_1.Blob04.Found, res_4
+'		
+'		If Not (res_1 And (Not res_2) And res_3 And res_4) Then
+'			Print "***ERROR! Failed to determine the key position of the ASIC"
+'			ChipBottomAnaly = 7
+'			Exit Function
+'		EndIf
+'	ElseIf tgt_DAT_nr = 2 Then
+'		Print "Checking ASIC key"
+'		VSet key_check.ImageFile, pict_fname$
+'		VRun key_check
+'		
+'		VGet key_check.Blob01.Found, res_1
+'		VGet key_check.Blob02.Found, res_2
+'		VGet key_check.Blob03.Found, res_3
+'		VGet key_check.Blob04.Found, res_4
+'		
+'		If Not (res_1 And res_2 And res_3 And (Not res_4)) Then
+'			Print "***ERROR! Failed to determine the key position of the ASIC"
+'			ChipBottomAnaly = 7
+'			Exit Function
+'		EndIf
+'	EndIf
+'
+'	UF_camera_light_OFF
+'	
+'Fend
 
 Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	
@@ -1142,35 +1127,69 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	Boolean passed
 	Integer nFound, i
 	Double x, y, area, xold, yold
+	Select SITE$
+		Case "BNL"
+			
+
+			VGet pins_analy.name$.Passed, passed
+			If Not passed Then
+				Print "PinsAnaly " + name$ + " failed!"
+				Print #fileNum, " failed"
+				PinsRowAnaly = 301
+				Exit Function
+			EndIf
 		
-	VGet pins_analy.name$.Passed, passed
-	If Not passed Then
-		Print "PinsAnaly " + name$ + " failed!"
-		Print #fileNum, " failed"
-		PinsRowAnaly = 301
-		Exit Function
-	EndIf
-
-	VGet pins_analy.name$.NumberFound, nFound
-	Print #fileNum, name$, ",", nFound,
-	If nFound <> 32 Then
-		PinsRowAnaly = 302
-	EndIf
-
-	For i = 1 To nFound
-		VSet pins_analy.name$.CurrentResult, i
-		VGet pins_analy.name$.CameraX, x
-		VGet pins_analy.name$.CameraY, y
-		VGet pins_analy.name$.Area, area
-		Print #fileNum, ",", x, ",", y, ",", area,
-		xold = x
-		yold = y
-		If i > 1 And Abs(x - xold) > 0.05 Then
-			Print "*ERROR! Bent pin found in " + name$
-			PinsRowAnaly = 400 + i
-		EndIf
-	Next i
-	Print #fileNum, " "
+			VGet pins_analy.name$.NumberFound, nFound
+			Print #fileNum, name$, ",", nFound,
+			If nFound <> 32 Then
+				PinsRowAnaly = 302
+			EndIf
+		
+			For i = 1 To nFound
+				VSet pins_analy.name$.CurrentResult, i
+				VGet pins_analy.name$.CameraX, x
+				VGet pins_analy.name$.CameraY, y
+				VGet pins_analy.name$.Area, area
+				Print #fileNum, ",", x, ",", y, ",", area,
+				xold = x
+				yold = y
+				If i > 1 And Abs(x - xold) > 0.05 Then
+					Print "*ERROR! Bent pin found in " + name$
+					PinsRowAnaly = 400 + i
+				EndIf
+			Next i
+		Case "MSU"
+			VGet MSU_ChipAnal.name$.Passed, passed
+			If Not passed Then
+				Print "PinsAnaly " + name$ + " failed!"
+				Print #fileNum, " failed",
+				PinsRowAnaly = 301
+				Exit Function
+			EndIf
+			
+			VGet MSU_ChipAnal.name$.NumberFound, nFound
+			'Print #fileNum, name$, ",", nFound,
+			If nFound <> 32 Then
+				PinsRowAnaly = 302
+			EndIf
+		
+			For i = 1 To nFound
+				VSet MSU_ChipAnal.name$.CurrentResult, i
+				VGet MSU_ChipAnal.name$.CameraX, x
+				VGet MSU_ChipAnal.name$.CameraY, y
+				VGet MSU_ChipAnal.name$.Area, area
+				'Print #fileNum, ",", x, ",", y, ",", area,
+				xold = x
+				yold = y
+				If i > 1 And Abs(x - xold) > 0.05 Then
+					Print "*ERROR! Bent pin found in " + name$,
+					PinsRowAnaly = 400 + i
+				EndIf
+			Next i
+			
+	Send
+	
+	'Print #fileNum, " "' Should use RTS_error in movement function which will end the line
 	
 Fend
 
@@ -1183,9 +1202,17 @@ Function PinsAnaly(id$ As String) As Integer
 	fileNum = FreeFile
 	AOpen RTS_DATA$ + "\pins\" + id$ + "_pins.csv" As #fileNum
 		
-	
-	VRun pins_analy
-	
+	Select SITE$
+		Case "BNL"
+			VRun pins_analy
+		Case "MSU"
+			VRun MSU_ChipAnal
+		Default
+			Print "Need to set up pin analysis for your site"
+			PinsAnaly = -100
+			Close #fileNum
+	Send
+
 	Integer status
 	status = PinsRowAnaly("BlobTop", fileNum)
 	If status <> 0 Then
@@ -1214,583 +1241,20 @@ Fend
 
 ' Prints error msg both to console and file
 ' closes the output file
-Function RTS_error(fileNum AsInteger, err_msg$ As String)
+Function RTS_error(fileNum As Integer, err_msg$ As String)
+	Print "***ERROR! ", err_msg$, ", Last SubError=", SubError
+	Print #fileNum, "***ERROR! ", err_msg$, ", Last SubError=", SubError
+	Close #fileNum
+Fend
+
+' For subroutines to not close the error file, and close at top level Move Function instead
+Function RTS_suberror(fileNum As Integer, err_msg$ As String, err_code As Int32)
+	SubError = err_code
 	Print "***ERROR! ", err_msg$
-	Print #fileNum, "***ERROR! ", err_msg$
-	Close #fileNum
+	Print #fileNum, "***ERROR! ", err_msg$,
 Fend
 
 
-'
-' INPUT: 
-'        pallet_nr - pallet number of the chip source (1-left, 2-right)
-'        col_nr - column number in the pallet (1-15)
-'        row_nr - row number in the pallet (1-6)
-'        DAT_nr - DAT board target (1-left, 2-right)
-'        socket_nr - socket target (1-8)
-'
-' RETURN:
-'        > 0 - job_id (timestamp)
-'        < 0 - Error id
-
-
-
-Function MoveChipFromTrayToTypeSocket(pallet_nr As Integer, col_nr As Integer, row_nr As Integer, DAT_nr As Integer, chip_type As Integer, socket_nr As Integer) As Int64
-	 Integer soc_nr
-	 soc_nr = socket_nr + 10 * chip_type
-	 MoveChipFromTrayToSocket(pallet_nr, col_nr, row_nr, DAT_nr, soc_nr)
-Fend
-
-Function MoveChipFromTrayToSocket(DAT_nr As Integer, socket_nr As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Int64
-	
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	MoveChipFromTrayToSocket = Val(ts$)
-
-	SetSpeedSetting("")
-	
-	String fname$
-	fname$ = "manip.csv"
-	
-	Integer fileNum
-	fileNum = FreeFile
-	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
-	
-	Integer i
-	Integer idx(20)
-	For i = 1 To 20
-		idx(i) = 0
-	Next i
-	
-	idx(1) = fileNum
-	
-	Double res(30)
-	
-
-	idx(2) = pallet_nr
-	idx(3) = col_nr
-	idx(4) = row_nr
-	idx(5) = 0
-	idx(6) = 0
-	idx(7) = 0
-	idx(8) = 0
-	idx(9) = 0
-	idx(10) = DAT_nr
-	idx(11) = socket_nr
-			
-	'String d$, t$
- 	'd$ = Date$
-	't$ = Time$
-	'Print #fileNum, d$, " ", t$,
-	Print #fileNum, ts$,
-	' pallet source
-	Print #fileNum, ",", pallet_nr, ",", col_nr, ",", row_nr,
-	' pallet target
-	Print #fileNum, ",", 0, ",", 0, ",", 0,
-	' socket source
-	Print #fileNum, ",", 0, ",", 0,
-	' socket target
-	Print #fileNum, ",", DAT_nr, ",", socket_nr,
-
-	' Ensure that there is no chip in the socket
-
-	'If isChipInSocketTouch(DAT_nr, socket_nr) Then
-	'	RTS_error(fileNum, "Chip exists in the socket")
-	'	Go Here :Z(-10)
-    '    MoveChipFromTrayToSocket = -200
-	'	Exit Function
-	'EndIf
-
-
-	' Take a picture of the chip in the tray
-	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-	String pict_fname$
-	pict_fname$ = DF_take_picture$(ts$ + "_SN")
-	Print #fileNum, ",", pict_fname$,
-
-	'Print #fileNum, ",", chip_SN$,
-	
-	If Not isPressureOk Then
-		RTS_error(fileNum, "Bad pressure")
-        MoveChipFromTrayToSocket = -2
-		Exit Function
-	EndIf
-				
-	If Not isVacuumOk Then
-		RTS_error(fileNum, "Bad vacuum")
-        MoveChipFromTrayToSocket = -3
-		Exit Function
-	EndIf
-		
-				
-	JumpToTray(pallet_nr, col_nr, row_nr)
-
-	If Not PickupFromTray Then
-		RTS_error(fileNum, "Can't pickup a chip from tray ")
-        MoveChipFromTrayToSocket = -4
-		Exit Function
-	EndIf
-		
-
-	' Take picture of the bottom of the chip
-	Jump P_camera 'JumpToCamera
-		
-	Integer status
-	Double corrs(2)
-'	If ChipType$ = "COLDATA" Then
-'		status = COLDATA_VisAnalysis(ByRef corrs())
-'	Else
-		status = ChipBottomAnaly(ts$, ByRef idx(), ByRef res())
-'	EndIf
-
-	If status <> 0 Then
-		RTS_error(fileNum, "Analysis of chip bottom failed. Error = " + Str$(status))
-        MoveChipFromTrayToSocket = -5
-		Exit Function
-	EndIf
-	
-	' Move to socket	
-	JumpToSocket(DAT_nr, socket_nr)
-	Wait 0.3
-	
-
-	Double X_CORR_tray, Y_CORR_tray, U_CORR_tray
-	If ChipType$ = "COLDATA" Then
-		X_CORR_tray = corrs(1)
-		Y_CORR_tray = corrs(2)
-		U_CORR_tray = 0
-	Else
-		X_CORR_tray = res(20)
-		Y_CORR_tray = res(21)
-		U_CORR_tray = res(16)
-	EndIf
-	
-	Print "Correcting chip position from tray: ",
-	Print " dX = ", X_CORR_tray, " dY = ", Y_CORR_tray, " dU = ", U_CORR_tray
-	
-	' Save/update the socket position corrections
-	tray_X(pallet_nr, col_nr, row_nr) = X_CORR_tray
-	tray_Y(pallet_nr, col_nr, row_nr) = Y_CORR_tray
-	tray_U(pallet_nr, col_nr, row_nr) = U_CORR_tray
-	
-	' Grab the socket position corrections 
-	Double X_CORR_socket, Y_CORR_socket, U_CORR_socket
-	X_CORR_socket = DAT_X(DAT_nr, socket_nr)
-	Y_CORR_socket = DAT_Y(DAT_nr, socket_nr)
-	U_CORR_socket = 0
-	Print "Saved socket corrections:", X_CORR_socket, Y_CORR_socket
-	
-	' Note: Corrections for socket are in the same frame
-	Double d_X, d_Y, d_U
-	d_X = X_CORR_tray - X_CORR_socket
-	d_Y = Y_CORR_tray - Y_CORR_socket
-	d_U = U_CORR_tray - U_CORR_socket
-	
-	' correct position
-	Print "Correcting chip position for socket: ",
-	Print " dX = ", d_X, " dY = ", d_Y, " dU = ", d_U
-	If Abs(d_X) < 15 And Abs(d_Y) < 15 And Abs(d_U) < 20 Then
-		Go Here -X(d_X) -Y(d_Y) -U(d_U)
-		InsertIntoSocketSoft
-	Else
-		RTS_error(fileNum, "Chip position out of limits")
-        MoveChipFromTrayToSocket = -6
-        Exit Function
-	EndIf
-	
-	
-	' Take picture of chip in the socket
-	JumpToSocket_camera(DAT_nr, socket_nr)
-	pict_fname$ = DF_take_picture$(ts$ + "_socket")
-	Print #fileNum, ",", pict_fname$,
-				
-	Print #fileNum, " "
-	
-	Close #fileNum
-
-Fend
-
-Function MoveChipFromTypeSocketToTray(pallet_nr As Integer, col_nr As Integer, row_nr As Integer, DAT_nr As Integer, chip_type As Integer, socket_nr As Integer) As Int64
-	 Integer soc_nr
-	 soc_nr = socket_nr + 10 * chip_type
-	 MoveChipFromSocketToTray(pallet_nr, col_nr, row_nr, DAT_nr, soc_nr)
-Fend
-
-
-Function MoveChipFromSocketToTray(DAT_nr As Integer, socket_nr As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Int64
-	
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	MoveChipFromSocketToTray = Val(ts$)
-
-	SetSpeedSetting("MoveWithoutChip")
-	
-	String fname$
-	fname$ = "manip.csv"
-		
-	Integer fileNum
-	fileNum = FreeFile
-	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
-		
-	Integer i
-	Integer idx(20)
-	For i = 1 To 20
-		idx(i) = 0
-	Next i
-	
-	idx(1) = fileNum
-	
-	Double res(30)
-		
-	' new CSV entry - pickup from socket and return to tray
-		
-	idx(2) = 0
-	idx(3) = 0
-	idx(4) = 0
-	idx(5) = pallet_nr
-	idx(6) = col_nr
-	idx(7) = row_nr
-	idx(8) = DAT_nr
-	idx(9) = socket_nr
-	idx(10) = 0
-	idx(11) = 0
-	
-	'String d$, t$
-	'd$ = Date$
-	't$ = Time$
-	'Print #fileNum, d$, " ", t$,
-	Print #fileNum, ts$,
-	' pallet source
-	Print #fileNum, ",", 0, ",", 0, ",", 0,
-	' pallet target
-	Print #fileNum, ",", pallet_nr, ",", col_nr, ",", row_nr,
-	' socket source
-	Print #fileNum, ",", DAT_nr, ",", socket_nr,
-	' socket target
-	Print #fileNum, ",", 0, ",", 0,
-
-	' Ensure that there is no chip in destination	
-
-	'If isChipInTrayTouch(pallet_nr, col_nr, row_nr) Then
-	'	RTS_error(fileNum, "Chip exists in the destination ")
-	'	Go Here :Z(-10)
-	'	MoveChipFromSocketToTray = -200
-	'	Exit Function
-	'EndIf
-
-
-	' Take picture of chip in the socket
-	JumpToSocket_camera(DAT_nr, socket_nr)
-	String pict_fname$
-	pict_fname$ = DF_take_picture$(ts$ + "_socket")
-	Print #fileNum, ",", pict_fname$,
-	'DF_take_picture_socket(socket_nr, ByRef pict_fname_socket$)
-	'Print #fileNum, ",", pict_fname_socket$,
-
-	'Print #fileNum, ",", chip_SN$,
-		
-	If Not isPressureOk Then
-		RTS_error(fileNum, "Bad pressure")
-        MoveChipFromSocketToTray = -2
-		Exit Function
-	EndIf
-				
-	If Not isVacuumOk Then
-		RTS_error(fileNum, "Bad vacuum")
-        MoveChipFromSocketToTray = -3
-		Exit Function
-	EndIf
-		
-	' Pickup from socket
-	JumpToSocket(DAT_nr, socket_nr)
-	' Distort the pickup position on purpose
-	'Go Here +Y(0.8)
-	'Go Here -X(0.8)
-	'Go Here +U(0.8)
-
-	If Not PickupFromSocket Then
-		RTS_error(fileNum, "Can't pickup chip from socket")
-        MoveChipFromSocketToTray = -300
-		Exit Function
-	EndIf
-			
-	' Take picture of the bottom of the chip
-	Jump P_camera 'JumpToCamera
-	
-	Integer status
-	Double corrs(2)
-'	If ChipType$ = "COLDATA" Then
-'		status = COLDATA_VisAnalysis(ByRef corrs())
-'	Else
-		'ChipBottomAnaly(chip_SN$, ByRef idx(), ByRef status, ByRef res())
-		status = ChipBottomAnaly(ts$, ByRef idx(), ByRef res())
-'	EndIf
-
-	If status <> 0 Then
-		RTS_error(fileNum, "Analysis of chip bottom failed. Error = " + Str$(status))
-        MoveChipFromSocketToTray = -4
-		Exit Function
-	EndIf
-
-	Double X_CORR_socket, Y_CORR_socket, U_CORR_socket
-	If ChipType$ = "COLDATA" Then
-		X_CORR_socket = corrs(1)
-		Y_CORR_socket = corrs(2)
-		U_CORR_socket = 0
-	Else
-		X_CORR_socket = res(20)
-		Y_CORR_socket = res(21)
-		U_CORR_socket = res(16)
-	EndIf
-	
-	Print "Correcting chip position from socket: ",
-	Print " dX = ", X_CORR_socket, " dY = ", Y_CORR_socket, " dU = ", U_CORR_socket
-	
-	' Save/update the socket position corrections
-	DAT_X(DAT_nr, socket_nr) = X_CORR_socket
-	DAT_Y(DAT_nr, socket_nr) = Y_CORR_socket
-	DAT_U(DAT_nr, socket_nr) = U_CORR_socket
-	
-	' Jump to the given tray
-	JumpToTray(pallet_nr, col_nr, row_nr)
-	
-	' Correct for socket offset (socket corr is rotation -90 degrees)
-	'Move Here -X(-Y_CORR_socket) -Y(X_CORR_socket)
-	
-	' Rotate to match chip placement
-    'Go Here -U(90) ' NOTE: temporary correction added for FNAL due to chip orientation
-		
-	Wait 0.3
-	
-	' Grab the tray position corrections
-	Double X_CORR_tray, Y_CORR_tray, U_CORR_tray
-	X_CORR_tray = tray_X(pallet_nr, col_nr, row_nr)
-	Y_CORR_tray = tray_Y(pallet_nr, col_nr, row_nr)
-	U_CORR_tray = 0 'tray_U(pallet_nr, col_nr, row_nr)
-	Print "Saved tray corrections:", X_CORR_tray, Y_CORR_tray
-	
-	' Correct for tray offset
-	'Move Here +X(-Y_CORR_tray) +Y(X_CORR_tray)
-	
-	Double d_X, d_Y, d_U
-	d_X = -Y_CORR_socket + Y_CORR_tray
-	d_Y = X_CORR_socket - X_CORR_tray
-	d_U = U_CORR_socket - U_CORR_tray
-	
-	' Only correct if corrections are under some limit
-	If Abs(d_X) < 50.0 And Abs(d_Y) < 50.0 And Abs(d_U) < 180 Then
-	
-		' Make both tray and socket corrections
-		Move Here -X(d_X) -Y(d_Y)
-
-		If Not DropToTray Then
-			RTS_error(fileNum, "Failed to DropToTray")
-			MoveChipFromSocketToTray = -6
-       		Exit Function
-		EndIf
-	Else
-		RTS_error(fileNum, "Chip position out of limits")
-        MoveChipFromSocketToTray = -5
-        Exit Function
-	EndIf
-
-	' Take a picture of the chip in the tray
-	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-	pict_fname$ = DF_take_picture$(ts$ + "_SN")
-	Print #fileNum, ",", pict_fname$,
-
-
-	Print #fileNum, " "
-	Close #fileNum
-
-Fend
-
-'
-' INPUT: 
-'        src_pallet_nr - pallet number of the chip source (1-left, 2-right)
-'        src_col_nr - source column number (1-15)
-'        src_row_nr - srouce row number (1-6)
-'        tgt_pallet_nr - pallet number of chip destination (1-left, 2-right)
-'        tgt_col_nr - column number in the destination (1-15)
-'        tgt_row_nr - row number in the destination (1-6)
-'        tgt_DU - chip rotation modification (deg.)
-'
-'
-' RETURN:
-'        > 0 - job_id (timestamp)
-'        < 0 - Error id
-
-Function MoveChipFromTrayToTray(src_pallet_nr As Integer, src_col_nr As Integer, src_row_nr As Integer, tgt_pallet_nr As Integer, tgt_col_nr As Integer, tgt_row_nr As Integer, tgt_DU As Double) As Int64
-	
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	MoveChipFromTrayToTray = Val(ts$)
-
-	SetSpeedSetting("")
-		
-	String fname$
-	fname$ = "manip.csv"
-		
-	Integer fileNum
-	fileNum = FreeFile
-	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
-		
-	Integer i
-	Integer idx(20)
-	For i = 1 To 20
-		idx(i) = 0
-	Next i
-	
-	idx(1) = fileNum
-	
-	Double res(30)
-	
-			
-	idx(2) = src_pallet_nr
-	idx(3) = src_col_nr
-	idx(4) = src_row_nr
-	idx(5) = tgt_pallet_nr
-	idx(6) = tgt_col_nr
-	idx(7) = tgt_row_nr
-	idx(8) = 0
-	idx(9) = 0
-	idx(10) = 0
-	idx(11) = 0
-			
-	'String d$, t$
- 	'd$ = Date$
-	't$ = Time$
-	'Print #fileNum, d$, " ", t$,
-	Print #fileNum, ts$,
-	' pallet source
-	Print #fileNum, ",", src_pallet_nr, ",", src_col_nr, ",", src_row_nr,
-	' pallet target
-	Print #fileNum, ",", tgt_pallet_nr, ",", tgt_col_nr, ",", tgt_row_nr,
-	' socket source
-	Print #fileNum, ",", 0, ",", 0,
-	' socket target
-	Print #fileNum, ",", 0, ",", 0,
-
-	' Ensure that there is no chip in destination	
-	If src_pallet_nr <> tgt_pallet_nr Or src_col_nr <> tgt_col_nr Or src_row_nr <> tgt_row_nr Then
-		If isChipInTrayTouch(tgt_pallet_nr, tgt_col_nr, tgt_row_nr) Then
-			RTS_error(fileNum, "Chip exists in the destination ")
-			Go Here :Z(JUMP_LIMIT)
-			MoveChipFromTrayToTray = -200
-			Exit Function
-		EndIf
-	EndIf
-
-
-	' Take a picture of the chip in the tray
-	JumpToTray_camera(src_pallet_nr, src_col_nr, src_row_nr)
-	String pict_fname$
-	pict_fname$ = DF_take_picture$(ts$ + "_SN")
-	Print #fileNum, ",", pict_fname$,
-
-	'Print #fileNum, ",", chip_SN$,
-		
-	' Ensure that chip exists in the source	
-	'If Not isChipInTray(src_pallet_nr, src_col_nr, src_row_nr) Then
-	'	RTS_error(fileNum, "No chip found in the tray ")
-	'	MoveChipFromTrayToTray = -201
-	'	Exit Function
-	'EndIf
-		
-	If Not isVacuumOk Then
-		RTS_error(fileNum, "Bad vacuum ")
-		MoveChipFromTrayToTray = -202
-		Exit Function
-	EndIf
-	
-	JumpToTray(src_pallet_nr, src_col_nr, src_row_nr)
-
-	' If chip rotation requested:
-	If tgt_DU <> 0.0 Then
-		Double Utmp
-		Utmp = CU(Pallet(src_pallet_nr, src_col_nr, src_row_nr)) - tgt_DU
-		If Utmp > 360 Then
-			Utmp = Utmp - 360
-		ElseIf Utmp < 0 Then
-			Utmp = Utmp + 360
-		EndIf
-		If Utmp < 0 Or Utmp > 360 Then
-			RTS_error(fileNum, "Internal program error - bad tgt_DU ")
-			MoveChipFromTrayToTray = -4
-			Exit Function
-		EndIf
-		Go Here :U(Utmp)
-	EndIf
-
-	' Distort the pickup position on purpose
-	'Go Here -Y(0.8)
-	'Go Here +X(0.8)
-	'Go Here -U(0.8)
-	If Not PickupFromTray Then
-		RTS_error(fileNum, "Can't pickup a chip from tray ")
-        MoveChipFromTrayToTray = -5
-		Exit Function
-	EndIf
-	
-	' Take picture of the bottom of the chip
-	Jump P_camera 'JumpToCamera
-	
-	Integer status
-	'ChipBottomAnaly(chip_SN$, ByRef idx(), ByRef status, ByRef res())
-	status = ChipBottomAnaly(ts$, ByRef idx(), ByRef res())
-
-	If status <> 0 Then
-		RTS_error(fileNum, "Analysis of chip bottom failed. Error = " + Str$(status))
-        MoveChipFromTrayToTray = -6
-		Exit Function
-	EndIf
-
-	Double d_X, d_Y, d_U
-	d_X = res(20)
-	d_Y = res(21)
-	d_U = res(16)
-	
-	' Move to tray
-	JumpToTray(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-	Wait 0.2
-	If Not (src_pallet_nr = tgt_pallet_nr And src_row_nr = tgt_row_nr And src_col_nr = tgt_col_nr And tgt_DU = 0) Then
-		' correct position
-		Print "Correcting chip position for tray: ",
-		Print " dX = ", d_X, " dY = ", d_Y, " dU = ", d_U
-		If Abs(d_X) < 1.5 And Abs(d_Y) < 1.5 And Abs(d_U) < 2.0 Then
-			Go Here +X(d_X) +Y(d_Y) -U(d_U)
-		Else
-			RTS_error(fileNum, "Chip position out of limits")
-        	MoveChipFromTrayToTray = -7
-        	Exit Function
-		EndIf
-	Else
-		Print "Chip position correction for tray: ",
-		Print " dX = ", d_X, " dY = ", d_Y, " dU = ", d_U
-		Print "No correction of chip position applied because orgin and destination are the same"
-	EndIf
-	If Not DropToTray Then
-		RTS_error(fileNum, "Can't put chip into tray")
-       	MoveChipFromTrayToTray = -8
-       	Exit Function
-	EndIf
-
-	
-	
-	' Take a picture of the chip in the tray
-	JumpToTray_camera(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-	pict_fname$ = DF_take_picture$(ts$ + "_SN")
-	Print #fileNum, ",", pict_fname$,
-
-				
-	Print #fileNum, " "
-	Close #fileNum
-
-Fend
-	
 Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	Print
 	Print socket_nr, "**********************************************"
@@ -1841,11 +1305,11 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 
@@ -1878,437 +1342,137 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	
 Fend
 
+
+'
+''
+'' INPUT: 
+''        pallet_nr - pallet number of the chip source (1-left, 2-right)
+''        col_nr - column number in the pallet (1-15)
+''        row_nr - row number in the pallet (1-6)
+''        DAT_nr - DAT board target (1-left, 2-right)
+''        socket_nr - socket target (1-8)
+''
+'' RETURN:
+''        > 0 - job_id (timestamp)
+''        < 0 - Error id
+'
+'
+
 '''' MSU WRITTEN FUNCTIONS ''''
 '''' Move chip to and from tray/socket functions
-
-Function RunMoveChipTrayToSocket(pallet_nr As Integer, col_nr As Integer, row_nr As Integer, DAT_nr As Integer, socket_nr As Integer) As Int64
-
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	RunMoveChipTrayToSocket = Val(ts$)
-
-	SetSpeed
-	
-	String fname$
-	fname$ = "manip.csv"
-	
-	Integer fileNum
-	fileNum = FreeFile
-	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
-	
-	Integer i
-	Integer idx(20)
-	For i = 1 To 20
-		idx(i) = 0
-	Next i
-	
-	idx(1) = fileNum
-	
-	Double res(30)
-	
-
-	idx(2) = pallet_nr
-	idx(3) = col_nr
-	idx(4) = row_nr
-	idx(5) = 0
-	idx(6) = 0
-	idx(7) = 0
-	idx(8) = 0
-	idx(9) = 0
-	idx(10) = DAT_nr
-	idx(11) = socket_nr
-			
-	'String d$, t$
- 	'd$ = Date$
-	't$ = Time$
-	'Print #fileNum, d$, " ", t$,
-	Print #fileNum, ts$,
-	' pallet source
-	Print #fileNum, ",", pallet_nr, ",", col_nr, ",", row_nr,
-	' pallet target
-	Print #fileNum, ",", 0, ",", 0, ",", 0,
-	' socket source
-	Print #fileNum, ",", 0, ",", 0,
-	' socket target
-	Print #fileNum, ",", DAT_nr, ",", socket_nr,
+' Should broadly match old BNL functions
 
 
 
 
-	On 12
-	SetSpeedSetting("MoveWithoutChip")
-	Int32 FullSocket_nr
-	FullSocket_nr = DAT_nr * 100 + socket_nr
-
-
-	' Test if there is a chip or obstruction in the socket.
-	
-	Print "Visually  checking for chip in socket"
-	If isChipInSocketCamera(DAT_nr, socket_nr) Then
-		Print "ERROR there is already a chip in this socket"
-		RunMoveChipTrayToSocket = -200
-		Exit Function
-	EndIf
-
-	' Use the DF camera to find the position and orientation of the socket mezzanine board
-	Print "Checking empty and getting socket offsets"
-	Double SocketResults(10)
-	If Not DFGetSocketAlignment(ts$, ByRef idx(), DAT_nr, socket_nr, ByRef SocketResults()) Then
-		RTS_error(fileNum, "Cannot get socket alignment")
-		Exit Function
-	EndIf
-	
-	Print "Physically checking for chip in socket"
-	If isChipInSocketTouch(DAT_nr, socket_nr) Then
-		RTS_error(fileNum, "There is already a chip in this socket")
-		RunMoveChipTrayToSocket = -200
-		Exit Function
-	EndIf
-    SetSpeedSetting("MoveWithoutChip")
-	
-	' Now go get the chip
-	Print "Socket O.K., moving to tray to check and pick up chip"
-	
-	Wait 2
-	
-	Print "Next go to the tray and check chip position and orientation"
-	Double TrayResults(10)
-	If Not DFGetTrayAlignment(ts$, ByRef idx(), pallet_nr, col_nr, row_nr, ByRef TrayResults()) Then
-		RTS_error(fileNum, "Cannot get tray alignment")
-		Exit Function
-	EndIf
-	
-
-
-
-	Int32 ChipTypeNumber
-	ChipTypeNumber = (10 + socket_nr) / 10
-	' Calculate needed rotation to insert chip into socket in correct orientation
-	Double DeltaDir
-	DeltaDir = (SocketResults(6) + SocketChipOrientation(ChipTypeNumber)) - TrayResults(6)
-	
-	' Reduce rotation so within +/- 180
-'	If DeltaDir < -180. Then
-'		DeltaDir = DeltaDir + 360.
-'	ElseIf DeltaDir > 180. Then
-'		DeltaDir = DeltaDir - 360.
-'	EndIf
-	DeltaDir = GetBoundAnglePM180(DeltaDir)
-	' Sanity check angle is within range
-	If Abs(DeltaDir) > 180. Then
-		String Emessage$
-		Emessage$ = "Chip reorientation should fall within +/- 180 deg, but calculated at " + Str$(DeltaDir)
-		RTS_error(fileNum, Emessage$)
-		Exit Function
-	EndIf
-		
-	
-	Print "Summary"
-	Print "Tray Chip Dir  = ", TrayResults(6)
-	Print "Sock Chip Dir  = ", (SocketResults(6) + SocketChipOrientation(ChipTypeNumber))
-	Print "Chip rotation needed = ", DeltaDir
-	
-	Print "Tray Ag4Offset = ", TrayResults(10)
-	Print "Sock Ag4Offset = ", SocketResults(10)
-	
-
-	Double PickU
-	'	TgtAg4 = SockPos(3) - SockAg4Offset
-	PickU = CU(P(DAT_nr * 100 + socket_nr)) - DeltaDir
-	
-	If Abs(PickU) > 180. Then
-		String Emassage$
-		Emessage$ = "Chip pick U should fall within +/- 180 deg, but calculated at " + Str$(PickU)
-		RTS_error(fileNum, Emessage$)
-		Exit Function
-	EndIf
-	
-	Print "U value summary: chip, hand U, hand J4 angle"
-	Print "At tray   :", ChipPos(3), ", ", PickU, ", ", (PickU + TrayResults(10))
-	Print "At socket :", (ChipPos(3) + DeltaDir), ", ", (PickU + DeltaDir), ", ", (PickU + DeltaDir + SocketResults(10))
-
-	Wait 2
-
-
-
-
-	Print "Now attempt to pick up chip"
-	' All Okay so far, try picking up the chip
-	' TODO JW: Check for lid collisions
-
-	Go Here :U(PickU)
-	Go Here :Z(CZ(Pallet(pallet_nr, col_nr, row_nr)))
-	
-
-	If Not isPressureOk Then
-		RTS_error(fileNum, "Bad pressure")
-		RunMoveChipTrayToSocket = -2
-		Exit Function
-	EndIf
-		
-	If Not isVacuumOk Then
-		RTS_error(fileNum, "Bad vacuum")
-		RunMoveChipTrayToSocket = -3
-		Exit Function
-	EndIf
-	
-	If Not PickupFromTray Then
-		RTS_error(fileNum, "Can't pick up chip from tray")
-		RunMoveChipTrayToSocket = -4
-		Exit Function
-	EndIf
-	
-	' Now chip has been picked up, go to the UF camera to make some more measurements of offsets	
-	
-	
-	
-	Print "Next go to the UF camera and measure residual offsets "
-	
-	
-	Double UFChipResults(12)
-	' SocketResults(6) is target U value for hand, 
-	If Not UFGetChipAlignment(ts$, ByRef idx(), SocketResults(6), SocketChipOrientation(ChipTypeNumber), ByRef UFChipResults()) Then
-		RTS_error(fileNum, "Cannot get chip position offsets from UF camera")
-		Exit Function
-	EndIf
-
-
-	' TODO Here is where will put any pin analysis as well
-
-'	Wait 2
-	JumpToSocket(DAT_nr, socket_nr)
-	
-	' Apply some corrections
-	Print "Applying corrections at socket"
-	
-	'''' JW: U correction for socket is already taken into account in definition of UF_Del_X and UF_Del_Y
-	'''' See above where SockPos(3) comes into definition.
-	' Socket U correction should already be taken into account in both the angle and 
-	' chip X and Y displacement, but socket X and Y displacement must be taken into acccount here
-	' X and Y displacement
-	Go Here +U(UFChipResults(12)) +X(UFChipResults(10) + SocketResults(7)) +Y(UFChipResults(11) + SocketResults(8))
-	
-	' DUMMY SOCKET FOR OFFSET TESTING
-	Boolean TESTSOCKET
-	TESTSOCKET = False
-	If (TESTSOCKET) And (SITE$ = "MSU") Then
-		If socket_nr <> 7 Then
-			RTS_error(fileNum, " not the right test socket - This is for MSU testing")
-			Exit Function
-		EndIf
-		
-		SetSpeedSetting("PickAndPlace")
-		
-		Go Here -Z(5) Till Sw(8) = On Or Sw(9) = Off
-		VacuumValveClose
-		Move Here :Z(JUMP_LIMIT - 5)
-	Else
-		
-		If Not InsertIntoSocketSoft Then
-			RTS_error(fileNum, "Could not properly drop chip into socket")
-			RunMoveChipTrayToSocket = -5
-			Exit Function
-		EndIf
-	
-	EndIf
-	Go Here :Z(JUMP_LIMIT - 5)
-	' TODO JW: Add check using chip DF function and socket function to see if chip position in socket is consistent
-	' Using GetChipInSocketAlignment function
-		
-	JumpToSocket_camera(DAT_nr, socket_nr)
-		
-	
-	
-	Double ChipSocketAlignment(15)
-	If Not GetChipInSocketAlignment(ts$, ByRef idx(), DAT_nr, socket_nr, ByRef ChipSocketAlignment()) Then
-		RTS_error(fileNum, "Cannot find get chip and socket alignment")
-		Exit Function
-	EndIf
-	
-	
-	
-	RunMoveChipTrayToSocket = 1
-	
-	Print #fileNum, " "
-	Close #fileNum
-
+Function SwapChipsInSocket(DAT As Integer, Socket As Integer, SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, DAT, Socket, DAT, Socket, True, False)
 Fend
 
-
-
-
-
-Function RunMoveChipSocketToTray(DAT_nr As Integer, socket_nr As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Int64
-
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	RunMoveChipSocketToTray = Val(ts$)
-
-	SetSpeedSetting("MoveWithoutChip")
-	
-	String fname$
-	fname$ = "manip.csv"
-		
-	Integer fileNum
-	fileNum = FreeFile
-	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
-		
-	Integer i
-	Integer idx(20)
-	For i = 1 To 20
-		idx(i) = 0
-	Next i
-	
-	idx(1) = fileNum
-	
-	Double res(30)
-		
-	' new CSV entry - pickup from socket and return to tray
-		
-	idx(2) = 0
-	idx(3) = 0
-	idx(4) = 0
-	idx(5) = pallet_nr
-	idx(6) = col_nr
-	idx(7) = row_nr
-	idx(8) = DAT_nr
-	idx(9) = socket_nr
-	idx(10) = 0
-	idx(11) = 0
-	
-	'String d$, t$
-	'd$ = Date$
-	't$ = Time$
-	'Print #fileNum, d$, " ", t$,
-	Print #fileNum, ts$,
-	' pallet source
-	Print #fileNum, ",", 0, ",", 0, ",", 0,
-	' pallet target
-	Print #fileNum, ",", pallet_nr, ",", col_nr, ",", row_nr,
-	' socket source
-	Print #fileNum, ",", DAT_nr, ",", socket_nr,
-	' socket target
-	Print #fileNum, ",", 0, ",", 0,
-
-
-
-
-
-
-	On 12
-	RunMoveChipSocketToTray = -999
-		
-	SetSpeedSetting("MoveWithoutChip")
-	
-	' Check tray destination is empty	
-	' TODO JW add attempt loop
-	
-	If isChipInTrayCamera(pallet_nr, col_nr, row_nr) Then
-		RTS_error(fileNum, "Chip exists in tray")
-		Go Here :Z(JUMP_LIMIT - 5)
-		RunMoveChipSocketToTray = -200
-		Exit Function
-	EndIf
-	
-	If isChipInTrayTouch(pallet_nr, col_nr, row_nr) Then
-		RTS_error(fileNum, "Chip exists in tray")
-		Go Here :Z(JUMP_LIMIT - 5)
-		RunMoveChipSocketToTray = -200
-		Exit Function
-	EndIf
-	SetSpeedSetting("MoveWithoutChip")
-	' Go to socket	
-	JumpToSocket_camera(DAT_nr, socket_nr)
-	' Check if chip is in socket?	
-	
-	Double ChipSocketAlignment(15)
-	If Not GetChipInSocketAlignment(ts$, ByRef idx(), DAT_nr, socket_nr, ByRef ChipSocketAlignment()) Then
-		RTS_error(fileNum, "Cannot find get chip and socket alignment")
-		Exit Function
-	EndIf
-
-	' Offsets	
-	JumpToSocket(DAT_nr, socket_nr)
-	Go Here +X(ChipSocketAlignment(10)) +Y(ChipSocketAlignment(11)) +U(ChipSocketAlignment(12))
-	
-	' Pick up chip	
-	'PumpOn
-	'Wait 1
-	
-	If Not isPressureOk Then
-		RTS_error(fileNum, "Bad pressure")
-		RunMoveChipSocketToTray = -2
-		Exit Function
-	EndIf
-		
-	If Not isVacuumOk Then
-		RTS_error(fileNum, "Bad vacuum")
-		RunMoveChipSocketToTray = -3
-		Exit Function
-	EndIf
-	
-	If Not PickupFromSocket Then
-		RTS_error(fileNum, "Cannot pick up chip from socket")
-		RunMoveChipSocketToTray = -5
-		Exit Function
-	EndIf
-	
-	' WIll then go to camera 
-	JumpToCamera
-	Wait 10
-	
-'	Double UFChipResults(12)
-'	' TODO JW: Should target U here be consistent with test before placement? i.e., the socket hand U not the tray one
-'	' Still, the rotation between hand and chip should be defined by the intended tray orientation, not measured this time
-'		
-'	
-'	If Not UFGetChipAlignment(ChipSocketAlignment(6), TrayChipOrientation(pallet_nr), ByRef UFChipResults()) Then
-'		Print "ERROR - Cannot get chip position offsets from UF camera"
-'		Exit Function
-'	EndIf
-	
-	' Go to tray to place
-	JumpToTray(pallet_nr, col_nr, row_nr)
-	
-	' TODO JW: Check this angle
-	Go Here +U(TrayChipOrientation(pallet_nr))
-	
-	If Not DropToTray Then
-		RTS_error(fileNum, "Could not place chip back in tray")
-	EndIf
-	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-	' Add another check that chip is back in tray	
-	
-	
-	
-	RunMoveChipSocketToTray = 1
-		
-	Print #fileNum, " "
-	Close #fileNum
+Function MoveChipFromTrayToSocket(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	MoveChip(Tray, TrayCol, TrayRow, 0, 0, 0, 0, 0, DAT, Socket, True, False)
 Fend
 
+Function MoveChipFromSocketToTray(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	MoveChip(0, 0, 0, Tray, TrayCol, TrayRow, DAT, Socket, 0, 0, True, False)
+Fend
 
+Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, 0, 0, 0, 0, True, False)
+Fend
 
-Function RunMoveChipTrayToTray(src_pallet_nr As Integer, src_col_nr As Integer, src_row_nr As Integer, tgt_pallet_nr As Integer, tgt_col_nr As Integer, tgt_row_nr As Integer, tgt_U As Double) As Int64
+Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, TgtTray As Int32, TgtTrayCol As Int32, TgtTrayRow As Int32, SrcDAT As Int32, SrcSocket As Int32, TgtDAT As Int32, TgtSocket As Int32, OccCheck As Boolean, DoT2TPinAnalysis As Boolean) As Int64
+	SubError = 0
+	' Main function for moving chips, keeps formating consistent and does checks for valid operations and occupancies (unless overriden for batch operation) 
 	
 	String ts$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 	
-	RunMoveChipTrayToTray = Val(ts$)
+	MoveChip = Val(ts$)
 
 	SetSpeedSetting("")
-		
+	
 	String fname$
 	fname$ = "manip.csv"
 	
-	Wait 1
 	Integer fileNum
 	fileNum = FreeFile
+
 	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
+	
+	Print #fileNum, ts$, ",",
+	
+	' If starting with an empty socket
+	Double Empty_S_Results(10)
 		
-	Integer i
+	' From socket to tray
+	Double S2T_S_Results(16) ' Chip in Socket to go to (target) tray
+	Double S2T_C_Results(13) ' Chip from socket to go to tray at UF Camera
+ 	Double S2T_T_Results(10) ' Chip from socket placed in Tray
+
+	' From tray to socket
+	Double T2S_T_Results(10) ' Chip in (source) Tray to go to socket
+	Double T2S_C_Results(13)
+	Double T2S_S_Results(16)
+
+	' From tray to tray
+	Double T2T_ST_Results(10) ' Chip in initial (Source) tray position
+	Double T2T_TT_Results(10) ' Chip in final (Target) tray position
+	Double T2T_C_Results(13)
+	
+	' From socket to socket
+	Double S2S_SS_Results(16)
+	Double S2S_TS_Results(16)
+	Double S2S_C_Results(13)
+	
+	String Images$(14)
+	String UFCImages1$(5)
+	String UFCImages2$(5)
+	' Most images to store when swapping two chips
+	' If occupancy check fails, just store occupancy check image , otherwise
+	' 1 - Source tray image
+	' 2 - Target tray image
+	' 3 - Source socket image
+	' 4 - Target socket image
+	' 5 - Chip1 UFC 1st measurement
+	' 6 - Chip1 UFC 2nd measurement
+	' 7 - Chip1 UFC Pin analysis center
+	' 8 - Chip1 UFC Pin analysis left
+	' 9 - Chip1 UFC Pin analysis right
+	' 10 - Chip2 UFC 1st measurement
+	' 11 - Chip2 UFC 2nd measurement
+	' 12 - Chip2 UFC Pin analysis center
+	' 13 - Chip2 UFC Pin analysis left
+	' 14 - Chip2 UFC Pin analysis right	
+	
+	Int32 i
+	For i = 1 To 16
+		If i < 11 Then
+			Empty_S_Results(i) = 0
+			S2T_T_Results(i) = 0
+			T2S_T_Results(i) = 0
+			T2T_ST_Results(i) = 0
+			T2T_TT_Results(i) = 0
+		EndIf
+		If i < 13 Then
+			S2T_C_Results(i) = 0
+			T2S_C_Results(i) = 0
+			T2T_C_Results(i) = 0
+		EndIf
+		If i < 15 Then
+			Images$(i) = ""
+		EndIf
+		If i < 5 Then
+			UFCImages1$(i) = ""
+			UFCImages2$(i) = ""
+		EndIf
+		S2T_S_Results(i) = 0
+		T2S_S_Results(i) = 0
+		S2S_SS_Results(i) = 0
+		S2S_TS_Results(i) = 0
+
+	Next
+
 	Integer idx(20)
 	For i = 1 To 20
 		idx(i) = 0
@@ -2316,138 +1480,1072 @@ Function RunMoveChipTrayToTray(src_pallet_nr As Integer, src_col_nr As Integer, 
 	
 	idx(1) = fileNum
 	
-	Double res(30)
+	idx(2) = SrcTray
+	idx(3) = SrcTrayCol
+	idx(4) = SrcTrayRow
 	
-			
-	idx(2) = src_pallet_nr
-	idx(3) = src_col_nr
-	idx(4) = src_row_nr
-	idx(5) = tgt_pallet_nr
-	idx(6) = tgt_col_nr
-	idx(7) = tgt_row_nr
-	idx(8) = 0
-	idx(9) = 0
-	idx(10) = 0
-	idx(11) = 0
-			
-	'String d$, t$
- 	'd$ = Date$
-	't$ = Time$
-	'Print #fileNum, d$, " ", t$,
-	Print #fileNum, ts$,
-	' pallet source
-	Print #fileNum, ",", src_pallet_nr, ",", src_col_nr, ",", src_row_nr,
-	' pallet target
-	Print #fileNum, ",", tgt_pallet_nr, ",", tgt_col_nr, ",", tgt_row_nr,
-	' socket source
-	Print #fileNum, ",", 0, ",", 0,
-	' socket target
-	Print #fileNum, ",", 0, ",", 0,
-
-	' Ensure that there is no chip in destination	
-	If src_pallet_nr <> tgt_pallet_nr Or src_col_nr <> tgt_col_nr Or src_row_nr <> tgt_row_nr Then
+	idx(5) = TgtTray
+	idx(6) = TgtTrayCol
+	idx(7) = TgtTrayRow
 	
-		If isChipInTrayCamera(tgt_pallet_nr, tgt_col_nr, tgt_row_nr) Then
-			RTS_error(fileNum, "Chip exists in the destination ")
-			Go Here :Z(JUMP_LIMIT - 5)
-			RunMoveChipTrayToTray = -200
-			Exit Function
-		EndIf
+	idx(8) = SrcDAT
+	idx(9) = SrcSocket
 	
-		If isChipInTrayTouch(tgt_pallet_nr, tgt_col_nr, tgt_row_nr) Then
-			RTS_error(fileNum, "Chip exists in the destination or other obstruction")
-			Go Here :Z(JUMP_LIMIT - 5)
-			RunMoveChipTrayToTray = -200
-			Exit Function
-		EndIf
+	idx(10) = TgtDAT
+	idx(11) = TgtSocket
+	
+	
+	Integer Op
+	String operation$
+	Operation$ = "Invalid"
+	
+	Op = CheckOperationType(ByRef idx(), ByRef Operation$)
+	If Op < 0 Then
+		Print "Invalid operation type"
+		MoveChip = -ERR_BAD_COMMAND
+		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+		RTS_error(fileNum, "Invalid operation")
 	EndIf
 	
-	Print "Next go to the tray and check chip position and orientation"
-	Double TrayResults(10)
-	If Not DFGetTrayAlignment(ts$, ByRef idx(), src_pallet_nr, src_col_nr, src_row_nr, ByRef TrayResults()) Then
-		RTS_error(fileNum, "TrayAlignment")
+	' Do checks of socket and tray occupancies
+	' Expected intial occupancies
+	'              Socket  |  Source  |  Target
+	' T2S only  :    0     |     1    |   N/A
+	' S2T + T2S :    1     |     1    |    0
+	' S2T only  :    1     |    N/A   |    0
+	' T2T       :   N/A    |     1    |    0
+
+	SetSpeedSetting("MoveWithoutChip")
+	Int32 Occupancy
+	String OccupancyImage$
+	Occupancy = CheckOperationOccupancy(ts$, ByRef idx(), operation$, ByRef OccupancyImage$)
+	If Occupancy <> 0 Then
+		Select Occupancy
+			Case -1
+				MoveChip = -ERR_V_NOCHIP
+			Case -2
+				MoveChip = -ERR_V_OCCUPIED
+			Case -3
+				MoveChip = -ERR_V_NOCHIP
+			Case -4
+				MoveChip = -ERR_V_OCCUPIED
+			Case -5
+				MoveChip = -ERR_OBSTRUCTION
+			Default
+				MoveChip = -ERR_OBSTRUCTION ' Shoulnd't get here
+		Send
+		Images$(1) = OccupancyImage$
+		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+		RTS_error(fileNum, "Occupancy check fail, occupancy result : " + Str$(Occupancy))
 		Exit Function
 	EndIf
+	
+	SetSpeedSetting("MoveWithoutChip")
+
+	' Now we have done occupancy checks, do pick and place 
 	Double DeltaDir
-	DeltaDir = tgt_U - TrayResults(6)
-	DeltaDir = GetBoundAnglePM180(DeltaDir)
-
-	If Abs(DeltaDir) > 180. Then
-		String Emessage$
-		Emessage$ = "Chip reorientation should fall within +/- 180 deg, but calculated at " + Str$(DeltaDir)
-		RTS_error(fileNum, Emessage$)
-		Exit Function
+	
+	' Do socket to tray first in case of swap chips (S->T then T->S)
+	'If DoS2T Then
+	If Operation$ = "REMOVECHIP" Or Operation$ = "SWAPCHIPS" Then
+		Print "Moving chip from socket (", idx(8), ",", idx(9), ") to tray (", idx(5), ",", idx(6), ",", idx(7), ")"
+		' Images$(3) - Source socket image
+		If Not GetChipFromSocket(ts$, ByRef idx(), ByRef S2T_S_Results(), ByRef S2T_C_Results(), ByRef DeltaDir, ByRef Images$(3), ByRef UFCImages1$()) Then
+			For i = 1 To 5
+				Images$(i + 4) = UFCImages1$(i)
+			Next
+			MoveChip = SubError
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+			RTS_error(fileNum, "Failed to get chip from socket")
+			Exit Function
+		EndIf
+		For i = 1 To 5
+				Images$(i + 4) = UFCImages1$(i)
+		Next
+		' Images$(2) - Target tray image
+		If Not PlaceChipInTray(ts$, ByRef idx(), ByRef S2T_T_Results(), ByRef DeltaDir, ByRef Images$(2)) Then
+			MoveChip = SubError
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+			RTS_error(fileNum, "Failed to place chip in tray")
+			Exit Function
+		EndIf
 	EndIf
 	
-	' At the trays Agl(4) should be similar. Cabling is in default state when U = 0, split the difference
-	Double PickU
-	PickU = CU(Pallet(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)) - DeltaDir
-
-
+'	If DoT2S Then
+	If Operation$ = "LOADCHIP" Or Operation$ = "SWAPCHIPS" Then
+		Print "Moving chip from tray (", idx(2), ",", idx(3), ",", idx(4), ") to socket (", idx(10), ",", idx(11), ")"
+		' Images$(1) - Source tray image	
+		If Not GetChipFromTray(ts$, ByRef idx(), ByRef T2S_T_Results(), ByRef DeltaDir, ByRef Images$(1)) Then
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+			MoveChip = SubError
+			RTS_error(fileNum, "Failed to get chip from tray")
+			Exit Function
+		EndIf
+		' Images$(4) - Target socket image	
+		If Not PlaceChipInSocket(ts$, ByRef idx(), ByRef Empty_S_Results(), ByRef T2S_C_Results(), ByRef T2S_S_Results(), ByRef Images$(4), ByRef UFCImages2$()) Then
+			For i = 1 To 5
+				Images$(i + 9) = UFCImages2$(i)
+			Next
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+			MoveChip = SubError
+			RTS_error(fileNum, "Failed to place chip in socket")
+			Exit Function
+		EndIf
+		For i = 1 To 5
+			Images$(i + 9) = UFCImages2$(i)
+		Next
+	EndIf
 	
-	Go Here :U(PickU)
-	Go Here :Z(CZ(Pallet(src_pallet_nr, src_col_nr, src_row_nr)))
-	
-
-	If Not isPressureOk Then
-		RTS_error(fileNum, "Bad pressure")
-		RunMoveChipTrayToTray = -2
+	' If successful for socket-tray operation, log and close the file and exit
+	If Operation$ = "LOADCHIP" Or Operation$ = "REMOVECHIP" Or Operation$ = "SWAPCHIPS" Then
+		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+		Print ""
+		Close #fileNum
+		MoveChip = 0
+		UpdatePositionFiles
 		Exit Function
 	EndIf
+
+
+
+	' Should only get here for T2T or S2S
+'	If DoT2T Then 
+	If Operation$ = "T2T" Then
+		Print "Moving chip from tray (", idx(2), ",", idx(3), ",", idx(4), ") to tray (", idx(5), ",", idx(6), ",", idx(7), ")"
+		' Images$(1) - Source tray image	
+		If Not GetChipFromTray(ts$, ByRef idx(), ByRef T2T_ST_Results(), ByRef DeltaDir, ByRef Images$(1)) Then
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+			MoveChip = SubError
+			RTS_error(fileNum, "Failed to get chip from tray")
+			Exit Function
+		EndIf
 		
-	If Not isVacuumOk Then
-		RTS_error(fileNum, "Bad vacuum")
-		RunMoveChipTrayToTray = -3
-		Exit Function
+		If DoT2TPinAnalysis Then
+			' UF analysis is otherwise included in the socket related functions to ensure it is always called
+			If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef T2T_C_Results(), ByRef UFCImages1$()) Then
+				MoveChip = -ERR_V_UF_ALIGN
+				For i = 1 To 5
+					Images$(i + 4) = UFCImages1$(i)
+				Next
+				LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+				RTS_error(fileNum, "Cannot get chip position and aligment with up facing camera")
+				Exit Function
+			EndIf
+			For i = 1 To 5
+				Images$(i + 4) = UFCImages1$(i)
+			Next
+		EndIf
+		' Images$(2) - Target tray image
+		If Not PlaceChipInTray(ts$, ByRef idx(), ByRef T2T_TT_Results(), ByRef DeltaDir, ByRef Images$(2)) Then
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+			MoveChip = SubError
+			RTS_error(fileNum, "Failed to place chip in tray")
+			Exit Function
+		EndIf
+		
+		' Need to chaneg UFC1 results
+		' Log here because we use different vectors for results in this case
+		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
+	EndIf
+
+	If Operation$ = "S2S" Then ' Or Operation$ = "REINSERT"
+		Print "Moving chip from socket (", idx(8), ",", idx(9), ") to socket (", idx(10), ",", idx(11), ")"
+		If Not GetChipFromSocket(ts$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_C_Results(), ByRef DeltaDir, ByRef Images$(3), ByRef UFCImages1$()) Then
+			For i = 1 To 5
+				Images$(i + 4) = UFCImages1$(i)
+			Next
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_TS_Results(), ByRef S2S_C_Results(), ByRef S2S_C_Results(), ByRef Images$())
+			MoveChip = SubError
+			RTS_error(fileNum, "Failed to pick up chip from socket")
+			Exit Function
+		EndIf
+		If Not PlaceChipInSocket(ts$, ByRef idx(), ByRef Empty_S_Results(), ByRef S2S_C_Results(), ByRef S2S_TS_Results(), ByRef Images$(4), ByRef UFCImages2$()) Then
+			For i = 1 To 5
+				Images$(i + 9) = UFCImages2$(i)
+			Next
+			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_TS_Results(), ByRef S2S_C_Results(), ByRef S2S_C_Results(), ByRef Images$())
+			MoveChip = SubError
+			RTS_error(fileNum, "Failed to place chip in socket")
+			Exit Function
+		EndIf
+		For i = 1 To 5
+			Images$(i + 4) = UFCImages1$(i)
+			Images$(i + 9) = UFCImages2$(i)
+		Next
+		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_TS_Results(), ByRef S2S_C_Results(), ByRef S2S_C_Results(), ByRef Images$())
 	EndIf
 	
-	If Not PickupFromTray Then
-		RTS_error(fileNum, "Can't pick up chip from tray")
-		RunMoveChipTrayToTray = -4
-		Exit Function
-	EndIf
-	
-	' Now chip has been picked up, go to the UF camera to make measurements of any offsets	
-	
-	Print "Next go to the UF camera and measure residual offsets "
-	
-	
-	Double UFChipResults(12)
-	' SocketResults(6) is target U value for hand, 
-	If Not UFGetChipAlignment(ts$, ByRef idx(), CU(Pallet(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)), tgt_U, ByRef UFChipResults()) Then
-		RTS_error(fileNum, "Cannot get chip position offsets from UF camera")
-		Exit Function
-	EndIf
-
-
-'	' TODO Here is where will put any pin analysis as well
-'
-	Wait 2
-
-	JumpToTray(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-
-	' Apply some corrections
-	Print "Applying corrections at tray"
-'	
-'	'''' JW: U correction is already taken into account in definition of UF_Del_X and UF_Del_Y
-
-	Go Here +U(UFChipResults(12)) +X(UFChipResults(10)) +Y(UFChipResults(11))
-	
-	
-	If Not DropToTray Then
-		RTS_error(fileNum, "Could not place chip back in tray")
-	EndIf
-	JumpToTray_camera(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-	' Add another check that chip is back in tray	
-	
-	Print #fileNum, " "
+	Print ""
 	Close #fileNum
+	UpdatePositionFiles
+	MoveChip = 0
 	
-	RunMoveChipTrayToTray = 1
+Fend
+
+
+Function CheckOperationType(ByRef idx() As Integer, ByRef Operation$ As String) As Int32
+	CheckOperationType = 0
+	SubError = 0
+	Boolean FromSocket, ToSocket, FromTray, ToTray
+	FromSocket = False
+	ToSocket = False
+	FromTray = False
+	ToTray = False
+	
+	' idx(2)  - Source tray
+	' idx(3)  - Source tray col
+	' idx(4)  - Source tray row
+	
+	' idx(5)  - Target tray
+	' idx(6)  - Target tray col
+	' idx(7)  - Target tray row
+	
+	' idx(8)  - Source DAT
+	' idx(9)  - Source socket
+	
+	' idx(10)  - target DAT
+	' idx(11)  - target socket
+	
+	' check source tray
+	If (Not idx(2) = 0) And (Not idx(3) = 0) And (Not idx(4) = 0) Then
+		FromTray = True
+	ElseIf Not ((idx(2) = 0) And (idx(3) = 0) And (idx(4) = 0)) Then
+		CheckOperationType = -2
+		Exit Function
+	EndIf
+	
+	' Target tray
+	If (Not idx(5) = 0) And (Not idx(6) = 0) And (Not idx(7) = 0) Then
+		ToTray = True
+	ElseIf Not ((idx(5) = 0) And (idx(6) = 0) And (idx(7) = 0)) Then
+		' Invalid, should set all to zero
+		CheckOperationType = -3
+		Exit Function
+	EndIf
+
+	' Source socket
+	If (Not idx(8) = 0) And (Not idx(9) = 0) Then
+		FromSocket = True
+	ElseIf Not ((idx(8) = 0) And (idx(9) = 0)) Then
+		CheckOperationType = -4
+		Exit Function
+	EndIf
+	
+	' Target socket
+	If (Not idx(10) = 0) And (Not idx(11) = 0) Then
+		ToSocket = True
+	ElseIf Not ((idx(10) = 0) And (idx(11) = 0)) Then
+		CheckOperationType = -5
+		Exit Function
+	EndIf
+	
+	If ((Not idx(8) = idx(10)) Or (Not idx(9) = idx(11))) And (idx(8) <> 0 And idx(9) <> 0) Then
+		Print "WARNING: Source and target sockets are not the same"
+	EndIf
+
+	' Which operation type?
+	Boolean DoS2T, DoT2S, DoT2T, DoS2S
+'	Boolean DoS2S
+'	Boolean DoT2C, DoC2T, DoS2C, DoC2S
+	DoS2T = False ' Source Socket to target tray
+	DoT2S = False ' Source tray to target socket
+	DoT2T = False ' Source tray to target tray
+	DoS2S = False ' Source socket to target socket - not implemented 
+' To be implemented
+'	DoT2C = False ' Source tray to camera and hold
+'	DoS2C = False ' Socket to camera and hold
+'	DoC2T = False ' From camera to target tray
+	
+	If (Not FromTray) And (Not ToTray) And (Not FromSocket) And (Not ToSocket) Then
+		Print "No socket or tray position passed!"
+		CheckOperationType = -10
+		Exit Function
+	EndIf
+	
+	If FromSocket And ToTray Then
+		DoS2T = True
+		If FromTray Xor ToSocket Then
+			' INVALID	
+			Print "Invalid combination of indices"
+			CheckOperationType = -10
+			Exit Function
+		EndIf
+	EndIf
+	
+	If FromTray And ToSocket Then
+		DoT2S = True
+		If FromSocket Xor ToTray Then
+			' INVALID
+			Print "Invalid combination of indices"
+			CheckOperationType = -10
+			Exit Function
+		EndIf
+	EndIf
+	
+	If (Not FromSocket) And (Not ToSocket) And (FromTray And ToTray) Then
+		DoT2T = True
+	EndIf
+	
+	If (FromSocket And ToSocket) And (Not FromTray) And (Not ToTray) Then
+		DoS2S = True
+		' Not implemented yet
+		Print "Socket to socket operation not yet implemented"
+		CheckOperationType = -15
+		Exit Function
+	EndIf
+	
+'	Print " Actions to perform:"
+'	Print "Socket to tray: ", DoS2T
+'	Print "Tray to socket: ", DoT2S
+'	Print "Tray to tray  : ", DoT2T
+	
+	' Need at least one of the movement types to be valid
+	If Not DoS2T And Not DoT2S And Not DoT2T Then
+		Print "Not a valid operation"
+		CheckOperationType = -10
+	 	Exit Function
+	EndIf
+
+	If DoT2T Then
+		Operation$ = "T2T" ' Tray to tray
+		CheckOperationType = 1
+	ElseIf DoT2S And Not DoS2T Then
+		Operation$ = "LOADCHIP" ' Tray to socket only
+		CheckOperationType = 2
+	ElseIf DoS2T And Not DoT2S Then
+		Operation$ = "REMOVECHIP" ' Socket to tray only
+		CheckOperationType = 3
+	ElseIf DoS2S Then
+		Operation$ = "S2S" ' Socket to socket
+		CheckOperationType = 4
+		If idx(8) = idx(10) And idx(9) = idx(11) Then
+			Operation$ = "REINSERT"
+			CheckOperationType = 6
+		EndIf
+	ElseIf DoS2T And DoT2S Then
+		Operation$ = "SWAPCHIPS" ' Swap current chip for new chip
+		CheckOperationType = 5
+	Else
+		Operation$ = "INVALID"
+		CheckOperationType = -10
+	EndIf
+	
+	
+Fend
+
+Function CheckOperationOccupancy(ts$ As String, ByRef idx() As Integer, Operation$ As String, ByRef Image$ As String) As Int32
+	SubError = 0
+	Print "Checking occupancy of tray and socket positions"
+	Int32 Occupancy
+	Occupancy = -1
+	
+	CheckOperationOccupancy = 0
+	' -1 = Empty source tray
+	' -2 = Occupied target tray
+	' -3 = empty source socket
+	' -4 = occupied target socket
+	' -5 = Obstruction
+	
+	' Check source tray is occupied : DoT2S Or DoT2T
+	If Operation$ = "LOADCHIP" Or Operation$ = "T2T" Or Operation$ = "SWAPCHIPS" Then
+		Occupancy = TrayPositionOccupied(idx(2), idx(3), idx(4))
+		Print "Occupancy = ", Occupancy
+		If Occupancy <> 1 Then
+			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				CheckOperationOccupancy = -5
+			Else
+				CheckOperationOccupancy = -1
+			EndIf
+			JumpToTray_camera(idx(2), idx(3), idx(4))
+			Image$ = DF_take_picture$(ts$ + "_source_tray_occupancy")
+			Exit Function
+		EndIf
+	EndIf
+	
+	' Check target tray is empty : DoS2T Or DoT2T
+	If Operation$ = "REMOVECHIP" Or Operation$ = "T2T" Or Operation$ = "SWAPCHIPS" Then
+		Occupancy = TrayPositionOccupied(idx(5), idx(6), idx(7))
+		Print "Occupancy = ", Occupancy
+		If Occupancy <> 0 Then
+			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				CheckOperationOccupancy = -5
+			Else
+				CheckOperationOccupancy = -2
+			EndIf
+			JumpToTray_camera(idx(5), idx(6), idx(7))
+			Image$ = DF_take_picture$(ts$ + "_target_tray_occupancy")
+			Exit Function
+		EndIf
+	EndIf
+	
+	' Check source socket is full : DoS2T
+	If Operation$ = "REMOVECHIP" Or Operation$ = "S2S" Or Operation$ = "SWAPCHIPS" Or Operation$ = "REINSERT" Then
+		Occupancy = SocketPositionOccupied(idx(8), idx(9))
+		Print "Occupancy = ", Occupancy
+		If Occupancy <> 1 Then
+			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				CheckOperationOccupancy = -5
+			Else
+				CheckOperationOccupancy = -3
+			EndIf
+			JumpToSocket_camera(idx(8), idx(9))
+			Image$ = DF_take_picture$(ts$ + "_source_socket_occupancy")
+			Exit Function
+		EndIf
+	EndIf
+
+	' Check target Socket is empty : (DoT2S And Not DoS2T)
+	If Operation$ = "LOADCHIP" Or Operation$ = "S2S" Then ' Or Operation$ = "SWAPCHIPS" Then
+		Occupancy = SocketPositionOccupied(idx(10), idx(11))
+		Print "Occupancy = ", Occupancy
+		If Occupancy <> 0 Then
+			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				CheckOperationOccupancy = -5
+			Else
+				CheckOperationOccupancy = -3
+			EndIf
+			JumpToSocket_camera(idx(10), idx(11))
+			Image$ = DF_take_picture$(ts$ + "_target_socket_occupancy")
+			Exit Function
+		EndIf
+	EndIf
+	' if here all should be okay
+	Image$ = ""
+	CheckOperationOccupancy = 0
+	
+Fend
+
+
+Function UFRecenter(ByRef CameraResults() As Double) As Int32
+	UFRecenter = 0
+	JumpToCamera
+	Double CorX1, CorY1, CorU1
+	CorX1 = CameraResults(10) * Cos(DegToRad(CU(Here))) - CameraResults(11) * Sin(DegToRad(CU(Here)))
+	CorY1 = CameraResults(10) * Sin(DegToRad(CU(Here))) + CameraResults(11) * Cos(DegToRad(CU(Here)))
+	Go Here -X(CorX1) -Y(CorY1) -U(GetBoundAnglePM45(DiffAnglePM180(CameraResults(2), CameraResults(12))))
+	UFRecenter = -1
+Fend
+
+
+
+'Function TakeToRejectTray As Int32
+'	' Function to take a chip to the reject tray
+'Fend
+'
+'Function ResetRejectTray As Int32
+'	' Function to call when a new reject tray is loaded, resetting occupancy
+'Fend
+'
+'Function SurveyRejectTray As Int32
+'	' Function to check the reject tray occupancy and fill arrays indicating which positions are occupied
+'Fend
+'
+'
+'Function SurveyTray As Int32
+'	' Goes to tray, takes pictures of each chip and notes which tray positions are filled or empty	
+'Fend
+
+
+Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As String) As Int32
+	
+	UFPinAnalysis = 0
+	'Integer fileNum
+	'fileNum = idx(1)
+	'String pict_fname$
+	Images$(1) = UF_take_picture$(id$ + "_pins")
+	'Print #fileNum, ",", pict_fname$,
+	'VSet pins_analy.ImageFile, pict_fname$
+	
+	Integer status
+	status = PinsAnaly(id$)
+	' Print #fileNum, ",", status,
+	If status <> 0 Then
+		UFPinAnalysis = status
+	EndIf
+	
+	' Images(2) and (3) are for COLDATA extra images
+	
+Fend
+
+
+
+Function LogResults(ts$ As String, ExitCode As Int64, OperationType$ As String, ByRef idx() As Integer, ByRef SourceSocketResults() As Double, ByRef TargetSocketResults() As Double, ByRef UFCameraResults1() As Double, ByRef UFCameraResults2() As Double, ByRef Images$() As String) As Int64
+
+	' Logs information from MoveChip
+	' In order:
+	'  - Time stamp (already in file)
+	'  - Exit code
+	'  - Operation type (Tray to tray, swap chip etc)
+	'  - Input indices (source tray, target tray, source socket, target socket)
+	'  - Chip in source socket results (empty if no source socket)
+	'  - Chip in target socket results (empty if no target socket)
+	'  - Up facing chip position results 
+	'  - Pin analysis status
+	'  - List of images
+	'     - Source tray
+	'     - Target tray
+	'     - Source socket
+	'     - Target socket
+	'     - First UF picture
+	'     - Second UF picture
+	'     - Pin analysis picture
+
+	Int64 i, fileNum
+	fileNum = idx(1)
+	
+	Print #fileNum, ExitCode, ",", OperationType$,
+	Print #fileNum, ", In:",
+	For i = 2 To 11
+		Print #fileNum, ",", idx(i),
+	Next
+	Print #fileNum, ", SS:",
+	For i = 1 To 15
+		Print #fileNum, ",", SourceSocketResults(i),
+	Next
+	Print #fileNum, ", TS:",
+	For i = 1 To 15
+		Print #fileNum, ",", TargetSocketResults(i),
+	Next
+	Print #fileNum, ", C1:",
+	For i = 1 To 13
+		Print #fileNum, ",", UFCameraResults1(i),
+	Next
+	Print #fileNum, ", C2:",
+	For i = 1 To 13
+		Print #fileNum, ",", UFCameraResults2(i),
+	Next
+	Print #fileNum, ", Imgs:",
+	For i = 1 To 10
+		If Images$(i) <> "" Then
+			Print #fileNum, ",", Images$(i),
+		EndIf
+	Next
+Fend
+
+
+Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef SourceTrayImage$ As String) As Int32
+		GetChipFromTray = 0
+'		Print "Getting chip from tray (", idx(2), ",", idx(3), ",", idx(4), ")"
+		SetSpeedSetting("MoveWithoutChip")
+
+		JumpToTray_camera(idx(2), idx(3), idx(4))
+		SourceTrayImage$ = DF_take_picture$(ts$ + "_source_tray")
+
+		SetSpeedSetting("PickAndPlace")
+
+		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(2), idx(3), idx(4), ByRef Tray_Results()) Then
+			RTS_suberror(idx(1), "Cannot get source chip alignment", -ERR_V_DF_ALIGN)
+			GetChipFromTray = -ERR_V_DF_ALIGN ' - ERR_TRAY_PICK
+			Exit Function
+		EndIf
+				
+		' Correct for offset between chip and tray position
+		JumpToTray(idx(2), idx(3), idx(4))
+		' correct for offsets
+		Go Here +X(Tray_Results(7)) +Y(Tray_Results(8)) '? +U(Tray_Results(9))
+			
+		' Pick up chip - Angle should be determined by measured position of chip and target orientation in tray
+		'Double DeltaDir
+		DeltaDir = SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)
+		Double PickU
+		PickU = Tray_Results(6) - DeltaDir '(SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)) ' DeltaDir
+		Go Here :U(PickU + PickOffset)
 		
+'		Print "Calculating pick up angle"
+'		Print "Chip direction at tray (wrt world): ", Tray_Results(6)
+' '       Print "Chip direction at socket (wrt world): ", (CU(P(PSocket(DAT_nr, socket_nr))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
+''		Print "Robot hand U at socket : ", CU(P(PSocket(DAT_nr, socket_nr)))
+'		Print "Delta from robot hand U to target chip direction in socket : ", DeltaDir
+'		Print "Robot hand U at tray to get chip at right delta : ", PickU
+'		
+		If Not isPressureOk Then
+			RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)
+			GetChipFromTray = -ERR_PRESSURE
+			Exit Function
+		EndIf
+			
+		If Not isVacuumOk Then
+			RTS_suberror(idx(1), "Bad vacuum", -ERR_VACUUM)
+			GetChipFromTray = -ERR_VACUUM
+			Exit Function
+		EndIf
+		
+		If Not PickupFromTray Then
+			RTS_suberror(idx(1), "Cannot pick up chip from tray", -ERR_TRAY_PICK)
+			GetChipFromTray = -ERR_TRAY_PICK
+			Exit Function
+		EndIf
+		
+		SetSpeedSetting("MoveWithChip")
+
+		JumpToCamera
+' Use UFC to get chip position relative to axis of rotation, will be used below to calculate offsets
+'		' to return to stored DAT_X, DAT_Y, DAT_U values ''SocketChipOrientation(CHIPTYPE_NR), 
+'		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef Camera_Results()) Then
+'			RTS_error(idx(1), "Cannot get chip position and aligment with up facing camera")
+'			GetChipFromTray = -ERR_V_UF_ALIGN
+'			Exit Function
+'		EndIf
+		Print "Chip picked up from tray with DeltaDir = ", DeltaDir
+		GetChipFromTray = -1 ' -1 is True
 
 Fend
 
+Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef TargetTrayImage$ As String) As Int32
+		PlaceChipInTray = 0
+		
+		SetSpeedSetting("MoveWithChip")
+
+		Print "Placing chip in tray (", idx(5), ",", idx(6), ",", idx(7), ")"
+		JumpToTray(idx(5), idx(6), idx(7))
+		
+		Go Here :U(TrayOrientation - DeltaDir)
+		
+		Go Here +U(PickOffset)
+		
+		' Place chip
+		SetSpeedSetting("PickAndPlace")
+
+		If Not DropToTray Then
+			RTS_suberror(idx(1), "Failed to drop to tray", -ERR_TRAY_PLACE)
+			PlaceChipInTray = -ERR_TRAY_PLACE
+			Exit Function
+		EndIf
+		
+		JumpToTray_camera(idx(5), idx(6), idx(7))
+		TargetTrayImage$ = DF_take_picture$(ts$ + "_target_tray")
+		
+		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(5), idx(6), idx(7), ByRef Tray_Results()) Then
+			RTS_suberror(idx(1), "Cannot get source chip alignment", -ERR_V_DF_ALIGN)
+			PlaceChipInTray = -ERR_V_DF_ALIGN
+			Exit Function
+		EndIf
+		
+		
+		
+		SetSpeedSetting("MoveWithoutChip")
+		PlaceChipInTray = -1
+Fend
+'
+Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketResults() As Double, ByRef CameraResults() As Double, ByRef DeltaDir As Double, ByRef SourceSocketImage$ As String, ByRef UFCImages$() As String) As Int32
+		GetChipFromSocket = 0
+	
+		SetSpeedSetting("MoveWithoutChip")
+
+		Print "Getting chip from socket (", idx(8), ",", idx(9), ")"
+		' Go to socket
+		JumpToSocket_camera(idx(8), idx(9))
+		SourceSocketImage$ = DF_take_picture$(ts$ + "_source_socket")
+		SetSpeedSetting("PickAndPlace")
+		
+		' Run visual check of socket and chip positions
+		If Not GetChipInSocketAlignment(ts$, ByRef idx(), idx(8), idx(9), ByRef SocketResults()) Then
+			RTS_suberror(idx(1), "Cannot get socket and chip alignment", -ERR_V_CHIPSOCKALIGN)
+			GetChipFromSocket = -ERR_V_CHIPSOCKALIGN
+			Exit Function
+		EndIf
+		
+		' Correct for visual offsets of socket from position	
+		' ChipSocketAlignment(i), i=7,8,9 are offsets of measured socket position from defined socket
+		' Could alternatively use measured chip position from defined socket i=10,11,12
+		' Or measured chip from measured socket, i=13,14,15
+		' But these options wouldn't help us then realign as well with UF camera later
+		JumpToSocket(idx(8), idx(9))
+		Print Here
+		Print " moving to here + (", SocketResults(7), ",", SocketResults(8), ",", SocketResults(9), ")"
+		Go Here +X(SocketResults(7)) +Y(SocketResults(8)) +U(SocketResults(9))
+		' Remember offset between hand and chip	
+
+		' Double DeltaDir
+		DeltaDir = SocketResults(12) - CU(Here)
+		Go Here +U(PickOffset)
+		
+		If Not isPressureOk Then
+			RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)
+			GetChipFromSocket = -ERR_PRESSURE
+			Exit Function
+		EndIf
+			
+		If Not isVacuumOk Then
+			RTS_suberror(idx(1), "Bad vacuum", -ERR_VACUUM)
+			GetChipFromSocket = -ERR_VACUUM
+			Exit Function
+		EndIf
+		
+		If Not PickupFromSocket Then
+			RTS_suberror(idx(1), "Cannot pick up chip from socket", -ERR_SOCK_PICK)
+			GetChipFromSocket = -ERR_SOCK_PICK
+			Exit Function
+		EndIf
+		SetSpeedSetting("MoveWithChip")
+
+		' Go to UF camera
+		JumpToCamera
+		' Measure offset of chip from axis of J4 at HAND_u0 
+		' Store in DAT offset arrays
+		SetSpeedSetting("AboveCamera")
+
+		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef CameraResults(), ByRef UFCImages$()) Then
+			If CameraResults(13) <> 0 Then
+				GetChipFromSocket = -ERR_PINS
+				RTS_suberror(idx(1), "Pin analysis failed", -ERR_PINS)
+				Exit Function
+			EndIf
+			GetChipFromSocket = -ERR_V_UF_ALIGN
+			RTS_suberror(idx(1), "Cannot get chip position and aligment with up facing camera", -ERR_V_UF_ALIGN)
+			Exit Function
+		EndIf
+		
+		' Offsets are calculated wrt HAND_U0, and so need to be corrected back to measured socket + U correction
+		' Can do this later when combined with second measurement
+		DAT_X(idx(8), idx(9)) = CameraResults(10)
+		DAT_Y(idx(8), idx(9)) = CameraResults(11)
+		DAT_U(idx(8), idx(9)) = CameraResults(12)
+	
+'		Print "Chip picked up from socket with DeltaDir = ", DeltaDir
+'		GetChipFromSocket = 0
+		SetSpeedSetting("MoveWithChip")
+		GetChipFromSocket = -1
+Fend
+
+Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySocketResults() As Double, ByRef CameraResults() As Double, ByRef ChipSocketResults() As Double, ByRef TargetSocketImage$ As String, ByRef UFCImages$() As String) As Int32
+		PlaceChipInSocket = 0
+		
+		Print "Placing chip in socket (", idx(10), ",", idx(11), ")"
+		SetSpeedSetting("MoveWithChip")
+
+		' Go to UF camera if not already there
+		JumpToCamera
+		SetSpeedSetting("AboveCamera")
+
+		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef CameraResults(), ByRef UFCImages$()) Then
+			If CameraResults(13) <> 0 Then
+				PlaceChipInSocket = -ERR_PINS
+				RTS_suberror(idx(1), "Pin analysis failed", -ERR_PINS)
+				Exit Function
+			EndIf
+			PlaceChipInSocket = -ERR_V_UF_ALIGN
+			RTS_suberror(idx(1), "Cannot get chip position and alignment with up facing camera", -ERR_V_UF_ALIGN)
+			Exit Function
+		EndIf
+		SetSpeedSetting("MoveWithChip")
+
+
+		' Go to socket
+		JumpToSocket_camera(idx(10), idx(11))
+		SetSpeedSetting("PickAndPlace")
+
+		If Not DFGetSocketAlignment(ts$, ByRef idx(), idx(10), idx(11), ByRef EmptySocketResults()) Then
+			RTS_suberror(idx(1), "Cannot get socket alignment", -ERR_V_SOCKETALIGN)
+			PlaceChipInSocket = -ERR_V_SOCKETALIGN
+			Exit Function
+		EndIf
+		JumpToSocket(idx(10), idx(11))
+		Go Here +U(PickOffset)
+'		Print "Socket position and orientation AT:"
+'		Print "Here: "
+'		Print Here
+'		Print "Expected : "
+'		Print EmptySocketResults(1), ",", EmptySocketResults(2), ",", EmptySocketResults(3)
+'		Print "Measured : "
+'		Print EmptySocketResults(4), ",", EmptySocketResults(5), ",", EmptySocketResults(6)
+'		Print "Offset : "
+'		Print EmptySocketResults(7), ",", EmptySocketResults(8), ",", EmptySocketResults(9)
+		
+		
+		Double Corrs(3)
+
+		Corrs(1) = 0
+		Corrs(2) = 0
+		Corrs(3) = 0
+		
+		' Use socket position found earlier to correct, should not have changed since then
+'		If S2T_S_Results(6) <> 0 Then
+'			Go Here +X(S2T_S_Results(7)) +Y(S2T_S_Results(8)) +U(S2T_S_Results(9))
+'		Else
+		Go Here +X(EmptySocketResults(7)) +Y(EmptySocketResults(8)) +U(EmptySocketResults(9))
+'		EndIf
+
+		' Move chip so position matches offsets from J4 axis stored in DAT
+		' Stored values relative to U=0, following function calculates offsets at measured socket position
+		' Assumes chip direction to hand direction at socket is fixed
+		
+		Boolean TestFirstPlaceInSocket
+		TestFirstPlaceInSocket = False
+		If TestFirstPlaceInSocket Then
+			DAT_X(idx(10), idx(11)) = 0
+			DAT_Y(idx(10), idx(11)) = 0
+			DAT_U(idx(10), idx(11)) = 0
+		EndIf
+		
+'		Print "Calculating socket correction: "
+		If (Abs(DAT_X(idx(10), idx(11))) + Abs(DAT_Y(idx(10), idx(11))) + Abs(DAT_U(idx(10), idx(11)))) = 0 Then
+			' DAT offsets from previous entry not stored
+			Print "WARNING: No DAT Socket offsets stored, will attempt placing from DF camera and UF camera measurements"
+			' Careful that offset of chip from UFGetChipAlignment is absolute wrt hand, not from target position	
+			' So correction should be 
+			Corrs(3) = -DiffAnglePM180((SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)), CameraResults(12))
+			Corrs(1) = -(CameraResults(10) * Cos(CU(Here)) - CameraResults(11) * Sin(CU(Here)))
+			Corrs(2) = -(CameraResults(10) * Cos(CU(Here)) + CameraResults(11) * Sin(CU(Here)))
+			
+'			Print "Corrections: "
+'			Print " Del X = ", Corrs(1)
+'			Print " Del Y = ", Corrs(2)
+'			Print " Del U = ", Corrs(3)
+		Else
+			Print "Retrieving last stored offset of chip"
+			ChipToChipCorrections(CameraResults(10), CameraResults(11), CameraResults(12), DAT_X(idx(10), idx(11)), DAT_Y(idx(10), idx(11)), DAT_U(idx(10), idx(11)), CU(Here), ByRef Corrs())
+		EndIf
+
+		If Abs(Corrs(3)) > 3. Then
+			RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 3 DEGREES", -ERR_BAD_TOLERANCE)
+			PlaceChipInSocket = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
+		If Abs(Corrs(1)) > 1. Or Abs(Corrs(2)) > 1. Then
+			RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 1 MM in X OR Y", -ERR_BAD_TOLERANCE)
+			PlaceChipInSocket = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
+		
+'		Print "At socket, U will be ", CU(Here)
+'		Print "DeltaDir is ", DeltaDir
+'		Print "So chip should presumably be at ", Str$(CU(Here) + DeltaDir)
+'		Print "Socket orientation should be ", SocketMezzanineOrientation(CHIPTYPE_NR), " wrt taught socket orientation"
+'		Print "Chip should be at ", SocketChipOrientation(CHIPTYPE_NR), " wrt to mezzanine "
+'		Print "So chip orientation should be ", Str$(CU(Here) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
+'		Print "Chip orientation is ", Str$(CU(Here) + CameraResults(12))
+		Go Here +X(Corrs(1)) +Y(Corrs(2)) +U(Corrs(3))
+		
+'		
+'		' Place in socket
+'		
+		If Not InsertIntoSocketSoft Then
+			RTS_suberror(idx(1), "Could not insert into socket", -ERR_SOCK_PLACE)
+			PlaceChipInSocket = -ERR_SOCK_PLACE
+			Exit Function
+		EndIf
+'		
+		' Do alignment check of chip in socket after insertion
+		JumpToSocket_camera(idx(10), idx(11))
+		TargetSocketImage$ = DF_take_picture$(ts$ + "_target_socket")
+'		Print "Checking alignment"
+		
+		If Not GetChipInSocketAlignment(ts$, ByRef idx(), idx(10), idx(11), ByRef ChipSocketResults()) Then
+			RTS_suberror(idx(1), "Cannot get chip in socket alignment", -ERR_V_CHIPSOCKALIGN)
+			PlaceChipInSocket = -ERR_V_CHIPSOCKALIGN
+			Exit Function
+		EndIf
+'		Print "Robot is at "
+'		Print Here
+		Print "Defined socket position"
+		Print "  X: ", ChipSocketResults(1)
+		Print "  Y: ", ChipSocketResults(2)
+		Print "  U: ", ChipSocketResults(3)
+		Print "Measured socket position"
+		Print "  X: ", ChipSocketResults(4)
+		Print "  Y: ", ChipSocketResults(5)
+		Print "  U: ", ChipSocketResults(6)
+		Print "Socket offsets"
+		Print "  X: ", ChipSocketResults(7)
+		Print "  Y: ", ChipSocketResults(8)
+		Print "  U: ", ChipSocketResults(9)
+		Print "Measured chip position"
+		Print "  X: ", ChipSocketResults(10)
+		Print "  Y: ", ChipSocketResults(11)
+		Print "  U: ", ChipSocketResults(12)
+		Print "Measured chip offset from measured socket position"
+		Print "  X: ", ChipSocketResults(13)
+		Print "  Y: ", ChipSocketResults(14)
+		Print "  U: ", ChipSocketResults(15)
+		Print "Expect the chip to be at Point U + Mezzanine Offset + Chip offset = ", Str$((CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)))
+		Print "Expect offset relative to socket to be ", SocketChipOrientation(CHIPTYPE_NR)
+		
+		If Abs(ChipSocketResults(12) - (CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))) > 5 Or Abs(ChipSocketResults(15) - (SocketChipOrientation(CHIPTYPE_NR))) > 5 Then
+			RTS_suberror(idx(1), "Chip orientation in socket after placement is inconsistent with defined relative orientation!", -ERR_BAD_ORIENTATION)
+			PlaceChipInSocket = -ERR_BAD_ORIENTATION
+			Exit Function
+		EndIf
+		SetSpeedSetting("MoveWithoutChip")
+		PlaceChipInSocket = -1
+Fend
+
+
+
+Function PSocket(DAT_nr As Int32, Socket_nr As Int32) As Int32
+	PSocket = DAT_nr * 100 + Socket_nr
+Fend
+
+'Function FindTrayAgl4Offsets(TrayNumber As Int32) As Int32
+'	' Function to go to the trays and get the offset between U and J4 at each point
+'	FindTrayAgl4Offsets = 0
+'	Int32 i, j
+'	For i = 1 To trayNCols
+'		For j = 1 To trayNRows
+'			JumpToTray(TrayNumber, i, j)
+'			tray_Agl4Off(TrayNumber, i, j) = CU(Here) - Agl(4)
+'		Next
+'	Next
+'	' Save to a file?
+'Fend
+'
+'Function FindSocketAgl4Offsets(DAT As Int32) As Int32
+'	' Function to go to the sockets and get the offset between U and J4 at each point
+'	FindSocketAgl4Offsets = 0
+'	Int32 i
+'	For i = 1 To nSoc
+'		JumpToSocket(DAT, i)
+'		socket_Agl4Off(DAT, i) = CU(Here) - Agl(4)
+'	Next
+'	' Save to a file?
+'Fend
+
+Function CheckValidOperations(ByRef DATs() As Int32, ByRef Sockets() As Int32, ByRef TrayNrs() As Int32, ByRef TrayCols() As Int32, ByRef TrayRows() As Int32) As Int32
+	
+	Int32 nOperations
+	nOperations = 0
+	
+	Int32 i, nerrors, totalerrors, errcode
+	errcode = 11111111
+	totalerrors = 0
+	For i = 1 To 8
+		nerrors = 0
+		' First check all DAT and tray numbers make sense
+		If (DATs(i) < 0 Or DATs(i) > 2) Or (Sockets(i) < 0 Or Sockets(i) > nSoc) Then
+			Print "ERROR - Invalid DAT or Socket number "
+			nerrors = nerrors + 1
+		EndIf
+		
+		If (TrayNrs(i) < 0 Or TrayNrs(i) > NTRAYS) Or (TrayCols(i) < 0 Or TrayCols(i) > trayNCols) Or (TrayRows(i) < 0 Or TrayRows(i) > trayNRows) Then
+			Print "ERROR - Invalid tray number or position"
+			nerrors = nerrors + 1
+		EndIf
+		
+		' Either all of the source socket and target tray are zero, or none are
+		If DATs(i) = 0 And Sockets(i) = 0 And TrayNrs(i) = 0 And TrayCols(i) = 0 And TrayRows(i) = 0 Then
+			'Skip this one so not included in the operation count if 0, 0, 0, 0, 0
+			
+		ElseIf DATs(i) = 0 Or Sockets(i) = 0 Or TrayNrs(i) = 0 Or TrayCols(i) = 0 Or TrayRows(i) = 0 Then
+			Print "ERROR - One or more of the source or target position values is non-zero, but not all. Did you mean to skip this chip?"
+			nerrors = nerrors + 1
+		Else
+			nOperations = nOperations + 1
+		EndIf
+		totalerrors = totalerrors + nerrors
+		errcode = errcode + (nerrors * 100000000 / (10 * i))
+	Next
+	
+	If totalerrors > 0 Then
+		Print "ERROR: Invalid combination of socket/tray indices - Error code ", errcode
+		' Each digit in 8 digit number should indicate the error, e.g. -20000 is bad tray ID in fifth operation
+		' Or maybe change so listed with first operation in leading order, changing so 1 is valid, 0 is empty, 2,3,4 are errors?
+		' i.e. -1500000 would be two non-zero commands with the second having an error
+		CheckValidOperations = -errcode
+	Else
+		CheckValidOperations = nOperations
+	EndIf
+Fend
+
+Function CheckTrayPositionOccupancies(Expectation As Boolean, ByRef TrayNrs() As Int32, ByRef TrayCols() As Int32, ByRef TrayRows() As Int32, ByRef Occupancy() As Int32) As Int32
+	CheckTrayPositionOccupancies = 0
+	Int32 index
+	For index = 1 To 8
+		If Not (TrayNrs(index) = 0 Or TrayCols(index) = 0 Or TrayRows(index) = 0) Then
+		 	Occupancy(index) = TrayPositionOccupied(TrayNrs(index), TrayCols(index), TrayRows(index))
+		 	If Occupancy(index) < -1 Then
+		 		' Log number of errors
+		 		CheckTrayPositionOccupancies = CheckTrayPositionOccupancies + 10
+		 	ElseIf Occupancy(index) > 0 Then
+		 		' Log number of correctly filled (don't care about -1 which means unchecked
+		 		CheckTrayPositionOccupancies = CheckTrayPositionOccupancies + 1
+		 	EndIf
+	 	EndIf
+	Next
+	''' Number of errors is number of 10s
+	''' Number of successes is number of 1s
+Fend
+
+Function TrayPositionOccupied(Tray_nr As Int32, Tray_Col_nr As Int32, Tray_Row_nr As Int32) As Int32
+	TrayPositionOccupied = 0
+	' Return 0 for unoccupied
+	' 1 for occupied with chip
+	' -2 for error (-1 is "unchecked")
+	
+	SetSpeedSetting("MoveWithoutChip")
+	
+	
+	' Go to the tray position and check visualy for a chip
+	If isChipInTrayCamera(Tray_nr, Tray_Col_nr, Tray_Row_nr) Then
+		Print "Can see a chip"
+		TrayPositionOccupied = 1
+		Exit Function
+	EndIf
+	
+	' If no chip found with camera, check no obstruction 
+	If isChipInTrayTouch(Tray_nr, Tray_Col_nr, Tray_Row_nr) Then
+		Print "Could not see a chip, but something is in tray"
+		TrayPositionOccupied = -2
+	EndIf
+	Go Here +Z(10)
+		
+	SetSpeedSetting("MoveWithoutChip")
+
+Fend
+
+
+Function CheckSocketPositionOccupancies(Expectation As Boolean, ByRef DATs() As Int32, ByRef Sockets() As Int32, ByRef Occupancy() As Int32) As Int32
+	CheckSocketPositionOccupancies = 0
+	
+	SetSpeedSetting("MoveWithoutChip")
+
+	Int32 index
+	For index = 1 To 8
+		If Not (DATs(index) = 0 Or Sockets(index) = 0) Then
+		 	Occupancy(index) = SocketPositionOccupied(DATs(index), Sockets(index))
+		 	If Occupancy(index) < -1 Then
+		 		' Log number of errors
+		 		CheckSocketPositionOccupancies = CheckSocketPositionOccupancies + 10
+		 	ElseIf Occupancy(index) > 0 Then
+		 		' Log number of correctly filled (don't care about -1 which means unchecked
+		 		CheckSocketPositionOccupancies = CheckSocketPositionOccupancies + 1
+		 	EndIf
+	 	EndIf
+	Next
+	''' Number of errors is number of 10s
+	''' Number of successes is number of 1s
+	
+	SetSpeedSetting("MoveWithoutChip")
+
+
+Fend
+
+Function SocketPositionOccupied(DAT_nr As Int32, Socket_nr As Int32) As Int32
+	SocketPositionOccupied = 0
+	' Return 0 for unoccupied
+	' 1 for occupied with chip
+	' -2 for error (-1 is "unchecked")
+	SetSpeedSetting("MoveWithoutChip")
+
+	' Go to the tray position and check visualy for a chip
+	If isChipInSocketCamera(DAT_nr, Socket_nr) Then
+		Print "Occupied"
+		SocketPositionOccupied = 1
+		Exit Function
+	EndIf
+	
+	' If no chip found with camera, check no obstruction 
+	If isChipInSocketTouch(DAT_nr, Socket_nr) Then
+		Print "Could not see chip but touched something"
+		SocketPositionOccupied = -2
+	EndIf
+	Go Here +Z(10)
+	SetSpeedSetting("MoveWithoutChip")
+
+Fend
 
 '''  Camera offset functions
 
@@ -2463,7 +2561,7 @@ Fend
 Function SetupDirectories
 	' Creates the directory RTS_DATA set in RTS_tools.inc if not already made 
 	' And the subdirectories \images and \pins  
-	
+
 	' RTS DATA directory (set in RTS_tools.inc)
 	If Not FolderExists(RTS_DATA$) Then
   		MkDir RTS_DATA$
@@ -2664,43 +2762,62 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 	' For three points of a rectangle
     ' TL    TR
 	'      / |
-	'     /  |
+	'     /  | Side 1
 	'    /   |
 	'   /    |
 	' BL-----BR
+	' Side 2
 	' Gives direction of BR -> TR
 	' But uses hypotentuse for smaller error
 	
+	' 2025-09-19 JW: Updated to just take Side 1 for direction due to the fact not all markers are isosceles right angle 	
+	' Still use diagonal average for center position
 	Double AvX, AvY
-	Double DelX, DelY, Hyp, SPolar
+	Double DelX1, DelY1, Hyp1, SPolar1, DelX2, DelY2, Hyp2, SPolar2
 	If (Not isFoundTL) And (isFoundTR And isFoundBR And isFoundBL) Then
 		' Missing key is Top Left in image (UP ORIENTED)
 		' Av TR and BL
 		AvX = (xTR + xBL) /2
 		AvY = (yTR + yBL) /2
-		DelX = xTR - xBL
-		DelY = yTR - yBL
+'		DelX = xTR - xBL
+'		DelY = yTR - yBL
+		DelX1 = xTR - xBR
+		DelY1 = yTR - yBR
+		DelX2 = xBR - xBL
+		DelY2 = yBR - yBL
 	ElseIf (Not isFoundTR) And (isFoundBR And isFoundBL And isFoundTL) Then
 		' Missing key is Top Right in image (RIGHT ORIENTED)
 		' Av BR and TL
 		AvX = (xBR + xTL) /2
 		AvY = (yBR + yTL) /2
-		DelX = xBR - xTL
-		DelY = yBR - yTL
+'		DelX = xBR - xTL
+'		DelY = yBR - yTL
+		DelX1 = xBR - xBL
+		DelY1 = yBR - yBL
+		DelX2 = xBL - xTL
+		DelY2 = yBL - yTL
 	ElseIf (Not isFoundBR) And (isFoundTR And isFoundBL And isFoundTL) Then
 		' Missing key is Bottom Right in image (DOWN ORIENTED)
 		' Av BL and TR
 		AvX = (xBL + xTR) /2
 		AvY = (yBL + yTR) /2
-		DelX = xBL - xTR
-		DelY = yBL - yTR
+'		DelX = xBL - xTR
+'		DelY = yBL - yTR
+		DelX1 = xBL - xTL
+		DelY1 = yBL - yTL
+		DelX2 = xTL - xTR
+		DelY2 = yTL - yTR
 	ElseIf (Not isFoundBL) And (isFoundTR And isFoundBR And isFoundTL) Then
 		' Missing key is Bottom left in image (LEFT ORIENTED)
 		' Av TL and BR
 		AvX = (xTL + xBR) /2
 		AvY = (yTL + yBR) /2
-		DelX = xTL - xBR
-		DelY = yTL - yBR
+'		DelX = xTL - xBR
+'		DelY = yTL - yBR
+		DelX1 = xTL - xTR
+		DelY1 = yTL - yTR
+		DelX2 = xTR - xBR
+		DelY2 = yTR - yBR
 	Else
 		Print "ERROR - DID NOT PASS STRICTLY THREE POINTS"
 		Print "TL: ", isFoundTL, ", TR: ", isFoundTR, ", BR: ", isFoundBR, ", BL: ", isFoundBL
@@ -2711,12 +2828,25 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 		Exit Function
 
 	EndIf
-	Hyp = Sqr((DelX * DelX) + (DelY * DelY))
-	If DelY >= 0. Then
-		SPolar = RadToDeg(Acos(DelX / Hyp))
+	Hyp1 = Sqr((DelX1 * DelX1) + (DelY1 * DelY1))
+	If DelY1 >= 0. Then
+		SPolar1 = RadToDeg(Acos(DelX1 / Hyp1))
 	Else
-		SPolar = -RadToDeg(Acos(DelX / Hyp))
+		SPolar1 = -RadToDeg(Acos(DelX1 / Hyp1))
 	EndIf
+	Hyp2 = Sqr((DelX2 * DelX2) + (DelY2 * DelY2))
+	If DelY2 >= 0. Then
+		SPolar2 = RadToDeg(Acos(DelX2 / Hyp2)) + 90.
+	Else
+		SPolar2 = -RadToDeg(Acos(DelX2 / Hyp2)) + 90.
+	EndIf
+	
+	SPolar1 = GetBoundAnglePM180(SPolar1)
+	SPolar2 = GetBoundAnglePM180(SPolar2)
+'	Print "SPolar1 = ", SPolar1
+'	Print "SPolar2 = ", SPolar2
+'	Print " Diff   = ", DiffAnglePM180(SPolar1, SPolar2)
+'	Print " Av     = ", Str$(AverageAnglePM180(SPolar1, SPolar2))
 	' SPolar = RadToDeg(Acos(DelX / Hyp))
 	' SPolar = RadToDeg(Asin(DelY / Hyp))
 	
@@ -2725,7 +2855,9 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 	'Print "Polar angle from bottom left mark to top left mark is ", SPolar
 	CornerVar(1) = AvX
 	CornerVar(2) = AvY
-	CornerVar(3) = SPolar + 45.
+	CornerVar(3) = AverageAnglePM180(SPolar1, SPolar2) ' SPolar1 '+ 45. ' 45 was frpm older methos using hypotonuse and right-isosceles triangle
+	
+
 	
 	ThreeCornerFindDirection = True ' SPolar + 45.
 
@@ -2893,11 +3025,11 @@ Function DFFindLArASIC As Boolean
 	Select SITE$
 		Case "MSU"
 			
-			VRun GetChipDir
-			VGet GetChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
+			VRun MSU_DF_ChipDir
+			VGet MSU_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
 			' Get positions of Large and Small circular markers on chip
-			VGet GetChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
-			VGet GetChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
+			VGet MSU_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
+			VGet MSU_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
 			
 		Default
 			Print "No defined vision sequence for LArASICs for site: ", SITE$
@@ -2938,7 +3070,7 @@ Function DFFindLArASIC As Boolean
 	EndIf
 	
 	If Abs(Norm - LArASICDimension) > TolXY Then
-		Print "Large-to-small marker distance not within tolerance"
+		Print "Large-to-small marker distance not within tolerance: " + Str$(Norm)
 		Exit Function
 	EndIf
 	
@@ -3204,6 +3336,11 @@ Fend
 
 
 Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double, ByRef ResY As Double) As Boolean
+	
+	' NOTE TODO JW: For COLDATA cannot rely on finding only three corners, just take three of the four corners found 
+	' and use GetBoundAnglePM45 function on differences to ensure in same quadrant of angle or the vision
+	' sequence may find wildly inconsistent angles for each measurement at incremebts of 90 degrees.
+	' The DF camera is used to determine direction anyway
 	UF_CHIP_FIND = False
 	Boolean found(4)
 	Boolean isFound(4) ' Check if separate variable is needed for this
@@ -3270,15 +3407,28 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 '	If Not ThreeCornerFindDirection(found(4), ResX(4), ResY(4), found(1), ResX(1), ResY(1), found(2), ResX(2), ResY(2), found(3), ResX(3), ResY(3)) Then
 	' Flipped fropm above becauser camera is facing up not down at the XY plane
 	' TL, TR, BR, BL from above is 
-	If Not ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
-		Print "ERROR: Chip corner orientation failed"
-		UF_CHIP_FIND = False
-		Exit Function
+	If CHIPTYPE$ = "COLDATA" Then
+		' Set TL to -9999 and not found
+		found(1) = False
+		ResX(1) = -9999.
+		ResY(1) = -9999.
+		ResU(1) = -9999.
+		If Not ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
+			Print "ERROR: Chip corner orientation failed"
+			UF_CHIP_FIND = False
+			Exit Function
+		EndIf
+	Else
+		If Not ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
+			Print "ERROR: Chip corner orientation failed"
+			UF_CHIP_FIND = False
+			Exit Function
+		EndIf
 	EndIf
 
 	UFChipPos(1) = CornerVar(1)
 	UFChipPos(2) = CornerVar(2)
-	UFChipPos(3) = CornerVar(3)
+	UFChipPos(3) = GetBoundAnglePM180(CornerVar(3))
 
 	Print "Camera position in X = ", CX(P_Camera)
 	Print "            Chip AvX = ", UFChipPos(1)
@@ -3309,8 +3459,21 @@ Fend
 
 Function DFFindLArASICSocket As Boolean
 	Double USocket
+	SelectSite
+	
+	Select SITE$
+			Case "MSU"
+				
+				If MSUTESTBOARD Then
+					VRun MSU_SocketFind2
+				Else
+					VRun MSU_SocketFind
+				EndIf
+				
+			Default
+				Print "Need to set up LArASIC/Socket find vision sequence, Try MSU_SocketFind"
+		Send
 
-	VRun MSU_SocketFind2
 	
 	Boolean isFoundTR, isFoundBR, isFoundBL, isFoundTL
 	Boolean isFound1, isFound2, isFound3, isFound4
@@ -3318,11 +3481,46 @@ Function DFFindLArASICSocket As Boolean
 	Double xBR, yBR, uBR
 	Double xBL, yBL, uBL
 	Double xTL, yTL, uTL
+	
+	Boolean isFoundMTR, isFoundMBR, isFoundMBL, isFoundMTL
+	Boolean isFoundM1, isFoundM2, isFoundM3, isFoundM4
+	Double xMTR, yMTR, uMTR
+	Double xMBR, yMBR, uMBR
+	Double xMBL, yMBL, uMBL
+	Double xMTL, yMTL, uMTL
 
-	VGet MSU_SocketFind2.Geom01.Found, isFoundTR
-	VGet MSU_SocketFind2.Geom02.Found, isFoundBR
-	VGet MSU_SocketFind2.Geom03.Found, isFoundBL
-	VGet MSU_SocketFind2.Geom04.Found, isFoundTL
+	
+	Select SITE$
+		Case "MSU"
+			If MSUTESTBOARD Then
+				VGet MSU_SocketFind2.Geom01.Found, isFoundTR
+				VGet MSU_SocketFind2.Geom02.Found, isFoundBR
+				VGet MSU_SocketFind2.Geom03.Found, isFoundBL
+				VGet MSU_SocketFind2.Geom04.Found, isFoundTL
+				
+			Else
+				VGet MSU_SocketFind.Geom01.Found, isFoundTR
+				VGet MSU_SocketFind.Geom02.Found, isFoundBR
+				VGet MSU_SocketFind.Geom03.Found, isFoundBL
+				VGet MSU_SocketFind.Geom04.Found, isFoundTL
+				
+				VGet MSU_SocketFind.Geom05.Found, isFoundMTR
+				VGet MSU_SocketFind.Geom06.Found, isFoundMBR
+				VGet MSU_SocketFind.Geom07.Found, isFoundMBL
+				VGet MSU_SocketFind.Geom08.Found, isFoundMTL
+			EndIf
+		Default
+
+	Send
+	
+	
+	' Require mounting holes to be found 
+	
+	If Not MSUTESTBOARD And (Not isFoundMTR Or Not isFoundMBR Or Not isFoundMBL Or Not isFoundMTL) Then
+		Print "ERROR: Did not find mounting points for socket"
+		Exit Function
+	EndIf
+
 
 	DFFindLArASICSocket = False
 	Int32 nFound
@@ -3347,7 +3545,14 @@ Function DFFindLArASICSocket As Boolean
 
 
 	If isFoundTL Then
-		VGet MSU_SocketFind2.Geom04.RobotXYU, isFound4, xTL, yTL, uTL
+		Select SITE$
+			Case "MSU"
+				If MSUTESTBOARD Then
+					VGet MSU_SocketFind2.Geom04.RobotXYU, isFound4, xTL, yTL, uTL
+				Else
+					VGet MSU_SocketFind.Geom04.RobotXYU, isFound4, xTL, yTL, uTL
+				EndIf
+		Send
 '		Print "TL : x=", xTL, ", y=", yTL
 	Else
 		xTL = -9999.
@@ -3355,7 +3560,14 @@ Function DFFindLArASICSocket As Boolean
 	EndIf
 	
 	If isFoundTR Then
-		VGet MSU_SocketFind2.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
+		Select SITE$
+			Case "MSU"
+				If MSUTESTBOARD Then
+					VGet MSU_SocketFind2.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
+				Else
+					VGet MSU_SocketFind.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
+				EndIf
+		Send
 '		Print "TR : x=", xTR, ", y=", yTR		
 	Else
 		xTR = -9999.
@@ -3363,7 +3575,14 @@ Function DFFindLArASICSocket As Boolean
 	EndIf
 
 	If isFoundBR Then
-		VGet MSU_SocketFind2.Geom02.RobotXYU, isFound2, xBR, yBR, uBR
+		Select SITE$
+			Case "MSU"
+				If MSUTESTBOARD Then
+					VGet MSU_SocketFind2.Geom02.RobotXYU, isFound2, xBR, yBR, uBR
+				Else
+					VGet MSU_SocketFind.Geom02.RobotXYU, isFound2, xBR, yBR, uBR
+				EndIf
+		Send
 '		Print "BR : x=", xBR, ", y=", yBR
 	Else
 		xBR = -9999.
@@ -3371,13 +3590,30 @@ Function DFFindLArASICSocket As Boolean
 	EndIf
 
 	If isFoundBL Then
-		VGet MSU_SocketFind2.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
+		Select SITE$
+			Case "MSU"
+				If MSUTESTBOARD Then
+					VGet MSU_SocketFind2.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
+				Else
+					VGet MSU_SocketFind2.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
+				EndIf
+		Send
 '		Print "BL : x=", xBL, ", y=", yBL
 	Else
 		xBL = -9999.
 		yBL = -9999.
 	EndIf
-
+	
+	Select SITE$
+		Case "MSU"
+			If Not MSUTESTBOARD Then
+				VGet MSU_SocketFind.Geom08.RobotXYU, isFoundM4, xMTL, yMTL, uMTL
+				VGet MSU_SocketFind.Geom05.RobotXYU, isFoundM1, xMTR, yMTR, uMTR
+				VGet MSU_SocketFind.Geom06.RobotXYU, isFoundM2, xMBR, yMBR, uMBR
+				VGet MSU_SocketFind.Geom07.RobotXYU, isFoundM3, xMBL, yMBL, uMBL
+			EndIf
+	Send
+	
 	
 '	Print "isFound TR:", isFoundTR
 '	Print "isFound BR:", isFoundBR
@@ -3396,21 +3632,52 @@ Function DFFindLArASICSocket As Boolean
 	' T1     T2
 
 	' orientation in world coordinates is direction of T2->T3 : T23
-	' but T1->T3 hypotentuse gives larger measurement, lower error
-	' For arbitrary camera orienation use cos(SPolar) = DelX / Hyp
-	' DelX should be signed to get right orientation
-	' X and Y positions found by averaging T1 and T3 positions
-
+	' hypotentuse gives larger measurement but relies on isosceles right triangle
+	' which is not true at socket fiducial markers 
+	' Us av of T1->T2 + 90. and T2->T3
 
 	If Not ThreeCornerFindDirection(isFoundTL, xTL, yTL, isFoundTR, xTR, yTR, isFoundBR, xBR, yBR, isFoundBL, xBL, yBL) Then
 		DFFindLArASICSocket = False
 		Exit Function
 	EndIf
 	
-	SockPos(1) = CornerVar(1)
-	SockPos(2) = CornerVar(2)
-	SockPos(3) = CornerVar(3)
+	If MSUTESTBOARD Then
+		SockPos(1) = CornerVar(1)
+		SockPos(2) = CornerVar(2)
+		SockPos(3) = GetBoundAnglePM180(CornerVar(3))
+		DFFindLArASICSocket = True
+		Exit Function
+	EndIf
+	
+	' For production sockets use large mounting hole features to confirm center of mezzanine
+	' and provide additional positional information for average
+	
+	Double MXAv, MYAv, DiffX, DiffY
+	MXAv = (xMTL + xMTR + xMBL + xMBR) /4
+	MYAv = (yMTL + yMTR + yMBL + yMBR) /4
+	DiffX = CornerVar(1) - MXAv
+	DiffY = CornerVar(2) - MYAv
+	
+	If Abs(DiffX) > 0.3 Or Abs(DiffY) > 0.3 Then
+		DFFindLArASICSocket = False
+		Exit Function
+	EndIf
 
+	SockPos(1) = (CornerVar(1) + MXAv) / 2
+	SockPos(2) = (CornerVar(2) + MYAv) / 2
+	SockPos(3) = GetBoundAnglePM180(CornerVar(3) + 90.)
+	
+'	Print "Position found with fiducial points"
+'	Print "(", CornerVar(1), ",", CornerVar(2), ",", CornerVar(3), ")"
+'	Print "Position found with mounting points"
+'	Print "(", MXAv, ",", MYAv, ")"
+'	Print "Difference "
+'	Print "  DelX: ", Str$(CornerVar(1) - MXAv)
+'	Print "  DelY: ", Str$(CornerVar(2) - MYAv)
+'	
+'	Print "Final position"
+'	Print "(", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
+	
 	DFFindLArASICSocket = True
 
 Fend
@@ -3619,8 +3886,7 @@ Fend
 ' CinSRes(7) - X 
 ' CinSRes(8) - Y 
 ' CinSRes(9) - U
-'''Measured chip position
-'''Chip offsets from defined socket position (Defined socket -> Measured chip)
+''' Measured chip position
 ' CinSRes(10) - X 
 ' CinSRes(11) - Y 
 ' CinSRes(12) - U
@@ -3642,19 +3908,20 @@ Function GetChipInSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr 
 	
 	UF_camera_light_ON
 	Wait 0.2
-	String pict_fname$
-	pict_fname$ = DF_take_picture$(id$ + "_CS")
-    Print #fileNum, ",", pict_fname$,
+'	String pict_fname$
+'	pict_fname$ = DF_take_picture$(id$ + "_CS")
+'    Print #fileNum, ",", pict_fname$,
 
 	Int32 FullSocket_nr
 	FullSocket_nr = DAT_nr * 100 + socket_nr
 	CinSResults(1) = CX(P(FullSocket_nr)) ' Socket X
 	CinSResults(2) = CY(P(FullSocket_nr)) ' Socket Y
-	CinSResults(3) = CU(P(FullSocket_nr)) ' Socket U
+	' CinSResults(3) = CU(P(FullSocket_nr)) ' Socket U
+	CinSResults(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + SocketMezzanineOrientation(CHIPTYPE_NR))
 
 	Int32 Attempts
 	Boolean Success
-	Attempts = 10
+	Attempts = 20
 	Success = False
 	Print "Getting precise socket position"
 	Do While ((Attempts > 0) And Not Success)
@@ -3676,7 +3943,7 @@ Function GetChipInSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr 
 	CinSResults(5) = SockPos(2) ' Socket Y
 	CinSResults(6) = SockPos(3) ' Socket U
 
-	Attempts = 10
+	Attempts = 20
 	Success = False
 	Do While ((Attempts > 0) And Not Success)
 		' TODO JW: Check chip dimensions are in range
@@ -3691,21 +3958,22 @@ Function GetChipInSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr 
 		Print "Cannot find chip alignment"
 		Exit Function
 	EndIf
+	
+	' Offset of socket from defined position 
+	CinSResults(7) = CinSResults(4) - CinSResults(1)
+	CinSResults(8) = CinSResults(5) - CinSResults(2)
+	CinSResults(9) = DiffAnglePM180(CinSResults(3), CinSResults(6))
+'	CinSResults(9) = CinSResults(6) - CinSResults(3)
 
 	' Get chip position
-	CinSResults(7) = ChipPos(1) ' Chip X
-	CinSResults(8) = ChipPos(2) ' Chip Y
-	CinSResults(9) = ChipPos(3) ' Chip U
-	
-	' Offsets from defined socket point (for steering)	
-	CinSResults(13) = ChipPos(1) - CinSResults(1) ' Offset in X (Socket -> Chip)
-	CinSResults(14) = ChipPos(2) - CinSResults(2)   ' Offset in Y
-	CinSResults(15) = ChipPos(3) - CinSResults(3)  ' Offset in U
-	
+	CinSResults(10) = ChipPos(1) ' Chip X
+	CinSResults(11) = ChipPos(2) ' Chip Y
+	CinSResults(12) = ChipPos(3) ' Chip U
+		
 	' Offsets from measured socket (for analysis)
 	CinSResults(13) = ChipPos(1) - SockPos(1) ' Offset in X (Socket -> Chip)
 	CinSResults(14) = ChipPos(2) - SockPos(2)   ' Offset in Y
-	CinSResults(15) = ChipPos(3) - SockPos(3)  ' Offset in U
+	CinSResults(15) = DiffAnglePM180(SockPos(3), ChipPos(3)) ' ChipPos(3) - SockPos(3)  ' Offset in U (wrt mezzanine direction)
 	
 	GetChipInSocketAlignment = True
 Fend
@@ -3743,12 +4011,12 @@ Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As I
 	
 	DFSockRes(1) = CX(P(FullSocket_nr))
 	DFSockRes(2) = CY(P(FullSocket_nr))
-	DFSockRes(3) = CU(P(FullSocket_nr))
-	
+'	DFSockRes(3) = CU(P(FullSocket_nr))
+	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + SocketMezzanineOrientation(CHIPTYPE_NR))
 	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
 	Int32 Attempts
 	Boolean Success
-	Attempts = 10
+	Attempts = 20
 	Success = False
 	Print "Getting precise socket position"
 	Do While ((Attempts > 0) And Not Success)
@@ -3772,9 +4040,12 @@ Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As I
 	' Offset = Measured - Expected
 	DFSockRes(7) = DFSockRes(4) - DFSockRes(1) ' X
 	DFSockRes(8) = DFSockRes(5) - DFSockRes(2) ' Y
-	DFSockRes(9) = DFSockRes(6) - DFSockRes(3) ' U - May need to correct by orientation 
-
-	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(6))
+	DFSockRes(9) = DiffAnglePM180(DFSockRes(3), DFSockRes(6)) 'DFSockRes(6) - DFSockRes(3) ' U
+	
+	Print Here
+	Print "moving to (", DFSockRes(4), ",", DFSockRes(5), ",", DFSockRes(6), ")"
+'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(6))
+	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(3) + DFSockRes(9))
 	DFSockRes(10) = CU(Here) - Agl(4)
 	
 	DFGetSocketAlignment = True
@@ -3800,29 +4071,29 @@ Fend
 Function DFGetTrayAlignment(id$ As String, ByRef idx() As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer, ByRef DFTrayRes() As Double) As Boolean
 
 	' Reset results array
-	Int32 i, fileNum
+	Int32 i ', fileNum
 	For i = 1 To 10
 		DFTrayRes(i) = 0.
 	Next i
-	fileNum = idx(1)
+	'fileNum = idx(1)
 
 	JumpToTray_camera(pallet_nr, col_nr, row_nr)
 	
 	' Take a picture of the chip in the tray
 	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-	String pict_fname$
-	pict_fname$ = DF_take_picture$(id$ + "_CT")
-	Print #fileNum, ",", pict_fname$,
-
-
+'	String pict_fname$
+'	pict_fname$ = DF_take_picture$(id$ + "_CT")
+'	Print #fileNum, ",", pict_fname$,
 	
 	DFTrayRes(1) = CX(Pallet(pallet_nr, col_nr, row_nr))
 	DFTrayRes(2) = CY(Pallet(pallet_nr, col_nr, row_nr))
-	DFTrayRes(3) = CU(Pallet(pallet_nr, col_nr, row_nr))
+	'DFTrayRes(3) = CU(Pallet(pallet_nr, col_nr, row_nr))
+	' Should (3) be the robot position or the expected chip position?
+	DFTrayRes(3) = GetBoundAnglePM180(CU(Pallet(pallet_nr, col_nr, row_nr)) + TrayChipOrientation(pallet_nr))
 
 	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
 	Integer Attempts
-	Attempts = 10
+	Attempts = 20
 	Boolean Success
 	Success = False
 	Do While ((Attempts > 0) And Not Success)
@@ -3847,7 +4118,8 @@ Function DFGetTrayAlignment(id$ As String, ByRef idx() As Integer, pallet_nr As 
 	' Offset = Measured - Expected
 	DFTrayRes(7) = DFTrayRes(4) - DFTrayRes(1) ' X
 	DFTrayRes(8) = DFTrayRes(5) - DFTrayRes(2) ' Y
-	DFTrayRes(9) = DFTrayRes(6) - DFTrayRes(3) ' U - May need to correct by orientation 
+	' DFTrayRes(9) =DFTrayRes(6) - DFTrayRes(3)
+	DFTrayRes(9) = DiffAnglePM180(DFTrayRes(3), DFTrayRes(6)) ' B - A
 
 	Go Here :X(DFTrayRes(4)) :Y(DFTrayRes(5))
 	DFTrayRes(10) = CU(Here) - Agl(4)
@@ -3870,30 +4142,32 @@ Fend
 ' UFChipRes(8) - y2
 ' UFChipRes(9) - u2
 ''' Caclulated offsets
-' UFChipRes(10) - Offset in X
+' UFChipRes(10) - Offset in X ' FROM AXIS TO CHIP POSITION - PREVIOUSLY OTHER WAY AROUND 
 ' UFChipRes(11) - Offset in Y
 ' UFChipRes(12) - Offset in U 
-' Must take exact target U value (including socket offset) to calculate offsets properly
-' TODO JW: Maybe have it return the offsets wrt U_0 then recalc offsets for specific socket offset
-' outside of this function?
-Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU As Double, TargetChipRotation As Double, ByRef UFChipRes() As Double) As Boolean
+' Previously took target hand U and chip alignment as args, now calculates alignment relative to U_0
+' Can then use rotation and rotation matrix to calculate offsets at socket
+' UFChipRes(13) - Pin analysis status
+Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipRes() As Double, ByRef Images$() As String) As Boolean
     SetSpeedSetting("AboveCamera")
 	UFGetChipAlignment = False
+		
 	Int32 i, fileNum
-	For i = 1 To 12
+	For i = 1 To 13
 		UFChipRes(i) = 0.
 	Next i
 	fileNum = idx(1)
 	
 	JumpToCamera
-	Go Here :U(TargetHandU)
-	UFChipRes(1) = TargetHandU ' This should be socket position + chip orientation offset
+	Go Here :U(HAND_U0)
+	Go Here +U(PickOffset)
+	UFChipRes(1) = CU(Here)
 	
 	' If J4 angle is outside desired range, first add in extra rotation to prevent over turning
 	Double Rotation1
 	Rotation1 = 0.
-	If (Agl(4) >= -45.) And (Agl(4) <= -45.) Then
-		If (Agl(4) >= 0) Then
+	If (Agl(4) >= (REST_J4 - 45.)) And (Agl(4) <= (REST_J4 - 45.)) Then
+		If (Agl(4) >= REST_J4) Then
 			Rotation1 = -90.
 		Else
 			Rotation1 = 90.
@@ -3907,13 +4181,13 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU A
 	'' TAKE PICTURE
 	UF_camera_light_ON
 	Wait 0.2
-	String pict_fname$
-	pict_fname$ = UF_take_picture$(id$ + "_01")
-    Print #fileNum, ",", pict_fname$,
-
+	'String pict_fname$
+	'pict_fname$ = UF_take_picture$(id$ + "_01")
+    ' Print #fileNum, ",", pict_fname$,
+	Images$(1) = UF_take_picture$(id$ + "_01")
 	' Take first measurements
 	Integer Attempts
-	Attempts = 10
+	Attempts = 20
 	Boolean Success
 	Success = False
 	Do While ((Attempts > 0) And Not Success)
@@ -3933,11 +4207,15 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU A
 	UFChipRes(4) = UFChipPos(1)
 	UFChipRes(5) = UFChipPos(2)
 	UFChipRes(6) = UFChipPos(3)
-		
+	
+	If CHIPTYPE$ = "COLDATA" Then
+		UFChipRes(6) = GetBoundAnglePM45(UFChipRes(6))
+	EndIf
+	
 	' Rotate to 180 deg from first measurements
 	Double Rotation2
 	Rotation2 = 0.
-	If (Agl(4) < 0.) Then
+	If (Agl(4) < REST_J4) Then
 		Rotation2 = 180.
 	Else
 		Rotation2 = -180
@@ -3949,10 +4227,11 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU A
 	' Take another picture
 	UF_camera_light_ON
 	Wait 0.2
-	pict_fname$ = UF_take_picture$(id$ + "_02")
-    Print #fileNum, ",", pict_fname$,
+	Images$(2) = UF_take_picture$(id$ + "_02")
+	'pict_fname$ = UF_take_picture$(id$ + "_02")
+    'Print #fileNum, ",", pict_fname$,
 	
-	Attempts = 10
+	Attempts = 20
 	Success = False
 	Do While ((Attempts > 0) And Not Success)
 		If Not UF_CHIP_FIND Then
@@ -3971,23 +4250,27 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU A
 	UFChipRes(7) = UFChipPos(1)
 	UFChipRes(8) = UFChipPos(2)
 	UFChipRes(9) = UFChipPos(3)
+	
+	If CHIPTYPE$ = "COLDATA" Then
+		UFChipRes(6) = GetBoundAnglePM180(GetBoundAnglePM45(UFChipRes(6)) + 180.)
+	EndIf
 
 	' Measurements have been made, return to initial U at camera
 	' This should be same as U_0
 	Go Here -U(Rotation1 + Rotation2)
 	
-	Print "Chip position measured with UF camera. Starting from", UFChipRes(1)
-	Print "Rotate by ", Rotation1
-	Print "1st measurement at U=", UFChipRes(2)
-	Print "  x1: ", UFChipRes(4)
-	Print "  y1: ", UFChipRes(5)
-	Print "  u1: ", UFChipRes(6)
-	Print "Rotate by ", Rotation2
-	Print "2nd measurement at U=", UFChipRes(3)
-	Print "  x2: ", UFChipRes(7)
-	Print "  y2: ", UFChipRes(8)
-	Print "  u2: ", UFChipRes(9)
-	Print "Return U value by rotating by ", -(Rotation1 + Rotation2)
+'	Print "Chip position measured with UF camera. Starting from", UFChipRes(1)
+'	Print "Rotate by ", Rotation1
+'	Print "1st measurement at U=", UFChipRes(2)
+'	Print "  x1: ", UFChipRes(4)
+'	Print "  y1: ", UFChipRes(5)
+'	Print "  u1: ", UFChipRes(6)
+'	Print "Rotate by ", Rotation2
+'	Print "2nd measurement at U=", UFChipRes(3)
+'	Print "  x2: ", UFChipRes(7)
+'	Print "  y2: ", UFChipRes(8)
+'	Print "  u2: ", UFChipRes(9)
+'	Print "Return U value by rotating by ", -(Rotation1 + Rotation2)
 	
 	' Correct for +90 degrees for first measurement by rotating -90
 	
@@ -4008,31 +4291,28 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU A
 		Exit Function
 	EndIf
 	
-	' Set X and Y offsets as distance from first measurement to axis of rotation
-	UFChipRes(10) = (UFChipRes(7) - UFChipRes(4)) / 2 ' X2 - X2 /2
-	UFChipRes(11) = (UFChipRes(8) - UFChipRes(5)) / 2 ' Y2 - Y1 /2
+	' Set X and Y offsets as distance from axis of rotation to first measurement
+	UFChipRes(10) = (UFChipRes(4) - UFChipRes(7)) / 2 ' X1 - X2 /2
+	UFChipRes(11) = (UFChipRes(5) - UFChipRes(8)) / 2 ' Y1 - Y2 /2
 	
-	' X and Y offsets should be corrected for the first rotation offset to get back to TargetU
-	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-Rotation1)) - UFChipRes(11) * Sin(DegToRad(-Rotation1))
-	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-Rotation1)) + UFChipRes(11) * Cos(DegToRad(-Rotation1))
-	
-	Double UF_DEL_U1, UF_DEL_U2
-	' Take out rotations to get offsets of tool U wrt to target U
-'	UF_DEL_U1 = (UFChipRes(1) + SocketChipOrientation(ChipTypeNumber)) - (u1 - Rotation1) ' Offset in 1st measurement
-'   UF_DEL_U2 = (UFChipRes(1) + SocketChipOrientation(ChipTypeNumber)) - (u2 - Rotation1 - Rotation2) ' Offset in 2nd measurement
-	UF_DEL_U1 = UFChipRes(2) + TargetChipRotation - UFChipRes(6)
-	UF_DEL_U2 = UFChipRes(3) + TargetChipRotation - UFChipRes(9)
-	
-	' Put them witin +/- 180 degrees
-	UF_DEL_U1 = GetBoundAnglePM180(UF_DEL_U1)
-	UF_DEL_U2 = GetBoundAnglePM180(UF_DEL_U2)
+	' X and Y offsets should be corrected for the first rotation offset to get back to HAND_U0
+	' Maybe change so wrt U = 0?
+'	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-Rotation1)) - UFChipRes(11) * Sin(DegToRad(-Rotation1))
+'	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-Rotation1)) + UFChipRes(11) * Cos(DegToRad(-Rotation1))
+	' Wrt U = 0
+	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-UFChipRes(2))) - UFChipRes(11) * Sin(DegToRad(-UFChipRes(2)))
+	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-UFChipRes(2))) + UFChipRes(11) * Cos(DegToRad(-UFChipRes(2)))
 
-	If Abs(UF_DEL_U1) > 10. Then
-		Print "WARNING: U offset for 1st UF chip measurement out of +/- 10 deg"
-	EndIf
+	Double UF_DEL_U1, UF_DEL_U2
+
 	
-	If Abs(UF_DEL_U2) > 10. Then
-		Print "WARNING: U offset for 2nd UF chip measurement out of +/- 10 deg"
+	' DIff angle (a, b) is b - a
+	UF_DEL_U1 = DiffAnglePM180(UFChipRes(2), UFChipRes(6))
+	UF_DEL_U2 = DiffAnglePM180(UFChipRes(3), UFChipRes(9))
+	
+	If CHIPTYPE$ = "COLDATA" Then
+		UF_DEL_U1 = GetBoundAnglePM45(UF_DEL_U1)
+		UF_DEL_U2 = GetBoundAnglePM45(UF_DEL_U2)
 	EndIf
 	
 	If Abs(UF_DEL_U2 - UF_DEL_U1) > 2. Then
@@ -4042,36 +4322,98 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, TargetHandU A
 	EndIf
 	
 '	' Need to make sure average is closest angle around -pi/+pi boundary
-	UFChipRes(12) = AverageAnglePM180(UF_DEL_U1, UF_DEL_U2)
+	UFChipRes(12) = AverageAnglePM180(UF_DEL_U1, UF_DEL_U2) 'GetBoundAnglePM45(AverageAnglePM180(UF_DEL_U1, UF_DEL_U2))
 	
-	Print "Corrections to chip position and orientation"
-	Print "Corrections measured from a rotation of ", Rotation1
-	Print "Correction in x axis : ", UFChipRes(10)
-	Print "Correction in y axis : ", UFChipRes(11)
-	Print "Correction in u1   	: ", UF_DEL_U1
-	Print "Correction in u2   	: ", UF_DEL_U2
-	Print "Correction in u   	: ", UFChipRes(12)
+	Print "Offset of chip from rotational axis wrt U = 0 " ' HAND_U0"
+	Print "Offsets measured from a rotation of ", Rotation1
+	Print "Offset in x axis : ", UFChipRes(10)
+	Print "Offset in y axis : ", UFChipRes(11)
+	Print "Offset in u1   	: ", UF_DEL_U1
+	Print "Offset in u2   	: ", UF_DEL_U2
+	Print "Offset in u   	: ", UFChipRes(12)
 
-
-' Correction requires rotation based on U offset
-' U offset here is about chip center, need to also rotate around J3 changing x and y offsets
-
-	UFChipRes(10) = Cos(DegToRad(UFChipRes(12))) * UFChipRes(10) - Sin(DegToRad(UFChipRes(12))) * UFChipRes(11)
-	UFChipRes(11) = Sin(DegToRad(UFChipRes(12))) * UFChipRes(10) + Cos(DegToRad(UFChipRes(12))) * UFChipRes(11)
-	If (Abs(UFChipRes(10)) > 10) Or (Abs(UFChipRes(11)) > 10) Then
-		Print "ERROR CORRECTION IS MORE THAN 10 mm"
+' Correction requires rotation based on U offset - This is when target U and chip rotation were provided
+' This should now be done outside of this function
+' Store DelX_1, DelY_1 and DelU_1
+' Then for correction
+' Phi = DelU_1 - DelU_2
+' Del_X2_Phi = DelX_2 * Cos(Phi) - DelY_2 * Sin(Phi)
+' Del_Y2_Phi = DelX_2 * Sin(Phi) + DelY_2 * Cos(Phi)
+' Correction at U=HAND_U0
+' CorrX_0 = Del_X1 - Del_X2_Phi
+' CorrY_0 = Del_Y1 - Del_Y2_Phi
+' These corrections should already take into account that you will rotate by phi but at HAND_U0, so
+' So to get to correction at socket 
+' CorrX_US = CorrX_0 * Cos(US - HAND_U0) - CorrY_0 * Sin(US - HAND_U0)
+' CorrX_US = CorrX_0 * Cos(US - HAND_U0) - CorrY_0 * Sin(US - HAND_U0)
+' CorrU = Phi
+' So go to socket
+' Correct for socket alignment wrt defined point
+' Use measured socket U to calculate corrections
+' Go Here +U(CorrU) +X(CorrX_US) +Y(CorrY_US)
+'	
+	' Do the pin analysis 
+	UFRecenter(ByRef UFChipRes())
+	' Commented out for testing (my test chip has a bent pin!)
+'	UFChipRes(13) = UFPinAnalysis(id$, ByRef idx(), ByRef Images$())
+	
+	If UFChipRes(13) <> 0 Then
+		Print "Pin analysis failed"
+		UFGetChipAlignment = False
 		Exit Function
 	EndIf
-	
-	Print "Corrections:"
-	Print " Delta X : ", UFChipRes(10)
-	Print " Delta Y : ", UFChipRes(11)
-	Print " Delta U : ", UFChipRes(12)
-	
 	UFGetChipAlignment = True
     SetSpeedSetting("MoveWithChip")
 	
 Fend
+
+
+' Takes measured alignments to U = 0 (Old wrt HAND_U0) and a target U and calculates corrections
+' C1 -> C2
+Function ChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C2X As Double, C2Y As Double, C2U As Double, TargetHandU As Double, ByRef Corr() As Double) As Int32
+	
+	' Note, the offsets calculated by UFGetChipAlignment were PREVIOUSLY (Before 2025-09-04) ChipPosition -> RotationalAxis
+	' Now UFGetChipAlignmemt returns offset of chip from axis which can be subtracted to get the correction for an individual measurement
+	' This function takes two sets of offsets and uses them to go from C1->C2, where the offsets are	
+	' measured as C1 - Axis, not the other way around
+	
+	ChipToChipCorrections = -1
+	Print "Calculating chip-to-chip correction from offset measurements (going from first measurement args to second)"
+	Print "Targeting hand U of :", TargetHandU
+	Corr(3) = C2U - C1U ' Corr(3) = DiffAnglePM180(C1U, C2U) ' Not sure this is working
+	Print "Moving C1 to C2' by rotating by ", Corr(3)
+	
+
+	
+	' Rotate C1 corrections by phi around axis of rotation
+	' Then get difference to C2 wrt axis
+	Corr(1) = C2X - (C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3))))
+	Corr(2) = C2Y - (C1X * Sin(DegToRad(Corr(3))) + C1Y * Cos(DegToRad(Corr(3))))
+	
+	' Now rotate corrections wrt axis to the target U value
+'	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU - HAND_U0)) - Corr(2) * Sin(DegToRad(TargetHandU - HAND_U0))
+'	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU - HAND_U0)) + Corr(2) * Cos(DegToRad(TargetHandU - HAND_U0))
+'	
+	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU)) - Corr(2) * Sin(DegToRad(TargetHandU))
+	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU)) + Corr(2) * Cos(DegToRad(TargetHandU))
+	
+	Print "Offset X1 :", C1X
+	Print "Offset X1':", ((C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3)))))
+	Print "Offset X2 :", C2X
+	Print "Correction:", Corr(1)
+	
+	Print "Offset Y1 :", C1Y
+	Print "Offset Y1':", ((C1X * Sin(DegToRad(Corr(3))) + C1Y * Cos(DegToRad(Corr(3)))))
+	Print "Offset Y2 :", C2Y
+	Print "Correction:", Corr(2)
+	
+	Print "Offset U1 :", C1U
+	Print "Offset U2 :", C2U
+	Print "Correction:", Corr(3)
+	
+	ChipToChipCorrections = 0
+Fend
+
 
 ''''' FNAL FUNCTIONS ''''''
 

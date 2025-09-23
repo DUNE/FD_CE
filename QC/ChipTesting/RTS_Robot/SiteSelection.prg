@@ -14,6 +14,9 @@ Function SelectSite
 '	Print TheSiteFile$
 	Print "Using site file ", SITE_FILE
 
+	' Set up directions of chips and sockets
+	DefineDirections
+
 	If Not FileExists(SITE_FILE) Then
 		Print "Need to provide full path to site.csv location"
 	EndIf
@@ -48,8 +51,10 @@ Function SelectSite
 	EndIf
 	
 	'JW This probably doesn't need to cause it to crash, maybe create the directory with mkdir?
+	
+'	Print "Looking for RTS_DATA$ file at ", RTS_DATA$
 '	If Not FolderExists(RTS_DATA$) Then
-'		Print "WARNING: RTS_DATA$ does not exist, creating it at"
+'		Print "WARNING: RTS_DATA$ does not exist, should be at creating it at"
 '		Print RTS_DATA$
 '		MkDir RTS_DATA$
 '	EndIf
@@ -75,18 +80,22 @@ Function SelectSite
 	' TODO Maybe move the pallet definition here since this is called at the start of main.
 	Select CHIPTYPE$
 		Case "LArASIC"
+			CHIPTYPE_NR = 1
 			trayNCols = TRAY_NCOLS_S
 			trayNRows = TRAY_NROWS_S
 			nSoc = N_LARASIC_SOC
 		Case "ColdADC"
+			CHIPTYPE_NR = 2
 			trayNCols = TRAY_NCOLS_S
 			trayNRows = TRAY_NROWS_S
 			nSoc = N_ColdADC_SOC
 		Case "COLDATA"
+			CHIPTYPE_NR = 3
 			trayNCols = TRAY_NCOLS_L
 			trayNRows = TRAY_NROWS_L
 			nSoc = N_COLDATA_SOC
 		Case "MSUTEST"
+			CHIPTYPE_NR = 1
 			trayNCols = TRAY_NCOLS_S
 			trayNRows = TRAY_NROWS_S
 			nSoc = NSOCKETS
@@ -97,7 +106,7 @@ Function SelectSite
 
 Fend
 
-Function SetSiteValues()
+Function SetSiteValues
 	OnErr GoTo eHandler
 	' Function to create and write values of camera offsets and chip type etc to file
 	' Requires Points PScrewDFLeft and PScrewDFRight to be defined in site points file
@@ -179,4 +188,25 @@ Function SetSiteValues()
 	EndIf
 Fend
 
+Function DefineDirections As Int32
+	DefineDirections = 0
+	
+		' Points relative to world coordinates, i.e. from x-axis anticlockwise when looking down
+	TrayOrientation = -90
+	
+	' WRT taught CU(tray point)
+	TrayChipOrientation(1) = TrayOrientation ' Tray point is at ~U=0, no need to adjust
+	TrayChipOrientation(2) = TrayOrientation + 180 ' Tray point is at ~U=180, adjust so relative to arm U orientation at point
+	
+	' WRT taught CU(socket point), L DAT points taught with U~180,0,0 and R DAT U~0,180,180 for LArASIC, ColdADC and COLDATA
+	SocketMezzanineOrientation(1) = 0	' LArASIC
+	SocketMezzanineOrientation(2) = 0	' ColdADC
+	SocketMezzanineOrientation(3) = 0	' COLDATA
+	
+	' WRT mezzanine direction
+	SocketChipOrientation(1) = -90 ' LArASIC
+	SocketChipOrientation(2) = -90 ' ColdADC
+	SocketChipOrientation(3) = -90 ' COLDATA
+
+Fend
 

@@ -41,39 +41,130 @@ Function main
 '	Jump P_Home
 '	Motor Off
 '	PumpOff
-	
-	' This can probably go in an include
-	TrayChipOrientation(1) = 0 ' Left Tray
-	TrayChipOrientation(2) = 0 ' Right Tray
 
-	SocketChipOrientation(1) = -90 ' LArASIC
-	SocketChipOrientation(2) = -90 ' ColdADC
-	SocketChipOrientation(3) = -90 ' COLDATA
+'Moved this to site selection so it always gets called
+'	' Points relative to world coordinates, i.e. from x-axis anticlockwise when looking down
+'	TrayOrientation = -90
+'	
+'	' WRT taught CU(tray point)
+'	TrayChipOrientation(1) = TrayOrientation ' Tray point is at ~U=0, no need to adjust
+'	TrayChipOrientation(2) = TrayOrientation + 180 ' Tray point is at ~U=180, adjust so relative to arm U orientation at point
+'	
+'	' WRT taught CU(socket point), L DAT points taught with U~180,0,0 and R DAT U~0,180,180 for LArASIC, ColdADC and COLDATA
+'	SocketMezzanineOrientation(1) = 0	' LArASIC
+'	SocketMezzanineOrientation(2) = 0	' ColdADC
+'	SocketMezzanineOrientation(3) = 0	' COLDATA
+'	
+'	' WRT mezzanine direction
+'	SocketChipOrientation(1) = -90 ' LArASIC
+'	SocketChipOrientation(2) = -90 ' ColdADC
+'	SocketChipOrientation(3) = -90 ' COLDATA
+
+'	Do45DegreeOffset = True
+	PickOffset = 0. ' 45.
+
+'	PumpOn
+'	On 12
+'	Print FindChipDirectionWithDF
+'	Print "Found chip position and orientation is "
+'	Print "(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+'	Print FindSocketDirectionWithDF
+'	Print "Found socket position and orientation is "
+'	Print "(", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
+'	
+	 'DAT, socket, source tray, col row, target tray col row
+'	MoveChip(1, 8, 2, 1, 6, 0, 0, 0)
+'	JumpToCamera
+'	Wait 10
+'	MoveChip(1, 8, 2, 1, 6, 2, 2, 6)
+'	Wait 10
+'	MoveChip(1, 8, 0, 0, 0, 2, 2, 6)
+'	Print ""
+
+'	If (TrayPositionOccupied(2, 1, 5) = 1) Then
+'		Print "  Tray 2, 1, 6 is occupied"
+'	ElseIf (TrayPositionOccupied(2, 1, 6) = -2) Then
+'		Print "  Tray 2, 1, 6, Could not visually find chip but is obstructed "
+'	Else
+'		Print "  Tray 2, 1, 6 is empty"
+'	EndIf
+	
+	' Source Tray, Target Tray, Souce Socket, Target Socket
+'
+'	' Tray to socket only (2,1,6) ->(1,8)
+'	MoveChip(2, 1, 6, 0, 0, 0, 0, 0, 1, 8)
+'
+	' Swap chips in same socket (1,8)->(2,1,6); (2,1,5)->(1,8)
+'	MoveChip(2, 1, 5, 2, 1, 6, 1, 8, 1, 8)
+'
+'	' Tray to tray (2,1,6)->(2,1,5)
+	Motor On
+	PumpOn
+''	AltMoveChip(2, 1, 6, 2, 2, 6, 0, 0, 0, 0)
+''	AltMoveChip(0, 0, 0, 2, 1, 6, 1, 8, 0, 0)
+'	' 216(A)->18
+'	Print "Moving chip 2,1,6 to socket 1,8 (Tray to socket: Chip A to socket)"
+'	MoveChip(2, 1, 6, 0, 0, 0, 0, 0, 1, 8)
+'	Print ""
+'	Wait 5
+'	' 226(B)->216
+'	Print "Moving chip 2,2,6 to 2,1,6 (Tray to tray: Chip B)"
+'	MoveChip(2, 2, 6, 2, 1, 6, 0, 0, 0, 0)
+'	Wait 5
+	' 18->226(A), 216(B)->18
+'	Print "Swapping chip 2,2,6 for 2,1,6 in socket 18 (Chip A to tray, Chip B to socket)"
+'	MoveChip(2, 1, 6, 2, 2, 6, 1, 8, 1, 8, True, False)
+	MSUTESTBOARD = True
+'	MoveChip(2, 1, 6, 2, 1, 5, 0, 0, 0, 0, True, True)
+'	MoveChip(2, 1, 5, 0, 0, 0, 0, 0, 1, 8, True, True)
+'	MoveChip(0, 0, 0, 2, 1, 6, 1, 8, 0, 0, True, True)
+	MoveChip(2, 1, 6, 0, 0, 0, 0, 0, 1, 8, True, True)
+	Wait 10
+	MoveChip(2, 1, 5, 2, 1, 6, 1, 8, 1, 8, True, True)
+	Wait 10
+	MoveChip(0, 0, 0, 2, 1, 5, 1, 8, 0, 0, True, True)
+	
+'	Wait 5
+'	' 226(A)->216(A)
+'	Print "Moving chip 2,2,6 to 2,1,6 (Tray to tray: Chip A)"
+'	MoveChip(2, 2, 6, 2, 1, 6, 0, 0, 0, 0)
+'	Wait 5
+'	' 18 -> 2,2,6(B)
+'	Print "Moving chip 1,8 to 2,2,6 (Socket to tray: Chip B)"
+'	MoveChip(0, 0, 0, 2, 2, 6, 1, 8, 0, 0)
+'	JumpToCamera
 
 
-	On 12
-	Print FindChipDirectionWithDF
-	Print "Found chip position and orientation is "
-	Print "(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
-	Print FindSocketDirectionWithDF
-	Print "Found socket position and orientation is "
-	Print "(", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
+	PumpOff
 	
+'
+'	' Socket to tray only (1,8) -> (2,1, 6)
+'	MoveChip(0, 0, 0, 2, 1, 6, 1, 8, 0, 0)
+'	
+'	' Socket to socket	(1,8) -> (1,1)
+'	MoveChip(0, 0, 0, 0, 0, 0, 1, 8, 1, 1)
+'		
+'	
+''	 Tray to tray
+'	Print "Moving chip from 2, 1, 6 to 2, 1, 5"
+'	MoveChip(2, 1, 6, 2, 1, 6, 0, 0, 0, 0)
+'	 'and back again
+'	MoveChip(2, 1, 5, 2, 1, 6, 0, 0, 0, 0)
+'
+'	PumpOff
+'	Print " Next should swap chips"
+'	' Swap chips (226 replaces 216 in socket 18
+'	MoveChip(2, 2, 6, 2, 1, 6, 1, 8, 1, 8)
+'	Print ""
+'
+'	' DAT to tray only (put 226 back)
+'	MoveChip(0, 0, 0, 2, 2, 6, 1, 8, 0, 0)
+'	Print " Following should be invalid"
+''	 These should be invalid
+'	MoveChip(0, 0, 0, 15, 1, 2, 14, 1)
+'	MoveChip(0, 0, 2, 15, 1, 0, 14, 1)
+'	MoveChip(0, 0, 0, 15, 1, 0, 14, 1)
 	
-'	Print "TRAY TO TRAY MOVEMENT 1"
-'	RunMoveChipTrayToTray(2, 15, 1, 2, 15, 3, GetBoundAnglePM180(CU(Pallet(2, 15, 3)) + 0))
-'	Wait 2
-'
-'	Print "TRAY TO TRAY MOVEMENT 2"
-'	RunMoveChipTrayToTray(2, 15, 3, 2, 15, 1, GetBoundAnglePM180(CU(Pallet(2, 15, 1)) + 90))
-'	Wait 2
-'
-'	Print "TRAY TO TRAY MOVEMENT 3"
-'	RunMoveChipTrayToTray(2, 15, 1, 2, 15, 1, GetBoundAnglePM180(CU(Pallet(2, 15, 1)) + 180))
-'	Wait 2
-'
-'	Print "TRAY TO TRAY MOVEMENT 4"
-'	RunMoveChipTrayToTray(2, 15, 1, 2, 15, 1, GetBoundAnglePM180(CU(Pallet(2, 15, 1)) + 0))
 
 '	RunMoveChipTrayToSocket(2, 15, 1, 1, 8)
 '	JumpToCamera
@@ -85,9 +176,6 @@ Function main
 	
 Fend
 
-
-
-
 Function TrayTakePlaceRepeat(pallet_nr As Integer, col_nr As Integer, row_nr As Integer, ncycles As Integer)
 
 	SetSpeed
@@ -98,7 +186,7 @@ Function TrayTakePlaceRepeat(pallet_nr As Integer, col_nr As Integer, row_nr As 
 		Print "Cycle ", i, "/", ncycles
 		
 		Int64 status
-		status = MoveChipFromTrayToTray(pallet_nr, col_nr, row_nr, pallet_nr, col_nr, row_nr, 0)
+		status = MoveChipFromTrayToTray(pallet_nr, col_nr, row_nr, pallet_nr, col_nr, row_nr) ' , 0)
 		If status < 0 Then
 			Print "***ERROR!"
 			Exit For
@@ -368,6 +456,4 @@ Function TakePlaceRepeat(pallet_nr As Integer, col_nr As Integer, row_nr As Inte
 	Next i
 
 Fend
-
-
 
