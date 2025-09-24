@@ -43,7 +43,7 @@ def encode_image(image):
             new_h = max_size
             new_w = int(w * max_size / h)
         image = image.resize((new_w, new_h), resample=Image.BICUBIC)
-
+        
     # Convert image to base64
     buffered = io.BytesIO()
     image.save(buffered, format="PNG")
@@ -114,7 +114,7 @@ def perform_ocr_minicpm(image_path):
 
     # Set up:
     data = {
-        "model": "aiden_lu/minicpm-v2.6:Q4_K_M",
+        "model": "aiden_lu/minicpm-v2.6:Q4_K_M", #"gemma3:4b",
         "prompt": "Please OCR this image with all output texts in one line with no space",
         "images": [encoded_image],
         "sampling": False,
@@ -134,9 +134,9 @@ def perform_ocr_minicpm(image_path):
             "num_predict": 42,
         },
     }
-
+  
     # Send the request to MiniCPM API
-    response = requests.post(url, headers=headers, data=json.dumps(data))
+    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
 
     # Process the response
     if response.status_code == 200:
@@ -151,6 +151,12 @@ def perform_ocr_minicpm(image_path):
             print(f"Error parsing JSON: {e}")
             print("Error: Unable to process OCR")
             return
+        except requests.exceptions.Timeout:
+            print('The request timed out')
+        except requests.exceptions.RequestException as e:
+            print(e)
+        except Exception as e:
+            print(e)
     else:
         print(f"Error {response.status_code}: {response.text}")
         print("Error: API request failed")
@@ -317,7 +323,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     if temp_image_path:
         # Perform OCR using MiniCPM
         ocr_result = perform_ocr_minicpm(temp_image_path)
-
+        print(f"OCR: {ocr_result}")
         if ocr_result:
             serial_number, wafer_id, warnings = validate_COLDATA_OCR(ocr_result, image_number)
             [print(w) for w in warnings]
