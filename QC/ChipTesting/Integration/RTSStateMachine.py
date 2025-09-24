@@ -8,7 +8,6 @@ real hardware modes.
 Classes:
     RTSStateMachine: Main state machine for chip testing automation
 """
-
 from statemachine import StateMachine, State
 from ChipTesting.Integration.FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
 from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
@@ -339,6 +338,13 @@ class RTSStateMachine(StateMachine):
     def on_enter_writing_to_hwdb(self):
         print("Writing test results to HWDB")
         self.last_normal_state = self.current_state
+
+        if self.simulation_mode:
+            print("[SIMULATION] Uploading to HWDB")
+
+        else: 
+            upload_result = subprocess.run(["wsl","bash","-l","-c", """source /mnt/c/Users/RTS/FD_CE/HWDBTools/setup_hwdb.sh && python3 /mnt/c/Users/RTS/FD_CE/HWDBTools/submit_coldata_test.py"""], capture_output=True, text=True, check=True)
+            print(upload_result.stdout)
 
     def on_enter_moving_chip_to_tray(self):
         print("Moving chips to tray")
