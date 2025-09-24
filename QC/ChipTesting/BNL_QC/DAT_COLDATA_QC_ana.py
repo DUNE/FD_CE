@@ -778,10 +778,14 @@ class CD_QC_ANA():
                     pass
                     if chn == chns[-1]:
                         print (Fore.GREEN + "FC_ACT_RST_LARASIC" + "  : PASS")
+                        self.WriteToHWDBLog("FC_ACT_RST_LARASIC", "PASS", fdir, hwdb_file_name="hwdb_CD0.txt")
+                        self.WriteToHWDBLog("FC_ACT_RST_LARASIC", "PASS", fdir, hwdb_file_name="hwdb_CD1.txt")
                 else:
                     #print (chn, peds_p[chn] , pamps_p[chn], peds_a[chn], pamps_a[chn])
                     print(Fore.RED + "FC_ACT_RST_LARASIC" + " : Fail")
                     pass_flg = False
+                    self.WriteToHWDBLog("FC_ACT_RST_LARASIC", "FAIL", fdir, hwdb_file_name="hwdb_CD0.txt")
+                    self.WriteToHWDBLog("FC_ACT_RST_LARASIC", "FAIL", fdir, hwdb_file_name="hwdb_CD1.txt")
                     #break
             if pass_flg:
                 self.qc_stats[onekey] ="PASS"
@@ -894,13 +898,17 @@ class CD_QC_ANA():
                         if not pass_flg:
                             continue #break
     
-                    pass_flg = True # TC: always true for initial range testing
+                    #pass_flg = True # TC: always true for initial range testing
                     if pass_flg:
                         print (Fore.GREEN + onekey + " Pulse Response: PASS")
                         self.qc_stats[onekey] ="PASS"
+                        self.WriteToHWDBLog(onekey + " Pulse Response", "PASS", fdir, hwdb_file_name="hwdb_CD0.txt")
+                        self.WriteToHWDBLog(onekey + " Pulse Response", "PASS", fdir, hwdb_file_name="hwdb_CD1.txt")
                     else:
                         print(Fore.RED + onekey + " Pulse Response: Fail")
                         self.qc_stats[onekey] ="FAIL"
+                        self.WriteToHWDBLog(onekey + " Pulse Response", "FAIL", fdir, hwdb_file_name="hwdb_CD0.txt")
+                        self.WriteToHWDBLog(onekey + " Pulse Response", "FAIL", fdir, hwdb_file_name="hwdb_CD1.txt")
        
                     if True:
                         import matplotlib.pyplot as plt
@@ -961,13 +969,13 @@ class CD_QC_ANA():
                         print (Fore.GREEN + onekey + "  : PASS")
                         self.qc_stats[onekey] ="PASS. Programmed %d, reads out %d"%(val,readout)
                         #print(f"{onekey}", val, self.qc_stats[onekey])
-                        self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
+                        #self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
                         self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_CD0.txt")
                         self.WriteToHWDBLog(f"{onekey}", self.qc_stats[onekey], fdir, hwdb_file_name=f"hwdb_CD1.txt")
                     else:
                         print(Fore.RED + onekey+": Fail")
                         self.qc_stats[onekey] ="FAIL. Programmed %d, reads out %d"%(val,readout)
-                        self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
+                        #self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_{onekey}.txt")
                         self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_CD0.txt")
                         self.WriteToHWDBLog(f"{onekey}", 'Failed to get SN', fdir, hwdb_file_name=f"hwdb_CD1.txt")
             
