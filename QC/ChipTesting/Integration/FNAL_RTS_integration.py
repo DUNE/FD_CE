@@ -10,7 +10,6 @@ import time
 import random
 import pickle
 import multiprocessing as mp
-import pandas as pd
 import csv
 
 # To send notification email
@@ -60,7 +59,7 @@ config_file = 'asic_info.csv'
 email_progress = False
 email = "rtsfnal@gmail.com"
 receiver_email = "tcontrer@fnal.gov"
-pw = "vxbg kdff byla bcvs" # FNAL PC specific password
+pw = "cugo vkfz vhkn egkb" # FNAL PC specific password
 
 image_directory = "/Users/RTS/RTS_data/images/"
 ocr_results_dir = "/Users/RTS/DUNE-rts-sn-rec/Tested/fnal_cpm_results/"
