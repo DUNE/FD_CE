@@ -884,9 +884,14 @@ class CD_QC_ANA():
                     if pass_flg:
                         print (Fore.GREEN + onekey + " Power Consumption: PASS")
                         self.qc_stats[onekey] ="PASS"
+                        self.WriteToHWDBLog(onekey + " Power Consumption", "PASS", fdir, hwdb_file_name="hwdb_CD0.txt")
+                        self.WriteToHWDBLog(onekey + " Power Consumption", "PASS", fdir, hwdb_file_name="hwdb_CD1.txt")
                     else:
                         print(Fore.RED + onekey + " Power Consumption: Fail")
                         self.qc_stats[onekey] ="FAIL"
+                        self.WriteToHWDBLog(onekey + " Power Consumption", "FAIL", fdir, hwdb_file_name="hwdb_CD0.txt")
+                        self.WriteToHWDBLog(onekey + " Power Consumption", "FAIL", fdir, hwdb_file_name="hwdb_CD1.txt")
+  
 
                     chns, rmss, peds, pkps, pkns, wfs, wfsf = self.data_ana(fembs, rawdata)
 
