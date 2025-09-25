@@ -84,7 +84,7 @@ def SubmitCOLDATAtest():
         "PLL Lock Range (Upper Bound)"
     ]
     
-    getnames = os.popen("ls -d /mnt/c/Users/RTS/Tested/*/*")
+    getnames = os.popen("ls -d /mnt/c/Users/ppd-cap-WD-137552/Tested/*/*")
     filenames = getnames.readlines()
     #print(filenames)
     
