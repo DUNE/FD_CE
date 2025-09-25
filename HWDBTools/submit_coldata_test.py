@@ -56,15 +56,24 @@ def SubmitCOLDATAtest():
         "FC_ACT_Pre_EDGE_SYNC",
         "FC_ACT_Post_EDGE_SYNC",
         "FC_ACT_Post_EDGE_SYNC_IDLE",
+        "FC_ACT_RST_LARASIC",
         "Test 6 Time",
-        "ADC_pattern_LVDS_CUR_0",
-        "ADC_pattern_LVDS_CUR_1",
-        "ADC_pattern_LVDS_CUR_2",
-        "ADC_pattern_LVDS_CUR_3",
-        "ADC_pattern_LVDS_CUR_4",
-        "ADC_pattern_LVDS_CUR_5",
-        "ADC_pattern_LVDS_CUR_6",
-        "ADC_pattern_LVDS_CUR_7",
+        "ADC_pattern_LVDS_CUR_0 Pulse Response",
+        "ADC_pattern_LVDS_CUR_1 Pulse Response",
+        "ADC_pattern_LVDS_CUR_2 Pulse Response",
+        "ADC_pattern_LVDS_CUR_3 Pulse Response",
+        "ADC_pattern_LVDS_CUR_4 Pulse Response",
+        "ADC_pattern_LVDS_CUR_5 Pulse Response",
+        "ADC_pattern_LVDS_CUR_6 Pulse Response",
+        "ADC_pattern_LVDS_CUR_7 Pulse Response",
+        "ADC_pattern_LVDS_CUR_0 Power Consumption",
+        "ADC_pattern_LVDS_CUR_1 Power Consumption",
+        "ADC_pattern_LVDS_CUR_2 Power Consumption",
+        "ADC_pattern_LVDS_CUR_3 Power Consumption",
+        "ADC_pattern_LVDS_CUR_4 Power Consumption",
+        "ADC_pattern_LVDS_CUR_5 Power Consumption",
+        "ADC_pattern_LVDS_CUR_6 Power Consumption",
+        "ADC_pattern_LVDS_CUR_7 Power Consumption",
         "Test 7 Time",
         "U1_CD1",
         "U2_CD2",
@@ -89,8 +98,8 @@ def SubmitCOLDATAtest():
     #print(filenames)
     
     for fn in filenames[len(filenames)-1:]:
-        datasheet0 = [[None for _ in range(70)] for _ in range(2)]
-        datasheet1 = [[None for _ in range(70)] for _ in range(2)]
+        datasheet0 = [[None for _ in range(79)] for _ in range(2)]
+        datasheet1 = [[None for _ in range(79)] for _ in range(2)]
 
         for i in range(len(tests)):
             #print(len(tests))
@@ -150,7 +159,7 @@ def SubmitCOLDATAtest():
                         value = test2[1].split(" ")
                         #print(index, value, test2)
                     if index != None and value != None:
-                        if index < 54:
+                        if index < 63:
                             if len(test2) == 3:
                                 datasheet0[1][index] = "\""+test2[2].lstrip(' ')+"\""
                             elif len(test2) == 4:
@@ -159,9 +168,9 @@ def SubmitCOLDATAtest():
                                 datasheet0[1][index] = "\""+value[1]+"\""
     #                    elif index == 6 and datasheet[1][index] == None:
     #                        datasheet[1][index] = str(int(float(value[2])))
-                        elif index > 55:
+                        elif index > 64:
                             datasheet0[1][index] = value[1]
-                        elif index > 53:
+                        elif index > 62:
                             datasheet0[1][index] = "\""+test2[1].lstrip(' ')+"\""
 
             
@@ -185,7 +194,7 @@ def SubmitCOLDATAtest():
                         value = test2[1].split(" ")
                     #print(index, value, test2[0])
                     if index != None and value != None:
-                        if index < 54:
+                        if index < 63:
                             if len(test2) == 3:
                                 datasheet1[1][index] = "\""+test2[2].lstrip(' ')+"\""
                             elif len(test2) == 4:
@@ -194,16 +203,16 @@ def SubmitCOLDATAtest():
                                 datasheet1[1][index] = "\""+value[1]+"\""
     #                    elif index == 6 and datasheet[1][index] == None:
     #                        datasheet[1][index] = str(int(float(value[2])))
-                        elif index > 55:
+                        elif index > 64:
                             datasheet1[1][index] = value[1]
-                        elif index > 53:
+                        elif index > 62:
                             datasheet1[1][index] = "\""+test2[1].lstrip(' ')+"\""                            
                         
             if (testtype == "rt") or (testtype == "RT") :
                 testname = "\"QC Test (RoomT)\""
                 
             #print(testtype, testname)
-            if(datasheet0[1][55] != None):
+            if(datasheet0[1][64] != None):
                 
                 #for test, result in zip(datasheet1[0],datasheet1[1]):
                     #print(test, result)
