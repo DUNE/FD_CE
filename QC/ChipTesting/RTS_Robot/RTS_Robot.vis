@@ -1,4 +1,4 @@
-ENVT0100,LM:2025/09/23 21:11:26:397,DS:0000320644,CS:19219,MA:00-15-5D-3C-AE-E5,EI:           
+ENVT0100,LM:2025/09/25 19:17:14:323,DS:0000320648,CS:20511,MA:00-15-5D-3C-AE-E5,EI:           
 sRCVersion="7.5.3"
 sGUID="f965e132-c841-42ba-bafd-fbf5d79f2655"
 nCameraNumber=1
@@ -2894,7 +2894,7 @@ Sequence9 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1340
-		nSearchWinPolygonPointYRot=383
+		nSearchWinPolygonPointYRot=443
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -4753,7 +4753,7 @@ Sequence15 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1271
-		nSearchWinPolygonPointYRot=660
+		nSearchWinPolygonPointYRot=720
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -4835,7 +4835,7 @@ Sequence15 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1264
-		nSearchWinPolygonPointYRot=1069
+		nSearchWinPolygonPointYRot=1129
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -4917,7 +4917,7 @@ Sequence15 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1072
-		nSearchWinPolygonPointYRot=702
+		nSearchWinPolygonPointYRot=762
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -7039,7 +7039,7 @@ Sequence20 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1282
-		nSearchWinPolygonPointYRot=682
+		nSearchWinPolygonPointYRot=742
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -7169,10 +7169,10 @@ Sequence21 {
 	nCalibration=0
 	nCamera=2
 	nCameraBrightness=0
-	nCameraContrast=0
+	nCameraContrast=100
 	sDescription=""
 	nExposureDelay=0
-	nExposureTime=30000
+	nExposureTime=50000
 	sGridColor="DarkGray"
 	rGridPitchX=100
 	rGridPitchY=100
@@ -7311,7 +7311,7 @@ Sequence21 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1292
-		nSearchWinPolygonPointYRot=562
+		nSearchWinPolygonPointYRot=622
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -7536,11 +7536,11 @@ Sequence22 {
 	bAsyncMode=True
 	nCalibration=0
 	nCamera=2
-	nCameraBrightness=0
-	nCameraContrast=0
+	nCameraBrightness=50
+	nCameraContrast=100
 	sDescription=""
 	nExposureDelay=0
-	nExposureTime=30000
+	nExposureTime=50000
 	sGridColor="DarkGray"
 	rGridPitchX=100
 	rGridPitchY=100
@@ -7801,7 +7801,7 @@ Sequence22 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1277
-		nSearchWinPolygonPointYRot=562
+		nSearchWinPolygonPointYRot=622
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -8315,10 +8315,10 @@ Sequence25 {
 	nCalibration=6
 	nCamera=2
 	nCameraBrightness=10
-	nCameraContrast=200
+	nCameraContrast=150
 	sDescription=""
 	nExposureDelay=0
-	nExposureTime=40000
+	nExposureTime=30000
 	sGridColor="DarkGray"
 	rGridPitchX=100
 	rGridPitchY=100
@@ -8382,11 +8382,11 @@ Sequence25 {
 		rModelOrgYD=184.5
 		nModelOrgX=189
 		nModelOrgY=185
-		nModelWinCenterX=1281
-		nModelWinCenterY=954
+		nModelWinCenterX=1293
+		nModelWinCenterY=962
 		nModelWinHeight=369
-		nModelWinLeft=1092
-		nModelWinTop=769
+		nModelWinLeft=1104
+		nModelWinTop=777
 		nModelWinType=1
 		nModelWinWidth=378
 		sName="Corr01"
@@ -8475,11 +8475,11 @@ Sequence25 {
 		rModelOrgYD=34
 		nModelOrgX=34
 		nModelOrgY=34
-		nModelWinCenterX=1409
-		nModelWinCenterY=1084
+		nModelWinCenterX=1423
+		nModelWinCenterY=1090
 		nModelWinHeight=68
-		nModelWinLeft=1375
-		nModelWinTop=1050
+		nModelWinLeft=1389
+		nModelWinTop=1056
 		nModelWinType=3
 		nModelWinWidth=68
 		sName="Geom01"
@@ -8515,7 +8515,7 @@ Sequence25 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1297
-		nSearchWinPolygonPointYRot=644
+		nSearchWinPolygonPointYRot=704
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -8621,7 +8621,7 @@ Sequence25 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1289
-		nSearchWinPolygonPointYRot=662
+		nSearchWinPolygonPointYRot=722
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -8801,7 +8801,7 @@ Sequence26 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1279
-		nSearchWinPolygonPointYRot=-80
+		nSearchWinPolygonPointYRot=-20
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -9862,7 +9862,7 @@ Sequence29 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1299
-		nSearchWinPolygonPointYRot=420
+		nSearchWinPolygonPointYRot=480
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -9945,7 +9945,7 @@ Sequence29 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1279
-		nSearchWinPolygonPointYRot=670
+		nSearchWinPolygonPointYRot=730
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -10028,7 +10028,7 @@ Sequence29 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1480
-		nSearchWinPolygonPointYRot=712
+		nSearchWinPolygonPointYRot=772
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -10111,7 +10111,7 @@ Sequence29 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1279
-		nSearchWinPolygonPointYRot=1070
+		nSearchWinPolygonPointYRot=1130
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -10194,7 +10194,7 @@ Sequence29 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1080
-		nSearchWinPolygonPointYRot=712
+		nSearchWinPolygonPointYRot=772
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -10803,7 +10803,7 @@ Sequence32 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1270
-		nSearchWinPolygonPointYRot=-17
+		nSearchWinPolygonPointYRot=43
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13114,7 +13114,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1794
-		nSearchWinPolygonPointYRot=466
+		nSearchWinPolygonPointYRot=526
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13220,7 +13220,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1802
-		nSearchWinPolygonPointYRot=1153
+		nSearchWinPolygonPointYRot=1213
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13326,7 +13326,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=764
-		nSearchWinPolygonPointYRot=1175
+		nSearchWinPolygonPointYRot=1235
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13432,7 +13432,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=779
-		nSearchWinPolygonPointYRot=458
+		nSearchWinPolygonPointYRot=518
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13538,7 +13538,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1782
-		nSearchWinPolygonPointYRot=279
+		nSearchWinPolygonPointYRot=339
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13644,7 +13644,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1796
-		nSearchWinPolygonPointYRot=1246
+		nSearchWinPolygonPointYRot=1306
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13750,7 +13750,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=791
-		nSearchWinPolygonPointYRot=1270
+		nSearchWinPolygonPointYRot=1330
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13856,7 +13856,7 @@ Sequence39 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=789
-		nSearchWinPolygonPointYRot=274
+		nSearchWinPolygonPointYRot=334
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0

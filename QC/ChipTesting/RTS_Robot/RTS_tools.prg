@@ -339,9 +339,9 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
 		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
@@ -543,8 +543,11 @@ Function JumpToSocket_camera(DAT_nr As Integer, socket_nr As Integer)
 	If Dist(Here, XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU)) < 0.1 Then
 		Exit Function
 	EndIf
-	
-	Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) LimZ JUMP_LIMIT
+	If DAT_nr = 1 Then
+		Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /R LimZ JUMP_LIMIT
+	Else
+		Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /L LimZ JUMP_LIMIT
+	EndIf
 Fend
 
 Function UF_take_picture$(basename$ As String) As String
@@ -1361,9 +1364,6 @@ Fend
 '''' MSU WRITTEN FUNCTIONS ''''
 '''' Move chip to and from tray/socket functions
 ' Should broadly match old BNL functions
-
-
-
 
 Function SwapChipsInSocket(DAT As Integer, Socket As Integer, SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
 	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, DAT, Socket, DAT, Socket, True, False)
