@@ -16,14 +16,15 @@ Function main
   		Exit Function
 	EndIf
 	
-'	LoadPositionFiles
-'		
-'	VacuumValveClose
-'	PumpOn
-'	Wait 3
-'
-'	Motor On
-'	Power Low
+
+	LoadPositionFiles
+		
+	VacuumValveClose
+	PumpOn
+	Wait 3
+
+	Motor On
+	' Power Low
 
 	SetSpeed
 	
@@ -33,11 +34,21 @@ Function main
 	' right tray
 	Pallet 2, Tray_Right_P1, Tray_Right_P2, Tray_Right_P3, Tray_Right_P4, trayNCols, trayNRows
 
-'	MoveChipFromTrayToSocket(2, 21, 2, 1, 3)
+	' DAT number, socket number, tray, column, row
+	
+'	MoveChipFromTrayToSocket(2, 22, 1, 1, 2)
+	'MoveChipFromTrayToSocket(2, 22, 2, 1, 3)
 
+'	MoveChipFromSocketToTray(2, 22, 1, 1, 2)
+	'MoveChipFromSocketToTray(2, 22, 2, 2, 3)
+	 
+	'MoveChipFromTrayToSocket(2, 21, 2, 9, 3)
+	'MoveChipFromTrayToSocket(2, 22, 2, 6, 2)
+	
 
 	UpdatePositionFiles
 	
+
 '	Jump P_Home
 '	Motor Off
 '	PumpOff
@@ -172,6 +183,10 @@ Function main
 '	RunMoveChipSocketToTray(1, 8, 2, 15, 1)
 '	PumpOff
 '	Off 12
+
+	Jump P_Home
+	Motor Off
+	PumpOff
 
 	
 Fend

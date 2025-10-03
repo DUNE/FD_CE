@@ -62,8 +62,8 @@ Function SetSpeed
 	Power Low
 	Speed 100
 	Accel 10, 10
-	Speed 1
-	Accel 1, 1
+	Speed 25
+	Accel 2, 2
 Fend
 
 Function SetSpeedSetting(Setting$ As String)
@@ -73,9 +73,11 @@ Function SetSpeedSetting(Setting$ As String)
 	Speed 1
 	Accel 1, 1
 	
-	' Currently keeping non MSU speeds low until enclosures are shipped/higher speeds are allowed by safety
+	' Currently keeping non MSU or FNAL speeds low until enclosures are shipped/higher speeds are allowed by safety
 	If SITE$ <> "MSU" Then
-		Exit Function
+		If SITE$ <> "FNAL" Then
+			Exit Function
+		EndIf
 	EndIf
 	
 	Select Setting$
@@ -92,8 +94,8 @@ Function SetSpeedSetting(Setting$ As String)
 			Speed 1
 			Accel 1, 1
 		Default
-			Speed 1
-			Accel 1, 1
+			Speed 25
+			Accel 2, 2
 	Send
 
 Fend
@@ -118,7 +120,7 @@ Fend
 ' Jump to camera
 ' Preserve U rotation
 Function JumpToCamera
-	
+	LoadPoints POINTS_FILE$
 	If Agl(2) < 0 Then
 		' Left-handed orientation
     	Jump P_camera :U(CU(Here)) /L LimZ JUMP_LIMIT
@@ -143,23 +145,18 @@ Function JumpToTray_camera(pallet_nr As Integer, col_nr As Integer, row_nr As In
 	
 	If ChipType$ = "COLDATA" Then
 		If pallet_nr = 1 Then
-			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) LimZ JUMP_LIMIT
-
+			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) LimZ JUMP_LIMIT
 		ElseIf pallet_nr = 2 Then
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) LimZ JUMP_LIMIT
-
 		EndIf
 
 	Else
 		If pallet_nr = 1 Then
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) LimZ JUMP_LIMIT
-
 		ElseIf pallet_nr = 2 Then
-		'	Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) LimZ JUMP_LIMIT
-		
+			' TODO JOE CHECK Should this be the same for Pallet 1???
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF) LimZ JUMP_LIMIT '  :U(CU(Pallet(pallet_nr, col_nr, row_nr)))
 		EndIf
-
 	EndIf
 	
 Fend
@@ -196,9 +193,8 @@ Function TouchChip As Byte
     Else
     	TouchChip = 0
 	EndIf
-	
+	SetSpeedSetting("")
 Fend
-
 
 Function isChipInTrayCamera(pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Boolean
 
@@ -228,7 +224,7 @@ Function isChipInTrayTouch(pallet_nr As Integer, col_nr As Integer, row_nr As In
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
 	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
 	isChipInTrayTouch = TouchSuccess
-'	SetSpeedSetting("")
+	SetSpeedSetting("")
 Fend
 
 Function PickupFromTray As Boolean
@@ -285,6 +281,9 @@ Function PlaceInTray As Boolean
 Fend
 
 Function DropToTray As Boolean
+	' Assumes that the starting position is 10mm above the chip tray,
+	' Moves down 5mm and then drops the chip into the tray. Returns
+	' false if the contact sensor touches something, otherwise true.
 	
 	DropToTray = False
     SetSpeedSetting("PickAndPlace")
@@ -305,9 +304,8 @@ Function DropToTray As Boolean
     DropToTray = True
 Fend
 
+
 Function JumpToSocket(DAT_nr As Integer, socket_nr As Integer)
-
-
 	If Dist(Here, P(100 * DAT_nr + socket_nr)) < 0.1 Then
 		Exit Function
 	EndIf
@@ -369,7 +367,6 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 	
 Fend
 
-
 Function isChipInSocketCamera(DAT_nr As Integer, socket_nr As Integer) As Boolean
 	
 	isChipInSocketCamera = False
@@ -394,7 +391,7 @@ Function isChipInSocketTouch(DAT_nr As Integer, socket_nr As Integer) As Boolean
 		JumpToSocket(DAT_nr, socket_nr)
 	EndIf
     SetSpeedSetting("PickAndPlace")
-
+	'Move Here -Z(10) ' To correct for offset TC added to JumpToSocket
 '	Speed 1
 '	Accel 1, 1
 '    Go Here -Z(12) Till Sw(8) = On Or Sw(9) = Off
@@ -403,7 +400,7 @@ Function isChipInSocketTouch(DAT_nr As Integer, socket_nr As Integer) As Boolean
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
 	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
 	isChipInSocketTouch = TouchSuccess
-
+	SetSpeedSetting("")
 Fend
 
 
@@ -466,6 +463,42 @@ Function InsertIntoSocketSoft As Boolean
 	InsertIntoSocketSoft = True
 Fend
 
+Function DropToSocket As Boolean
+	' Assumes you are +10 above the socket defined position and the plunger
+	' can fully open the socket by moving down at most 14mm. This function
+	' checks the pressure, opens the plunger, opens the socket, drops the
+	' chip, then moves back up 10mm.
+	
+	DropToSocket = False
+	
+	' Check the pressure is ok
+	If Not isPressureOk Then
+		Exit Function
+	EndIf
+	
+	' Turn the pluger on to open the socket
+	Wait 1
+	PlungerOn
+    Wait 1
+	
+	Go Here -Z(14) Till Sw(8) = On Or Sw(9) = Off
+	
+	' Close the valve to drop the chip
+	Wait 1
+	VacuumValveClose
+	Wait 1
+	
+    ' Go back up 
+    Go Here +Z(10)
+    
+	' Turn the pluger off
+	Wait 1
+	PlungerOff
+    Wait 1
+	
+Fend
+
+
 
 Function PickupFromSocket As Boolean
 	' This function assumes the stinger is 10mm above the socket position. It
@@ -483,14 +516,12 @@ Function PickupFromSocket As Boolean
 		Exit Function
 	EndIf
 	
-'	PlungerOn
-'	Wait 1
-'	Go Here -Z(10)
+	PlungerOn
+	Wait 1
+	'Go Here -Z(14)
 
 
     SetSpeedSetting("PickAndPlace")
-
-	PlungerOn
 
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
 	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
@@ -520,7 +551,6 @@ Function UF_camera_light_OFF
 	Off 12
 Fend
 
-
 Function JumpToSocket_camera(DAT_nr As Integer, socket_nr As Integer)
 	Integer SockP
 	SockP = DAT_nr * 100 + socket_nr
@@ -543,11 +573,13 @@ Function JumpToSocket_camera(DAT_nr As Integer, socket_nr As Integer)
 	If Dist(Here, XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU)) < 0.1 Then
 		Exit Function
 	EndIf
+
 	If DAT_nr = 1 Then
 		Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /R LimZ JUMP_LIMIT
 	Else
 		Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /L LimZ JUMP_LIMIT
 	EndIf
+
 Fend
 
 Function UF_take_picture$(basename$ As String) As String
@@ -1257,7 +1289,6 @@ Function RTS_suberror(fileNum As Integer, err_msg$ As String, err_code As Int32)
 	Print #fileNum, "***ERROR! ", err_msg$,
 Fend
 
-
 Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	Print
 	Print socket_nr, "**********************************************"
@@ -1366,18 +1397,22 @@ Fend
 ' Should broadly match old BNL functions
 
 Function SwapChipsInSocket(DAT As Integer, Socket As Integer, SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	UpdateRobotLog$("Starting SwapChipsInSocket")
 	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, DAT, Socket, DAT, Socket, True, False)
 Fend
 
 Function MoveChipFromTrayToSocket(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	UpdateRobotLog$("Starting MoveChipFromTrayToSocket")
 	MoveChip(Tray, TrayCol, TrayRow, 0, 0, 0, 0, 0, DAT, Socket, True, False)
 Fend
 
 Function MoveChipFromSocketToTray(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	UpdateRobotLog$("Starting MoveChipFromSocketToTray")
 	MoveChip(0, 0, 0, Tray, TrayCol, TrayRow, DAT, Socket, 0, 0, True, False)
 Fend
 
 Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	UpdateRobotLog$("Starting MoveChipFromTrayToTray")
 	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, 0, 0, 0, 0, True, False)
 Fend
 
@@ -1506,7 +1541,7 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
 		RTS_error(fileNum, "Invalid operation")
 	EndIf
-	
+	UpdateRobotLog$("Operation type determined to be ", Operation$)
 	' Do checks of socket and tray occupancies
 	' Expected intial occupancies
 	'              Socket  |  Source  |  Target
@@ -1682,7 +1717,6 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	
 Fend
 
-
 Function CheckOperationType(ByRef idx() As Integer, ByRef Operation$ As String) As Int32
 	CheckOperationType = 0
 	SubError = 0
@@ -1834,6 +1868,7 @@ Function CheckOperationType(ByRef idx() As Integer, ByRef Operation$ As String) 
 Fend
 
 Function CheckOperationOccupancy(ts$ As String, ByRef idx() As Integer, Operation$ As String, ByRef Image$ As String) As Int32
+	UpdateRobotLog$("Checking initial occupancies")
 	SubError = 0
 	Print "Checking occupancy of tray and socket positions"
 	Int32 Occupancy
@@ -1951,7 +1986,7 @@ Fend
 
 
 Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As String) As Int32
-	
+	UpdateRobotLog$("Running pin analysis")
 	UFPinAnalysis = 0
 	'Integer fileNum
 	'fileNum = idx(1)
@@ -1972,9 +2007,8 @@ Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As
 Fend
 
 
-
 Function LogResults(ts$ As String, ExitCode As Int64, OperationType$ As String, ByRef idx() As Integer, ByRef SourceSocketResults() As Double, ByRef TargetSocketResults() As Double, ByRef UFCameraResults1() As Double, ByRef UFCameraResults2() As Double, ByRef Images$() As String) As Int64
-
+	
 	' Logs information from MoveChip
 	' In order:
 	'  - Time stamp (already in file)
@@ -2026,15 +2060,15 @@ Function LogResults(ts$ As String, ExitCode As Int64, OperationType$ As String, 
 	Next
 Fend
 
-
 Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef SourceTrayImage$ As String) As Int32
+	UpdateRobotLog$("Getting chip from tray "+Str$(idx(2))+" position ("+Str$(idx(3))+","+Str$(idx(4))+")")
 		GetChipFromTray = 0
 '		Print "Getting chip from tray (", idx(2), ",", idx(3), ",", idx(4), ")"
 		SetSpeedSetting("MoveWithoutChip")
 
 		JumpToTray_camera(idx(2), idx(3), idx(4))
 		SourceTrayImage$ = DF_take_picture$(ts$ + "_source_tray")
-
+		UpdateRobotLog$("Picture of chip in tray taken: " +SourceTrayImage$)
 		SetSpeedSetting("PickAndPlace")
 
 		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(2), idx(3), idx(4), ByRef Tray_Results()) Then
@@ -2079,10 +2113,11 @@ Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 			GetChipFromTray = -ERR_TRAY_PICK
 			Exit Function
 		EndIf
-		
+		UpdateRobotLog$("Picked up chip from tray")
 		SetSpeedSetting("MoveWithChip")
 
 		JumpToCamera
+		UpdateRobotLog$("Jumped to camera")
 ' Use UFC to get chip position relative to axis of rotation, will be used below to calculate offsets
 '		' to return to stored DAT_X, DAT_Y, DAT_U values ''SocketChipOrientation(CHIPTYPE_NR), 
 '		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef Camera_Results()) Then
@@ -2096,13 +2131,16 @@ Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 Fend
 
 Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef TargetTrayImage$ As String) As Int32
-		PlaceChipInTray = 0
+	UpdateRobotLog$("Placing chip in tray "+Str$(idx(5))+" position ("+Str$(idx(6))+","+Str$(idx(7))+")")
+	
+	PlaceChipInTray = 0
 		
 		SetSpeedSetting("MoveWithChip")
 
 		Print "Placing chip in tray (", idx(5), ",", idx(6), ",", idx(7), ")"
 		JumpToTray(idx(5), idx(6), idx(7))
-		
+		UpdateRobotLog$("Jumped to tray")
+
 		Go Here :U(TrayOrientation - DeltaDir)
 		
 		Go Here +U(PickOffset)
@@ -2115,16 +2153,19 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 			PlaceChipInTray = -ERR_TRAY_PLACE
 			Exit Function
 		EndIf
-		
+		UpdateRobotLog$("Chip placed in tray, checking alignment")
+
 		JumpToTray_camera(idx(5), idx(6), idx(7))
 		TargetTrayImage$ = DF_take_picture$(ts$ + "_target_tray")
-		
+		UpdateRobotLog$("Picture of chip in tray taken: " +TargetTrayImage$)
+
 		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(5), idx(6), idx(7), ByRef Tray_Results()) Then
 			RTS_suberror(idx(1), "Cannot get source chip alignment", -ERR_V_DF_ALIGN)
 			PlaceChipInTray = -ERR_V_DF_ALIGN
 			Exit Function
 		EndIf
-		
+		UpdateRobotLog$("Chip alignment okay")
+
 		
 		
 		SetSpeedSetting("MoveWithoutChip")
@@ -2132,14 +2173,20 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 Fend
 '
 Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketResults() As Double, ByRef CameraResults() As Double, ByRef DeltaDir As Double, ByRef SourceSocketImage$ As String, ByRef UFCImages$() As String) As Int32
+		UpdateRobotLog$("Getting chip from DAT "+Str$(idx(8))+" socket "+Str$(idx(9)))
+	
 		GetChipFromSocket = 0
 	
 		SetSpeedSetting("MoveWithoutChip")
+		
 
 		Print "Getting chip from socket (", idx(8), ",", idx(9), ")"
 		' Go to socket
 		JumpToSocket_camera(idx(8), idx(9))
+		UpdateRobotLog$("Jumped to socket")
 		SourceSocketImage$ = DF_take_picture$(ts$ + "_source_socket")
+		UpdateRobotLog$("Picture of chip in socket taken: " +SourceSocketImage$)
+
 		SetSpeedSetting("PickAndPlace")
 		
 		' Run visual check of socket and chip positions
@@ -2181,10 +2228,12 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 			GetChipFromSocket = -ERR_SOCK_PICK
 			Exit Function
 		EndIf
+		UpdateRobotLog$("Picked up chip from socket")
 		SetSpeedSetting("MoveWithChip")
 
 		' Go to UF camera
 		JumpToCamera
+		UpdateRobotLog$("Jumped to camera, beginning analysis")
 		' Measure offset of chip from axis of J4 at HAND_u0 
 		' Store in DAT offset arrays
 		SetSpeedSetting("AboveCamera")
@@ -2205,6 +2254,9 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 		DAT_X(idx(8), idx(9)) = CameraResults(10)
 		DAT_Y(idx(8), idx(9)) = CameraResults(11)
 		DAT_U(idx(8), idx(9)) = CameraResults(12)
+		UpdateRobotLog$("Ran chip analysis")
+
+		UpdateRobotLog$("Chip-from-socket offsets measured and stored")
 	
 '		Print "Chip picked up from socket with DeltaDir = ", DeltaDir
 '		GetChipFromSocket = 0
@@ -2213,6 +2265,7 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 Fend
 
 Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySocketResults() As Double, ByRef CameraResults() As Double, ByRef ChipSocketResults() As Double, ByRef TargetSocketImage$ As String, ByRef UFCImages$() As String) As Int32
+		UpdateRobotLog$("Placing chip in DAT "+Str$(idx(10))+" socket "+Str$(idx(11)))
 		PlaceChipInSocket = 0
 		
 		Print "Placing chip in socket (", idx(10), ",", idx(11), ")"
@@ -2220,6 +2273,7 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 
 		' Go to UF camera if not already there
 		JumpToCamera
+		UpdateRobotLog$("Jumped to camera")
 		SetSpeedSetting("AboveCamera")
 
 		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef CameraResults(), ByRef UFCImages$()) Then
@@ -2233,10 +2287,13 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			Exit Function
 		EndIf
 		SetSpeedSetting("MoveWithChip")
+		UpdateRobotLog$("Chip-to-socket offsets measured")
 
 
 		' Go to socket
 		JumpToSocket_camera(idx(10), idx(11))
+		UpdateRobotLog$("Jumped to socket")
+
 		SetSpeedSetting("PickAndPlace")
 
 		If Not DFGetSocketAlignment(ts$, ByRef idx(), idx(10), idx(11), ByRef EmptySocketResults()) Then
@@ -2244,6 +2301,8 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			PlaceChipInSocket = -ERR_V_SOCKETALIGN
 			Exit Function
 		EndIf
+		UpdateRobotLog$("Socket alignment measured")
+
 		JumpToSocket(idx(10), idx(11))
 		Go Here +U(PickOffset)
 '		Print "Socket position and orientation AT:"
@@ -2300,6 +2359,7 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			Print "Retrieving last stored offset of chip"
 			ChipToChipCorrections(CameraResults(10), CameraResults(11), CameraResults(12), DAT_X(idx(10), idx(11)), DAT_Y(idx(10), idx(11)), DAT_U(idx(10), idx(11)), CU(Here), ByRef Corrs())
 		EndIf
+		UpdateRobotLog$("Chip position correction based on current "chip-to-socket" and previous "chip-from-socket" offsets calculated")
 
 		If Abs(Corrs(3)) > 3. Then
 			RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 3 DEGREES", -ERR_BAD_TOLERANCE)
@@ -2329,10 +2389,14 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			PlaceChipInSocket = -ERR_SOCK_PLACE
 			Exit Function
 		EndIf
-'		
+		UpdateRobotLog$("Chip inserted into socket, checking alignment")
+
+
 		' Do alignment check of chip in socket after insertion
 		JumpToSocket_camera(idx(10), idx(11))
 		TargetSocketImage$ = DF_take_picture$(ts$ + "_target_socket")
+		UpdateRobotLog$("Picture of chip in socket taken: " +TargetSocketImage$)
+
 '		Print "Checking alignment"
 		
 		If Not GetChipInSocketAlignment(ts$, ByRef idx(), idx(10), idx(11), ByRef ChipSocketResults()) Then
@@ -2370,6 +2434,8 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			PlaceChipInSocket = -ERR_BAD_ORIENTATION
 			Exit Function
 		EndIf
+		UpdateRobotLog$("Chip alignment in socket O.K.")
+
 		SetSpeedSetting("MoveWithoutChip")
 		PlaceChipInSocket = -1
 Fend
@@ -2557,7 +2623,6 @@ Function YOffset(UValue As Double) As Double
 	YOffset = DF_CAM_X_OFF_U0 * Sin(DegToRad(UValue - HAND_U0)) + DF_CAM_Y_OFF_U0 * Cos(DegToRad(UValue - HAND_U0))
 Fend
 
-
 Function SetupDirectories
 	' Creates the directory RTS_DATA set in RTS_tools.inc if not already made 
 	' And the subdirectories \images and \pins  
@@ -2570,11 +2635,11 @@ Function SetupDirectories
 	If Not FolderExists(RTS_DATA$) Then
   		Print "***ERROR Can't create directory [" + RTS_DATA$ + "]"
   		Exit Function
-  	EndIf
-
+	EndIf
+	
 	' images subdirectory
 	String dir_images$
-	dir_images$ = RTS_DATA$ + "\images"
+	dir_images$ = RTS_DATA$ + "images"
 
 	If Not FolderExists(dir_images$) Then
   		MkDir dir_images$
@@ -2584,10 +2649,10 @@ Function SetupDirectories
   		Print "***ERROR Can't create directory [" + dir_images$ + "]"
   		Exit Function
 	EndIf
-
+	
 	' pins subdirectory
 	String dir_pins$
-	dir_pins$ = RTS_DATA$ + "\pins"
+	dir_pins$ = RTS_DATA$ + "pins"
 
 	If Not FolderExists(dir_pins$) Then
   		MkDir dir_pins$
@@ -2666,6 +2731,8 @@ Function UpdatePositionFiles
 	fileName$ = RTS_DATA$ + "\tray_xyu.csv"
 	WOpen fileName$ As #fileNum
 	
+	Print "Writing to file: ", fileName$
+	
 	' Save the position set in the global arrays to the files
 	Integer i, j, k
 	For i = 1 To NTRAYS
@@ -2681,6 +2748,8 @@ Function UpdatePositionFiles
 	fileNum = FreeFile
 	fileName$ = RTS_DATA$ + "\socket_xyu.csv"
 	WOpen fileName$ As #fileNum
+	
+	Print "Writing to file: ", fileName$
 	
 	' Save the position set in the global arrays to the files
 	For i = 1 To 2
@@ -2747,6 +2816,22 @@ Function LoadPositionFiles
 	Close #fileNum
 Fend
 
+
+Function UpdateRobotLog$(log_msg$ As String) As String
+	'Updates the Robot log file with the given log message
+	
+	' Set the file name for the tray position corrections
+	Integer fileNum
+	String fileName$
+	fileNum = FreeFile
+	fileName$ = RTS_DATA$ + "\RobotLog.txt"
+	AOpen fileName$ As #fileNum
+	
+	Print "Writing to file: ", fileName$
+	
+	Print #fileNum, log_msg$
+	Close #fileNum
+Fend
 
 '''' Chip and socket direction functions ''''
 
@@ -3024,9 +3109,11 @@ Function DFFindLArASIC As Boolean
 	
 	Select SITE$
 		Case "MSU"
+
 			
 			VRun MSU_DF_ChipDir
 			VGet MSU_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
+
 			' Get positions of Large and Small circular markers on chip
 			VGet MSU_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
 			VGet MSU_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
@@ -3560,6 +3647,7 @@ Function DFFindLArASICSocket As Boolean
 	EndIf
 	
 	If isFoundTR Then
+
 		Select SITE$
 			Case "MSU"
 				If MSUTESTBOARD Then
@@ -3568,6 +3656,7 @@ Function DFFindLArASICSocket As Boolean
 					VGet MSU_SocketFind.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
 				EndIf
 		Send
+
 '		Print "TR : x=", xTR, ", y=", yTR		
 	Else
 		xTR = -9999.
@@ -4540,6 +4629,6 @@ Function GetAllTrayCorrections(pallet_nr As Integer)
 			GetTrayCorrection(pallet_nr, i, j)
 		Next j
 	Next i
-
+	
 Fend
 

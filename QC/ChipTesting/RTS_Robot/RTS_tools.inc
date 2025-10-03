@@ -17,7 +17,7 @@ Global Int32 trayNRows
 #define NSOCKETS 22
 Global Int32 nSoc ' Set by chip type for testing
 
-#define CONTACT_DIST 20.0
+#define CONTACT_DIST 10.0
 #define DROP_DIST 2.0
 
 #define JUMP_LIMIT -20.
@@ -76,5 +76,3 @@ Global Double SocketChipOrientation(3) ' Default direction for chips in sockets 
 #define TolAngle 2.
 
 Global Boolean MSUTESTBOARD
-
-
