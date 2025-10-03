@@ -1532,16 +1532,16 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	
 	Integer Op
 	String operation$
-	Operation$ = "Invalid"
+	operation$ = "Invalid"
 	
-	Op = CheckOperationType(ByRef idx(), ByRef Operation$)
+	Op = CheckOperationType(ByRef idx(), ByRef operation$)
 	If Op < 0 Then
 		Print "Invalid operation type"
 		MoveChip = -ERR_BAD_COMMAND
 		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
 		RTS_error(fileNum, "Invalid operation")
 	EndIf
-	UpdateRobotLog$("Operation type determined to be ", Operation$)
+	UpdateRobotLog$("Operation type determined to be " + Operation$)
 	' Do checks of socket and tray occupancies
 	' Expected intial occupancies
 	'              Socket  |  Source  |  Target
@@ -2061,14 +2061,14 @@ Function LogResults(ts$ As String, ExitCode As Int64, OperationType$ As String, 
 Fend
 
 Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef SourceTrayImage$ As String) As Int32
-	UpdateRobotLog$("Getting chip from tray "+Str$(idx(2))+" position ("+Str$(idx(3))+","+Str$(idx(4))+")")
+	UpdateRobotLog$("Getting chip from tray " + Str$(idx(2)) + " position (" + Str$(idx(3)) + "," + Str$(idx(4)) + ")")
 		GetChipFromTray = 0
 '		Print "Getting chip from tray (", idx(2), ",", idx(3), ",", idx(4), ")"
 		SetSpeedSetting("MoveWithoutChip")
 
 		JumpToTray_camera(idx(2), idx(3), idx(4))
 		SourceTrayImage$ = DF_take_picture$(ts$ + "_source_tray")
-		UpdateRobotLog$("Picture of chip in tray taken: " +SourceTrayImage$)
+		UpdateRobotLog$("Picture of chip in tray taken: " + SourceTrayImage$)
 		SetSpeedSetting("PickAndPlace")
 
 		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(2), idx(3), idx(4), ByRef Tray_Results()) Then
@@ -2157,7 +2157,7 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 
 		JumpToTray_camera(idx(5), idx(6), idx(7))
 		TargetTrayImage$ = DF_take_picture$(ts$ + "_target_tray")
-		UpdateRobotLog$("Picture of chip in tray taken: " +TargetTrayImage$)
+		UpdateRobotLog$("Picture of chip in tray taken: " + TargetTrayImage$)
 
 		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(5), idx(6), idx(7), ByRef Tray_Results()) Then
 			RTS_suberror(idx(1), "Cannot get source chip alignment", -ERR_V_DF_ALIGN)
@@ -2173,7 +2173,7 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 Fend
 '
 Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketResults() As Double, ByRef CameraResults() As Double, ByRef DeltaDir As Double, ByRef SourceSocketImage$ As String, ByRef UFCImages$() As String) As Int32
-		UpdateRobotLog$("Getting chip from DAT "+Str$(idx(8))+" socket "+Str$(idx(9)))
+		UpdateRobotLog$("Getting chip from DAT " + Str$(idx(8)) + " socket " + Str$(idx(9)))
 	
 		GetChipFromSocket = 0
 	
@@ -2185,7 +2185,7 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 		JumpToSocket_camera(idx(8), idx(9))
 		UpdateRobotLog$("Jumped to socket")
 		SourceSocketImage$ = DF_take_picture$(ts$ + "_source_socket")
-		UpdateRobotLog$("Picture of chip in socket taken: " +SourceSocketImage$)
+		UpdateRobotLog$("Picture of chip in socket taken: " + SourceSocketImage$)
 
 		SetSpeedSetting("PickAndPlace")
 		
@@ -2265,7 +2265,7 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 Fend
 
 Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySocketResults() As Double, ByRef CameraResults() As Double, ByRef ChipSocketResults() As Double, ByRef TargetSocketImage$ As String, ByRef UFCImages$() As String) As Int32
-		UpdateRobotLog$("Placing chip in DAT "+Str$(idx(10))+" socket "+Str$(idx(11)))
+		UpdateRobotLog$("Placing chip in DAT " + Str$(idx(10)) + " socket " + Str$(idx(11)))
 		PlaceChipInSocket = 0
 		
 		Print "Placing chip in socket (", idx(10), ",", idx(11), ")"
@@ -2359,7 +2359,7 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			Print "Retrieving last stored offset of chip"
 			ChipToChipCorrections(CameraResults(10), CameraResults(11), CameraResults(12), DAT_X(idx(10), idx(11)), DAT_Y(idx(10), idx(11)), DAT_U(idx(10), idx(11)), CU(Here), ByRef Corrs())
 		EndIf
-		UpdateRobotLog$("Chip position correction based on current "chip-to-socket" and previous "chip-from-socket" offsets calculated")
+		UpdateRobotLog$("Chip position correction based on current 'chip-to-socket' and previous 'chip-from-socket' offsets calculated")
 
 		If Abs(Corrs(3)) > 3. Then
 			RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 3 DEGREES", -ERR_BAD_TOLERANCE)
@@ -2395,7 +2395,7 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 		' Do alignment check of chip in socket after insertion
 		JumpToSocket_camera(idx(10), idx(11))
 		TargetSocketImage$ = DF_take_picture$(ts$ + "_target_socket")
-		UpdateRobotLog$("Picture of chip in socket taken: " +TargetSocketImage$)
+		UpdateRobotLog$("Picture of chip in socket taken: " + TargetSocketImage$)
 
 '		Print "Checking alignment"
 		
