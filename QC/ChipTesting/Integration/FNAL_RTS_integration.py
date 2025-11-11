@@ -61,8 +61,8 @@ email = "rtsfnal@gmail.com"
 receiver_email = "tcontrer@fnal.gov"
 pw = "cugo vkfz vhkn egkb" # FNAL PC specific password
 
-image_directory = "/Users/RTS/RTS_data/images/"
-ocr_results_dir = "/Users/RTS/DUNE-rts-sn-rec/Tested/fnal_cpm_results/"
+image_directory = "/Users/ppd-cap-WD-137552/RTS_data/images/"
+ocr_results_dir = "/Users/ppd-cap-WD-137552/RTS_data/ocr_images/"
 
 ################################################
 
@@ -199,7 +199,7 @@ def RTS_Cycle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True, d
         print('Skipping OCR...')
 
     print('About to run COLDATA_QC')
-    logs, cd_qc_ana = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
+    logs, cd_qc_ana = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/ppd-cap-WD-137552/Tested/")
 
     # Burn in the serial number found from the OCR
     if sn_ready and do_burnin:

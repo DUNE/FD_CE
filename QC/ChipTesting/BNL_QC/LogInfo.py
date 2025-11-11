@@ -39,7 +39,7 @@ def WaitForPictures(chip_positions, threading=False):
         pictures [list of str]: Holds the image names of each picture 
     """
 
-    RobotLog_dir = "/Users/RTS/RTS_data/"
+    RobotLog_dir = "/Users/ppd-cap-WD-137552/RTS_data/"
     RobotLog_file = "RobotLog.txt"
     pictures_ready = False
     pictures = []

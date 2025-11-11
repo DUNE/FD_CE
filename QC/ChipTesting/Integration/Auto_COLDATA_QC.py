@@ -48,7 +48,7 @@ def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burn
         logs [dict]: dictionary holding QC test information
     """
     print('Running DAT QC')
-    QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_in_tests, burnin_now=burnin_now, auto=True, config_path="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv")
+    QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_in_tests, burnin_now=burnin_now, auto=True, config_path="/Users/ppd-cap-WD-137552/FD_CE/QC/ChipTesting/asic_info.csv")
     if QCresult != None:
         QCstatus = QCresult[0]
         badchips = QCresult[1] #badchips range from 0 to7
