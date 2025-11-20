@@ -120,7 +120,7 @@ Fend
 ' Jump to camera
 ' Preserve U rotation
 Function JumpToCamera
-	LoadPoints POINTS_FILE$
+	SelectSite
 	If Agl(2) < 0 Then
 		' Left-handed orientation
     	Jump P_camera :U(CU(Here)) /L LimZ JUMP_LIMIT
@@ -341,7 +341,7 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
 		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 		check = (x_p1 - x_p2) * (x_p3 - x_p2) - (y_p1 - y_p2) * (y_p3 - y_p2)
@@ -600,561 +600,7 @@ Function DF_take_picture$(basename$ As String) As String
 Fend
 
 
-
-' ARGUMENTS
-' INPUT: 
-'       id$ - operation id (timestamp)
-'       idx(20) - array of indexes
-'       idx(1)  - CSV file index
-'       idx(2)  - pallet number source (1-left, 2-right, 0 - N/A)
-'       idx(3)  - pallet column number source (1-15, 0 - N/A)
-'       idx(4)  - pallet row    number source (1-6 , 0 - N/A)
-'       idx(5)  - pallet number target (1-left, 2-right, 0 - N/A)
-'       idx(6)  - pallet column number target (1-15, 0 - N/A)
-'       idx(7)  - pallet row    number target (1-6 , 0 - N/A)
-'       idx(8)  - DAT board number source (1 - left, 2 - right, 0 - N/A)
-'       idx(9)  - socket number source (1-8, 0 - N/A)
-'       idx(10) - DAT board number target (1 - left, 2 - right, 0 - N/A)
-'       idx(11) - socket number target (1-8, 0 - N/A)
-'
-' OUTPUT:
-'       status - 0 - success, > 0 - error number
-'       res(30) - array of results
-' Results of analysis of chip position as it came from the source:
-'       res(1)  - camera X, [mm]
-'       res(2)  - camera Y, [mm]
-'       res(3)  - chip X, initial measurement, [mm]
-'       res(4)  - chip Y, initial measurement, [mm]
-'       res(5)  - chip rotation, initial measurement, [deg]
-'       res(6)  - chip X, measurement of the chip rotated by 180 deg, [mm]
-'       res(7)  - chip Y, measurement of the chip rotated by 180 deg, [mm]
-'       res(8)  - chip rotation, measurement of the chip rotated by 180 deg, [deg]
-'       res(9)  - tool X [mm]
-'       res(10) - tool Y [mm]
-'       res(11) - chip X position relative to the tool [mm]
-'       res(12) - chip Y position relative to the tool [mm]
-'
-' Results of analysis of chip position for destination:      
-'       res(13) - chip X with hand at target rotation [mm]
-'       res(14) - chip Y with hand at target rotation [mm]
-'       res(15) - chip rotation with hand at target rotation [deg]
-'
-'       res(16) - dU - correction for chip rotation [deg]
-'       res(17) - chip X, measurement at 0 deg, corrected for dU, [mm]
-'       res(18) - chip Y, measurement at 0 deg, corrected for dU, [mm]
-'       res(19) - chip angle, measurement at 0 deg, corrected for dU, [deg]
-'       res(20) - dX - chip X correction [mm]
-'       res(21) - dY - chip Y correction [mm]
-'       rest(22-30) reserved / unused
-'
-' GLOBAL
-'      tray_X
-'      tray_Y
-'      tray_U
-'      DAT_X
-'      DAT_Y
-'      DAT_U
-
-
-'Function ChipBottomAnaly(chip_SN$ As String, fileNum As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer, DAT_NR As Integer, ByRef status As Integer, ByRef res() As Double)
-'Function ChipBottomAnaly(chip_SN$ As String, ByRef idx() As Integer, ByRef status As Integer, ByRef res() As Double)
-'Function ChipBottomAnaly(id$ As String, ByRef idx() As Integer, ByRef res() As Double) As Integer
-'
-'	Integer i, fileNum
-'	
-'	ChipBottomAnaly = 0
-'
-'	' reset the array of results
-'	For i = 1 To 30
-'		res(i) = 0
-'	Next i
-'	fileNum = idx(1)
-'	
-'	' sources and targets of the chip
-'	Integer src_pallet_nr, src_col_nr, src_row_nr, src_DAT_nr, src_socket_nr
-'	Integer tgt_pallet_nr, tgt_col_nr, tgt_row_nr, tgt_DAT_nr, tgt_socket_nr
-'	
-'	fileNum = idx(1)
-'	src_pallet_nr = idx(2)
-'	src_col_nr = idx(3)
-'	src_row_nr = idx(4)
-'	tgt_pallet_nr = idx(5)
-'	tgt_col_nr = idx(6)
-'	tgt_row_nr = idx(7)
-'
-'	src_DAT_nr = idx(8)
-'	src_socket_nr = idx(9)
-'	tgt_DAT_nr = idx(10)
-'	tgt_socket_nr = idx(11)
-'			
-'	'If tgt_DAT_nr = 1 Then
-'	'	ChipBottomAnaly = 10
-'	'	Print "***ERROR Functionality for DAT board 1 not implemented yet", 10
-'    '    Exit Function
-'	'EndIf
-'		
-'	' target position at the camera
-'	Double tgt_x0, tgt_y0, tgt_u0
-'	' hand rotation at destination
-'	Double dst_U
-'	If tgt_pallet_nr > 0 And tgt_pallet_nr <= NTRAYS And tgt_col_nr > 0 And tgt_col_nr <= TRAY_NCOLS And tgt_row_nr > 0 And tgt_row_nr <= TRAY_NROWS Then
-'		tgt_x0 = tray_X(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-'		tgt_y0 = tray_Y(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-'		tgt_u0 = tray_U(tgt_pallet_nr, tgt_col_nr, tgt_row_nr)
-'		dst_U = CU(Pallet(tgt_pallet_nr, tgt_col_nr, tgt_row_nr))
-'	ElseIf tgt_DAT_nr > 0 And tgt_DAT_nr <= 2 And tgt_socket_nr > 0 And tgt_socket_nr <= NSOCKETS Then
-'		tgt_x0 = DAT_X(tgt_DAT_nr, tgt_socket_nr)
-'		tgt_y0 = DAT_Y(tgt_DAT_nr, tgt_socket_nr)
-'		tgt_u0 = DAT_U(tgt_DAT_nr, tgt_socket_nr)
-'		dst_U = CU(P(100 * tgt_DAT_nr + tgt_socket_nr))
-'	Else
-'		ChipBottomAnaly = 100
-'		Exit Function
-'	EndIf
-'	
-'	
-'       'JW:
-'   If Agl(4) < -45. Then
-'           Go Here +U(180)
-''      ElseIf Agl(4) < 0. Then
-''              Go Here +U(135)
-''              Go Here -U(180)
-''              Go Here +U(45)
-'   ElseIf Agl(4) <= 45. Then
-'           Go Here +U(90)
-'   Else
-'           Go Here -U(180)
-'   EndIf
-'	
-'	
-'	UF_camera_light_ON
-'	Wait 0.2
-'	String pict_fname$
-'	'UF_take_picture(chip_SN$, ByRef pict_fname_0$)
-'	pict_fname$ = UF_take_picture$(id$ + "_01")
-'    Print #fileNum, ",", pict_fname$,
-'	
-'	'Double tray_dx, tray_dy, tray_dU
-'	VRun ChipBottom_Analy
-'
-'	Boolean ret_found
-'	Double camera_X, camera_Y
-'	Double X_0, Y_0, U_0
-'	Double X_180, Y_180, U_180
-'	Double X_tool, Y_tool
-'
-'	'VGet ChipBottom_Analy.Final.RobotXYU, ret_found, ret_X, ret_Y, ret_U
-'	VGet ChipBottom_Analy.Final.Found, ret_found
-'	If ret_found Then
-'
-'		VGet ChipBottom_Analy.CameraCenter.CameraX, camera_X
-'		VGet ChipBottom_Analy.CameraCenter.CameraY, camera_Y
-'			
-'		VGet ChipBottom_Analy.Final.CameraX, X_0
-'		VGet ChipBottom_Analy.Final.CameraY, Y_0
-'		VGet ChipBottom_Analy.Final.Angle, U_0
-'
-'		Print #fileNum, ",", ret_found,
-'		Print #fileNum, ",", camera_X, ",", camera_Y,
-'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-'		
-'		res(1) = camera_X
-'		res(2) = camera_Y
-'		
-'		res(3) = X_0
-'		res(4) = Y_0
-'		res(5) = U_0
-'
-'	Else
-'		
-'		ChipBottomAnaly = 1
-'		Print "***ERROR ", 1
-'        Exit Function
-'		
-'	EndIf
-'
-'	' Repeat measurement for 180 deg. rotation
-''	If CU(Here) < 235 Then
-''		Go Here +U(180)
-''	Else
-''		Go Here -U(180)
-''	EndIf
-'
-''      JW:
-'	If Agl(4) <= 45. Then
-'	    Go Here -U(180)
-'    Else
-'        Go Here +U(180)
-'    EndIf
-'
-'	Wait 0.2
-'	'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
-'	'UF_take_picture(ByRef pict_fname$)
-'	pict_fname$ = UF_take_picture$(id$ + "_02")
-'	Print #fileNum, ",", pict_fname$,
-'
-'	VRun ChipBottom_Analy
-'	
-'	VGet ChipBottom_Analy.Final.Found, ret_found
-'	If ret_found Then
-'		
-'		VGet ChipBottom_Analy.Final.CameraX, X_180
-'		VGet ChipBottom_Analy.Final.CameraY, Y_180
-'		VGet ChipBottom_Analy.Final.Angle, U_180
-'
-'		Print #fileNum, ",", ret_found,
-'		Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
-'
-'		res(6) = X_180
-'		res(7) = Y_180
-'		res(8) = U_180
-'
-'		X_tool = 0.5 * (X_0 + X_180)
-'		Y_tool = 0.5 * (Y_0 + Y_180)
-'
-'		res(9) = X_tool
-'		res(10) = Y_tool
-'
-'		Print #fileNum, ",", X_tool, ",", Y_tool,
-'
-'		' chip position relative to the tool
-'		res(11) = X_0 - X_tool
-'		res(12) = Y_0 - Y_tool
-'
-'		Print #fileNum, ",", res(11), ",", res(12),
-'
-'		' record the chip position from the source
-'		Double src_x0, src_y0, src_u0
-'		' source: 1 - pallet, 2 - socket
-'		Integer src
-'		If src_pallet_nr > 0 And src_pallet_nr <= NTRAYS And src_col_nr > 0 And src_col_nr <= TRAY_NCOLS And src_row_nr > 0 And src_row_nr <= TRAY_NROWS Then
-'			src_x0 = tray_X(src_pallet_nr, src_col_nr, src_row_nr)
-'			src_y0 = tray_Y(src_pallet_nr, src_col_nr, src_row_nr)
-'			src_u0 = tray_U(src_pallet_nr, src_col_nr, src_row_nr)
-'			src = 1
-'		ElseIf src_DAT_nr > 0 And src_DAT_nr <= 2 And src_socket_nr > 0 And src_socket_nr <= NSOCKETS Then
-'			src_x0 = DAT_X(src_DAT_nr, src_socket_nr)
-'			src_y0 = DAT_Y(src_DAT_nr, src_socket_nr)
-'			src_u0 = DAT_U(src_DAT_nr, src_socket_nr)
-'			src = 2
-'		Else
-'			ChipBottomAnaly = 101
-'			Exit Function
-'		EndIf
-'
-'		If src_x0 = 0 And src_y0 = 0 And src_u0 = 0 Then
-'			Print "Recording position of the source: ", res(11), " ", res(12), " ", U_0
-'			If src = 1 Then
-'				tray_X(src_pallet_nr, src_col_nr, src_row_nr) = res(11)
-'				tray_Y(src_pallet_nr, src_col_nr, src_row_nr) = res(12)
-'				tray_U(src_pallet_nr, src_col_nr, src_row_nr) = U_0
-'			ElseIf src = 2 Then
-'				DAT_X(src_DAT_nr, src_socket_nr) = res(11)
-'				DAT_Y(src_DAT_nr, src_socket_nr) = res(12)
-'				DAT_U(src_DAT_nr, src_socket_nr) = U_0
-'			Else
-'				ChipBottomAnaly = 102
-'				Exit Function
-'			EndIf
-'		EndIf
-'
-'	Else
-'
-'		ChipBottomAnaly = 2
-'		Print "***Error ", 2
-'        Exit Function
-'	EndIf
-'	
-'    ' JW: need to correct the cases where you do +90, then -180 then +90
-'         ' Other angles just do +180, then -180 or vice versa
-'	If Agl(4) > -45. And Agl(4) <= 45. Then
-'		Go Here +U(90)
-'	EndIf
-'
-'
-'	' Change handeness to the target 
-'	If tgt_pallet_nr = 1 Or tgt_DAT_nr = 1 Then
-'    	Jump P_camera :U(dst_U) /R LimZ JUMP_LIMIT
-'    ElseIf tgt_pallet_nr = 2 Or tgt_DAT_nr = 2 Then
-'    	Jump P_camera :U(dst_U) /L LimZ JUMP_LIMIT
-'    EndIf
-'	
-'
-'	' Rotate the hand to destination orientation Update: Done in a previous step
-'	'Go Here :U(dst_U)
-'	Wait 0.2
-'
-'	' Added 2024-06-18
-'	' Re-evaluate the position of the tool
-'	VRun ChipBottom_Analy
-'
-'	VGet ChipBottom_Analy.Final.Found, ret_found
-'	If ret_found Then
-'
-'		'VGet ChipBottom_Analy.CameraCenter.CameraX, camera_X
-'		'VGet ChipBottom_Analy.CameraCenter.CameraY, camera_Y
-'			
-'		VGet ChipBottom_Analy.Final.CameraX, X_0
-'		VGet ChipBottom_Analy.Final.CameraY, Y_0
-'		VGet ChipBottom_Analy.Final.Angle, U_0
-'
-'		Print #fileNum, ",", ret_found,
-'		'Print #fileNum, ",", camera_X, ",", camera_Y,
-'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-'		
-'		'res(1) = camera_X
-'		'res(2) = camera_Y
-'		
-'		'res(3) = X_0
-'		'res(4) = Y_0
-'		'res(5) = U_0
-'
-'	Else
-'		
-'		ChipBottomAnaly = 301
-'		Print "***ERROR ", 301
-'        Exit Function
-'		
-'	EndIf
-'
-'	' Repeat measurement for 180 deg. rotation
-'	'If CU(Here) < 180 Then
-'	
-'	'If Hand < 1.5 Then ' 1 for right handed, 2 for left handed.
-'		Go Here +U(180)
-'	'Else
-'	'	Go Here -U(180)
-'	'EndIf
-'	Wait 0.2
-'	'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
-'	'UF_take_picture(ByRef pict_fname$)
-'	'pict_fname$ = UF_take_picture$(id$ + "_02")
-'	'Print #fileNum, ",", pict_fname$,
-'
-'	VRun ChipBottom_Analy
-'	
-'	VGet ChipBottom_Analy.Final.Found, ret_found
-'	If ret_found Then
-'		
-'		VGet ChipBottom_Analy.Final.CameraX, X_180
-'		VGet ChipBottom_Analy.Final.CameraY, Y_180
-'		VGet ChipBottom_Analy.Final.Angle, U_180
-'
-'		Print #fileNum, ",", ret_found,
-'		Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
-'
-'		'res(6) = X_180
-'		'res(7) = Y_180
-'		'res(8) = U_180
-'
-'		X_tool = 0.5 * (X_0 + X_180)
-'		Y_tool = 0.5 * (Y_0 + Y_180)
-'
-'		res(9) = X_tool
-'		res(10) = Y_tool
-'
-'		Print #fileNum, ",", X_tool, ",", Y_tool,
-'
-'		Print "Tool position: X=", X_tool, ", Y=", Y_tool
-'
-'		' chip position relative to the tool
-'		res(11) = X_0 - X_tool
-'		res(12) = Y_0 - Y_tool
-'
-'		Print #fileNum, ",", res(11), ",", res(12),
-'
-'		' record the chip position from the source
-'		'Double src_x0, src_y0, src_u0
-'		'' source: 1 - pallet, 2 - socket
-'		'Integer src
-'		'If src_pallet_nr > 0 And src_pallet_nr <= NTRAYS And src_col_nr > 0 And src_col_nr <= TRAY_NCOLS And src_row_nr > 0 And src_row_nr <= TRAY_NROWS Then
-'		'	src_x0 = tray_X(src_pallet_nr, src_col_nr, src_row_nr)
-'		'	src_y0 = tray_Y(src_pallet_nr, src_col_nr, src_row_nr)
-'		'	src_u0 = tray_U(src_pallet_nr, src_col_nr, src_row_nr)
-'		'	src = 1
-'		'ElseIf src_DAT_nr > 0 And src_DAT_nr <= 2 And src_socket_nr > 0 And src_socket_nr <= NSOCKETS Then
-'	'		src_x0 = DAT_X(src_DAT_nr, src_socket_nr)
-'	'		src_y0 = DAT_Y(src_DAT_nr, src_socket_nr)
-'	'		src_u0 = DAT_U(src_DAT_nr, src_socket_nr)
-'	'		src = 2
-'	'	Else
-'	'		ChipBottomAnaly = 101
-'	'		Exit Function
-'	'	EndIf
-'
-'	'	If src_x0 = 0 And src_y0 = 0 And src_u0 = 0 Then
-'	'		Print "Recording position of the source: ", res(11), " ", res(12), " ", U_0
-'	'		If src = 1 Then
-'	'			tray_X(src_pallet_nr, src_col_nr, src_row_nr) = res(11)
-'	'			tray_Y(src_pallet_nr, src_col_nr, src_row_nr) = res(12)
-'	'			tray_U(src_pallet_nr, src_col_nr, src_row_nr) = U_0
-'	'		ElseIf src = 2 Then
-'	'			DAT_X(src_DAT_nr, src_socket_nr) = res(11)
-'	'			DAT_Y(src_DAT_nr, src_socket_nr) = res(12)
-'	'			DAT_U(src_DAT_nr, src_socket_nr) = U_0
-'	'		Else
-'	'			ChipBottomAnaly = 102
-'	'			Exit Function
-'	'		EndIf
-'	'	EndIf
-'
-'	Else
-'
-'		ChipBottomAnaly = 302
-'		Print "***Error ", 302
-'        Exit Function
-'			
-'	EndIf
-'
-'
-'	' End of code added on 2024-06-18
-'
-'	' re-evaluate chip position with the rotation at destination
-'	Go Here :U(dst_U)
-'	Wait 0.2
-'
-'	'UF_take_picture(ByRef pict_fname$)
-'	pict_fname$ = UF_take_picture$(id$ + "_03")
-'	Print #fileNum, ",", pict_fname$,
-'
-'	VGet ChipBottom_Analy.Final.Found, ret_found
-'	If ret_found Then
-'			
-'		VGet ChipBottom_Analy.Final.CameraX, X_0
-'		VGet ChipBottom_Analy.Final.CameraY, Y_0
-'		VGet ChipBottom_Analy.Final.Angle, U_0
-'
-'		Print #fileNum, ",", ret_found,
-'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-'				
-'		res(13) = X_0
-'		res(14) = Y_0
-'		res(15) = U_0
-'
-'	Else
-'		
-'		ChipBottomAnaly = 3
-'		Print "***ERROR ", 3
-'        Exit Function
-'		
-'	EndIf
-'
-'
-'	Double d_U
-'	'd_U = U_0 + 0.2
-'	'd_U = U_0 - tgt_u0
-'	d_U = tgt_u0 - U_0
-'	res(16) = d_U
-'	If Abs(d_U) < 2.0 Then
-'		Go Here -U(d_U)
-'	Else
-'		ChipBottomAnaly = 4
-'		Print "ERROR 4! : Rotation angle outside of control margin"
-'		Exit Function
-'	EndIf
-'
-'	' Remeasure X and Y with correct rotation
-'	Wait 0.2
-'	'UF_take_picture(ByRef pict_fname$)
-'	pict_fname$ = UF_take_picture$(id$ + "_04")
-'	Print #fileNum, ",", pict_fname$,
-'	
-'	VRun ChipBottom_Analy
-'		
-'	VGet ChipBottom_Analy.Final.Found, ret_found
-'	If ret_found Then
-'			
-'		VGet ChipBottom_Analy.Final.CameraX, X_0
-'		VGet ChipBottom_Analy.Final.CameraY, Y_0
-'		VGet ChipBottom_Analy.Final.Angle, U_0
-'
-'		Print #fileNum, ",", ret_found,
-'		Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
-'
-'		res(17) = X_0
-'		res(18) = Y_0
-'		res(19) = U_0
-'
-'	Else
-'		
-'		ChipBottomAnaly = 5
-'		Print "***ERROR ", 5
-'        Exit Function
-'			
-'	EndIf
-'
-'	Double d_X, d_Y
-'	d_X = tgt_x0 - (X_0 - X_tool)
-'	d_Y = tgt_y0 - (Y_0 - Y_tool)
-'	
-'	Print #fileNum, ",", d_X, ",", d_Y, ",", d_U,
-'
-'	res(20) = d_X
-'	res(21) = d_Y
-'
-'
-'	' Analysis of pins
-'	d_X = X_0 - X_tool
-'	d_Y = Y_0 - Y_tool
-'	If Abs(d_X) < 1 And Abs(d_Y) < 1 And Abs(U_0) < 2 Then
-'		Print "Positioning the chip for pin analysis: ",
-'		Print " dX=", d_X, " dY=", d_Y, " dU=", U_0
-'		Go Here -X(d_X) -Y(d_Y) +U(U_0)
-'	Else
-'		ChipBottomAnaly = 6
-'		Print "***ERROR ", 6
-'        Exit Function
-'	EndIf
-'
-'	pict_fname$ = UF_take_picture$(id$ + "_pins")
-'	Print #fileNum, ",", pict_fname$,
-'	VSet pins_analy.ImageFile, pict_fname$
-'	
-'	Integer status
-'	status = PinsAnaly(id$)
-'	Print #fileNum, ",", status,
-'	If status <> 0 Then
-'		ChipBottomAnaly = status
-'	EndIf
-'		
-'	' Analysis of chip key for insertion into socket
-'	Boolean res_1, res_2, res_3, res_4
-'	If tgt_DAT_nr = 1 Then
-'		Print "Checking ASIC key"
-'		VSet key_check_1.ImageFile, pict_fname$
-'		VRun key_check_1
-'		
-'		VGet key_check_1.Blob01.Found, res_1
-'		VGet key_check_1.Blob02.Found, res_2
-'		VGet key_check_1.Blob03.Found, res_3
-'		VGet key_check_1.Blob04.Found, res_4
-'		
-'		If Not (res_1 And (Not res_2) And res_3 And res_4) Then
-'			Print "***ERROR! Failed to determine the key position of the ASIC"
-'			ChipBottomAnaly = 7
-'			Exit Function
-'		EndIf
-'	ElseIf tgt_DAT_nr = 2 Then
-'		Print "Checking ASIC key"
-'		VSet key_check.ImageFile, pict_fname$
-'		VRun key_check
-'		
-'		VGet key_check.Blob01.Found, res_1
-'		VGet key_check.Blob02.Found, res_2
-'		VGet key_check.Blob03.Found, res_3
-'		VGet key_check.Blob04.Found, res_4
-'		
-'		If Not (res_1 And res_2 And res_3 And (Not res_4)) Then
-'			Print "***ERROR! Failed to determine the key position of the ASIC"
-'			ChipBottomAnaly = 7
-'			Exit Function
-'		EndIf
-'	EndIf
-'
-'	UF_camera_light_OFF
-'	
-'Fend
-
+''' Analyses row of pins and checks equidistant spacing for bent pins/dust
 Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	
 	PinsRowAnaly = 0
@@ -1164,8 +610,6 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	Double x, y, area, xold, yold
 	Select SITE$
 		Case "BNL"
-			
-
 			VGet pins_analy.name$.Passed, passed
 			If Not passed Then
 				Print "PinsAnaly " + name$ + " failed!"
@@ -1228,7 +672,7 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	
 Fend
 
-
+''' For each side of a chip runs PinsRowAnaly to check pin spacing/dust occlusion
 Function PinsAnaly(id$ As String) As Integer
 	
 	PinsAnaly = 0
@@ -1396,26 +840,61 @@ Fend
 '''' Move chip to and from tray/socket functions
 ' Should broadly match old BNL functions
 
+''' For a given socket, remove current chip and place in target tray position and replace with new chip from source tray position
+'' Args:
+' DAT, Socket - The DAT board number and socket position
+' SrcTray, SrcTrayCol, SrcTrayRow - The source tray position for the NEW chip (to place in socket next)
+' TgtTray, TgtTrayCol, TgtTrayRow - The target tray position for the OLD chip (currently in socket)
 Function SwapChipsInSocket(DAT As Integer, Socket As Integer, SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
 	UpdateRobotLog$("Starting SwapChipsInSocket")
 	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, DAT, Socket, DAT, Socket, True, False)
 Fend
 
+''' Pick a chip up from an occupied tray position and move it to an empty socket
+'' Args:
+' DAT, Socket - The DAT board number and socket position for the socket to be filled
+' Tray, TrayCol, TrayRow - The position of the chip on in the tray to pick up and put in the socket
 Function MoveChipFromTrayToSocket(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
 	UpdateRobotLog$("Starting MoveChipFromTrayToSocket")
 	MoveChip(Tray, TrayCol, TrayRow, 0, 0, 0, 0, 0, DAT, Socket, True, False)
 Fend
 
+''' Pick a chip up from an occupied socket and place it in an empty tray position
+'' Args:
+' DAT, Socket - The DAT board number and socket position for the socket with a chip in it
+' Tray, TrayCol, TrayRow - The position to place the tray in the socket
 Function MoveChipFromSocketToTray(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
 	UpdateRobotLog$("Starting MoveChipFromSocketToTray")
 	MoveChip(0, 0, 0, Tray, TrayCol, TrayRow, DAT, Socket, 0, 0, True, False)
 Fend
 
+''' Pick up a chip from one occupied tray position and place it in a new empty tray position
+'' Args:
+' SrcTray, SrcTrayCol, SrcTrayRow - The source tray position the chip currently occupies
+' TgtTray, TgtTrayCol, TgtTrayRow - The empty target tray position to move the chip to
 Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
 	UpdateRobotLog$("Starting MoveChipFromTrayToTray")
 	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, 0, 0, 0, 0, True, False)
 Fend
 
+''' This MoveChip command handles moving chips from any source tray or socket position to any other target tray or socket position
+' Other Move commands wrap this. The logic here is to force consistency in operations and logging in one place
+' - First the command checks that a set of valid positions have been passed (indices in range, not repeated etc)
+' - Then the starting occupancies of the source and target positions are checked* this can be overriden
+' - Then a series of suboperations are used to pick and place chips, and arrays for results are past by reference to these
+'   allowing results from one function to be passed to the relevant next function for pick/place
+' Operations are ordered to reduce overall number of back and forth motions between tray and DAT board.
+' Note, currently this allows for the occupancy checks to be overriden, in order to allow for the implementation
+' of a set of batch movements, in which all the occupancies would be checked at once before moving any chips
+' We do not expect these occupancies to change during operations unless something has gone wrong
+' which should be detected.
+'' Args:
+' SrcTray, SrcTrayCol, SrcTrayRow - The source tray position
+' TgtTray, TgtTrayCol, TgtTrayRow - The target tray position
+' SrcDAT, SrcSocket - The source socket position
+' TgtDAT, TgtSocket - The target socket position
+' OccCheck - Do occupancy checks before moving
+' DoT2TPinAnalysis - Do pin analysis when moving from one tray position to another, this is forced in other cases in order to get the precise position at the socket
 Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, TgtTray As Int32, TgtTrayCol As Int32, TgtTrayRow As Int32, SrcDAT As Int32, SrcSocket As Int32, TgtDAT As Int32, TgtSocket As Int32, OccCheck As Boolean, DoT2TPinAnalysis As Boolean) As Int64
 	SubError = 0
 	' Main function for moving chips, keeps formating consistent and does checks for valid operations and occupancies (unless overriden for batch operation) 
@@ -1480,6 +959,7 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	' 13 - Chip2 UFC Pin analysis left
 	' 14 - Chip2 UFC Pin analysis right	
 	
+	' initialize the results arrays for the vision sequences
 	Int32 i
 	For i = 1 To 16
 		If i < 11 Then
@@ -1529,7 +1009,7 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	idx(10) = TgtDAT
 	idx(11) = TgtSocket
 	
-	
+	' Check whether the input indices are valid (within range etc)
 	Integer Op
 	String operation$
 	operation$ = "Invalid"
@@ -1549,7 +1029,8 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	' S2T + T2S :    1     |     1    |    0
 	' S2T only  :    1     |    N/A   |    0
 	' T2T       :   N/A    |     1    |    0
-
+	
+	' If checking the occupancy check the occupancies TODOJOE wrap in if statement?
 	SetSpeedSetting("MoveWithoutChip")
 	Int32 Occupancy
 	String OccupancyImage$
@@ -1578,7 +1059,11 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	SetSpeedSetting("MoveWithoutChip")
 
 	' Now we have done occupancy checks, do pick and place 
+	' DeltaDir is the difference in the direction of the chip and the hand at the socket - measured for precision
 	Double DeltaDir
+	
+	' Note, a correction is calculated when placing a chip in the socket based on the last chip removed	
+	' This is done in the place function
 	
 	' Do socket to tray first in case of swap chips (S->T then T->S)
 	'If DoS2T Then
@@ -1717,6 +1202,11 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	
 Fend
 
+
+''' Checks whether an operation is a move/swap/remove/place etc
+'' Args:
+' ByRef idx(Length 20) - includes input indices for command
+' Byref Operation$ - A string to store what type of motion it is 
 Function CheckOperationType(ByRef idx() As Integer, ByRef Operation$ As String) As Int32
 	CheckOperationType = 0
 	SubError = 0
@@ -1841,32 +1331,38 @@ Function CheckOperationType(ByRef idx() As Integer, ByRef Operation$ As String) 
 	EndIf
 
 	If DoT2T Then
-		Operation$ = "T2T" ' Tray to tray
+		operation$ = "T2T" ' Tray to tray
 		CheckOperationType = 1
 	ElseIf DoT2S And Not DoS2T Then
-		Operation$ = "LOADCHIP" ' Tray to socket only
+		operation$ = "LOADCHIP" ' Tray to socket only
 		CheckOperationType = 2
 	ElseIf DoS2T And Not DoT2S Then
-		Operation$ = "REMOVECHIP" ' Socket to tray only
+		operation$ = "REMOVECHIP" ' Socket to tray only
 		CheckOperationType = 3
 	ElseIf DoS2S Then
-		Operation$ = "S2S" ' Socket to socket
+		operation$ = "S2S" ' Socket to socket
 		CheckOperationType = 4
 		If idx(8) = idx(10) And idx(9) = idx(11) Then
-			Operation$ = "REINSERT"
+			operation$ = "REINSERT"
 			CheckOperationType = 6
 		EndIf
 	ElseIf DoS2T And DoT2S Then
-		Operation$ = "SWAPCHIPS" ' Swap current chip for new chip
+		operation$ = "SWAPCHIPS" ' Swap current chip for new chip
 		CheckOperationType = 5
 	Else
-		Operation$ = "INVALID"
+		operation$ = "INVALID"
 		CheckOperationType = -10
 	EndIf
 	
 	
 Fend
 
+''' Checks the initial occupancies of the source and target tray/socket positions
+'' Args:
+' ts$ - timestamp for error logging purposes
+' idx(Length 20) - input indices for operation
+' Operation$ - Operation type as string set by CheckOperationType()
+' Image$ - String to store names of images taken when checking occupancy for logging
 Function CheckOperationOccupancy(ts$ As String, ByRef idx() As Integer, Operation$ As String, ByRef Image$ As String) As Int32
 	UpdateRobotLog$("Checking initial occupancies")
 	SubError = 0
@@ -1954,7 +1450,10 @@ Function CheckOperationOccupancy(ts$ As String, ByRef idx() As Integer, Operatio
 	
 Fend
 
-
+''' Function to recenter a chip based on the offsets from the image center calculated using the UF camera
+' This is used to then do any pin analysis with the pins aligned with the right search boxes
+'' Args:
+' ByRef CameraResults(Length 13) - The results of the UF camera key finding analysis which finds the position of the chip
 Function UFRecenter(ByRef CameraResults() As Double) As Int32
 	UFRecenter = 0
 	JumpToCamera
@@ -1965,7 +1464,9 @@ Function UFRecenter(ByRef CameraResults() As Double) As Int32
 	UFRecenter = -1
 Fend
 
-
+'''
+' Plan to implement some error handlinhg below
+'''
 
 'Function TakeToRejectTray As Int32
 '	' Function to take a chip to the reject tray
@@ -1984,7 +1485,9 @@ Fend
 '	' Goes to tray, takes pictures of each chip and notes which tray positions are filled or empty	
 'Fend
 
-
+''' Runs the pin analysis code
+' Note, this does not find the position, which is found by the UFGetChipAligment() function
+' this checks for uniform pin position/spacing using the PinsAnaly() function
 Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As String) As Int32
 	UpdateRobotLog$("Running pin analysis")
 	UFPinAnalysis = 0
@@ -2006,7 +1509,18 @@ Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As
 	
 Fend
 
-
+''' Unified logging for MoveChip function
+' Allows consistent results to be logged even when the operation has an error mid way through - note, separate to RTS_error.
+'' Args:
+' ts$ - Time stamp for logging/file naming
+' ExitCode- The exit code of the operation - see error handling include
+' OperationType$ - operation type. (Swap/remove/place etc)
+' ByRef idx(Length 20) - The input indices in the standardized order
+' ByRef SourceSocketResults(Length 16) - Vision sequence results
+' ByRef TargetSocketResults(Length 16)
+' ByRef UFCameraResults1(Length 13)
+' ByRef UFCameraResults2(Length 13)
+' ByRef Images$(Length 14) - An array of image names for the different parts of the operation in a standardized order
 Function LogResults(ts$ As String, ExitCode As Int64, OperationType$ As String, ByRef idx() As Integer, ByRef SourceSocketResults() As Double, ByRef TargetSocketResults() As Double, ByRef UFCameraResults1() As Double, ByRef UFCameraResults2() As Double, ByRef Images$() As String) As Int64
 	
 	' Logs information from MoveChip
@@ -2060,6 +1574,13 @@ Function LogResults(ts$ As String, ExitCode As Int64, OperationType$ As String, 
 	Next
 Fend
 
+''' Gets chip from a tray when hand currently has no chip
+'' Args:
+' ts$ - Timestamp string for file names and logging
+' ByRef idx(Length 20) - Standard input indices
+' ByRef Tray_Results(Length 10) - Initialized empty array for tray vision sequence results of length 10
+' ByRef DeltaDir - Desired difference in direction/orientation of chip and hand at target position
+' ByRef SourceTrayImage$ - String to save name of image in to be later passed to log function
 Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef SourceTrayImage$ As String) As Int32
 	UpdateRobotLog$("Getting chip from tray " + Str$(idx(2)) + " position (" + Str$(idx(3)) + "," + Str$(idx(4)) + ")")
 		GetChipFromTray = 0
@@ -2084,6 +1605,7 @@ Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 			
 		' Pick up chip - Angle should be determined by measured position of chip and target orientation in tray
 		'Double DeltaDir
+		' TODOJOE should this be bound 180? Be careful with the values set
 		DeltaDir = SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)
 		Double PickU
 		PickU = Tray_Results(6) - DeltaDir '(SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)) ' DeltaDir
@@ -2130,8 +1652,15 @@ Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 
 Fend
 
+''' Places chip in tray when chip is being held by hand
+'' Args:
+' ts$ - Timestamp string for file names and logging
+' ByRef idx(Length 20) - Standard input indices
+' ByRef Tray_Results(Length 10) - Initialized empty array for tray vision sequence results of length 10
+' ByRef DeltaDir - Known difference in direction/orientation of chip and hand at source position
+' ByRef SourceTrayImage$ - String to save name of image in to be later passed to log function
 Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef TargetTrayImage$ As String) As Int32
-	UpdateRobotLog$("Placing chip in tray "+Str$(idx(5))+" position ("+Str$(idx(6))+","+Str$(idx(7))+")")
+	UpdateRobotLog$("Placing chip in tray " + Str$(idx(5)) + " position (" + Str$(idx(6)) + "," + Str$(idx(7)) + ")")
 	
 	PlaceChipInTray = 0
 		
@@ -2171,7 +1700,16 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 		SetSpeedSetting("MoveWithoutChip")
 		PlaceChipInTray = -1
 Fend
-'
+
+''' Gets chip from a socket when hand currently has no chip
+'' Args:
+' ts$ - Timestamp string for file names and logging
+' ByRef idx(Length 20) - Standard input indices
+' ByRef SocketResults(Length 16) - Initialized empty array for socket vision sequence results
+' ByRef CameraResults(Length 13) - Initialized empty array for UF camera vision sequence results
+' ByRef DeltaDir - Double to store difference in direction between chip and hand at socket
+' ByRef SourceSocketImage$ - String to save name of image in to be later passed to log function
+' ByRef UFCImages$(Length 5) - Array of strings to save names of images taken by UF camera in alignment function for logging (length 5)
 Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketResults() As Double, ByRef CameraResults() As Double, ByRef DeltaDir As Double, ByRef SourceSocketImage$ As String, ByRef UFCImages$() As String) As Int32
 		UpdateRobotLog$("Getting chip from DAT " + Str$(idx(8)) + " socket " + Str$(idx(9)))
 	
@@ -2264,6 +1802,15 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 		GetChipFromSocket = -1
 Fend
 
+''' Places chip in socket when already in hand
+'' Args:
+' ts$ - Timestamp string for file names and logging
+' ByRef idx(Length 20) - Standard input indices
+' ByRef EmptySocketResults(Length 10) - Initialized empty array for empty socket vision sequence results - note different array length to when chip is in socket
+' ByRef CameraResults(Length 13) - Initialized empty array for UF camera vision sequence results
+' ByRef ChipSocketResults(Length 16) - Initialized empty array for empty socket vision sequence results with chip in - stores extra information about chip socket alignment
+' ByRef TargetSocketImage$ - String to save name of image in to be later passed to log function
+' ByRef UFCImages$(Length 5) - Array of strings to save names of images taken by UF camera in alignment function for logging
 Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySocketResults() As Double, ByRef CameraResults() As Double, ByRef ChipSocketResults() As Double, ByRef TargetSocketImage$ As String, ByRef UFCImages$() As String) As Int32
 		UpdateRobotLog$("Placing chip in DAT " + Str$(idx(10)) + " socket " + Str$(idx(11)))
 		PlaceChipInSocket = 0
@@ -2441,7 +1988,7 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 Fend
 
 
-
+''' Returns the global point of the socket from its DAT and position numbers
 Function PSocket(DAT_nr As Int32, Socket_nr As Int32) As Int32
 	PSocket = DAT_nr * 100 + Socket_nr
 Fend
@@ -2470,6 +2017,8 @@ Fend
 '	' Save to a file?
 'Fend
 
+''' For a batch of operations, check each operation has valid input indices
+' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
 Function CheckValidOperations(ByRef DATs() As Int32, ByRef Sockets() As Int32, ByRef TrayNrs() As Int32, ByRef TrayCols() As Int32, ByRef TrayRows() As Int32) As Int32
 	
 	Int32 nOperations
@@ -2516,6 +2065,8 @@ Function CheckValidOperations(ByRef DATs() As Int32, ByRef Sockets() As Int32, B
 	EndIf
 Fend
 
+''' For a batch of operations, check intial occupancies of the tray positions
+' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
 Function CheckTrayPositionOccupancies(Expectation As Boolean, ByRef TrayNrs() As Int32, ByRef TrayCols() As Int32, ByRef TrayRows() As Int32, ByRef Occupancy() As Int32) As Int32
 	CheckTrayPositionOccupancies = 0
 	Int32 index
@@ -2535,6 +2086,11 @@ Function CheckTrayPositionOccupancies(Expectation As Boolean, ByRef TrayNrs() As
 	''' Number of successes is number of 1s
 Fend
 
+''' Checks if the tray position is occupied (individual)
+'' Returns
+' 1  - Occupied (chip seen with vision)
+' 0  - Unoccupied
+' -2 - Obstructed (no chip seen but physically something is there at the expected height, could be vision failure)
 Function TrayPositionOccupied(Tray_nr As Int32, Tray_Col_nr As Int32, Tray_Row_nr As Int32) As Int32
 	TrayPositionOccupied = 0
 	' Return 0 for unoccupied
@@ -2562,7 +2118,8 @@ Function TrayPositionOccupied(Tray_nr As Int32, Tray_Col_nr As Int32, Tray_Row_n
 
 Fend
 
-
+''' For a batch of operations, check intial occupancies of the socket positions
+' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
 Function CheckSocketPositionOccupancies(Expectation As Boolean, ByRef DATs() As Int32, ByRef Sockets() As Int32, ByRef Occupancy() As Int32) As Int32
 	CheckSocketPositionOccupancies = 0
 	
@@ -2589,6 +2146,11 @@ Function CheckSocketPositionOccupancies(Expectation As Boolean, ByRef DATs() As 
 
 Fend
 
+''' Checks if the socket position is occupied (individual)
+'' Returns
+' 1  - Occupied (chip seen with vision)
+' 0  - Unoccupied
+' -2 - Obstructed (no chip seen but physically something is there at the expected height, could be vision failure)
 Function SocketPositionOccupied(DAT_nr As Int32, Socket_nr As Int32) As Int32
 	SocketPositionOccupied = 0
 	' Return 0 for unoccupied
@@ -2614,7 +2176,7 @@ Function SocketPositionOccupied(DAT_nr As Int32, Socket_nr As Int32) As Int32
 Fend
 
 '''  Camera offset functions
-
+' At current UValue of hand, return the offset in X and Y of the camera from the axis of rotation/stinger
 Function XOffset(UValue As Double) As Double
 	XOffset = DF_CAM_X_OFF_U0 * Cos(DegToRad(UValue - HAND_U0)) - DF_CAM_Y_OFF_U0 * Sin(DegToRad(UValue - HAND_U0))
 Fend
@@ -2639,7 +2201,7 @@ Function SetupDirectories
 	
 	' images subdirectory
 	String dir_images$
-	dir_images$ = RTS_DATA$ + "images"
+	dir_images$ = RTS_DATA$ + "\images"
 
 	If Not FolderExists(dir_images$) Then
   		MkDir dir_images$
@@ -2652,7 +2214,7 @@ Function SetupDirectories
 	
 	' pins subdirectory
 	String dir_pins$
-	dir_pins$ = RTS_DATA$ + "pins"
+	dir_pins$ = RTS_DATA$ + "\pins"
 
 	If Not FolderExists(dir_pins$) Then
   		MkDir dir_pins$
@@ -2834,7 +2396,9 @@ Function UpdateRobotLog$(log_msg$ As String) As String
 Fend
 
 '''' Chip and socket direction functions ''''
-
+''' Finds the orientation of a right-angled triangle
+' Note, assumes a specific orientation which must be adapted to the expected layour of of the three points passed/
+' This may be different for chip/socket layout etc.
 Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Double, isFoundTR As Boolean, xTR As Double, yTR As Double, isFoundBR As Boolean, xBR As Double, yBR As Double, isFoundBL As Boolean, xBL As Double, yBL As Double) As Boolean
 	ThreeCornerFindDirection = False
 	
@@ -2948,6 +2512,9 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 
 Fend
 
+''' Wrapper function to find the direction of a chip with the down facing camera
+'' Initializes global array ChipPos() which will store X,Y,U of chip
+' These are set in relevant DFFindLarASIC, DFFindColdADC, DFFindCOLDATA functions
 Function FindChipDirectionWithDF As Boolean
 	FindChipDirectionWithDF = False
 	
@@ -3095,7 +2662,12 @@ Function FindChipDirectionWithDF As Boolean
 
 Fend
 
-
+''' Function to get the orientation of LArASIC chip with the down facing camera
+' This makes use of two marks on the surce, a larger manufacturing mark and a 
+' smaller mark indicating where pin 1 is.
+' it then finds the direction between these and subtracts 45 degrees to get the
+' orienation of the chip
+'' Stores results in global array ChipPos()
 Function DFFindLArASIC As Boolean
 	
 	DFFindLArASIC = False
@@ -3177,6 +2749,15 @@ Function DFFindLArASIC As Boolean
 	
 Fend
 
+
+''' Function to find the orientation of the COLDATA chips with the down facing camera
+' The surface features are not as readily identifiable as the smaller chips and so
+' this function uses several redundant vision sequences and takes an average
+' It MUST find at least one of the vision sequences with the text "COLDATA" in order
+' to determine the direction reliably. Other inputs are for improving the precision of the 
+' translational position as the printed text is likely less accurate than the chip 
+' manufacturing marks
+'' Stores results in global array ChipPos()
 Function DFFindCOLDATA As Boolean
 
 	DFFindCOLDATA = False
@@ -3421,7 +3002,8 @@ Function DFFindCOLDATA As Boolean
 	DFFindCOLDATA = True
 Fend
 
-
+''' Funvtion to find a chip at the up facing camera and get its positional information
+' Stores results in global array UFChipPos()
 Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double, ByRef ResY As Double) As Boolean
 	
 	' NOTE TODO JW: For COLDATA cannot rely on finding only three corners, just take three of the four corners found 
@@ -4630,5 +4212,42 @@ Function GetAllTrayCorrections(pallet_nr As Integer)
 		Next j
 	Next i
 	
+Fend
+
+Function PhotographAllChipsInTray(pallet_nr As Integer, TrayName$ As String)
+	SelectSite
+	SetSpeedSetting("MoveWithChip")
+	String fileName$
+	fileName$ = RTS_DATA$ + "\TrayCatalog_" + TrayName$ + ".txt"
+	Integer fileNum
+	fileNum = FreeFile
+	AOpen fileName$ As #fileNum
+	Print #fileNum, TrayName$, " chip image catalog"
+	
+	
+	JumpToTray_camera(pallet_nr, 1, 1)
+	Int32 col_nr, row_nr
+	For col_nr = 1 To trayNCols
+		For row_nr = 1 To trayNRows
+			If col_nr = 1 And row_nr Then
+				JumpToTray_camera(pallet_nr, 1, 1)
+			Else
+				If pallet_nr = 1 Then
+					Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) /(Hand(Pallet(pallet_nr, col_nr, row_nr)))
+				ElseIf pallet_nr = 2 Then
+					Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) /(Hand(Pallet(pallet_nr, col_nr, row_nr)))
+				EndIf
+			EndIf
+			
+			Wait 1
+			String name$, picname$
+			name$ = "Tray_" + TrayName$ + "_Chip_" + Str$(col_nr) + "_" + Str$(row_nr) + "_SN"
+			picname$ = DF_take_picture$(name$)
+			Print #fileNum, picname$
+		Next
+	Next
+		
+	Close #fileNum
+	SetSpeedSetting("MoveWithoutChip")
 Fend
 

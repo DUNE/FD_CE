@@ -200,13 +200,21 @@ Function DefineDirections As Int32
 	
 	' WRT taught CU(socket point), L DAT points taught with U~180,0,0 and R DAT U~0,180,180 for LArASIC, ColdADC and COLDATA
 	SocketMezzanineOrientation(1) = 0	' LArASIC
-	SocketMezzanineOrientation(2) = 0	' ColdADC
-	SocketMezzanineOrientation(3) = 0	' COLDATA
+	SocketMezzanineOrientation(2) = -180	' ColdADC ' -180? Seem to have problem with 180 and 90 below
+	SocketMezzanineOrientation(3) = -180	' COLDATA
 	
 	' WRT mezzanine direction
-	SocketChipOrientation(1) = -90 ' LArASIC
-	SocketChipOrientation(2) = -90 ' ColdADC
-	SocketChipOrientation(3) = -90 ' COLDATA
+	SocketChipOrientation(1) = 90 ' LArASIC
+	SocketChipOrientation(2) = 90 ' ColdADC
+	SocketChipOrientation(3) = 90 ' COLDATA
+	
+	' TODO, change definition of socket orientation to simplify
+	' All chips are at +90 wrt socket, all sockets are oriented same direction
+	' Plan to remove above arrays and cut down to one value describing the offset of the chip to the defined point
+	' Need to remake sequences with sockets taught sideways (i.e. socket direction is defined by chip orientation)
+	'	ChipOrientation(1)= 90
+	'	ChipOrientation(1)= -90
+	'	ChipOrientation(1)= -90
 
 Fend
 
