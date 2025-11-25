@@ -4,7 +4,7 @@
 
 Function main
 	
-	SelectSite
+	SelectSite("")
 	
 	' Make sure RTS_DATA folder exists, create if not
 	If Not FolderExists(RTS_DATA$) Then

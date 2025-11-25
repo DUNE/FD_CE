@@ -1,18 +1,44 @@
 #include "SiteSelection.inc"
 #include "RTS_tools.inc"
 
-Function SelectSite
-'	Select SiteFile$
-'		Case ""
-'			Print "Using predefined site file:"
-'		Default
-'			SITE_FILE = SiteFile$
-'			Print "Using new site file:"
-'	Send
-'	String TheSiteFile$
-'	TheSiteFile$ = SITE_FILE
-'	Print TheSiteFile$
-	Print "Using site file ", SITE_FILE
+Function SelectSite(OPTION$ As String) As Boolean
+	
+	Boolean Verbose, DefPallets
+	
+	Select OPTION$
+		Case "InFunctionDefinePallets"
+'			Print "Will be quiet and define pallets"
+			Verbose = False
+			DefPallets = True
+		Case "InFunction"
+'			Print "Will be quiet and not define pallets"
+			Verbose = False
+			DefPallets = False
+		Default
+			''' This is the standard version which should be called in Main/Testing
+			''' Does not require pallet points to be predefined
+			''' WIll be somewhat verbose
+'			Print "Will be verbose, and not define pallets"
+			Verbose = True
+			DefPallets = False
+	Send
+	
+	If (OPTION$ <> "") And SITE$ <> "" And (DF_CAM_FOCUS * DF_CAM_FOCUS) > 5. Then
+		' If everything is already defined don't need to run again	
+'		Print "AlreadyDefined"
+		SelectSite = True
+		Exit Function
+	Else
+'		Print "not defined yet, running selectsite"
+	EndIf
+	
+	
+	SelectSite = False
+	
+	If Verbose Then
+		Print "Using site file ", SITE_FILE
+	EndIf
+	
 
 	' Set up directions of chips and sockets
 	DefineDirections
@@ -29,10 +55,10 @@ Function SelectSite
 	Close #fileNum
 	
 	DF_CAM_Z_OFF = DF_CAM_FOCUS - CONTACT_DIST
-	
+	If Verbose Then
 	Print "Site selected is " + SITE$
 	Print "Chip type to be tested is " + CHIPTYPE$
-
+	EndIf
 	POINTS_FILE$ = "points_" + SITE$ + ".pts"
 	LoadPoints POINTS_FILE$
 	
@@ -50,31 +76,18 @@ Function SelectSite
 		Exit Function
 	EndIf
 	
-	'JW This probably doesn't need to cause it to crash, maybe create the directory with mkdir?
-	
-'	Print "Looking for RTS_DATA$ file at ", RTS_DATA$
-'	If Not FolderExists(RTS_DATA$) Then
-'		Print "WARNING: RTS_DATA$ does not exist, should be at creating it at"
-'		Print RTS_DATA$
-'		MkDir RTS_DATA$
-'	EndIf
-'
-'	If Not FolderExists(RTS_DATA$) Then
-'  		Print "***ERROR Can't create directory [" + RTS_DATA$ + "]"
-'  		Exit Function
-'	EndIf
-	
-	
 	If (HAND_U0 * HAND_U0 + DF_CAM_X_OFF_U0 * DF_CAM_X_OFF_U0 + DF_CAM_Y_OFF_U0 * DF_CAM_Y_OFF_U0 + DF_CAM_FOCUS * DF_CAM_FOCUS) < 1. Then
 		Print "WARNING: DF CAMERA OFFSETS NEED SETTING"
 	EndIf
-	Print "Offsets:"
-	Print "  HAND_U0          = ", HAND_U0
-	Print "  DF_CAM_X_OFF_U0  = ", DF_CAM_X_OFF_U0
-	Print "  DF_CAM_Y_OFF_U0  = ", DF_CAM_Y_OFF_U0
-	Print "  DF_CAM_Z_OFF     = ", DF_CAM_Z_OFF
-	Print "  DF_CAM_FOCUS     = ", DF_CAM_FOCUS
-
+	If Verbose Then
+		Print "Offsets:"
+		Print "  HAND_U0          = ", HAND_U0
+		Print "  DF_CAM_X_OFF_U0  = ", DF_CAM_X_OFF_U0
+		Print "  DF_CAM_Y_OFF_U0  = ", DF_CAM_Y_OFF_U0
+		Print "  DF_CAM_Z_OFF     = ", DF_CAM_Z_OFF
+		Print "  DF_CAM_FOCUS     = ", DF_CAM_FOCUS
+	EndIf
+	
 	' Define tray layout by chip type. Note, the full arays are of fixed maximum size TRAY_NCOLS * TRAY_NROWS
 	' But if we do any actual chip pick and place we need to know how many chips there actually are
 	' TODO Maybe move the pallet definition here since this is called at the start of main.
@@ -103,6 +116,16 @@ Function SelectSite
 			Print "ERROR Unrecognised chip type, cannot set tray layout"
 		Exit Function
 	Send
+	
+	If DefPallets Then
+		' left tray
+		Pallet 1, Tray_Left_P1, Tray_Left_P2, Tray_Left_P3, Tray_Left_P4, trayNCols, trayNRows
+	
+		' right tray
+		Pallet 2, Tray_Right_P1, Tray_Right_P2, Tray_Right_P3, Tray_Right_P4, trayNCols, trayNRows
+	EndIf
+	
+	SelectSite = True
 
 Fend
 
@@ -198,15 +221,19 @@ Function DefineDirections As Int32
 	TrayChipOrientation(1) = TrayOrientation ' Tray point is at ~U=0, no need to adjust
 	TrayChipOrientation(2) = TrayOrientation + 180 ' Tray point is at ~U=180, adjust so relative to arm U orientation at point
 	
-	' WRT taught CU(socket point), L DAT points taught with U~180,0,0 and R DAT U~0,180,180 for LArASIC, ColdADC and COLDATA
-	SocketMezzanineOrientation(1) = 0	' LArASIC
-	SocketMezzanineOrientation(2) = -180	' ColdADC ' -180? Seem to have problem with 180 and 90 below
-	SocketMezzanineOrientation(3) = -180	' COLDATA
+'	' WRT taught CU(socket point), L DAT points taught with U~180,0,0 and R DAT U~0,180,180 for LArASIC, ColdADC and COLDATA
+'	SocketMezzanineOrientation(1) = 0	' LArASIC
+'	SocketMezzanineOrientation(2) = -180	' ColdADC ' -180? Seem to have problem with 180 and 90 below
+'	SocketMezzanineOrientation(3) = -180	' COLDATA
 	
-	' WRT mezzanine direction
-	SocketChipOrientation(1) = 90 ' LArASIC
-	SocketChipOrientation(2) = 90 ' ColdADC
-	SocketChipOrientation(3) = 90 ' COLDATA
+'	' WRT mezzanine direction
+'	SocketChipOrientation(1) = 90 ' LArASIC
+'	SocketChipOrientation(2) = 90 ' ColdADC
+'	SocketChipOrientation(3) = 90 ' COLDATA
+	
+	HandChipOrientation(1) = 90
+	HandChipOrientation(2) = -90
+	HandChipOrientation(3) = -90
 	
 	' TODO, change definition of socket orientation to simplify
 	' All chips are at +90 wrt socket, all sockets are oriented same direction
@@ -217,4 +244,5 @@ Function DefineDirections As Int32
 	'	ChipOrientation(1)= -90
 
 Fend
+
 

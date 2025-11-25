@@ -102,6 +102,7 @@ Fend
 
 
 Function MoveFromPointToImage
+	SelectSite("InFunctionDefinePallets")
 	' Move arm from stinger at point, to chip in focus with some rotation in degrees
 	' Remember point is defined as some offset (10mm from contact)
 	Move Here +Z(DF_CAM_Z_OFF)
@@ -110,6 +111,7 @@ Function MoveFromPointToImage
 Fend
 
 Function MoveFromImageToPoint
+	SelectSite("InFunctionDefinePallets")
 	' Inverse of above function, note rotation is not inverted like other offsets
 	' And order of operations may need to be reversed if this matters for collisions
 	Move Here -X(XOffset(CU(Here))) -Y(YOffset(CU(Here)))
@@ -120,7 +122,7 @@ Fend
 ' Jump to camera
 ' Preserve U rotation
 Function JumpToCamera
-	SelectSite
+	SelectSite("InFunctionDefinePallets")
 	If Agl(2) < 0 Then
 		' Left-handed orientation
     	Jump P_camera :U(CU(Here)) /L LimZ JUMP_LIMIT
@@ -135,6 +137,7 @@ Fend
 ' row_nr = 1..6
 ' col_nr = 1..15
 Function JumpToTray(pallet_nr As Integer, col_nr As Integer, row_nr As Integer)
+	SelectSite("InFunctionDefinePallets")
 	Jump Pallet(pallet_nr, col_nr, row_nr) LimZ JUMP_LIMIT ' +Z(10)
 Fend
 
@@ -143,6 +146,8 @@ Fend
 ' col_nr = 1..15
 Function JumpToTray_camera(pallet_nr As Integer, col_nr As Integer, row_nr As Integer)
 	
+	SelectSite("InFunctionDefinePallets")
+
 	If ChipType$ = "COLDATA" Then
 		If pallet_nr = 1 Then
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) LimZ JUMP_LIMIT
@@ -306,6 +311,7 @@ Fend
 
 
 Function JumpToSocket(DAT_nr As Integer, socket_nr As Integer)
+	SelectSite("InFunctionDefinePallets")
 	If Dist(Here, P(100 * DAT_nr + socket_nr)) < 0.1 Then
 		Exit Function
 	EndIf
@@ -552,6 +558,7 @@ Function UF_camera_light_OFF
 Fend
 
 Function JumpToSocket_camera(DAT_nr As Integer, socket_nr As Integer)
+	SelectSite("InFunctionDefinePallets")
 	Integer SockP
 	SockP = DAT_nr * 100 + socket_nr
 	Double SockU
@@ -665,7 +672,34 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 					PinsRowAnaly = 400 + i
 				EndIf
 			Next i
+		Case "TUT"
+			VGet TUT_ChipAnal.name$.Passed, passed
+			If Not passed Then
+				Print "PinsAnaly " + name$ + " failed!"
+				Print #fileNum, " failed",
+				PinsRowAnaly = 301
+				Exit Function
+			EndIf
 			
+			VGet TUT_ChipAnal.name$.NumberFound, nFound
+			'Print #fileNum, name$, ",", nFound,
+			If nFound <> 32 Then
+				PinsRowAnaly = 302
+			EndIf
+		
+			For i = 1 To nFound
+				VSet TUT_ChipAnal.name$.CurrentResult, i
+				VGet TUT_ChipAnal.name$.CameraX, x
+				VGet TUT_ChipAnal.name$.CameraY, y
+				VGet TUT_ChipAnal.name$.Area, area
+				'Print #fileNum, ",", x, ",", y, ",", area,
+				xold = x
+				yold = y
+				If i > 1 And Abs(x - xold) > 0.05 Then
+					Print "*ERROR! Bent pin found in " + name$,
+					PinsRowAnaly = 400 + i
+				EndIf
+			Next i
 	Send
 	
 	'Print #fileNum, " "' Should use RTS_error in movement function which will end the line
@@ -686,6 +720,8 @@ Function PinsAnaly(id$ As String) As Integer
 			VRun pins_analy
 		Case "MSU"
 			VRun MSU_ChipAnal
+		Case "TUT"
+			VRun TUT_ChipAnal
 		Default
 			Print "Need to set up pin analysis for your site"
 			PinsAnaly = -100
@@ -1059,7 +1095,7 @@ Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, Tg
 	SetSpeedSetting("MoveWithoutChip")
 
 	' Now we have done occupancy checks, do pick and place 
-	' DeltaDir is the difference in the direction of the chip and the hand at the socket - measured for precision
+	' DeltaDir is the difference in the direction of the chip and the hand at the socket - as measured for precision
 	Double DeltaDir
 	
 	' Note, a correction is calculated when placing a chip in the socket based on the last chip removed	
@@ -1331,26 +1367,26 @@ Function CheckOperationType(ByRef idx() As Integer, ByRef Operation$ As String) 
 	EndIf
 
 	If DoT2T Then
-		operation$ = "T2T" ' Tray to tray
+		Operation$ = "T2T" ' Tray to tray
 		CheckOperationType = 1
 	ElseIf DoT2S And Not DoS2T Then
-		operation$ = "LOADCHIP" ' Tray to socket only
+		Operation$ = "LOADCHIP" ' Tray to socket only
 		CheckOperationType = 2
 	ElseIf DoS2T And Not DoT2S Then
-		operation$ = "REMOVECHIP" ' Socket to tray only
+		Operation$ = "REMOVECHIP" ' Socket to tray only
 		CheckOperationType = 3
 	ElseIf DoS2S Then
-		operation$ = "S2S" ' Socket to socket
+		Operation$ = "S2S" ' Socket to socket
 		CheckOperationType = 4
 		If idx(8) = idx(10) And idx(9) = idx(11) Then
-			operation$ = "REINSERT"
+			Operation$ = "REINSERT"
 			CheckOperationType = 6
 		EndIf
 	ElseIf DoS2T And DoT2S Then
-		operation$ = "SWAPCHIPS" ' Swap current chip for new chip
+		Operation$ = "SWAPCHIPS" ' Swap current chip for new chip
 		CheckOperationType = 5
 	Else
-		operation$ = "INVALID"
+		Operation$ = "INVALID"
 		CheckOperationType = -10
 	EndIf
 	
@@ -1583,9 +1619,9 @@ Fend
 ' ByRef SourceTrayImage$ - String to save name of image in to be later passed to log function
 Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef SourceTrayImage$ As String) As Int32
 	UpdateRobotLog$("Getting chip from tray " + Str$(idx(2)) + " position (" + Str$(idx(3)) + "," + Str$(idx(4)) + ")")
-		GetChipFromTray = 0
-'		Print "Getting chip from tray (", idx(2), ",", idx(3), ",", idx(4), ")"
-		SetSpeedSetting("MoveWithoutChip")
+	GetChipFromTray = 0
+'	Print "Getting chip from tray (", idx(2), ",", idx(3), ",", idx(4), ")"
+	SetSpeedSetting("MoveWithoutChip")
 
 		JumpToTray_camera(idx(2), idx(3), idx(4))
 		SourceTrayImage$ = DF_take_picture$(ts$ + "_source_tray")
@@ -1606,7 +1642,8 @@ Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 		' Pick up chip - Angle should be determined by measured position of chip and target orientation in tray
 		'Double DeltaDir
 		' TODOJOE should this be bound 180? Be careful with the values set
-		DeltaDir = SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)
+		'DeltaDir = SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)
+		DeltaDir = HandChipOrientation(CHIPTYPE_NR)
 		Double PickU
 		PickU = Tray_Results(6) - DeltaDir '(SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)) ' DeltaDir
 		Go Here :U(PickU + PickOffset)
@@ -1614,6 +1651,7 @@ Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 '		Print "Calculating pick up angle"
 '		Print "Chip direction at tray (wrt world): ", Tray_Results(6)
 ' '       Print "Chip direction at socket (wrt world): ", (CU(P(PSocket(DAT_nr, socket_nr))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
+' '       Print "Chip direction at socket (wrt world): ", (CU(P(PSocket(DAT_nr, socket_nr))) + HandChipOrientation(CHIPTYPE_NR))
 ''		Print "Robot hand U at socket : ", CU(P(PSocket(DAT_nr, socket_nr)))
 '		Print "Delta from robot hand U to target chip direction in socket : ", DeltaDir
 '		Print "Robot hand U at tray to get chip at right delta : ", PickU
@@ -1670,9 +1708,9 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 		JumpToTray(idx(5), idx(6), idx(7))
 		UpdateRobotLog$("Jumped to tray")
 
-		Go Here :U(TrayOrientation - DeltaDir)
+		Go Here :U(TrayOrientation - DeltaDir) ' DeltaDir here should have been measured at socket or defined at previous chip (by defined hand-chip offset at socket, see SiteSelection:DefineDirections)
 		
-		Go Here +U(PickOffset)
+		Go Here +U(PickOffset) ' This is the add 45. deg option which is globally set 
 		
 		' Place chip
 		SetSpeedSetting("PickAndPlace")
@@ -1695,8 +1733,6 @@ Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Resul
 		EndIf
 		UpdateRobotLog$("Chip alignment okay")
 
-		
-		
 		SetSpeedSetting("MoveWithoutChip")
 		PlaceChipInTray = -1
 Fend
@@ -1746,8 +1782,8 @@ Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketRe
 		' Remember offset between hand and chip	
 
 		' Double DeltaDir
-		DeltaDir = SocketResults(12) - CU(Here)
-		Go Here +U(PickOffset)
+		DeltaDir = SocketResults(12) - CU(Here) ' Measures chip position wrt hand after hand is corrected for socket.
+		Go Here +U(PickOffset) ' i.e. should  you pick up at +45 degrees - probably needs more testing
 		
 		If Not isPressureOk Then
 			RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)
@@ -1894,7 +1930,8 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			Print "WARNING: No DAT Socket offsets stored, will attempt placing from DF camera and UF camera measurements"
 			' Careful that offset of chip from UFGetChipAlignment is absolute wrt hand, not from target position	
 			' So correction should be 
-			Corrs(3) = -DiffAnglePM180((SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)), CameraResults(12))
+			'Corrs(3) = -DiffAnglePM180((SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)), CameraResults(12))
+			Corrs(3) = -DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), CameraResults(12))
 			Corrs(1) = -(CameraResults(10) * Cos(CU(Here)) - CameraResults(11) * Sin(CU(Here)))
 			Corrs(2) = -(CameraResults(10) * Cos(CU(Here)) + CameraResults(11) * Sin(CU(Here)))
 			
@@ -1922,9 +1959,11 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 '		Print "At socket, U will be ", CU(Here)
 '		Print "DeltaDir is ", DeltaDir
 '		Print "So chip should presumably be at ", Str$(CU(Here) + DeltaDir)
-'		Print "Socket orientation should be ", SocketMezzanineOrientation(CHIPTYPE_NR), " wrt taught socket orientation"
+'		'''Print "Socket orientation should be ", SocketMezzanineOrientation(CHIPTYPE_NR), " wrt taught socket orientation"
+'		Print "Socket orientation should be ", HandChipOrientation(CHIPTYPE_NR), " wrt taught socket orientation - (aligned with chip direction)"
 '		Print "Chip should be at ", SocketChipOrientation(CHIPTYPE_NR), " wrt to mezzanine "
-'		Print "So chip orientation should be ", Str$(CU(Here) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
+'		'''Print "So chip orientation should be ", Str$(CU(Here) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
+'       Print "So chip orientation should be ", Str$(CU(Here) +HandChipOrientation(CHIPTYPE_NR))
 '		Print "Chip orientation is ", Str$(CU(Here) + CameraResults(12))
 		Go Here +X(Corrs(1)) +Y(Corrs(2)) +U(Corrs(3))
 		
@@ -1973,11 +2012,15 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 		Print "  X: ", ChipSocketResults(13)
 		Print "  Y: ", ChipSocketResults(14)
 		Print "  U: ", ChipSocketResults(15)
-		Print "Expect the chip to be at Point U + Mezzanine Offset + Chip offset = ", Str$((CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)))
-		Print "Expect offset relative to socket to be ", SocketChipOrientation(CHIPTYPE_NR)
+		'''	Print "Expect the chip to be at Point U + Mezzanine Offset + Chip offset = ", Str$((CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)))
+		Print "Expect the chip to be at Point U + Chip-Hand offset = ", Str$(GetBoundAnglePM180((CU(P(PSocket(idx(10), idx(11)))) + HandChipOrientation(CHIPTYPE_NR))))
 		
-		If Abs(ChipSocketResults(12) - (CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))) > 5 Or Abs(ChipSocketResults(15) - (SocketChipOrientation(CHIPTYPE_NR))) > 5 Then
-			RTS_suberror(idx(1), "Chip orientation in socket after placement is inconsistent with defined relative orientation!", -ERR_BAD_ORIENTATION)
+		''' socket now measured orientation to align with chip not socket mezzanine text	
+		'''	Print "Expect offset relative to socket to be ", SocketChipOrientation(CHIPTYPE_NR)
+				
+		'If Abs(ChipSocketResults(12) - (CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))) > 5 Or Abs(ChipSocketResults(15) - (SocketChipOrientation(CHIPTYPE_NR))) > 5 Then
+		If Abs(DiffAnglePM180(ChipSocketResults(12), (CU(P(PSocket(idx(10), idx(11)))) + HandChipOrientation(CHIPTYPE_NR)))) > 5 Or Abs(ChipSocketResults(15)) > 5 Then
+			RTS_suberror(idx(1), "Chip orientation in socket after placement is inconsistent with defined relative orientation to hand!", -ERR_BAD_ORIENTATION)
 			PlaceChipInSocket = -ERR_BAD_ORIENTATION
 			Exit Function
 		EndIf
@@ -2678,6 +2721,8 @@ Function DFFindLArASIC As Boolean
 	' Fiducial and manufacturer marker recognition
 	Boolean isFoundL, isFoundS
 	Double xL, yL, uL, xS, yS, uS
+	Boolean isFoundT
+	Double xT, yT, uT
 	
 	Select SITE$
 		Case "MSU"
@@ -2685,31 +2730,71 @@ Function DFFindLArASIC As Boolean
 			
 			VRun MSU_DF_ChipDir
 			VGet MSU_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
-
+	
 			' Get positions of Large and Small circular markers on chip
 			VGet MSU_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
 			VGet MSU_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
 			
+			 VGet MSU_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
+		Case "TUT"
+			'Print "Using tutorial sequences"
+			VRun TUT_DF_ChipDir
+			
+			' Looks for something overall "chip like"
+			VGet TUT_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
+	
+			' Get positions of Large and Small circular markers on chip
+			VGet TUT_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
+			VGet TUT_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
+				
+			' Get text porition and orientation on chip - for me this is "BNL LArASIC"
+			'''' N.B. TEXT MUST BE TAUGHT IN SPECIFIC ORIENTATION TO GET CORRECT uT VALUE		
+			'''' TRY ROTATING AND RETEACHING UNTIL YOU GET AGREEMENT BETWEEN uT AND
+			'''' FIDUCIAL MARKERS. FOR ME, THEY ONLY AGREED WHEN I HAD ORIENTATION AT -90.
+			'''' i.e. AS VIEWED FROM FRONT OF RTS IN TRAY, TEXT WAS RIGHT WAY UP.
+			''''     
+			''''         ROBOT       ^
+			''''     -------------   | -90
+			''       '           '
+			''       '   BNL     '
+			'' 0<-   '   LArASIC '	-> +180	
+			''       '           '
+			''       '           '
+			''       -------------
+		
+			
+			VGet TUT_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
 		Default
+			
 			Print "No defined vision sequence for LArASICs for site: ", SITE$
 			Exit Function
 			
 	Send
+	Print "isFoundChip = ", isFoundChip
 	
 	If Not isFoundChip Then
-		' Print "Whole chip correlation step failed"
+		 'Print "Whole chip correlation step failed"
 		Exit Function
 	EndIf
+	'Print "Found whole chip"
 	
 	If Not isFoundL Then
-		' Print "Failed to find largr manufacturing mark (bottom right of chip)"
+		'Print "Failed to find largr manufacturing mark (bottom right of chip)"
 		Exit Function
 	EndIf
+	'Print "Found large manufacturing marker"
 	
 	If Not isFoundS Then
-		' Print "Failed to find small fiducial mark (top left of chip)"
+		 'Print "Failed to find small fiducial mark (top left of chip)"
 		Exit Function
 	EndIf
+	'Print "Found small fiducial marker"
+	
+	If Not isFoundT Then
+		'Print "Failed to find text on chip"
+		Exit Function
+	EndIf
+	'Print "found text"
 	
 	Double AvX, AvY
 	AvX = (xL + xS) /2
@@ -2741,12 +2826,19 @@ Function DFFindLArASIC As Boolean
 		Exit Function
 	EndIf
 	
+	' Check text orientation is consistent with the direction of the chip
+	If Abs(DiffAnglePM180(uT, (GetBoundAnglePM180(Angle - 45.)))) > 3. Then
+		Print "Inconsistent orientation from text and markers"
+		Print "uT = ", GetBoundAnglePM180(uT)
+		Print "Marker angle = ", Str$(GetBoundAnglePM180(Angle - 45.))
+	EndIf
+	
 	ChipPos(1) = AvX
 	ChipPos(2) = AvY
 	ChipPos(3) = GetBoundAnglePM180(Angle - 45.)
 	
 	DFFindLArASIC = True
-	
+	'Print "Got here, should be returning TRUE"
 Fend
 
 
@@ -3023,6 +3115,12 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 			VGet MSU_UF_Key.Geom02.Found, found(2) 'isFoundBR
 			VGet MSU_UF_Key.Geom03.Found, found(3) 'isFoundBL
 			VGet MSU_UF_Key.Geom04.Found, found(4) 'isFoundTL
+		Case "TUT"
+			VRun TUT_UF_Key
+			VGet TUT_UF_Key.Geom01.Found, found(1) 'isFoundTR
+			VGet TUT_UF_Key.Geom02.Found, found(2) 'isFoundBR
+			VGet TUT_UF_Key.Geom03.Found, found(3) 'isFoundBL
+			VGet TUT_UF_Key.Geom04.Found, found(4) 'isFoundTL	
 		Default
 			Print "INVALID SITE NAME"
 			Exit Function
@@ -3032,6 +3130,8 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 		Select SITE$
 			Case "MSU"
 				VGet MSU_UF_Key.Geom01.RobotXYU, isFound(1), ResX(1), ResY(1), ResU(1)
+			Case "TUT"
+				VGet TUT_UF_Key.Geom01.RobotXYU, isFound(1), ResX(1), ResY(1), ResU(1)
 		Send
 	Else
 		ResX(1) = -9999.
@@ -3043,6 +3143,8 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 		Select SITE$
 			Case "MSU"
 				VGet MSU_UF_Key.Geom02.RobotXYU, isFound(2), ResX(2), ResY(2), ResU(2)
+			Case "TUT"
+				VGet TUT_UF_Key.Geom02.RobotXYU, isFound(2), ResX(2), ResY(2), ResU(2)
 		Send
 	Else
 		ResX(2) = -9999.
@@ -3054,6 +3156,8 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 		Select SITE$
 			Case "MSU"
 				VGet MSU_UF_Key.Geom03.RobotXYU, isFound(3), ResX(3), ResY(3), ResU(3)
+			Case "TUT"
+				VGet TUT_UF_Key.Geom03.RobotXYU, isFound(3), ResX(3), ResY(3), ResU(3)
 		Send
 	Else
 		ResX(3) = -9999.
@@ -3065,6 +3169,8 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 		Select SITE$
 			Case "MSU"
 				VGet MSU_UF_Key.Geom04.RobotXYU, isFound(4), ResX(4), ResY(4), ResU(4)
+			Case "TUT"
+				VGet TUT_UF_Key.Geom04.RobotXYU, isFound(4), ResX(4), ResY(4), ResU(4)
 		Send
 	Else
 		ResX(4) = -9999.
@@ -3128,7 +3234,7 @@ Fend
 
 Function DFFindLArASICSocket As Boolean
 	Double USocket
-	SelectSite
+	SelectSite("InFunction")
 	
 	Select SITE$
 			Case "MSU"
@@ -3138,7 +3244,8 @@ Function DFFindLArASICSocket As Boolean
 				Else
 					VRun MSU_SocketFind
 				EndIf
-				
+			Case "TUT"
+				VRun TUT_SocketFind
 			Default
 				Print "Need to set up LArASIC/Socket find vision sequence, Try MSU_SocketFind"
 		Send
@@ -3178,6 +3285,16 @@ Function DFFindLArASICSocket As Boolean
 				VGet MSU_SocketFind.Geom07.Found, isFoundMBL
 				VGet MSU_SocketFind.Geom08.Found, isFoundMTL
 			EndIf
+		Case "TUT"
+				VGet TUT_SocketFind.Geom01.Found, isFoundTR
+				VGet TUT_SocketFind.Geom02.Found, isFoundBR
+				VGet TUT_SocketFind.Geom03.Found, isFoundBL
+				VGet TUT_SocketFind.Geom04.Found, isFoundTL
+				
+				VGet TUT_SocketFind.Geom05.Found, isFoundMTR
+				VGet TUT_SocketFind.Geom06.Found, isFoundMBR
+				VGet TUT_SocketFind.Geom07.Found, isFoundMBL
+				VGet TUT_SocketFind.Geom08.Found, isFoundMTL
 		Default
 
 	Send
@@ -3221,6 +3338,8 @@ Function DFFindLArASICSocket As Boolean
 				Else
 					VGet MSU_SocketFind.Geom04.RobotXYU, isFound4, xTL, yTL, uTL
 				EndIf
+			Case "TUT"
+				VGet TUT_SocketFind.Geom04.RobotXYU, isFound4, xTL, yTL, uTL
 		Send
 '		Print "TL : x=", xTL, ", y=", yTL
 	Else
@@ -3237,6 +3356,8 @@ Function DFFindLArASICSocket As Boolean
 				Else
 					VGet MSU_SocketFind.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
 				EndIf
+			Case "TUT"
+				VGet TUT_SocketFind.Geom01.RobotXYU, isFound1, xTR, yTR, uTR
 		Send
 
 '		Print "TR : x=", xTR, ", y=", yTR		
@@ -3253,6 +3374,8 @@ Function DFFindLArASICSocket As Boolean
 				Else
 					VGet MSU_SocketFind.Geom02.RobotXYU, isFound2, xBR, yBR, uBR
 				EndIf
+			Case "TUT"
+				VGet TUT_SocketFind.Geom02.RobotXYU, isFound2, xBR, yBR, uBR
 		Send
 '		Print "BR : x=", xBR, ", y=", yBR
 	Else
@@ -3266,8 +3389,10 @@ Function DFFindLArASICSocket As Boolean
 				If MSUTESTBOARD Then
 					VGet MSU_SocketFind2.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
 				Else
-					VGet MSU_SocketFind2.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
+					VGet MSU_SocketFind.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
 				EndIf
+			Case "TUT"
+				VGet TUT_SocketFind.Geom03.RobotXYU, isFound3, xBL, yBL, uBL
 		Send
 '		Print "BL : x=", xBL, ", y=", yBL
 	Else
@@ -3283,6 +3408,11 @@ Function DFFindLArASICSocket As Boolean
 				VGet MSU_SocketFind.Geom06.RobotXYU, isFoundM2, xMBR, yMBR, uMBR
 				VGet MSU_SocketFind.Geom07.RobotXYU, isFoundM3, xMBL, yMBL, uMBL
 			EndIf
+		Case "TUT"
+			VGet TUT_SocketFind.Geom08.RobotXYU, isFoundM4, xMTL, yMTL, uMTL
+			VGet TUT_SocketFind.Geom05.RobotXYU, isFoundM1, xMTR, yMTR, uMTR
+			VGet TUT_SocketFind.Geom06.RobotXYU, isFoundM2, xMBR, yMBR, uMBR
+			VGet TUT_SocketFind.Geom07.RobotXYU, isFoundM3, xMBL, yMBL, uMBL
 	Send
 	
 	
@@ -3291,16 +3421,11 @@ Function DFFindLArASICSocket As Boolean
 '	Print "isFound BL:", isFoundBL
 '	Print "isFound TL:", isFoundTL
 '	
-	' When viewed from up right orientation, missing marker will be
-	' LArASIC - top left
-	' ColdADC - top right
-	' COLDATA - bottom right
+	' if text upright, missing fiducial marker is top right
+	' if CHIP text is upright, missing fiducial is bottom right!
 
-	' LArASIC
-	'        T3
-	'
-	'
-	' T1     T2
+
+
 
 	' orientation in world coordinates is direction of T2->T3 : T23
 	' hypotentuse gives larger measurement but relies on isosceles right triangle
@@ -3336,7 +3461,7 @@ Function DFFindLArASICSocket As Boolean
 
 	SockPos(1) = (CornerVar(1) + MXAv) / 2
 	SockPos(2) = (CornerVar(2) + MYAv) / 2
-	SockPos(3) = GetBoundAnglePM180(CornerVar(3) + 90.)
+	SockPos(3) = GetBoundAnglePM180(CornerVar(3) + 180.)
 	
 '	Print "Position found with fiducial points"
 '	Print "(", CornerVar(1), ",", CornerVar(2), ",", CornerVar(3), ")"
@@ -3585,10 +3710,11 @@ Function GetChipInSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr 
 
 	Int32 FullSocket_nr
 	FullSocket_nr = DAT_nr * 100 + socket_nr
+	' defined chip position and orienation
 	CinSResults(1) = CX(P(FullSocket_nr)) ' Socket X
 	CinSResults(2) = CY(P(FullSocket_nr)) ' Socket Y
 	' CinSResults(3) = CU(P(FullSocket_nr)) ' Socket U
-	CinSResults(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + SocketMezzanineOrientation(CHIPTYPE_NR))
+	CinSResults(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
 
 	Int32 Attempts
 	Boolean Success
@@ -3683,7 +3809,7 @@ Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As I
 	DFSockRes(1) = CX(P(FullSocket_nr))
 	DFSockRes(2) = CY(P(FullSocket_nr))
 '	DFSockRes(3) = CU(P(FullSocket_nr))
-	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + SocketMezzanineOrientation(CHIPTYPE_NR))
+	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
 	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
 	Int32 Attempts
 	Boolean Success
@@ -4215,7 +4341,7 @@ Function GetAllTrayCorrections(pallet_nr As Integer)
 Fend
 
 Function PhotographAllChipsInTray(pallet_nr As Integer, TrayName$ As String)
-	SelectSite
+	SelectSite("InFunctionDefinePallets")
 	SetSpeedSetting("MoveWithChip")
 	String fileName$
 	fileName$ = RTS_DATA$ + "\TrayCatalog_" + TrayName$ + ".txt"

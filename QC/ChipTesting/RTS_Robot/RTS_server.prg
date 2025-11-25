@@ -1,7 +1,7 @@
 
 Function RTS_server
 	
-	SelectSite
+	SelectSite("InFunction")
 	LoadPositionFiles
 	
 	Integer portNr
@@ -139,7 +139,7 @@ Function RTS_server
     			'Print #portNr, "RTS ready"
     			
     		Case "SelectSite"
-    			SelectSite
+    			SelectSite("")
     			Print #portNr, "SelectSite"
     			
     		Case "LoadPositionFiles"

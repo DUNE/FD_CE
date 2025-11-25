@@ -65,8 +65,9 @@ Global Double SockPos(3)
 ' account for sub-90 degree variations between sockets and different RTS robots
 Global Double TrayOrientation ' Default direction for chips in tray - in world coordinates
 Global Double TrayChipOrientation(2) ' Accounts for hand position at each tray separately
-Global Double SocketMezzanineOrientation(3) ' Relative to work coordinates (1,x) and (2,x) should be 180 deg apart
-Global Double SocketChipOrientation(3) ' Default direction for chips in sockets - relative to socket Mezzanine direction
+' Global Double SocketMezzanineOrientation(3) ' Relative to work coordinates (1,x) and (2,x) should be 180 deg apart
+' Global Double SocketChipOrientation(3) ' Default direction for chips in sockets - relative to socket Mezzanine direction
+Global Double HandChipOrientation(3) ' Diretcion of chip relative to Hand U at socket
 
 ' Define the distance between the fiducial markers on LArASIC
 #define LArASICDimension 14.0 ' Need to measure
