@@ -29,6 +29,8 @@ Function Testing
 	Motor On
 	PumpOn
 	SetSpeed
+	
+	
 '	''' Make changes here	
 '	
 
@@ -117,16 +119,122 @@ Function Testing
 '	Print SockPos(1), SockPos(2), SockPos(3)
 
 
-	MoveChipFromSocketToTray(1, 8, 1, 1, 1)
-	MoveChipFromTrayToSocket(1, 8, 1, 1, 1)
+'	MoveChipFromSocketToTray(1, 8, 1, 1, 1)
+'	MoveChipFromTrayToSocket(1, 8, 1, 1, 1)
 
+		' Removing my test chips
+'		If Not MoveChipFromSocketToTray(1, 1, 1, 1, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 2, 1, 2, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 3, 1, 3, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 4, 1, 4, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 5, 1, 5, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 6, 1, 5, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 7, 1, 6, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+'		Wait 5
+'		If Not MoveChipFromSocketToTray(1, 8, 1, 7, 6) Then
+'			Print "ERROR"
+'			Exit Function
+'		EndIf
+
+
+		'MoveChipFromSocketToTray(1, 1, 1, 1, 6)
+		'Wait 5
+'		MoveChipFromSocketToTray(1, 2, 1, 2, 6)
+'		Wait 5
+'		MoveChipFromSocketToTray(1, 3, 1, 3, 6)
+'		Wait 5
+'		MoveChipFromSocketToTray(1, 4, 1, 4, 6)
+'		Wait 5
+' 		MoveChipFromSocketToTray(1, 5, 1, 5, 6)
+'		Wait 5
+'		MoveChipFromSocketToTray(1, 6, 1, 5, 6)
+'		Wait 5
+'		MoveChipFromSocketToTray(1, 7, 1, 6, 6)
+'		Wait 5
+'		MoveChipFromSocketToTray(1, 8, 1, 7, 6)
+		
+'		' 0 deg
+'		MoveChipFromTrayToSocket(1, 1, 1, 1, 6)
+'		Wait 5
+		
+'		' +90 deg
+'		MoveChipFromTrayToSocket(1, 2, 1, 2, 6)
+'		Wait 5
+'		' 180 deg
+'		MoveChipFromTrayToSocket(1, 3, 1, 3, 6)
+'		Wait 5
+'		' -90 deg
+'		MoveChipFromTrayToSocket(1, 4, 1, 4, 6)
+'		Wait 5
+'		' 0 deg
+' 		MoveChipFromTrayToSocket(1, 5, 1, 5, 6)
+'		Wait 5
+		' +90 deg
+		'MoveChipFromTrayToSocket(1, 6, 1, 5, 6)
+		'Wait 5
+		' 180 deg
+		MoveChipFromTrayToSocket(1, 7, 1, 7, 6)
+		Wait 5
+		' -90 deg
+		MoveChipFromTrayToSocket(1, 8, 1, 8, 6)
+
+
+'		MoveChipFromTrayToTray(1, 7, 6, 1, 8, 6)
+'		MoveChipFromTrayToTray(1, 6, 6, 1, 7, 6)
+'	
 
 '	
-	''' keep rest of this
-	PumpOff
-	Motor Off
+'	''' keep rest of this
+' Do not uncomment pump off if you are not sure if your code will not drop a chip after stopping mid move function!
+'	PumpOff
+'	Motor Off
 '		
 	UpdatePositionFiles
+	
+Fend
+
+Function CheckForChip(DAT_nr As Integer, socket_nr As Integer) As Boolean
+
+	CheckForChip = False
+	
+	If Not isChipInSocketCamera(DAT_nr, socket_nr) Then
+		Print "Cannot see a chip in the socket"
+	Else
+		Print "Can see chip in the socket"
+	EndIf
+	
+	If Not isChipInSocketTouch(DAT_nr, socket_nr) Then
+		Print "Chip not found at correct height"
+	Else
+		Print "Chip at correct height"
+	EndIf
 	
 Fend
 

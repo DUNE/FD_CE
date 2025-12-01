@@ -1,10 +1,10 @@
-ENVT0100,LM:2025/11/24 21:39:00:256,DS:0000004162,CS:22056,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2025/11/26 20:17:36:944,DS:0000006327,CS:29467,MA:6C-2B-59-DC-C5-38,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
 bDisplayT=False
 nNumberOfJoints=4
-nNumberOfPoints=13
+nNumberOfPoints=20
 Point1 {
 	nNumber=0
 	sLabel="P_Camera"
@@ -318,6 +318,188 @@ Point12 {
 	bSimVisible=False
 }
 Point13 {
+	nNumber=101
+	sLabel="Socket_L_01"
+	sDescription=""
+	nUndefined=0
+	rX=-329.881
+	rY=-326.335
+	rZ=-136.019
+	rU=179.459
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point14 {
+	nNumber=102
+	sLabel="Socket_L_02"
+	sDescription=""
+	nUndefined=0
+	rX=-329.78
+	rY=-250.135
+	rZ=-136.189
+	rU=179.459
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point15 {
+	nNumber=103
+	sLabel="Socket_L_03"
+	sDescription=""
+	nUndefined=0
+	rX=-330.18
+	rY=-173.735
+	rZ=-136.454
+	rU=179.459
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point16 {
+	nNumber=104
+	sLabel="Socket_L_04"
+	sDescription=""
+	nUndefined=0
+	rX=-330.08
+	rY=-97.635
+	rZ=-136.48
+	rU=179.459
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point17 {
+	nNumber=105
+	sLabel="Socket_L_05"
+	sDescription=""
+	nUndefined=0
+	rX=-330.28
+	rY=-8.836
+	rZ=-136.507
+	rU=179.459
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point18 {
+	nNumber=106
+	sLabel="Socket_L_06"
+	sDescription=""
+	nUndefined=0
+	rX=-330.58
+	rY=67.365
+	rZ=-136.486
+	rU=179.459
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point19 {
+	nNumber=107
+	sLabel="Socket_L_07"
+	sDescription=""
+	nUndefined=0
+	rX=-330.481
+	rY=143.664
+	rZ=-136.178
+	rU=179.559
+	rV=0
+	rW=0
+	rR=0
+	rS=0
+	rT=0
+	nLocal=0
+	nHand=1
+	nElbow=1
+	nWrist=1
+	nJ1Flag=0
+	nJ2Flag=0
+	nJ4Flag=0
+	nJ6Flag=0
+	rJ1Angle=0
+	rJ4Angle=0
+	bSimVisible=False
+}
+Point20 {
 	nNumber=108
 	sLabel="Socket_L_08"
 	sDescription=""

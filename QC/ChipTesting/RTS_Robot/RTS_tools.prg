@@ -345,9 +345,9 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 		VRun skt_cali_test
 		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 		check = (x_p1 - x_p2) * (x_p3 - x_p2) - (y_p1 - y_p2) * (y_p3 - y_p2)
@@ -1886,7 +1886,13 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 		EndIf
 		UpdateRobotLog$("Socket alignment measured")
 
-		JumpToSocket(idx(10), idx(11))
+		JumpToSocket(idx(10), idx(11)) ' Is this needed, DFGetSocketAlignment moves to measured position at end
+		' YES! Because in DFGetSocketAlignment it is at the wrong Z height, could combine but there are two different things going on	
+		' DFGSA is just getting X/Y position for U-Agl4 offset. Here we are actually moving to the point to place
+		
+		' This line is essentially the same as end of DFGetSocketAlignment but after moving to socket point at correct height!
+		Go Here :X(EmptySocketResults(4)) :Y(EmptySocketResults(5)) :U(GetBoundAnglePM180(EmptySocketResults(6) - HandChipOrientation(CHIPTYPE_NR)))
+		
 		Go Here +U(PickOffset)
 '		Print "Socket position and orientation AT:"
 '		Print "Here: "
@@ -2740,13 +2746,14 @@ Function DFFindLArASIC As Boolean
 			'Print "Using tutorial sequences"
 			VRun TUT_DF_ChipDir
 			
-			' Looks for something overall "chip like"
-			VGet TUT_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
-	
+			' Looks for something overall "chip like" - This does not consistently work, use BNL LArASIC text to make sure you see a chip
+			' VGet TUT_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
+			' Try using pins at edge as outline	- Could potentially use the BNL LArASIC text but I think it isn't precise enough for position check
+			VGet TUT_DF_ChipDir.Geom04.RobotXYU, isFoundChip, xC, yC, uC
+			
 			' Get positions of Large and Small circular markers on chip
 			VGet TUT_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
 			VGet TUT_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
-				
 			' Get text porition and orientation on chip - for me this is "BNL LArASIC"
 			'''' N.B. TEXT MUST BE TAUGHT IN SPECIFIC ORIENTATION TO GET CORRECT uT VALUE		
 			'''' TRY ROTATING AND RETEACHING UNTIL YOU GET AGREEMENT BETWEEN uT AND
@@ -2770,7 +2777,7 @@ Function DFFindLArASIC As Boolean
 			Exit Function
 			
 	Send
-	Print "isFoundChip = ", isFoundChip
+	' Print "isFoundChip = ", isFoundChip
 	
 	If Not isFoundChip Then
 		 'Print "Whole chip correlation step failed"
@@ -2817,7 +2824,8 @@ Function DFFindLArASIC As Boolean
 		Print "Large-to-small marker distance not within tolerance: " + Str$(Norm)
 		Exit Function
 	EndIf
-	
+
+ ' Cannot rely on finding "chip like" correlation, but can maybe use the geometry of the edge of the chip with the pins
 	' Check found position lies lose to correlation step for whole chip
 	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
 		Print "Fiducial marker method disagrees with correlation measurement of chip position"
@@ -3792,7 +3800,7 @@ Fend
 ' DFSockRes(10) - J4 offset at measured position
 
 Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As Integer, socket_nr As Integer, ByRef DFSockRes() As Double) As Boolean
-
+	Print "Getting socket alignment"
     SetSpeedSetting("PickAndPlace")
 	' Maybe add check to see if already above socket or in sink
 	JumpToSocket_camera(DAT_nr, socket_nr)
@@ -3810,6 +3818,12 @@ Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As I
 	DFSockRes(2) = CY(P(FullSocket_nr))
 '	DFSockRes(3) = CU(P(FullSocket_nr))
 	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
+	Print "Defined socket position:"
+	Print "DFSockRes(1) = ", DFSockRes(1)
+	Print "DFSockRes(2) = ", DFSockRes(2)
+	Print "DFSockRes(3) = ", DFSockRes(3)
+	
+	
 	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
 	Int32 Attempts
 	Boolean Success
@@ -3833,18 +3847,32 @@ Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As I
 	DFSockRes(4) = SockPos(1)
 	DFSockRes(5) = SockPos(2)
 	DFSockRes(6) = SockPos(3)
+	Print "Measured socket position:"
+	Print "DFSockRes(4) = ", DFSockRes(4)
+	Print "DFSockRes(5) = ", DFSockRes(5)
+	Print "DFSockRes(6) = ", DFSockRes(6)
+	
 	' Print any deviations between the socket position in camera and defined point
 	' Offset = Measured - Expected
 	DFSockRes(7) = DFSockRes(4) - DFSockRes(1) ' X
 	DFSockRes(8) = DFSockRes(5) - DFSockRes(2) ' Y
 	DFSockRes(9) = DiffAnglePM180(DFSockRes(3), DFSockRes(6)) 'DFSockRes(6) - DFSockRes(3) ' U
-	
+	Print "Offset = measured - Defined ... NB, (9) is DiffAngleBound((3),(6)) i.e. (6) - (3) but within 180 in U."
+	Print "DFSockRes(7) = ", DFSockRes(7)
+	Print "DFSockRes(8) = ", DFSockRes(8)
+	Print "DFSockRes(9) = ", DFSockRes(9)
 	Print Here
-	Print "moving to (", DFSockRes(4), ",", DFSockRes(5), ",", DFSockRes(6), ")"
+	'Print "moving to (", DFSockRes(4), ",", DFSockRes(5), ",", Str$(DFSockRes(3) + DFSockRes(9)), ")"
 '	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(6))
-	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(3) + DFSockRes(9))
+'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(3) + DFSockRes(9))
+	' Actually want to move to "Here" + offset for direction
+'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(CU(Here) + DFSockRes(9))
+	' OR 
+	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(GetBoundAnglePM180(DFSockRes(6) - HandChipOrientation(CHIPTYPE_NR))) ' Should this be DiffAngleBound?
+'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DiffAnglePM180, DFSockRes(6))??? Not looking to get angle between but to remove offset between chip and hand
+	' May need to consider bound in J4 not in U
 	DFSockRes(10) = CU(Here) - Agl(4)
-	
+	Print "DFSockRes(10) = ", DFSockRes(10)
 	DFGetSocketAlignment = True
 	
 Fend
