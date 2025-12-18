@@ -114,7 +114,7 @@ def perform_ocr_minicpm(image_path):
 
     # Set up:
     data = {
-        "model": "aiden_lu/minicpm-v2.6:Q4_K_M", #"gemma3:4b",
+        "model": "gemma3:4b", #"aiden_lu/minicpm-v2.6:Q4_K_M",
         "prompt": "Please OCR this image with all output texts in one line with no space",
         "images": [encoded_image],
         "sampling": False,
