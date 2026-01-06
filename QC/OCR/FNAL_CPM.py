@@ -73,7 +73,7 @@ def preprocess_image(image_name, image_dir, ocr_results_dir):
         return None
 
     # Rotate the image 180 degrees
-    rotated_image = image.rotate(0) #s180)
+    rotated_image = image.rotate(180)
 
     # Crop the image to the central chip
     cropped_chip = rotated_image.crop(crop_box)
