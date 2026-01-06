@@ -536,8 +536,11 @@ class RTSStateMachine(StateMachine):
     def handle_tray(self):
         """Process all chips on the tray with full test cycles."""
         num_chips = len(self.chip_positions['col'])
-        for i in range(num_chips):
-            print(f"\n--- Processing chip {i+1}/{num_chips} ---")
+        num_full_cycles = num_chips // 2
+        if num_full_cycles %2 != 0:
+            print("ERROR: Odd number of chips. Two chips must be tested at once.")
+        for i in range(num_full_cycles):
+            print(f"\n--- Processing chip ({i+1}&{i+2})/{num_chips} ---")
             self.run_full_cycle()
         print(f"\nTray processing complete! Processed {num_chips} chips.")
 
