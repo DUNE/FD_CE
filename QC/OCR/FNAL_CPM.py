@@ -14,10 +14,10 @@ import cv2
 import csv
 
 ############ Global constants #################
-w = 650
-h = 450
-x = 950
-y = 720
+w = 680 
+h = 680 
+x = 890 
+y = 600 
 crop_box = (x, y, x + w, y + h)
 #################################################
 
@@ -114,7 +114,7 @@ def perform_ocr_minicpm(image_path):
 
     # Set up:
     data = {
-        "model": "aiden_lu/minicpm-v2.6:Q4_K_M", #"gemma3:4b",
+        "model": "gemma3:4b", #"aiden_lu/minicpm-v2.6:Q4_K_M",
         "prompt": "Please OCR this image with all output texts in one line with no space",
         "images": [encoded_image],
         "sampling": False,
@@ -331,7 +331,7 @@ def ShowOCRResult(image_id, ocr_results_dir, chipinfo_dir):
     
     return
 
-def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, socket_label='CD0', config_file='asic_info.csv'):
+def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, socket_label='CD0', config_file='asic_info.csv', user_input=True):
     """
     Preprocess a given image, perform the ocr, and write
     the result to a file upon success.
@@ -341,6 +341,12 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
         image_directory [str]: directory of image
         image_file [str]: file name of image
         ocr_results_dir [str]: directory to save results
+        to_rts_config [bool]: If true, write the SN to the rts config file
+        socke_label [str]: Label for the socket (either CD0 or CD1)
+        config_file [str]: name of rts config file to write to if 
+                           to_rts_config is true
+        user_input [bool]: If true and the OCR fails, ask the 
+                           user to manually input the SN.
     """
     print("Running OCR...")
     success = False

@@ -45,6 +45,7 @@ class RTSStateMachine(StateMachine):
         self.simulation_mode = False
         self.BypassRTS = False
         self.last_normal_state = None
+        self.upload_to_hwdb = False # Choose to skip uploading to hwdb
 
         self.chip_positions = {
             'tray': [],
@@ -350,9 +351,12 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Uploading to HWDB")
 
-        else: 
+        elif self.upload_to_hwdb: 
             upload_result = subprocess.run(["wsl","bash","-l","-c", """source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh && python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py"""], capture_output=True, text=True, check=True)
             print(upload_result.stdout)
+
+        else:
+            print("Skipping upload to HWDB.")
 
     def on_enter_moving_chip_to_tray(self):
         print("Moving chips to tray")
