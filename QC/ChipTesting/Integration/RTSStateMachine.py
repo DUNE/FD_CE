@@ -94,15 +94,18 @@ class RTSStateMachine(StateMachine):
             self.rts.rts_init(port=201, host_ip='192.168.121.1')
         
         while True:
-            choice = input("Populate chip positions manually (m) or use full tray (f)? ").strip().lower()
+            choice = input("Populate chip positions manually (m) or use partial (p) or full tray (f)? ").strip().lower()
             if choice in ['m', 'manual']:
                 self.populate_manually()
                 break
             elif choice in ['f', 'full']:
                 self.populate_full_tray()
                 break
+            elif choice in ['p', 'partial']:
+                self.populate_partial_tray()
+                break
             else:
-                print("Please enter 'm' for manual or 'f' for full tray.")
+                print("Please enter 'm' for manual, 'p' for partial tray or 'f' for full tray.")
         
     # State definitions
     ground = State("Ground", initial=True)
@@ -533,8 +536,9 @@ class RTSStateMachine(StateMachine):
         """Process all chips on the tray with full test cycles."""
         num_chips = len(self.chip_positions['col'])
         num_full_cycles = num_chips // 2
-        if num_full_cycles %2 != 0:
+        if num_chips %2 != 0:
             print("ERROR: Odd number of chips. Two chips must be tested at once.")
+            return
         for i in range(num_full_cycles):
             print(f"\n--- Processing chip ({i+1}&{i+2})/{num_chips} ---")
             self.run_full_cycle()
@@ -637,6 +641,62 @@ class RTSStateMachine(StateMachine):
                 print(f"Error reading log file: {e}")
                 time.sleep(1)
     
+    def populate_partial_tray(self):
+        """Populate chip_positions from a starting point (must be column 1 or 3)."""
+        print("\nPartial tray mode.")
+        print("Enter the tray and the starting column (1-10) and row (1 or 3).")
+        
+        while True:         
+            try:
+                tray = int(input("Tray number (1 or 2): ").strip())
+                if tray in [1, 2]:
+                   break
+                else:
+                    print("Tray number must be 1 or 2.")
+            except ValueError:
+                print("Please enter 1 or 2.")
+            
+        while True:
+            try:
+                col_s = int(input("Column (1-10): ").strip())
+                if 1 <= col_s <= 10:
+                    break
+                else:
+                    print("Column must be between 1 and 10.")
+            except ValueError:
+                print("Please enter a valid number.")
+            
+        while True:
+            try:
+                row_s = int(input("Row (1 or 3): ").strip())
+                if row_s in [1, 3]:
+                    break
+                else:
+                    print("Row must be either 1 or 3.")
+            except ValueError:
+                print("Please enter a valid number.")
+                
+        for key in self.chip_positions:
+            self.chip_positions[key] = []
+        chip_counter = 0
+
+        for col in range(col_s, self.max_col + 1):
+            for row in range(1, self.max_row + 1):                
+                if (col == col_s):
+                    if (row < row_s):
+                        continue
+                self.chip_positions['col'].append(col)
+                self.chip_positions['row'].append(row)
+                self.chip_positions['tray'].append(2)
+                self.chip_positions['dat'].append(2)
+                if chip_counter % 2 == 0:
+                    self.chip_positions['dat_socket'].append(21)
+                    self.chip_positions['label'].append('CD0')
+                else:
+                    self.chip_positions['dat_socket'].append(22)
+                    self.chip_positions['label'].append('CD1')
+                chip_counter += 1
+        
     def populate_full_tray(self):
         """Populate chip_positions with a complete 10x4 tray configuration."""
         for key in self.chip_positions:
