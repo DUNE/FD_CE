@@ -18,6 +18,7 @@ import os
 from datetime import datetime
 import time
 import subprocess
+import pandas as pd
 
 import OCR.FNAL_CPM as cpm
 
@@ -92,6 +93,10 @@ class RTSStateMachine(StateMachine):
         if not self.BypassRTS:
             self.rts = RTS_CFG()
             self.rts.rts_init(port=201, host_ip='192.168.121.1')
+
+        # Ask tester for their username and update config file
+        self.user_name = input("Enter Tester Username: ").strip().lower()
+        self.WriteUserToConfig(self.user_name, self.config_file)
         
         while True:
             choice = input("Populate chip positions manually (m) or use partial (p) or full tray (f)? ").strip().lower()
@@ -733,7 +738,7 @@ class RTSStateMachine(StateMachine):
         """Interactively populate chip_positions with user input."""
         print("\nManual chip population mode.")
         print("Enter chip details one by one. Allowed values:")
-        print("Tray: 1 or 2 • Column: 1-10 • Row: 1-4 • DAT: 1 or 2 • DAT socket: 21 or 22 • Label: CD0 or CD1")
+        print("Tray: 1 or 2 • Column: 1-10 • Row: 1-4 • DAT: 1 or 2 • DAT socket: 21 or 22")
         
         while True:
             print(f"\n--- Chip {len(self.chip_positions['tray']) + 1} ---")
@@ -782,18 +787,13 @@ class RTSStateMachine(StateMachine):
                 try:
                     dat_socket = int(input("DAT socket number (21 or 22): ").strip())
                     if dat_socket in [21, 22]:
+                        if dat_socket == 21: label = "CD0"
+                        else: label = "CD1"
                         break
                     else:
                         print("DAT socket number must be 21 or 22.")
                 except ValueError:
                     print("Please enter 21 or 22.")
-            
-            while True:
-                label = input("COLDATA label (CD0 or CD1): ").strip().upper()
-                if label in ["CD0", "CD1"]:
-                    break
-                else:
-                    print("Label must be CD0 or CD1.")
             
             # Check for duplicate chip (same position, label, and socket)
             for i in range(len(self.chip_positions['tray'])):
@@ -825,3 +825,27 @@ class RTSStateMachine(StateMachine):
         
         if self.simulation_mode:
             print("[SIMULATION] Disconnecting from robot")
+
+
+    def WriteUserToConfig(user_name, config_file):
+        """
+        Write the tester username to the RTS config file.
+        Inputs:
+            user_name [str]: Testers username
+            config_file [str]: RTS config file
+        """
+
+        config_df = pd.read_csv(config_file)
+
+        # Find username row and rewrite
+        row_num = 0
+        for i in config_df['Item']:
+            if i == "tester": 
+                config_df.loc[row_num, 'Value'] = user_name
+                break
+            row_num += 1
+
+        # Overwrite existing csv
+        config_df.to_csv(config_file, index=False)
+
+        return
