@@ -1,385 +1,603 @@
 #include "RTS_tools.inc"
 #include "ErrorDictionary.inc"
-'
-''
-'' INPUT: 
-''        pallet_nr - pallet number of the chip source (1-left, 2-right)
-''        col_nr - column number in the pallet (1-15)
-''        row_nr - row number in the pallet (1-6)
-''        DAT_nr - DAT board target (1-left, 2-right)
-''        socket_nr - socket target (1-8)
-''
-'' RETURN:
-''        > 0 - job_id (timestamp)
-''        < 0 - Error id
-'
-'
 
-'''' MSU WRITTEN FUNCTIONS ''''
-'''' Move chip to and from tray/socket functions
-' Should broadly match old BNL functions
-
-''' For a given socket, remove current chip and place in target tray position and replace with new chip from source tray position
-'' Args:
-' DAT, Socket - The DAT board number and socket position
-' SrcTray, SrcTrayCol, SrcTrayRow - The source tray position for the NEW chip (to place in socket next)
-' TgtTray, TgtTrayCol, TgtTrayRow - The target tray position for the OLD chip (currently in socket)
-Function SwapChipsInSocket(DAT As Integer, Socket As Integer, SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
-	UpdateRobotLog$("Starting SwapChipsInSocket")
-	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, DAT, Socket, DAT, Socket, True, False)
-Fend
-
-''' Pick a chip up from an occupied tray position and move it to an empty socket
-'' Args:
-' DAT, Socket - The DAT board number and socket position for the socket to be filled
-' Tray, TrayCol, TrayRow - The position of the chip on in the tray to pick up and put in the socket
-Function MoveChipFromTrayToSocket(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
-	UpdateRobotLog$("Starting MoveChipFromTrayToSocket")
-	MoveChip(Tray, TrayCol, TrayRow, 0, 0, 0, 0, 0, DAT, Socket, True, False)
-Fend
-
-''' Pick a chip up from an occupied socket and place it in an empty tray position
-'' Args:
-' DAT, Socket - The DAT board number and socket position for the socket with a chip in it
-' Tray, TrayCol, TrayRow - The position to place the tray in the socket
-Function MoveChipFromSocketToTray(DAT As Integer, Socket As Integer, Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
-	UpdateRobotLog$("Starting MoveChipFromSocketToTray")
-	MoveChip(0, 0, 0, Tray, TrayCol, TrayRow, DAT, Socket, 0, 0, True, False)
-Fend
-
-''' Pick up a chip from one occupied tray position and place it in a new empty tray position
-'' Args:
-' SrcTray, SrcTrayCol, SrcTrayRow - The source tray position the chip currently occupies
-' TgtTray, TgtTrayCol, TgtTrayRow - The empty target tray position to move the chip to
 Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
-	UpdateRobotLog$("Starting MoveChipFromTrayToTray")
-	MoveChip(SrcTray, SrcTrayCol, SrcTrayRow, TgtTray, TgtTrayCol, TgtTrayRow, 0, 0, 0, 0, True, False)
-Fend
-
-''' This MoveChip command handles moving chips from any source tray or socket position to any other target tray or socket position
-' Other Move commands wrap this. The logic here is to force consistency in operations and logging in one place
-' - First the command checks that a set of valid positions have been passed (indices in range, not repeated etc)
-' - Then the starting occupancies of the source and target positions are checked* this can be overriden
-' - Then a series of suboperations are used to pick and place chips, and arrays for results are past by reference to these
-'   allowing results from one function to be passed to the relevant next function for pick/place
-' Operations are ordered to reduce overall number of back and forth motions between tray and DAT board.
-' Note, currently this allows for the occupancy checks to be overriden, in order to allow for the implementation
-' of a set of batch movements, in which all the occupancies would be checked at once before moving any chips
-' We do not expect these occupancies to change during operations unless something has gone wrong
-' which should be detected.
-'' Args:
-' SrcTray, SrcTrayCol, SrcTrayRow - The source tray position
-' TgtTray, TgtTrayCol, TgtTrayRow - The target tray position
-' SrcDAT, SrcSocket - The source socket position
-' TgtDAT, TgtSocket - The target socket position
-' OccCheck - Do occupancy checks before moving
-' DoT2TPinAnalysis - Do pin analysis when moving from one tray position to another, this is forced in other cases in order to get the precise position at the socket
-Function MoveChip(SrcTray As Int32, SrcTrayCol As Int32, SrcTrayRow As Int32, TgtTray As Int32, TgtTrayCol As Int32, TgtTrayRow As Int32, SrcDAT As Int32, SrcSocket As Int32, TgtDAT As Int32, TgtSocket As Int32, OccCheck As Boolean, DoT2TPinAnalysis As Boolean) As Int64
+	MoveChipFromTrayToTray = 0
+	ErrorCode = 0
 	SubError = 0
-	' Main function for moving chips, keeps formating consistent and does checks for valid operations and occupancies (unless overriden for batch operation) 
+		
+	SelectSite("InFunctionDefinePallets")
 	
-	String ts$
+	String ts$ ', opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	MoveChip = Val(ts$)
 
-	SetSpeedSetting("")
-	
-	String fname$
-	fname$ = "manip.csv"
-	
-	Integer fileNum
-	fileNum = FreeFile
-
-	AOpen RTS_DATA$ + "\" + fname$ As #fileNum
-	
-	Print #fileNum, ts$, ",",
-	
-	' If starting with an empty socket
-	Double Empty_S_Results(10)
+	CurrentOperation$ = "MoveT2T_" + ts$
+	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromTrayToTray(" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + "," + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ") " + ts$)
 		
-	' From socket to tray
-	Double S2T_S_Results(16) ' Chip in Socket to go to (target) tray
-	Double S2T_C_Results(13) ' Chip from socket to go to tray at UF Camera
- 	Double S2T_T_Results(10) ' Chip from socket placed in Tray
-
-	' From tray to socket
-	Double T2S_T_Results(10) ' Chip in (source) Tray to go to socket
-	Double T2S_C_Results(13)
-	Double T2S_S_Results(16)
-
-	' From tray to tray
-	Double T2T_ST_Results(10) ' Chip in initial (Source) tray position
-	Double T2T_TT_Results(10) ' Chip in final (Target) tray position
-	Double T2T_C_Results(13)
-	
-	' From socket to socket
-	Double S2S_SS_Results(16)
-	Double S2S_TS_Results(16)
-	Double S2S_C_Results(13)
-	
-	String Images$(14)
-	String UFCImages1$(5)
-	String UFCImages2$(5)
-	' Most images to store when swapping two chips
-	' If occupancy check fails, just store occupancy check image , otherwise
-	' 1 - Source tray image
-	' 2 - Target tray image
-	' 3 - Source socket image
-	' 4 - Target socket image
-	' 5 - Chip1 UFC 1st measurement
-	' 6 - Chip1 UFC 2nd measurement
-	' 7 - Chip1 UFC Pin analysis center
-	' 8 - Chip1 UFC Pin analysis left
-	' 9 - Chip1 UFC Pin analysis right
-	' 10 - Chip2 UFC 1st measurement
-	' 11 - Chip2 UFC 2nd measurement
-	' 12 - Chip2 UFC Pin analysis center
-	' 13 - Chip2 UFC Pin analysis left
-	' 14 - Chip2 UFC Pin analysis right	
-	
-	' initialize the results arrays for the vision sequences
-	Int32 i
-	For i = 1 To 16
-		If i < 11 Then
-			Empty_S_Results(i) = 0
-			S2T_T_Results(i) = 0
-			T2S_T_Results(i) = 0
-			T2T_ST_Results(i) = 0
-			T2T_TT_Results(i) = 0
-		EndIf
-		If i < 13 Then
-			S2T_C_Results(i) = 0
-			T2S_C_Results(i) = 0
-			T2T_C_Results(i) = 0
-		EndIf
-		If i < 15 Then
-			Images$(i) = ""
-		EndIf
-		If i < 5 Then
-			UFCImages1$(i) = ""
-			UFCImages2$(i) = ""
-		EndIf
-		S2T_S_Results(i) = 0
-		T2S_S_Results(i) = 0
-		S2S_SS_Results(i) = 0
-		S2S_TS_Results(i) = 0
-
-	Next
-
-	Integer idx(20)
-	For i = 1 To 20
-		idx(i) = 0
-	Next i
-	
-	idx(1) = fileNum
-	
-	idx(2) = SrcTray
-	idx(3) = SrcTrayCol
-	idx(4) = SrcTrayRow
-	
-	idx(5) = TgtTray
-	idx(6) = TgtTrayCol
-	idx(7) = TgtTrayRow
-	
-	idx(8) = SrcDAT
-	idx(9) = SrcSocket
-	
-	idx(10) = TgtDAT
-	idx(11) = TgtSocket
-	
-	' Check whether the input indices are valid (within range etc)
-	Integer Op
-	String operation$
-	Operation$ = "Invalid"
-	
-	Op = CheckOperationType(ByRef idx(), ByRef Operation$)
-	If Op < 0 Then
-		Print "Invalid operation type"
-		MoveChip = -ERR_BAD_COMMAND
-		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-		RTS_error(fileNum, "Invalid operation")
+	' Check valid operation
+	If Not CheckValidTrayIndex(SrcTray, SrcTrayCol, SrcTrayRow) Then
+		RTS_error("Invalid source tray (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")", ERR_BAD_COMMAND)
+		MoveChipFromTrayToTray = -ErrorCode
+		Exit Function
 	EndIf
-	UpdateRobotLog$("Operation type determined to be " + Operation$)
-	' Do checks of socket and tray occupancies
-	' Expected intial occupancies
-	'              Socket  |  Source  |  Target
-	' T2S only  :    0     |     1    |   N/A
-	' S2T + T2S :    1     |     1    |    0
-	' S2T only  :    1     |    N/A   |    0
-	' T2T       :   N/A    |     1    |    0
-	
-	' If checking the occupancy check the occupancies TODOJOE wrap in if statement?
-	SetSpeedSetting("MoveWithoutChip")
+
+	If Not CheckValidTrayIndex(TgtTray, TgtTrayCol, TgtTrayRow) Then
+		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND)
+		MoveChipFromTrayToTray = -ErrorCode
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+
+	' Check occupancy	
 	Int32 Occupancy
-	String OccupancyImage$
-	Occupancy = CheckOperationOccupancy(ts$, ByRef idx(), operation$, ByRef OccupancyImage$)
+	Occupancy = -1
+	
+	' Check target first
+	Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
+	'Print "Occupancy = ", Occupancy
 	If Occupancy <> 0 Then
-		Select Occupancy
-			Case -1
-				MoveChip = -ERR_V_NOCHIP
-			Case -2
-				MoveChip = -ERR_V_OCCUPIED
-			Case -3
-				MoveChip = -ERR_V_NOCHIP
-			Case -4
-				MoveChip = -ERR_V_OCCUPIED
-			Case -5
-				MoveChip = -ERR_OBSTRUCTION
-			Default
-				MoveChip = -ERR_OBSTRUCTION ' Shoulnd't get here
-		Send
-		Images$(1) = OccupancyImage$
-		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-		RTS_error(fileNum, "Occupancy check fail, occupancy result : " + Str$(Occupancy))
+		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error(("Target tray position occupancy check value = " + Str$(Occupancy)), ERR_OBSTRUCTION)
+		Else
+			RTS_error(("Target tray position occupied, occupancy check value = " + Str$(Occupancy)), ERR_V_OCCUPIED)
+		EndIf
+		MoveChipFromTrayToTray = -ErrorCode
+		Exit Function
+	EndIf
+		
+	Occupancy = TrayPositionOccupied(SrcTray, SrcTrayCol, SrcTrayRow)
+	'Print "Occupancy = ", Occupancy
+	If Occupancy <> 1 Then
+		Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+		EndIf
+		MoveChipFromTrayToTray = -ErrorCode
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+
+	' Take picture of chip and store it for serial number retrieval	
+	String DFChipPicture_SN$
+	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
+	' Chips are in the right place, lets get the chip from the tray	
+		
+	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source tray position (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")")
+	' Need to get result from subprocess?
+	SubError = GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow)
+'	If Not GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow) Then
+	If Not SubError Then
+		RTS_error("Could not get chip from tray - GetChipFromTray=" + Str$(SubError), ERR_TRAY_PICK)
+		MoveChipFromTrayToTray = -ErrorCode
 		Exit Function
 	EndIf
 	
-	SetSpeedSetting("MoveWithoutChip")
+	UpdateRobotLog$(CurrentOperation$ + ": Chip successfully picked up and tray offsets measured")
+	UpdateRobotLog$(CurrentOperation$ + ": Offsets from tray position (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ") calculated as (" + Str$(CorrectedChipOffset(1)) + "," + Str$(CorrectedChipOffset(2)) + "," + Str$(CorrectedChipOffset(3)) + ")")
+	
+	' While at the UF camera, do any pin analysis	
+	' First need to recenter	
+	If DoPinAnalysis Then
+		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
+		UFRecenterSimple ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
+		
+	 	' Create input array of three strings for images. Need 3 for COLDATA, only 1 for LArASIC and ColdADC
+	 	String PinImages$(3)
+	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
+	 	'If Not ChipPinAnalysisSimple Then
+		If Not SubError Then
+			RTS_error("Pin analysis failure", ERR_PINS)
+			MoveChipFromTrayToTray = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target tray position")
 
-	' Now we have done occupancy checks, do pick and place 
-	' DeltaDir is the difference in the direction of the chip and the hand at the socket - as measured for precision
-	Double DeltaDir
+	SubError = PlaceChipInTray(TgtTray, TgtTrayCol, TgtTrayRow)
+'	If Not PlaceChipInTray(TgtTray, TgtTrayCol, TgtTrayRow) Then
+	If Not SubError Then
+		RTS_error("Could not place chip in tray", ERR_TRAY_PLACE)
+		MoveChipFromTrayToTray = -ErrorCode
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": TgtTray position offset = (" + Str$(tray_X(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_Y(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_U(TgtTray, TgtTrayCol, TgtTrayRow)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": Correction At Tray      = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+
+	UpdateRobotLog$(CurrentOperation$ + ": Chip placed in target tray position")
 	
-	' Note, a correction is calculated when placing a chip in the socket based on the last chip removed	
-	' This is done in the place function
-	
-	' Do socket to tray first in case of swap chips (S->T then T->S)
-	'If DoS2T Then
-	If Operation$ = "REMOVECHIP" Or Operation$ = "SWAPCHIPS" Then
-		Print "Moving chip from socket (", idx(8), ",", idx(9), ") to tray (", idx(5), ",", idx(6), ",", idx(7), ")"
-		' Images$(3) - Source socket image
-		If Not GetChipFromSocket(ts$, ByRef idx(), ByRef S2T_S_Results(), ByRef S2T_C_Results(), ByRef DeltaDir, ByRef Images$(3), ByRef UFCImages1$()) Then
-			For i = 1 To 5
-				Images$(i + 4) = UFCImages1$(i)
-			Next
-			MoveChip = SubError
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-			RTS_error(fileNum, "Failed to get chip from socket")
+	' Do any chip placement diagnostics here
+	If DoCheckPlace Then
+		UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
+		' Here we want to use the more precise chip position measurements
+		' Not sure if possible for all chips. Surface features on some chips not as visible	
+		' Chip edge also not easy to select because of the pins, often finds box askew
+		JumpToTray_camera(TgtTray, TgtTrayCol, TgtTrayRow)
+		' First just check chip orientation
+		Double MeasuredDirection, MeasuredOrientation ' , OrientationOffset
+		MeasuredDirection = FindChipDirectionWithDF
+		If MeasuredDirection < -900. Then
+			RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN) ' Or should this be error tray palce
+			MoveChipFromTrayToTray = -ErrorCode
 			Exit Function
 		EndIf
-		For i = 1 To 5
-				Images$(i + 4) = UFCImages1$(i)
-		Next
-		' Images$(2) - Target tray image
-		If Not PlaceChipInTray(ts$, ByRef idx(), ByRef S2T_T_Results(), ByRef DeltaDir, ByRef Images$(2)) Then
-			MoveChip = SubError
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-			RTS_error(fileNum, "Failed to place chip in tray")
+		
+		' Get any offset from 0,90,180 etc
+		Double dTU
+		dTU = DiffAnglePM180(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow)), RoundAngleTo90(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow))))
+		MeasuredOrientation = RoundAngleTo90(DiffAnglePM180(MeasuredDirection, dTU))
+	
+		If Abs(DiffAnglePM180(TrayOrientation, MeasuredOrientation)) > 5. Then
+			RTS_error("Chip not put back in tray in expected orientation", ERR_TRAY_PLACE)
+			MoveChipFromTrayToTray = -ErrorCode
 			Exit Function
 		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2T) command complete:")
+	MoveChipFromTrayToTray = -1
+Fend
+
+Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtDAT As Integer, TgtSocket As Integer) As Int64
+	MoveChipFromTrayToSocket = 0
+	ErrorCode = 0
+	SubError = 0
+	
+	SelectSite("InFunctionDefinePallets")
+	
+	String ts$ ', opName$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+
+	 'opName$ = "MoveT2S_" + ts$
+	CurrentOperation$ = "MoveT2S_" + ts$
+	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromTrayToTray(" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + "," + Str$(TgtDAT) + "," + Str$(TgtSocket) + ") " + ts$)
+
+	' Check valid operation
+	If Not CheckValidTrayIndex(SrcTray, SrcTrayCol, SrcTrayRow) Then
+		RTS_error("Invalid source tray (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")", ERR_BAD_COMMAND)
+		MoveChipFromTrayToSocket = -ErrorCode
+		Exit Function
 	EndIf
 	
-'	If DoT2S Then
-	If Operation$ = "LOADCHIP" Or Operation$ = "SWAPCHIPS" Then
-		Print "Moving chip from tray (", idx(2), ",", idx(3), ",", idx(4), ") to socket (", idx(10), ",", idx(11), ")"
-		' Images$(1) - Source tray image	
-		If Not GetChipFromTray(ts$, ByRef idx(), ByRef T2S_T_Results(), ByRef DeltaDir, ByRef Images$(1)) Then
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-			MoveChip = SubError
-			RTS_error(fileNum, "Failed to get chip from tray")
-			Exit Function
-		EndIf
-		' Images$(4) - Target socket image	
-		If Not PlaceChipInSocket(ts$, ByRef idx(), ByRef Empty_S_Results(), ByRef T2S_C_Results(), ByRef T2S_S_Results(), ByRef Images$(4), ByRef UFCImages2$()) Then
-			For i = 1 To 5
-				Images$(i + 9) = UFCImages2$(i)
-			Next
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-			MoveChip = SubError
-			RTS_error(fileNum, "Failed to place chip in socket")
-			Exit Function
-		EndIf
-		For i = 1 To 5
-			Images$(i + 9) = UFCImages2$(i)
-		Next
+	If Not CheckValidSocketIndex(TgtDAT, TgtSocket) Then
+		RTS_error("Invalid target socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")", ERR_BAD_COMMAND)
+		MoveChipFromTrayToSocket = -ErrorCode
+		Exit Function
 	EndIf
 	
-	' If successful for socket-tray operation, log and close the file and exit
-	If Operation$ = "LOADCHIP" Or Operation$ = "REMOVECHIP" Or Operation$ = "SWAPCHIPS" Then
-		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef S2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-		Print ""
-		Close #fileNum
-		MoveChip = 0
-		UpdatePositionFiles
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+	
+	' Check occupancy
+	Int32 Occupancy
+	Occupancy = -1
+	
+	Occupancy = SocketPositionOccupied(TgtDAT, TgtSocket)
+	'Print "Occupancy = ", Occupancy
+	If Occupancy <> 0 Then
+		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Target socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Target socket position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+		EndIf
+		MoveChipFromTrayToSocket = -ErrorCode
 		Exit Function
 	EndIf
 
-
-
-	' Should only get here for T2T or S2S
-'	If DoT2T Then 
-	If Operation$ = "T2T" Then
-		Print "Moving chip from tray (", idx(2), ",", idx(3), ",", idx(4), ") to tray (", idx(5), ",", idx(6), ",", idx(7), ")"
-		' Images$(1) - Source tray image	
-		If Not GetChipFromTray(ts$, ByRef idx(), ByRef T2T_ST_Results(), ByRef DeltaDir, ByRef Images$(1)) Then
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-			MoveChip = SubError
-			RTS_error(fileNum, "Failed to get chip from tray")
-			Exit Function
+	Occupancy = TrayPositionOccupied(SrcTray, SrcTrayCol, SrcTrayRow)
+	'Print "Occupancy = ", Occupancy
+	If Occupancy <> 1 Then
+		Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
 		EndIf
-		
-		If DoT2TPinAnalysis Then
-			' UF analysis is otherwise included in the socket related functions to ensure it is always called
-			If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef T2T_C_Results(), ByRef UFCImages1$()) Then
-				MoveChip = -ERR_V_UF_ALIGN
-				For i = 1 To 5
-					Images$(i + 4) = UFCImages1$(i)
-				Next
-				LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-				RTS_error(fileNum, "Cannot get chip position and aligment with up facing camera")
-				Exit Function
-			EndIf
-			For i = 1 To 5
-				Images$(i + 4) = UFCImages1$(i)
-			Next
-		EndIf
-		' Images$(2) - Target tray image
-		If Not PlaceChipInTray(ts$, ByRef idx(), ByRef T2T_TT_Results(), ByRef DeltaDir, ByRef Images$(2)) Then
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-			MoveChip = SubError
-			RTS_error(fileNum, "Failed to place chip in tray")
-			Exit Function
-		EndIf
-		
-		' Need to chaneg UFC1 results
-		' Log here because we use different vectors for results in this case
-		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2T_S_Results(), ByRef T2S_S_Results(), ByRef T2T_C_Results(), ByRef T2S_C_Results(), ByRef Images$())
-	EndIf
-
-	If Operation$ = "S2S" Then ' Or Operation$ = "REINSERT"
-		Print "Moving chip from socket (", idx(8), ",", idx(9), ") to socket (", idx(10), ",", idx(11), ")"
-		If Not GetChipFromSocket(ts$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_C_Results(), ByRef DeltaDir, ByRef Images$(3), ByRef UFCImages1$()) Then
-			For i = 1 To 5
-				Images$(i + 4) = UFCImages1$(i)
-			Next
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_TS_Results(), ByRef S2S_C_Results(), ByRef S2S_C_Results(), ByRef Images$())
-			MoveChip = SubError
-			RTS_error(fileNum, "Failed to pick up chip from socket")
-			Exit Function
-		EndIf
-		If Not PlaceChipInSocket(ts$, ByRef idx(), ByRef Empty_S_Results(), ByRef S2S_C_Results(), ByRef S2S_TS_Results(), ByRef Images$(4), ByRef UFCImages2$()) Then
-			For i = 1 To 5
-				Images$(i + 9) = UFCImages2$(i)
-			Next
-			LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_TS_Results(), ByRef S2S_C_Results(), ByRef S2S_C_Results(), ByRef Images$())
-			MoveChip = SubError
-			RTS_error(fileNum, "Failed to place chip in socket")
-			Exit Function
-		EndIf
-		For i = 1 To 5
-			Images$(i + 4) = UFCImages1$(i)
-			Images$(i + 9) = UFCImages2$(i)
-		Next
-		LogResults(ts$, MoveChip, operation$, ByRef idx(), ByRef S2S_SS_Results(), ByRef S2S_TS_Results(), ByRef S2S_C_Results(), ByRef S2S_C_Results(), ByRef Images$())
+		MoveChipFromTrayToSocket = -ErrorCode
+		Exit Function
 	EndIf
 	
-	Print ""
-	Close #fileNum
-	UpdatePositionFiles
-	MoveChip = 0
+	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	
+	' Get chip from tray	
+	
+	' Take picture of chip and store it for serial number retrieval	
+	String DFChipPicture_SN$
+	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
+	' Chips are in the right place, lets get the chip from the tray	
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source tray position")
+	' Need to get result from subprocess?
+	SubError = GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow)
+'	If Not GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow) Then
+	If Not SubError Then
+		RTS_error("Could not get chip from tray - GetChipFromTray=" + Str$(SubError), ERR_TRAY_PICK)
+		MoveChipFromTrayToSocket = -ErrorCode
+		Exit Function
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Chip successfully picked up and tray offsets measured")
+	' While at the UF camera, do any pin analysis	
+	' First need to recenter
+	If DoPinAnalysis Then
+		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
+		UFRecenterSimple ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
+		
+		' Take a picture for pin analysis	
+		String PinImages$(3)
+		'UFChipPicture$ = UF_take_picture$(opName$ + "_pins")
+	 	
+	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
+	 	'If Not ChipPinAnalysisSimple Then
+		If Not SubError Then
+			RTS_error("Pin analysis failure", ERR_PINS)
+			MoveChipFromTrayToSocket = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
+	EndIf
+			
+	' Place chip in socket	
+	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target socket position")
+
+	SubError = PlaceChipInSocket(TgtDAT, TgtSocket)
+	If Not SubError Then
+		RTS_error("Could not place chip in socket", ERR_SOCKET_PLACE)
+		MoveChipFromTrayToSocket = -ErrorCode
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": TgtSock position offset = (" + Str$(DAT_X(TgtDAT, TgtSocket)) + "," + Str$(DAT_Y(TgtDAT, TgtSocket)) + "," + Str$(DAT_U(TgtDAT, TgtSocket)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": Correction At socket    = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+
+	UpdateRobotLog$(CurrentOperation$ + ": Chip placed in target socket position")
+	
+	' Do any chip placement diagnostics here
+	If DoCheckPlace Then
+	UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
+		' Here we want to use the more precise chip position measurements
+		' Not sure if possible for all chips. Surface features on some chips not as visible	
+		' Chip edge also not easy to select because of the pins, often finds box askew
+		JumpToSocket_camera(TgtDAT, TgtSocket)
+		
+		' Already have socket corrections from earlier, should not have changed significantly
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+		
+		' First just check chip orientation
+		Double MeasuredDirection ' , OrientationOffset
+		MeasuredDirection = FindChipDirectionWithDF
+		If MeasuredDirection < -900. Then
+			RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN) ' Or should this be error tray palce
+			MoveChipFromTrayToSocket = -ErrorCode
+			Exit Function
+		EndIf
+		
+		' While accounting for U offset of socket from drift in defined position, and chip orientation as expected at socket
+		' What is the difference to the measured direction?
+		If Abs(DiffAnglePM180(MeasuredDirection, (CU(P(PSocket(TgtDAT, TgtSocket))) + HandChipOrientation(CHIPTYPE_NR) + SocketOffset(3))) > 5) Then
+			RTS_error("Chip not put back in tray in expected orientation", ERR_TRAY_PLACE)
+			MoveChipFromTrayToSocket = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
+		''' Add more detailed chip-socket relative position checks if available.
+		''  This is for fine tune measurements of the placement. Probably easiest with LArASICs. Not sure if possible for 
+		' COLDATA or ColdADC depending on lighting/surface feature prominance
+		
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2S) command complete:")
+	MoveChipFromTrayToSocket = -1
 	
 Fend
 
+Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	MoveChipFromSocketToTray = 0
+	ErrorCode = 0 ' Might be better to set these to 1 (-1 is TRUE in BASIC) for initialization 
+	SubError = 0
+	
+	SelectSite("InFunctionDefinePallets")
+	
+	String ts$ ' , opName$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 
+	CurrentOperation$ = "MoveT2T_" + ts$
+	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromSocketToTray(" + Str$(SrcDAT) + "," + Str$(SrcSocket) + "," + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ") " + ts$)
+
+	' Check valid operation
+	If Not CheckValidSocketIndex(SrcDAT, SrcSocket) Then
+		RTS_error("Invalid source socket (" + Str$(SrcDAT) + "," + Str$(SrcSocket) + ")", ERR_BAD_COMMAND)
+		MoveChipFromSocketToTray = -ErrorCode
+		Exit Function
+	EndIf
+
+	If Not CheckValidTrayIndex(TgtTray, TgtTrayCol, TgtTrayRow) Then
+		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND)
+		MoveChipFromSocketToTray = -ErrorCode
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+
+	' Check occupancy
+	Int32 Occupancy
+	Occupancy = -1
+	
+	Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
+	If Occupancy <> 0 Then
+		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Target tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Target tray position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+		EndIf
+		MoveChipFromSocketToTray = -ErrorCode
+		Exit Function
+	EndIf
+	
+	Occupancy = SocketPositionOccupied(SrcDAT, SrcSocket)
+	'Print "Occupancy = ", Occupancy
+	If Occupancy <> 1 Then
+		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+		EndIf
+		MoveChipFromSocketToTray = -ErrorCode
+		Exit Function
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+
+	' Get chip from socket
+''''''		
+	
+	' Take picture of chip and store it for serial number retrieval	
+	String DFChipPicture_SN$
+	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
+	' Chips are in the right place, lets get the chip from the tray	
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source socket position")
+	' Need to get result from subprocess?
+	SubError = GetChipFromSocket(SrcDAT, SrcSocket)
+'	If Not GetChipFromSocket(SrcDAT, SrcSocket) Then
+	If Not SubError Then
+		RTS_error("Could not get chip from socket - GetChipFromSocket=" + Str$(SubError), ERR_SOCKET_PICK)
+		MoveChipFromSocketToTray = -ErrorCode
+		Exit Function
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Chip successfully picked up and socket offsets measured")
+	' While at the UF camera, do any pin analysis	
+	' First need to recenter	
+	If DoPinAnalysis Then
+		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
+		UFRecenterSimple ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
+		
+		' Take a picture for pin analysis	
+		String PinImages$(3)
+	'	UFChipPicture$ = UF_take_picture$(opName$ + "_pins")
+	 	
+	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
+	 	'If Not ChipPinAnalysisSimple Then
+		If Not SubError Then
+			RTS_error("Pin analysis failure", ERR_PINS)
+			MoveChipFromSocketToTray = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
+	EndIf
+	
+	''''''
+	
+	' Place chip in tray
+	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target tray position")
+	SubError = PlaceChipInTray(TgtTray, TgtTrayCol, TgtTrayRow)
+'	If Not PlaceChipInTray(TgtTray, TgtTrayCol, TgtTrayRow) Then
+	If Not SubError Then
+		RTS_error("Could not place chip in tray", ERR_TRAY_PLACE)
+		MoveChipFromSocketToTray = -ErrorCode
+		Exit Function
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": TgtTray position offset = (" + Str$(tray_X(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_Y(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_U(TgtTray, TgtTrayCol, TgtTrayRow)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": Correction At Tray      = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+	
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Chip placed in target tray position")
+	
+	' Do any chip placement diagnostics here
+	If DoCheckPlace Then
+		UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
+		' Here we want to use the more precise chip position measurements
+		' Not sure if possible for all chips. Surface features on some chips not as visible	
+		' Chip edge also not easy to select because of the pins, often finds box askew
+		JumpToTray_camera(TgtTray, TgtTrayCol, TgtTrayRow)
+		' First just check chip orientation
+		Double MeasuredDirection, MeasuredOrientation ' , OrientationOffset
+		MeasuredDirection = FindChipDirectionWithDF
+		If MeasuredDirection < -900. Then
+			RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN) ' Or should this be error tray palce
+			MoveChipFromSocketToTray = -ErrorCode
+			Exit Function
+		EndIf
+				
+		' Get any offset from 0,90,180 etc
+		Double dTU
+		dTU = DiffAnglePM180(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow)), RoundAngleTo90(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow))))
+		MeasuredOrientation = RoundAngleTo90(DiffAnglePM180(MeasuredDirection, dTU))
+
+	
+		If Abs(DiffAnglePM180(TrayOrientation, MeasuredOrientation)) > 5. Then
+			RTS_error("Chip not put back in tray in expected orientation", ERR_TRAY_PLACE)
+			MoveChipFromSocketToTray = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
+		
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2T) command complete:")
+	
+	MoveChipFromSocketToTray = -1
+	
+Fend
+
+Function MoveChipFromSocketToSocket(SrcDAT As Integer, SrcSocket As Integer, TgtDAT As Integer, TgtSocket As Integer) As Int64
+	MoveChipFromSocketToSocket = 0
+	ErrorCode = 0 ' Might be better to set these to 1 (-1 is TRUE in BASIC) for initialization 
+	SubError = 0
+	
+	SelectSite("InFunctionDefinePallets")
+
+	String ts$ ' , opName$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+
+	CurrentOperation$ = "MoveT2T_" + ts$
+	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromSocketToSocket(" + Str$(SrcDAT) + "," + Str$(SrcSocket) + "," + Str$(TgtDAT) + "," + Str$(TgtSocket) + ") " + ts$)
+
+	
+	' Check valid operation
+	If Not CheckValidSocketIndex(SrcDAT, SrcSocket) Then
+		RTS_error("Invalid source socket (" + Str$(SrcDAT) + "," + Str$(SrcSocket) + ")", ERR_BAD_COMMAND)
+	    MoveChipFromSocketToSocket = ERR_BAD_COMMAND
+		Exit Function
+	EndIf
+	
+	
+	If Not CheckValidSocketIndex(TgtDAT, TgtSocket) Then
+		RTS_error("Invalid targer socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")", ERR_BAD_COMMAND)
+	    MoveChipFromSocketToSocket = ERR_BAD_COMMAND
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+
+	' Check occupancy
+	Int32 Occupancy
+	Occupancy = -1
+
+	Occupancy = SocketPositionOccupied(TgtDAT, TgtSocket)
+	'Print "Occupancy = ", Occupancy
+	If Occupancy <> 0 Then
+		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Target socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Target socket position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+		EndIf
+		MoveChipFromSocketToSocket = -ErrorCode
+		Exit Function
+	EndIf
+	
+	Occupancy = SocketPositionOccupied(SrcDAT, SrcSocket)
+	'Print "Occupancy = ", Occupancy
+	If Occupancy <> 1 Then
+		Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+		If Occupancy = -2 Then
+			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+		Else
+			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+		EndIf
+		MoveChipFromSocketToSocket = ErrorCode
+		Exit Function
+	EndIf
+
+	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	''' Get chip from socket	
+	
+	' Take picture of chip and store it for serial number retrieval	
+	String DFChipPicture_SN$
+	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
+	' Chips are in the right place, lets get the chip from the tray	
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source socket position")
+	' Need to get result from subprocess?
+	SubError = GetChipFromSocket(SrcDAT, SrcSocket)
+'	If Not GetChipFromSocket(SrcDAT, SrcSocket) Then
+	If Not SubError Then
+		RTS_error("Could not get chip from socket - GetChipFromSocket=" + Str$(SubError), ERR_SOCKET_PICK)
+		MoveChipFromSocketToSocket = -ErrorCode
+		Exit Function
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Chip successfully picked up and socket offsets measured")
+	' While at the UF camera, do any pin analysis	
+	' First need to recenter	
+	If DoPinAnalysis Then
+		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis")
+		UFRecenterSimple ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
+		
+		' Take a picture for pin analysis	
+		String PinImages$(3)
+		'UFChipPicture$ = UF_take_picture$(opName$ + "_pins")
+	 	
+	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
+	 	'If Not ChipPinAnalysisSimple Then
+		If Not SubError Then
+			RTS_error("Pin analysis failure", ERR_PINS)
+			MoveChipFromSocketToSocket = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
+	EndIf
+	
+	' Place chip in socket
+	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target socket position")
+	SubError = PlaceChipInSocket(TgtDAT, TgtSocket)
+	If Not SubError Then
+		RTS_error("Could not place chip in socket", ERR_SOCKET_PLACE)
+		MoveChipFromSocketToSocket = -ErrorCode
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": TgtSock position offset = (" + Str$(DAT_X(TgtDAT, TgtSocket)) + "," + Str$(DAT_Y(TgtDAT, TgtSocket)) + "," + Str$(DAT_U(TgtDAT, TgtSocket)) + ")")
+	UpdateRobotLog$(CurrentOperation$ + ": Correction At socket    = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+
+	UpdateRobotLog$(CurrentOperation$ + ": Chip placed in target socket position")
+	
+	' Do any chip placement diagnostics here
+	If DoCheckPlace Then
+	UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
+		' Here we want to use the more precise chip position measurements
+		' Not sure if possible for all chips. Surface features on some chips not as visible	
+		' Chip edge also not easy to select because of the pins, often finds box askew
+		JumpToSocket_camera(TgtDAT, TgtSocket)
+		
+		' Already have socket corrections from earlier, should not have changed significantly
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+		
+		' First just check chip orientation
+		Double MeasuredDirection ' , OrientationOffset
+		MeasuredDirection = FindChipDirectionWithDF
+		If MeasuredDirection < -900. Then
+			RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN) ' Or should this be error tray palce
+			MoveChipFromSocketToSocket = -ErrorCode
+			Exit Function
+		EndIf
+		
+		' While accounting for U offset of socket from drift in defined position, and chip orientation as expected at socket
+		' What is the difference to the measured direction?
+		If Abs(DiffAnglePM180(MeasuredDirection, (CU(P(PSocket(TgtDAT, TgtSocket))) + HandChipOrientation(CHIPTYPE_NR) + SocketOffset(3))) > 5) Then
+			RTS_error("Chip not put back in tray in expected orientation", ERR_TRAY_PLACE)
+			MoveChipFromSocketToSocket = -ErrorCode
+			Exit Function
+		EndIf
+		UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
+		''' Add more detailed chip-socket relative position checks if available.
+		''  This is for fine tune measurements of the placement. Probably easiest with LArASICs. Not sure if possible for 
+		' COLDATA or ColdADC depending on lighting/surface feature prominance
+		
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2S) command complete:")
+	MoveChipFromSocketToSocket = -1
+	
+Fend
 

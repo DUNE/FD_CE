@@ -1,7 +1,6 @@
 #include "RTS_tools.inc"
 #include "ErrorDictionary.inc"
 
-
 Function SetSpeed
 	Power Low
 	Speed 100
@@ -67,23 +66,85 @@ Fend
 
 
 ' Prints error msg both to console and file
-' closes the output file
-Function RTS_error(fileNum As Integer, err_msg$ As String)
-	Print "***ERROR! ", err_msg$, ", Last SubError=", SubError
-	Print #fileNum, "***ERROR! ", err_msg$, ", Last SubError=", SubError
+'' closes the output file
+'Function RTS_error(fileNum As Integer, err_msg$ As String)
+'	Print "***ERROR! ", err_msg$, ", Last SubError=", SubError
+'	Print #fileNum, "***ERROR! ", err_msg$, ", Last SubError=", SubError
+'	Close #fileNum
+'Fend
+'
+'' For subroutines to not close the error file, and close at top level Move Function instead
+'Function RTS_suberror(fileNum As Integer, err_msg$ As String, err_code As Int32)
+'	SubError = err_code
+'	Print "***ERROR! ", err_msg$
+'	Print #fileNum, "***ERROR! ", err_msg$,
+'Fend
+
+''' Uses the FNAL style update log which closes file each time to prevent issues rather than 
+' needing to be careful about closing file at end of function
+' Also will print errors to both operation log and to robot log.
+Function RTS_error(err_msg$ As String, Error_Code As Int32) As Integer
+	ErrorCode = Error_Code ' Set global variable to input
+	String log_file$
+	log_file$ = RTS_DATA$ + "\" + CurrentOperation$ + ".txt"
+	RTS_error = FreeFile
+	AOpen log_file$ As #RTS_error
+	Print "***ERROR: ", err_msg$
+	Print #RTS_error, "***ERROR ", ErrorCode, "/", SubError, " : ", err_msg$
+	Close #RTS_error
+	
+	Integer RTS_Data
+	RTS_Data = FreeFile
+	log_file$ = RTS_DATA$ + "\RobotLog.txt"
+	AOpen log_file$ As #RTS_Data
+	Print #RTS_Data, "***ERROR ", ErrorCode, "/", SubError, " in ", CurrentOperation$, " : ", err_msg$
+	Close #RTS_Data
+Fend
+
+''' Want to keep track of socket placement for diagnostics
+' Track socket position
+' Chip position in socket with DF
+' Chip offset wirth UF when taken from socket
+' First entry is the operation ID
+' next three entries are socket position (DF cam)
+' next three entries are chip in socket positon (DF cam)
+' Next three entries are difference (chip position - socket position) (DF Cam)
+' next three entries are chip offset after being removed from the socket (UF Cam)
+Function LogSockMeasure(DAT As Integer, Socket As Integer, OperationID$ As String, ByRef sPosDF() As Double, ByRef cPosDF() As Double, ByRef cOffUF() As Double)
+	Int32 FileNum
+	FileNum = FreeFile
+	String SocketFile$
+	SocketFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Measurements.txt"
+	Double CSDiff(3)
+	CSDiff(1) = cPosDF(1) - sPosDF(1)
+	CSDiff(2) = cPosDF(2) - sPosDF(2)
+	CSDiff(3) = cPosDF(3) - sPosDF(3)
+	AOpen SocketFile$ As #fileNum
+		Print #fileNum, OperationID$, ", DF_SocketPosition:", sPosDF(1), ",", sPosDF(2), ",", sPosDF(3), "; DF_ChipPosition:", cPosDF(1), ",", cPosDF(2), ",", cPosDF(3), "; DF_ChipOffset:", CSDiff(1), ",", CSDiff(2), ",", CSDiff(3), ";UF_Offset:", cOffUF(1), ",", cOffUF(2), ",", cOffUF(3)
 	Close #fileNum
+	
 Fend
 
-' For subroutines to not close the error file, and close at top level Move Function instead
-Function RTS_suberror(fileNum As Integer, err_msg$ As String, err_code As Int32)
-	SubError = err_code
-	Print "***ERROR! ", err_msg$
-	Print #fileNum, "***ERROR! ", err_msg$,
+''' In one file store the current offset along with the tray/socket position and the timestamp
+Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, DAT As Integer, Socket As Integer) As Int32
+	LogUFOffsets = 0
+	If (Tray <> 0 Or TrayCol <> 0 Or TrayRow <> 0) And (DAT <> 0 Or Socket <> 0) Then
+		Print "Invalid indices"
+		Exit Function
+	EndIf
+	
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	
+	Int32 FileNum
+	FileNum = FreeFile
+	String OffsetFile$
+	OffsetFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Measurements.txt"
+	AOpen OffsetFile$ As #FileNum
+		Print #FileNum, ts$, ",", Tray, ",", TrayCol, ",", TrayRow, ",", DAT, ",", Socket, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Close #FileNum
+	LogUFOffsets = -1
 Fend
-
-
-
-
 
 ''' Checks whether an operation is a move/swap/remove/place etc
 '' Args:
@@ -499,6 +560,24 @@ Function CheckValidOperations(ByRef DATs() As Int32, ByRef Sockets() As Int32, B
 	EndIf
 Fend
 
+Function CheckValidTrayIndex(tray As Integer, tray_col As Integer, tray_row As Integer) As Boolean
+         CheckValidTrayIndex = False
+         If (0 < tray And tray <= 2) And (0 < tray_col And tray_col <= trayNCols) And (0 < tray_row And tray_row <= trayNRows) Then
+                CheckValidTrayIndex = True
+         EndIf
+         Return
+Fend
+
+Function CheckValidSocketIndex(DAT As Integer, Socket As Integer) As Boolean
+         CheckValidSocketIndex = False
+         If (0 < DAT And DAT <= 2) And (0 < Socket And Socket <= nSoc) Then
+                CheckValidSocketIndex = True
+         EndIf
+         Return
+
+Fend
+
+
 
 '''  Camera offset functions
 ' At current UValue of hand, return the offset in X and Y of the camera from the axis of rotation/stinger
@@ -703,6 +782,60 @@ Function LoadPositionFiles
 	Close #fileNum
 Fend
 
+'''' More generic log updating function
+'' log_file is the name of the file
+'' Assigned ID is the unique ID of the chip to be added to every string for logging
+'' log_msg is the message
+''' If AssignedID$ is empty = "", will not add to files
+'Function UpdateLog(log_file$ As String, AssignedID$ As String, log_msg$ As String) As Integer
+'	UpdateLog = FreeFile
+'	AOpen log_file$ As #UpdateLog
+'	If AssignedID$ <> "" Then
+'		Print #UpdateLog,(AssignedID$ + " " + log_msg$)
+'	Else
+'		Print #UpdateLog, log_msg$
+'	EndIf
+'
+'	Close #UpdateLog
+'Fend
+
+'Function UpdateLog(UpdateType$ As String, log_msg$ As String) As Integer
+'	
+'	String log_file$, robot_log$, err_log$, op_log$
+'	
+'	'  Update main log
+'	'  RTS_DATA$ + "\RobotLog.txt"	
+'	
+'	'  Update operation log
+'	'  RTS_DATA$ + "\{Operation}.txt"
+'	
+'	'  Update error log
+'	'  RTS_DATA$ + "\RobotErrors.txt"
+'
+'	'  Update specified log
+'	'  RTS_DATA$ + "\log_file$"	
+'
+'
+'	TheMsg$ = ""
+'	Select UpdateType$
+'		Case "operation" ' A log for the specific operation
+'			log_file$ = RTS_DATA$ + "\" + CurrentOperation$ + ".txt"
+'			TheMsg = log_msg$
+'		Case "ERROR" ' An error log
+'			log_file$ = RTS_DATA$ + "\RobotLog.txt"
+'			TheMsg$ = "ERROR: " + log_msg$
+'		Default ' Uses the default RTS log
+'			log_file$ = RTS_DATA$ + "\RobotLog.txt"
+'			TheMsg = log_msg$
+'	Send
+'		
+'	UpdateLog = FreeFile
+'	AOpen log_file$ As #UpdateLog
+'	Print #UpdateLog, TheMsg$
+'	Close #UpdateLog
+'	
+'Fend
+
 
 Function UpdateRobotLog$(log_msg$ As String) As String
 	'Updates the Robot log file with the given log message
@@ -792,6 +925,24 @@ Function AverageAnglePM180(u1 As Double, u2 As Double) As Double
 		AverageAnglePM180 = (u1 + u2) /2
 	EndIf
 Fend
+
+Function RoundAngleTo90(angle As Double) As Double
+         RoundAngleTo90 = -999.
+         RoundAngleTo90 = GetBoundAnglePM180(angle)
+
+         If RoundAngleTo90 < -135. Then
+            RoundAngleTo90 = 180.
+         ElseIf RoundAngleTo90 < -45. Then
+              RoundAngleTo90 = -90.
+         ElseIf RoundAngleTo90 < 45. Then
+              RoundAngleTo90 = 0.
+         ElseIf RoundAngleTo90 < 135. Then
+              RoundAngleTo90 = 90.
+         Else
+                RoundAngleTo90 = 180.
+         EndIf
+Fend
+
 
 Function PhotographAllChipsInTray(pallet_nr As Integer, TrayName$ As String)
 	SelectSite("InFunctionDefinePallets")

@@ -16,6 +16,9 @@ Function main
   		Exit Function
 	EndIf
 	
+	DoPinAnalysis = False
+	DoCheckPlace = False
+	DoMeasurePlace = False
 
 	LoadPositionFiles
 		

@@ -150,6 +150,30 @@ Function RTS_server
     			UpdatePositionFiles
     			Print #portNr, "UpdatePositionFiles"
     			
+    		Case "PinAnalysisOn"
+    			DoPinAnalysis = True
+    			Print #portNr, "PinAnalysisOn"
+    			
+    		Case "PinAnalysisOff"
+    			DoPinAnalysis = False
+    			Print #portNr, "PinAnalysisOff"
+    			
+    		Case "CheckPlaceOn"
+    			DoCheckPlace = True
+    			Print #portNr, "CheckPlaceOn"
+    			
+    		Case "CheckPlaceOff"
+    			DoCheckPlace = False
+    			Print #portNr, "CheckPlaceOff"
+    			
+      		Case "MeasurePlaceOn"
+    			DoMeasurePlace = True
+    			Print #portNr, "MeasurePlaceOn"
+    			
+    		Case "MeasurePlaceOff"
+    			DoMeasurePlace = False
+    			Print #portNr, "MeasurePlaceOff"
+    			
     		Case "Shutdown"
 		    	CloseNet #portNr
 		    	PumpOff
@@ -167,8 +191,7 @@ Function RTS_server
  				Print "Connection established"
 				Print "Sending data to client"
     			Print #portNr, "RTS ready"
-
-		    	
+   	
 		    	
     	Send
 	Loop

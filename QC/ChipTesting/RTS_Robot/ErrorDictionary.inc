@@ -43,10 +43,11 @@
 ' error, eg 121 would be failure to pick up at tray because no chip is seen
 #define ERR_TRAY_PICK 100
 #define ERR_TRAY_PLACE 200
-#define ERR_SOCK_PICK 300
-#define ERR_SOCK_PLACE 400
+#define ERR_SOCKET_PICK 300
+#define ERR_SOCKET_PLACE 400
 
 ' For error code handling
+Global Int32 ErrorCode
 Global Int32 SubError
 
 

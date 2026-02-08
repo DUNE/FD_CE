@@ -61,10 +61,21 @@ Global Double ChipPos(3)
 Global Double UFChipPos(3)
 Global Double SockPos(3)
 
+''' For simplified pick and place
+Global Double CurrentChipOffset(3)
+Global Double CorrectedChipOffset(3)
+Global Double SocketOffset(3)
+
+Global Double ChipToChipCorrection(3)
+
+' To be set in set site values, the offset between vision sequence U and world coordinates
+Global Double ChipVisionOffset
+Global Double SocketVisionOffset
+
 ' In increments of 90 degrees from X axis, U0 offsets and socket find should
 ' account for sub-90 degree variations between sockets and different RTS robots
 Global Double TrayOrientation ' Default direction for chips in tray - in world coordinates
-Global Double TrayChipOrientation(2) ' Accounts for hand position at each tray separately
+' Global Double TrayChipOrientation(2) ' Accounts for hand position at each tray separately
 ' Global Double SocketMezzanineOrientation(3) ' Relative to work coordinates (1,x) and (2,x) should be 180 deg apart
 ' Global Double SocketChipOrientation(3) ' Default direction for chips in sockets - relative to socket Mezzanine direction
 Global Double HandChipOrientation(3) ' Diretcion of chip relative to Hand U at socket
@@ -76,4 +87,16 @@ Global Double HandChipOrientation(3) ' Diretcion of chip relative to Hand U at s
 #define TolXY 0.5
 #define TolAngle 2.
 
+' Using a non DAT board layout for socket testing
 Global Boolean MSUTESTBOARD
+
+
+' These will be for options for additional steps in move commands
+' Should be declared in Main function (as false by default) then toggled on
+Global Boolean DoPinAnalysis
+Global Boolean DoCheckPlace ' Checks orientation 
+Global Boolean DoMeasurePlace ' Checks position measurement
+
+Global String CurrentOperation$
+
+

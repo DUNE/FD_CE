@@ -199,11 +199,11 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
 		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 
@@ -242,7 +242,7 @@ Fend
 ''' Runs the pin analysis code
 ' Note, this does not find the position, which is found by the UFGetChipAligment() function
 ' this checks for uniform pin position/spacing using the PinsAnaly() function
-Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As String) As Int32
+Function UFPinAnalysis(id$ As String, ByRef Images$() As String) As Int32
 	UpdateRobotLog$("Running pin analysis")
 	UFPinAnalysis = 0
 	'Integer fileNum
@@ -259,7 +259,7 @@ Function UFPinAnalysis(id$ As String, ByRef idx() As Integer, ByRef Images$() As
 		UFPinAnalysis = status
 	EndIf
 	
-	' Images(2) and (3) are for COLDATA extra images
+	' Images(2) and (3) are for COLDATA extra images after shifting side to side
 	
 Fend
 
@@ -381,546 +381,597 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 
 Fend
 
-''' Wrapper function to find the direction of a chip with the down facing camera
-'' Initializes global array ChipPos() which will store X,Y,U of chip
-' These are set in relevant DFFindLarASIC, DFFindColdADC, DFFindCOLDATA functions
-Function FindChipDirectionWithDF As Boolean
-	FindChipDirectionWithDF = False
+''' Use DF camera to get chip orientation only
+Function FindChipDirectionWithDF As Double
+	FindChipDirectionWithDF = -999.
 	
-	ChipPos(1) = 0
-	ChipPos(2) = 0
-	ChipPos(3) = 0
-	
-	Int32 FindError
-	FindError = 0
 	Select CHIPTYPE$
 		Case "LArASIC"
-			FindChipDirectionWithDF = DFFindLArASIC
+			FindChipDirectionWithDF = DF_ChipDirection_LArASIC
 		Case "ColdADC"
-			' FindChipDirectionWithDF = DFFindColdADC
-			Print "Error, not currently implemented for ColdADC, check if LArASIC works?"
-			Exit Function
+'			FindChipDirectionWithDF = DF_ChipDirection_ColdADC
 		Case "COLDATA"
-			
-'			FindChipDirectionWithDF = DFFindCOLDATA
-'			
-			Int32 ToCheck, nFailLimit
-			ToCheck = 10
-			nFailLimit = 50
-			Int32 it, tot
-			it = 0
-			tot = 0
-			' NB cannot declare array length as variable, unfortunately means several hard coded 10s
-			' Make sure to change all divisors for averages if this changes below
-			Double XCHECK(10), YCHECK(10), UCHECK(10)
-			Double AvX, AvY, AvU
-			AvX = 0.
-			AvY = 0.
-			' need to track how many end up on +/- side of 180, not close to 0
-			Int32 nU0, nUm180, nUp180
-			Double AvU0, AvUm180, AvUp180
-			nU0 = 0
-			nUm180 = 0
-			nUp180 = 0
-			AvU0 = 0.
-			AvUm180 = 0.
-			AvUp180 = 0.
-			
-			Do While ToCheck > 0
-				tot = tot + 1
-				If DFFindCOLDATA Then
-					it = it + 1
-					XCHECK(it) = ChipPos(1)
-					YCHECK(it) = ChipPos(2)
-					UCHECK(it) = GetBoundAnglePM180(ChipPos(3))
-					AvX = AvX + ChipPos(1)
-					AvY = AvY + ChipPos(2)
-					'AvU = AvU + ChipPos(3) '  Need to think about averaging around +/-180
-					If ChipPos(3) < -90. Then
-						nUm180 = nUm180 + 1
-						AvUm180 = AvUm180 + ChipPos(3)
-					ElseIf ChipPos(3) < 90. Then
-						nU0 = nU0 + 1
-						AvU0 = AvU0 + ChipPos(3)
-					Else
-						nUp180 = nUp180 + 1
-						AvUp180 = AvUp180 + ChipPos(3)
-					EndIf
-					
-					ToCheck = ToCheck - 1
-				EndIf
-				If tot > nFailLimit Then
-					Print "Too many failures"
-					ChipPos(1) = 0.
-					ChipPos(2) = 0.
-					ChipPos(3) = 0.
-					FindChipDirectionWithDF = False
-					Exit Function
-				EndIf
-			Loop
-			AvX = AvX /10
-			AvY = AvY /10
-			
-
-			
-			' Can't have U values at -180, 0 and +180
-			If (nU0 > 0 And nUm180 > 0 And nUp180 > 0) Then
-				Print "Inconsistent angle values returned for averaging"
-				Print " U  < -90       :", nUm180
-				Print " -90 <= U < +90 :", nU0
-				Print " +90 <= U       :", nUp180
-				ChipPos(1) = 0.
-				ChipPos(2) = 0.
-				ChipPos(3) = 0.
-				FindChipDirectionWithDF = False
-				Exit Function
-			EndIf
-			
-			If nUm180 > 0 Then
-				AvUm180 = AvUm180 / nUm180
-			EndIf
-			If nU0 > 0 Then
-				AvU0 = AvU0 / nU0
-			EndIf
-			If nUp180 > 0 Then
-				AvUp180 = AvUp180 / nUp180
-			EndIf
-			
-			' If values close to both -180 and +180, need to average around 180, so add 360 to negative values
-			If nUm180 > 0 And nUp180 > 0 Then
-				AvUm180 = AvUm180 + 360.
-			EndIf
-			
-			
-			
-			AvU = GetBoundAnglePM180(((nUm180 * AvUm180) + (nU0 * AvU0) + (nUp180 * AvUp180)) / 10)
-						
-			Double StdDvX, StdDvY, StdDvU
-'			Print "Results over ", 10, " successful iterations for ", tot, " total iterations"
-			For it = 1 To 10
-				StdDvX = StdDvX + (XCHECK(it) - AvX) * (XCHECK(it) - AvX)
-				StdDvY = StdDvY + (YCHECK(it) - AvY) * (YCHECK(it) - AvY)
-				StdDvU = StdDvU + (UCHECK(it) - AvU) * (UCHECK(it) - AvU)
-'				Print "(", XCHECK(it), ",", YCHECK(it), ",", UCHECK(it), ")"
-			Next
-			StdDvX = Sqr(StdDvX / 10)
-			StdDvY = Sqr(StdDvY / 10)
-			StdDvU = Sqr(StdDvU / 10)
-			
-'			Print "Average : (", AvX, ",", AvY, ",", AvU, ")"
-'			Print "Std dev : (", StdDvX, ",", StdDvY, ",", StdDvU, ")"
-			
-			If StdDvX * StdDvX + StdDvY * StdDvY > TolXY * TolXY Or StdDvU > TolAngle Then
-				Print "Measurement spread too high"
-				ChipPos(1) = 0.
-				ChipPos(2) = 0.
-				ChipPos(3) = 0.
-				FindChipDirectionWithDF = False
-				Exit Function
-			EndIf
-			
-			ChipPos(1) = AvX
-			ChipPos(2) = AvY
-			ChipPos(3) = AvU
-			FindChipDirectionWithDF = False
-			
+'			FindChipDirectionWithDF = DF_ChipDirection_COLDATA
 		Default
-			Print "Error, chiptype not properly defined or DF find function does not exist for ", CHIPTYPE$
-			Exit Function
+			Return
 	Send
-
+		
+	If FindChipDirectionWithDF < -900. Then
+		
+		Return
+	EndIf
+	
+	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
+	' FindChipOrientationWithDF = RoundAngleTo90(FindChipOrientationWithDF) ' Might want to do this outside of this function?
+	
 Fend
 
-''' Function to get the orientation of LArASIC chip with the down facing camera
-' This makes use of two marks on the surce, a larger manufacturing mark and a 
-' smaller mark indicating where pin 1 is.
-' it then finds the direction between these and subtracts 45 degrees to get the
-' orienation of the chip
-'' Stores results in global array ChipPos()
-Function DFFindLArASIC As Boolean
-	
-	DFFindLArASIC = False
-	
-	' Whole chip recognition
-	Boolean isFoundChip
-	Double xC, yC, uC
-	' Fiducial and manufacturer marker recognition
-	Boolean isFoundL, isFoundS
-	Double xL, yL, uL, xS, yS, uS
-	Boolean isFoundT
+Function DF_ChipDirection_LArASIC As Double
+	DF_ChipDirection_LArASIC = -999.
+	Boolean FoundText
 	Double xT, yT, uT
 	
 	Select SITE$
 		Case "MSU"
-
-			
 			VRun MSU_DF_ChipDir
-			VGet MSU_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
-	
-			' Get positions of Large and Small circular markers on chip
-			VGet MSU_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
-			VGet MSU_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
-			
-			 VGet MSU_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
-		Case "TUT"
-			'Print "Using tutorial sequences"
-			VRun TUT_DF_ChipDir
-			
-			' Looks for something overall "chip like" - This does not consistently work, use BNL LArASIC text to make sure you see a chip
-			' VGet TUT_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
-			' Try using pins at edge as outline	- Could potentially use the BNL LArASIC text but I think it isn't precise enough for position check
-			VGet TUT_DF_ChipDir.Geom04.RobotXYU, isFoundChip, xC, yC, uC
-			
-			' Get positions of Large and Small circular markers on chip
-			VGet TUT_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
-			VGet TUT_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
-			' Get text porition and orientation on chip - for me this is "BNL LArASIC"
-			'''' N.B. TEXT MUST BE TAUGHT IN SPECIFIC ORIENTATION TO GET CORRECT uT VALUE		
-			'''' TRY ROTATING AND RETEACHING UNTIL YOU GET AGREEMENT BETWEEN uT AND
-			'''' FIDUCIAL MARKERS. FOR ME, THEY ONLY AGREED WHEN I HAD ORIENTATION AT -90.
-			'''' i.e. AS VIEWED FROM FRONT OF RTS IN TRAY, TEXT WAS RIGHT WAY UP.
-			''''     
-			''''         ROBOT       ^
-			''''     -------------   | -90
-			''       '           '
-			''       '   BNL     '
-			'' 0<-   '   LArASIC '	-> +180	
-			''       '           '
-			''       '           '
-			''       -------------
-		
-			
-			VGet TUT_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
+			VGet MSU_DF_ChipDir.Geom03.RobotXYU, FoundText, xT, yT, uT
+		Case "BNL"
+'			VRun BNL_DF_ChipDir
+'			VGet BNL_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
 		Default
-			
-			Print "No defined vision sequence for LArASICs for site: ", SITE$
-			Exit Function
-			
 	Send
-	' Print "isFoundChip = ", isFoundChip
 	
-	If Not isFoundChip Then
-		 'Print "Whole chip correlation step failed"
-		Exit Function
-	EndIf
-	'Print "Found whole chip"
-	
-	If Not isFoundL Then
-		'Print "Failed to find largr manufacturing mark (bottom right of chip)"
-		Exit Function
-	EndIf
-	'Print "Found large manufacturing marker"
-	
-	If Not isFoundS Then
-		 'Print "Failed to find small fiducial mark (top left of chip)"
-		Exit Function
-	EndIf
-	'Print "Found small fiducial marker"
-	
-	If Not isFoundT Then
-		'Print "Failed to find text on chip"
-		Exit Function
-	EndIf
-	'Print "found text"
-	
-	Double AvX, AvY
-	AvX = (xL + xS) /2
-	AvY = (yL + yS) /2
-
-	' Get polar vector from Large marker to Small marker
-	Double DelX, DelY, Norm, Angle
-	DelX = xS - xL
-	DelY = yS - yL
-	
-	Norm = Sqr(DelX * DelX + DelY * DelY)
-	
-	If DelY >= 0 Then
-		Angle = RadToDeg(Acos(DelX / Norm))
-	Else
-		Angle = -RadToDeg(Acos(DelX / Norm))
+	If Not FoundText Then
+		Return
 	EndIf
 	
-	If Abs(Norm - LArASICDimension) > TolXY Then
-		Print "Large-to-small marker distance not within tolerance: " + Str$(Norm)
-		Exit Function
-	EndIf
-
- ' Cannot rely on finding "chip like" correlation, but can maybe use the geometry of the edge of the chip with the pins
-	' Check found position lies lose to correlation step for whole chip
-	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
-		Print "Fiducial marker method disagrees with correlation measurement of chip position"
-		Print "Correlation position X,Y,U = (", xC, ",", yC, ",", GetBoundAnglePM180(uC), ")"
-		Print "Fiducial position    X,Y,U = (", AvX, ",", AvY, ",", GetBoundAnglePM180(Angle - 45.), ")"
-		Exit Function
-	EndIf
+	DF_ChipDirection_LArASIC = uT - ChipVisionOffset
 	
-	' Check text orientation is consistent with the direction of the chip
-	If Abs(DiffAnglePM180(uT, (GetBoundAnglePM180(Angle - 45.)))) > 3. Then
-		Print "Inconsistent orientation from text and markers"
-		Print "uT = ", GetBoundAnglePM180(uT)
-		Print "Marker angle = ", Str$(GetBoundAnglePM180(Angle - 45.))
-	EndIf
-	
-	ChipPos(1) = AvX
-	ChipPos(2) = AvY
-	ChipPos(3) = GetBoundAnglePM180(Angle - 45.)
-	
-	DFFindLArASIC = True
-	'Print "Got here, should be returning TRUE"
 Fend
 
 
-''' Function to find the orientation of the COLDATA chips with the down facing camera
-' The surface features are not as readily identifiable as the smaller chips and so
-' this function uses several redundant vision sequences and takes an average
-' It MUST find at least one of the vision sequences with the text "COLDATA" in order
-' to determine the direction reliably. Other inputs are for improving the precision of the 
-' translational position as the printed text is likely less accurate than the chip 
-' manufacturing marks
-'' Stores results in global array ChipPos()
-Function DFFindCOLDATA As Boolean
 
-	DFFindCOLDATA = False
-	
-	Boolean AllowPartial
-	AllowPartial = True
-	
-	' COLDATA chips are more difficult to pick out features on	
-	' If possible use position of COLDATA text, center of outline, and center of full chip sequence to find position
-	' Outline often isn't properly found due to occlusion, and so is less reliable
-	
-	Boolean isFoundChip, isFoundOutline, isFoundString
-	Double xC, yC, uC ' Whole chip sequence result
-	Double xO, yO, uO ' Chip outline sequence result
-	Double xS, yS, uS ' Chip COLDATA string result
-	Double xSCEst, ySCEst, uSCEst ' Estimate of chip center from COLDATA string position
-	Double AvX, AvY, AvU ' Averages
-	Double DelX, DelY, DelU ' Differences
-	Double DelUAC, DelUAS ' Differences between calcualtd angle from positions and measured angles
-	Double Norm, Angle ' Polar vector between chip center and coldata, for orientation and offset comparison
-	
-	Select SITE$
-		Case "MSU"
-		VRun MSU_DF_CDDir
-		'VGet MSU_DF_CDDir.Point01.RobotXYU, isFP, xP, yP, uP ' For finding image center in testing
-		VGet MSU_DF_CDDir.WholeChip.RobotXYU, isFoundChip, xC, yC, uC
-		VGet MSU_DF_CDDir.ChipOutline.RobotXYU, isFoundOutline, xO, yO, uO
-		VGet MSU_DF_CDDir.COLDATAString.RobotXYU, isFoundString, xS, yS, uS
-		Default
-			Print "Not a valid site name ", SITE$
-	Send
-	
-	If Not AllowPartial And Not (isFoundChip And isFoundOutline And isFoundString) Then
-		' Require all three sequences to be successful
-		Print "Could not find all features"
-		Exit Function
-	ElseIf (Not isFoundChip) And (Not isFoundString) Then
-		' When using partial infomration, require at least one sequence which recogninizes the COLDATA string	
-		Print "Could not find the COLDATA text for orientation"
-		Exit Function
-	EndIf
-	
-	' Found COLDATA string
-	' Get chip center estimate froms tring
 
-	xSCEst = -9999.
-	ySCEst = -9999.
-	
-	Byte FoundFeatures
-	FoundFeatures = 0
-	
-	If isFoundChip Then
-		'Print "Found chip"
-		FoundFeatures = FoundFeatures + 100
-	EndIf
-
-	If isFoundString Then
-		'Print "Found COLDATA string"
-		FoundFeatures = FoundFeatures + 10
-		' Calculate estimate of position from string
-		uSCEst = GetBoundAnglePM180(uS + 90.)
-		xSCEst = xS - COLDATATextOffset * Cos(DegToRad(uSCEst))
-		ySCEst = yS - COLDATATextOffset * Sin(DegToRad(uSCEst))
-	EndIf
-	
-	If isFoundOutline Then
-		'Print "Found outline"
-		FoundFeatures = FoundFeatures + 1
-	EndIf
-	' Print "FoundFeatures = ", FoundFeatures
-	If FoundFeatures < 111 And Not AllowPartial Then
-		Print "Could not find all features" ' : ", FoundFeatures
-		Exit Function
-	EndIf
-		
-	If AllowPartial And isFoundChip And Not isFoundString Then
-		' Just use whole chip position
-		ChipPos(1) = xC
-		ChipPos(2) = yC
-		ChipPos(3) = GetBoundAnglePM180(uC + 90.)
-
-		DFFindCOLDATA = True
-		Exit Function
-	EndIf
-	
-	' If getting here then isFoundString must be true
-	If Not isFoundString Then
-		ChipPos(1) = 0.
-		ChipPos(2) = 0.
-		ChipPos(3) = 0.
-		DFFindCOLDATA = False
-		Exit Function
-	EndIf
-
-	' If no outline, average with whole chip
-	If AllowPartial And Not isFoundOutline Then
-		' Check constistency between string estimate and whole chip, then use average
-		' Consistency check	
-		If Sqr((xC - xSCEst) * (xC - xSCEst) + (yC - ySCEst) * (yC - ySCEst)) > TolXY Then
-			
-			DFFindCOLDATA = False
-			Exit Function
-		EndIf
-
-		' For more precise angle we want to draw line between chip center and COLDATA string center
-		DelX = xS - xC
-		DelY = yS - yC
-		DelU = DiffAnglePM180(uC, uS)
-		
-	'	DelU = GetBoundAnglePM45(uS) - GetBoundAnglePM45(uO) ' Use as sanity check, but may be out by n*90 degrees
-	
-		Norm = Sqr((DelX * DelX) + (DelY * DelY))
-		If Abs(Norm - COLDATATextOffset) > TolXY Then
-'			Print "Calculated distance between chip center from whole chip sequence and COLDATA string is not consistent with expected offset"
-			DFFindCOLDATA = False
-			Exit Function
-		EndIf
-		
-		' Check consistent angles
-		If Abs(DelU) > TolAngle Then
-'			Print "Angles found by COLDATA string sequence and whole chip sequence are inconsistent - DelU = ", DelU
-			DFFindCOLDATA = False
-			Exit Function
-		EndIf
-		
-		If DelY >= 0 Then
-			Angle = RadToDeg(Acos(DelX / Norm))
-		Else
-			Angle = -RadToDeg(Acos(DelX / Norm))
-		EndIf
-		
-		DelUAC = DiffAnglePM180(GetBoundAnglePM180(uC + 90.), GetBoundAnglePM180(Angle))
-		DelUAS = DiffAnglePM180(GetBoundAnglePM180(uS + 90.), GetBoundAnglePM180(Angle))
-		If Abs(DelUAC) > TolAngle Or Abs(DelUAS) > TolAngle Then
-'			Print "Angle between COLDATA string and whole chip sequence result are inconsistent with sequence angles"
-'			Print "Calculated angle          ", Angle
-'			Print "COLDATA string angle      ", GetBoundAnglePM180(uS + 90.)
-'			Print "Whole chip sequence angle ", GetBoundAnglePM180(uC + 90.)
-			DFFindCOLDATA = False
-			Exit Function
-		EndIf
-		
-		
-		' If it gets here used the average of the string est and whole chip?
-		
-		ChipPos(1) = (xC + xSCEst) / 2
-		ChipPos(2) = (yC + ySCEst) / 2
-		ChipPos(3) = GetBoundAnglePM180(Angle) ' <Maybe average?
-		'ChipPos(3) = AverageAnglePM180(GetBoundAnglePM180(uC + 90.), GetBoundAnglePM180(Angle))
-		
-		DFFindCOLDATA = True
-		Exit Function
-	EndIf
-
-	' Check constistency between string estimate and outline, then use average
-	' Consistency check	
-	If Sqr((xO - xSCEst) * (xO - xSCEst) + (yO - ySCEst) * (yO - ySCEst) > TolXY) Then
-		DFFindCOLDATA = False
-		Exit Function
-	EndIf
-
-	' For more precise angle we want to draw line between chip center and COLDATA string center
-	DelX = xS - xO
-	DelY = yS - yO
-	' Outline won't be able to determine orientation, but can get angle away from axis\
-	' Bounding the angle between +/-45deg allows comparison even if out by n*90deg
-	DelU = DiffAnglePM180(GetBoundAnglePM45(uO), GetBoundAnglePM45(uS))
-	
-	Norm = Sqr((DelX * DelX) + (DelY * DelY))
-	If Abs(Norm - COLDATATextOffset) > TolXY Then
-'		Print "Calculated distance between chip center from whole chip sequence and COLDATA string is not consistent with expected offset"
-		DFFindCOLDATA = False
-		Exit Function
-	EndIf
-	
-	' Check consistent angles
-	If Abs(DelU) > TolAngle Then
-'		Print "Angles found by COLDATA string sequence and whole chip sequence are inconsistent - DelU = ", DelU
-		DFFindCOLDATA = False
-		Exit Function
-	EndIf
-	
-	If DelY >= 0 Then
-		Angle = RadToDeg(Acos(DelX / Norm))
-	Else
-		Angle = -RadToDeg(Acos(DelX / Norm))
-	EndIf
-	
-	' This won't work?
-
-	DelUAC = DiffAnglePM180(GetBoundAnglePM45(uO), GetBoundAnglePM45(Angle))
-	DelUAS = DiffAnglePM180(GetBoundAnglePM180(uS + 90.), GetBoundAnglePM180(Angle))
-	If Abs(DelUAC) > TolAngle Or Abs(DelUAS) > TolAngle Then
-'		Print "Angle between COLDATA string and whole chip sequence result are inconsistent with sequence angles"
-'		Print "Calculated angle (bound within +/-45)     : ", Angle, " (", GetBoundAnglePM45(Angle), ")"
-'		Print "COLDATA string angle                      :", GetBoundAnglePM180(uS + 90.)
-'		Print "Outline sequence angle bound within +/-45 :", GetBoundAnglePM45(uC)
-		DFFindCOLDATA = False
-		Exit Function
-	EndIf
-	
-	AvX = (xO + xSCEst) /2
-	AvY = (yO + ySCEst) /2
-	AvU = AverageAnglePM180(GetBoundAnglePM180(uS + 90.), GetBoundAnglePM180(Angle))
-	' If here, and no full chip result, use the average of the sting and the outline
-	If Not isFoundChip Then
-		ChipPos(1) = AvX
-		ChipPos(2) = AvY
-		ChipPos(3) = AvU
-		DFFindCOLDATA = True
-		Exit Function
-	EndIf
-	
-	' For full information, check consistency of above average, then average with whole chip.
-	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
-'		Print "Average position from string+outline does not match whole chip sequence results"
-'		Print "String estimate               : (", xSCEst, ",", ySCEst, ",", GetBoundAnglePM180(uS + 90.), ")"
-'		Print "Outline result (U in pm45)    : (", xO, ",", yO, ",", GetBoundAnglePM45(uO), ")"
-'		Print "Angle between string and outline results: ", GetBoundAnglePM180(Angle)
-'		Print "Average of string and outline : (", AvX, ",", AvU, ",", AvU, ")"
-'		Print "Whole chip result             : (", xC, ",", yC, ",", GetBoundAnglePM180(uC + 90.), ")"
-		DFFindCOLDATA = False
-		Exit Function
-	EndIf
-		
-	' If OK average in with whole chip result	
-	ChipPos(1) = (xSCEst + xO + xC) / 3
-	ChipPos(2) = (ySCEst + yO + yC) / 3
-	ChipPos(3) = AverageAnglePM180(GetBoundAnglePM180(uC + 90.), GetBoundAnglePM180(Angle))
+'''' Wrapper function to find the direction of a chip with the down facing camera
+''' Initializes global array ChipPos() which will store X,Y,U of chip
+'' These are set in relevant DFFindLarASIC, DFFindColdADC, DFFindCOLDATA functions
+'Function FindChipDirectionWithDF As Boolean
+'	FindChipDirectionWithDF = False
 '	
-'			'''''''''''''''''''''''''''''''''''''''''''''''''''
-'	Print "Success! Found ", FoundFeatures, " XYU: ", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ","
-'	If Abs(GetBoundAnglePM45(ChipPos(3))) > 3. Then
-'		Print "Angles :"
-'		Print "String  ", GetBoundAnglePM180(uS + 90.)
-'		Print "Outline ", GetBoundAnglePM180(uO)
-'		Print "Chip    ", GetBoundAnglePM180(uC + 90.)
-'		Print "Calc    ", GetBoundAnglePM180(Angle)
+'	ChipPos(1) = 0
+'	ChipPos(2) = 0
+'	ChipPos(3) = 0
+'	
+'	Int32 FindError
+'	FindError = 0
+'	Select CHIPTYPE$
+'		Case "LArASIC"
+'			FindChipDirectionWithDF = DFFindLArASIC
+'		Case "ColdADC"
+'			' FindChipDirectionWithDF = DFFindColdADC
+'			Print "Error, not currently implemented for ColdADC, check if LArASIC works?"
+'			Exit Function
+'		Case "COLDATA"
+'			
+''			FindChipDirectionWithDF = DFFindCOLDATA
+''			
+'			Int32 ToCheck, nFailLimit
+'			ToCheck = 10
+'			nFailLimit = 50
+'			Int32 it, tot
+'			it = 0
+'			tot = 0
+'			' NB cannot declare array length as variable, unfortunately means several hard coded 10s
+'			' Make sure to change all divisors for averages if this changes below
+'			Double XCHECK(10), YCHECK(10), UCHECK(10)
+'			Double AvX, AvY, AvU
+'			AvX = 0.
+'			AvY = 0.
+'			' need to track how many end up on +/- side of 180, not close to 0
+'			Int32 nU0, nUm180, nUp180
+'			Double AvU0, AvUm180, AvUp180
+'			nU0 = 0
+'			nUm180 = 0
+'			nUp180 = 0
+'			AvU0 = 0.
+'			AvUm180 = 0.
+'			AvUp180 = 0.
+'			
+'			Do While ToCheck > 0
+'				tot = tot + 1
+'				If DFFindCOLDATA Then
+'					it = it + 1
+'					XCHECK(it) = ChipPos(1)
+'					YCHECK(it) = ChipPos(2)
+'					UCHECK(it) = GetBoundAnglePM180(ChipPos(3))
+'					AvX = AvX + ChipPos(1)
+'					AvY = AvY + ChipPos(2)
+'					'AvU = AvU + ChipPos(3) '  Need to think about averaging around +/-180
+'					If ChipPos(3) < -90. Then
+'						nUm180 = nUm180 + 1
+'						AvUm180 = AvUm180 + ChipPos(3)
+'					ElseIf ChipPos(3) < 90. Then
+'						nU0 = nU0 + 1
+'						AvU0 = AvU0 + ChipPos(3)
+'					Else
+'						nUp180 = nUp180 + 1
+'						AvUp180 = AvUp180 + ChipPos(3)
+'					EndIf
+'					
+'					ToCheck = ToCheck - 1
+'				EndIf
+'				If tot > nFailLimit Then
+'					Print "Too many failures"
+'					ChipPos(1) = 0.
+'					ChipPos(2) = 0.
+'					ChipPos(3) = 0.
+'					FindChipDirectionWithDF = False
+'					Exit Function
+'				EndIf
+'			Loop
+'			AvX = AvX /10
+'			AvY = AvY /10
+'			
+'
+'			
+'			' Can't have U values at -180, 0 and +180
+'			If (nU0 > 0 And nUm180 > 0 And nUp180 > 0) Then
+'				Print "Inconsistent angle values returned for averaging"
+'				Print " U  < -90       :", nUm180
+'				Print " -90 <= U < +90 :", nU0
+'				Print " +90 <= U       :", nUp180
+'				ChipPos(1) = 0.
+'				ChipPos(2) = 0.
+'				ChipPos(3) = 0.
+'				FindChipDirectionWithDF = False
+'				Exit Function
+'			EndIf
+'			
+'			If nUm180 > 0 Then
+'				AvUm180 = AvUm180 / nUm180
+'			EndIf
+'			If nU0 > 0 Then
+'				AvU0 = AvU0 / nU0
+'			EndIf
+'			If nUp180 > 0 Then
+'				AvUp180 = AvUp180 / nUp180
+'			EndIf
+'			
+'			' If values close to both -180 and +180, need to average around 180, so add 360 to negative values
+'			If nUm180 > 0 And nUp180 > 0 Then
+'				AvUm180 = AvUm180 + 360.
+'			EndIf
+'			
+'			
+'			
+'			AvU = GetBoundAnglePM180(((nUm180 * AvUm180) + (nU0 * AvU0) + (nUp180 * AvUp180)) / 10)
+'						
+'			Double StdDvX, StdDvY, StdDvU
+''			Print "Results over ", 10, " successful iterations for ", tot, " total iterations"
+'			For it = 1 To 10
+'				StdDvX = StdDvX + (XCHECK(it) - AvX) * (XCHECK(it) - AvX)
+'				StdDvY = StdDvY + (YCHECK(it) - AvY) * (YCHECK(it) - AvY)
+'				StdDvU = StdDvU + (UCHECK(it) - AvU) * (UCHECK(it) - AvU)
+''				Print "(", XCHECK(it), ",", YCHECK(it), ",", UCHECK(it), ")"
+'			Next
+'			StdDvX = Sqr(StdDvX / 10)
+'			StdDvY = Sqr(StdDvY / 10)
+'			StdDvU = Sqr(StdDvU / 10)
+'			
+''			Print "Average : (", AvX, ",", AvY, ",", AvU, ")"
+''			Print "Std dev : (", StdDvX, ",", StdDvY, ",", StdDvU, ")"
+'			
+'			If StdDvX * StdDvX + StdDvY * StdDvY > TolXY * TolXY Or StdDvU > TolAngle Then
+'				Print "Measurement spread too high"
+'				ChipPos(1) = 0.
+'				ChipPos(2) = 0.
+'				ChipPos(3) = 0.
+'				FindChipDirectionWithDF = False
+'				Exit Function
+'			EndIf
+'			
+'			ChipPos(1) = AvX
+'			ChipPos(2) = AvY
+'			ChipPos(3) = AvU
+'			FindChipDirectionWithDF = False
+'			
+'		Default
+'			Print "Error, chiptype not properly defined or DF find function does not exist for ", CHIPTYPE$
+'			Exit Function
+'	Send
+'
+'Fend
+'
+'''' Function to get the orientation of LArASIC chip with the down facing camera
+'' This makes use of two marks on the surce, a larger manufacturing mark and a 
+'' smaller mark indicating where pin 1 is.
+'' it then finds the direction between these and subtracts 45 degrees to get the
+'' orienation of the chip
+''' Stores results in global array ChipPos()
+'Function DFFindLArASIC As Boolean
+'	
+'	DFFindLArASIC = False
+'	
+'	' Whole chip recognition
+'	Boolean isFoundChip
+'	Double xC, yC, uC
+'	' Fiducial and manufacturer marker recognition
+'	Boolean isFoundL, isFoundS
+'	Double xL, yL, uL, xS, yS, uS
+'	Boolean isFoundT
+'	Double xT, yT, uT
+'	
+'	Select SITE$
+'		Case "MSU"
+'
+'			
+'			VRun MSU_DF_ChipDir
+'			VGet MSU_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
+'	
+'			' Get positions of Large and Small circular markers on chip
+'			VGet MSU_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
+'			VGet MSU_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
+'			
+'			 VGet MSU_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
+'		Case "TUT"
+'			'Print "Using tutorial sequences"
+'			VRun TUT_DF_ChipDir
+'			
+'			' Looks for something overall "chip like" - This does not consistently work, use BNL LArASIC text to make sure you see a chip
+'			' VGet TUT_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
+'			' Try using pins at edge as outline	- Could potentially use the BNL LArASIC text but I think it isn't precise enough for position check
+'			VGet TUT_DF_ChipDir.Geom04.RobotXYU, isFoundChip, xC, yC, uC
+'			
+'			' Get positions of Large and Small circular markers on chip
+'			VGet TUT_DF_ChipDir.Geom01.RobotXYU, isFoundL, xL, yL, uL
+'			VGet TUT_DF_ChipDir.Geom02.RobotXYU, isFoundS, xS, yS, uS
+'			' Get text porition and orientation on chip - for me this is "BNL LArASIC"
+'			'''' N.B. TEXT MUST BE TAUGHT IN SPECIFIC ORIENTATION TO GET CORRECT uT VALUE		
+'			'''' TRY ROTATING AND RETEACHING UNTIL YOU GET AGREEMENT BETWEEN uT AND
+'			'''' FIDUCIAL MARKERS. FOR ME, THEY ONLY AGREED WHEN I HAD ORIENTATION AT -90.
+'			'''' i.e. AS VIEWED FROM FRONT OF RTS IN TRAY, TEXT WAS RIGHT WAY UP.
+'			''''     
+'			''''         ROBOT       ^
+'			''''     -------------   | -90
+'			''       '           '
+'			''       '   BNL     '
+'			'' 0<-   '   LArASIC '	-> +180	
+'			''       '           '
+'			''       '           '
+'			''       -------------
+'		
+'			
+'			VGet TUT_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
+'		Default
+'			
+'			Print "No defined vision sequence for LArASICs for site: ", SITE$
+'			Exit Function
+'			
+'	Send
+'	' Print "isFoundChip = ", isFoundChip
+'	
+'	If Not isFoundChip Then
+'		 'Print "Whole chip correlation step failed"
+'		Exit Function
 '	EndIf
-'	'''''''''''''''''''''''''''''''''''''''''''''''''''	
-	
-	DFFindCOLDATA = True
-Fend
+'	'Print "Found whole chip"
+'	
+'	If Not isFoundL Then
+'		'Print "Failed to find largr manufacturing mark (bottom right of chip)"
+'		Exit Function
+'	EndIf
+'	'Print "Found large manufacturing marker"
+'	
+'	If Not isFoundS Then
+'		 'Print "Failed to find small fiducial mark (top left of chip)"
+'		Exit Function
+'	EndIf
+'	'Print "Found small fiducial marker"
+'	
+'	If Not isFoundT Then
+'		'Print "Failed to find text on chip"
+'		Exit Function
+'	EndIf
+'	'Print "found text"
+'	
+'	Double AvX, AvY
+'	AvX = (xL + xS) /2
+'	AvY = (yL + yS) /2
+'
+'	' Get polar vector from Large marker to Small marker
+'	Double DelX, DelY, Norm, Angle
+'	DelX = xS - xL
+'	DelY = yS - yL
+'	
+'	Norm = Sqr(DelX * DelX + DelY * DelY)
+'	
+'	If DelY >= 0 Then
+'		Angle = RadToDeg(Acos(DelX / Norm))
+'	Else
+'		Angle = -RadToDeg(Acos(DelX / Norm))
+'	EndIf
+'	
+'	If Abs(Norm - LArASICDimension) > TolXY Then
+'		Print "Large-to-small marker distance not within tolerance: " + Str$(Norm)
+'		Exit Function
+'	EndIf
+'
+' ' Cannot rely on finding "chip like" correlation, but can maybe use the geometry of the edge of the chip with the pins
+'	' Check found position lies lose to correlation step for whole chip
+'	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
+'		Print "Fiducial marker method disagrees with correlation measurement of chip position"
+'		Print "Correlation position X,Y,U = (", xC, ",", yC, ",", GetBoundAnglePM180(uC), ")"
+'		Print "Fiducial position    X,Y,U = (", AvX, ",", AvY, ",", GetBoundAnglePM180(Angle - 45.), ")"
+'		Exit Function
+'	EndIf
+'	
+'	' Check text orientation is consistent with the direction of the chip
+'	If Abs(DiffAnglePM180(uT, (GetBoundAnglePM180(Angle - 45.)))) > 3. Then
+'		Print "Inconsistent orientation from text and markers"
+'		Print "uT = ", GetBoundAnglePM180(uT)
+'		Print "Marker angle = ", Str$(GetBoundAnglePM180(Angle - 45.))
+'	EndIf
+'	
+'	ChipPos(1) = AvX
+'	ChipPos(2) = AvY
+'	ChipPos(3) = GetBoundAnglePM180(Angle - 45.)
+'	
+'	DFFindLArASIC = True
+'	'Print "Got here, should be returning TRUE"
+'Fend
+'
+'
+'''' Function to find the orientation of the COLDATA chips with the down facing camera
+'' The surface features are not as readily identifiable as the smaller chips and so
+'' this function uses several redundant vision sequences and takes an average
+'' It MUST find at least one of the vision sequences with the text "COLDATA" in order
+'' to determine the direction reliably. Other inputs are for improving the precision of the 
+'' translational position as the printed text is likely less accurate than the chip 
+'' manufacturing marks
+''' Stores results in global array ChipPos()
+'Function DFFindCOLDATA As Boolean
+'
+'	DFFindCOLDATA = False
+'	
+'	Boolean AllowPartial
+'	AllowPartial = True
+'	
+'	' COLDATA chips are more difficult to pick out features on	
+'	' If possible use position of COLDATA text, center of outline, and center of full chip sequence to find position
+'	' Outline often isn't properly found due to occlusion, and so is less reliable
+'	
+'	Boolean isFoundChip, isFoundOutline, isFoundString
+'	Double xC, yC, uC ' Whole chip sequence result
+'	Double xO, yO, uO ' Chip outline sequence result
+'	Double xS, yS, uS ' Chip COLDATA string result
+'	Double xSCEst, ySCEst, uSCEst ' Estimate of chip center from COLDATA string position
+'	Double AvX, AvY, AvU ' Averages
+'	Double DelX, DelY, DelU ' Differences
+'	Double DelUAC, DelUAS ' Differences between calcualtd angle from positions and measured angles
+'	Double Norm, Angle ' Polar vector between chip center and coldata, for orientation and offset comparison
+'	
+'	Select SITE$
+'		Case "MSU"
+'		VRun MSU_DF_CDDir
+'		'VGet MSU_DF_CDDir.Point01.RobotXYU, isFP, xP, yP, uP ' For finding image center in testing
+'		VGet MSU_DF_CDDir.WholeChip.RobotXYU, isFoundChip, xC, yC, uC
+'		VGet MSU_DF_CDDir.ChipOutline.RobotXYU, isFoundOutline, xO, yO, uO
+'		VGet MSU_DF_CDDir.COLDATAString.RobotXYU, isFoundString, xS, yS, uS
+'		Default
+'			Print "Not a valid site name ", SITE$
+'	Send
+'	
+'	If Not AllowPartial And Not (isFoundChip And isFoundOutline And isFoundString) Then
+'		' Require all three sequences to be successful
+'		Print "Could not find all features"
+'		Exit Function
+'	ElseIf (Not isFoundChip) And (Not isFoundString) Then
+'		' When using partial infomration, require at least one sequence which recogninizes the COLDATA string	
+'		Print "Could not find the COLDATA text for orientation"
+'		Exit Function
+'	EndIf
+'	
+'	' Found COLDATA string
+'	' Get chip center estimate froms tring
+'
+'	xSCEst = -9999.
+'	ySCEst = -9999.
+'	
+'	Byte FoundFeatures
+'	FoundFeatures = 0
+'	
+'	If isFoundChip Then
+'		'Print "Found chip"
+'		FoundFeatures = FoundFeatures + 100
+'	EndIf
+'
+'	If isFoundString Then
+'		'Print "Found COLDATA string"
+'		FoundFeatures = FoundFeatures + 10
+'		' Calculate estimate of position from string
+'		uSCEst = GetBoundAnglePM180(uS + 90.)
+'		xSCEst = xS - COLDATATextOffset * Cos(DegToRad(uSCEst))
+'		ySCEst = yS - COLDATATextOffset * Sin(DegToRad(uSCEst))
+'	EndIf
+'	
+'	If isFoundOutline Then
+'		'Print "Found outline"
+'		FoundFeatures = FoundFeatures + 1
+'	EndIf
+'	' Print "FoundFeatures = ", FoundFeatures
+'	If FoundFeatures < 111 And Not AllowPartial Then
+'		Print "Could not find all features" ' : ", FoundFeatures
+'		Exit Function
+'	EndIf
+'		
+'	If AllowPartial And isFoundChip And Not isFoundString Then
+'		' Just use whole chip position
+'		ChipPos(1) = xC
+'		ChipPos(2) = yC
+'		ChipPos(3) = GetBoundAnglePM180(uC + 90.)
+'
+'		DFFindCOLDATA = True
+'		Exit Function
+'	EndIf
+'	
+'	' If getting here then isFoundString must be true
+'	If Not isFoundString Then
+'		ChipPos(1) = 0.
+'		ChipPos(2) = 0.
+'		ChipPos(3) = 0.
+'		DFFindCOLDATA = False
+'		Exit Function
+'	EndIf
+'
+'	' If no outline, average with whole chip
+'	If AllowPartial And Not isFoundOutline Then
+'		' Check constistency between string estimate and whole chip, then use average
+'		' Consistency check	
+'		If Sqr((xC - xSCEst) * (xC - xSCEst) + (yC - ySCEst) * (yC - ySCEst)) > TolXY Then
+'			
+'			DFFindCOLDATA = False
+'			Exit Function
+'		EndIf
+'
+'		' For more precise angle we want to draw line between chip center and COLDATA string center
+'		DelX = xS - xC
+'		DelY = yS - yC
+'		DelU = DiffAnglePM180(uC, uS)
+'		
+'	'	DelU = GetBoundAnglePM45(uS) - GetBoundAnglePM45(uO) ' Use as sanity check, but may be out by n*90 degrees
+'	
+'		Norm = Sqr((DelX * DelX) + (DelY * DelY))
+'		If Abs(Norm - COLDATATextOffset) > TolXY Then
+''			Print "Calculated distance between chip center from whole chip sequence and COLDATA string is not consistent with expected offset"
+'			DFFindCOLDATA = False
+'			Exit Function
+'		EndIf
+'		
+'		' Check consistent angles
+'		If Abs(DelU) > TolAngle Then
+''			Print "Angles found by COLDATA string sequence and whole chip sequence are inconsistent - DelU = ", DelU
+'			DFFindCOLDATA = False
+'			Exit Function
+'		EndIf
+'		
+'		If DelY >= 0 Then
+'			Angle = RadToDeg(Acos(DelX / Norm))
+'		Else
+'			Angle = -RadToDeg(Acos(DelX / Norm))
+'		EndIf
+'		
+'		DelUAC = DiffAnglePM180(GetBoundAnglePM180(uC + 90.), GetBoundAnglePM180(Angle))
+'		DelUAS = DiffAnglePM180(GetBoundAnglePM180(uS + 90.), GetBoundAnglePM180(Angle))
+'		If Abs(DelUAC) > TolAngle Or Abs(DelUAS) > TolAngle Then
+''			Print "Angle between COLDATA string and whole chip sequence result are inconsistent with sequence angles"
+''			Print "Calculated angle          ", Angle
+''			Print "COLDATA string angle      ", GetBoundAnglePM180(uS + 90.)
+''			Print "Whole chip sequence angle ", GetBoundAnglePM180(uC + 90.)
+'			DFFindCOLDATA = False
+'			Exit Function
+'		EndIf
+'		
+'		
+'		' If it gets here used the average of the string est and whole chip?
+'		
+'		ChipPos(1) = (xC + xSCEst) / 2
+'		ChipPos(2) = (yC + ySCEst) / 2
+'		ChipPos(3) = GetBoundAnglePM180(Angle) ' <Maybe average?
+'		'ChipPos(3) = AverageAnglePM180(GetBoundAnglePM180(uC + 90.), GetBoundAnglePM180(Angle))
+'		
+'		DFFindCOLDATA = True
+'		Exit Function
+'	EndIf
+'
+'	' Check constistency between string estimate and outline, then use average
+'	' Consistency check	
+'	If Sqr((xO - xSCEst) * (xO - xSCEst) + (yO - ySCEst) * (yO - ySCEst) > TolXY) Then
+'		DFFindCOLDATA = False
+'		Exit Function
+'	EndIf
+'
+'	' For more precise angle we want to draw line between chip center and COLDATA string center
+'	DelX = xS - xO
+'	DelY = yS - yO
+'	' Outline won't be able to determine orientation, but can get angle away from axis\
+'	' Bounding the angle between +/-45deg allows comparison even if out by n*90deg
+'	DelU = DiffAnglePM180(GetBoundAnglePM45(uO), GetBoundAnglePM45(uS))
+'	
+'	Norm = Sqr((DelX * DelX) + (DelY * DelY))
+'	If Abs(Norm - COLDATATextOffset) > TolXY Then
+''		Print "Calculated distance between chip center from whole chip sequence and COLDATA string is not consistent with expected offset"
+'		DFFindCOLDATA = False
+'		Exit Function
+'	EndIf
+'	
+'	' Check consistent angles
+'	If Abs(DelU) > TolAngle Then
+''		Print "Angles found by COLDATA string sequence and whole chip sequence are inconsistent - DelU = ", DelU
+'		DFFindCOLDATA = False
+'		Exit Function
+'	EndIf
+'	
+'	If DelY >= 0 Then
+'		Angle = RadToDeg(Acos(DelX / Norm))
+'	Else
+'		Angle = -RadToDeg(Acos(DelX / Norm))
+'	EndIf
+'	
+'	' This won't work?
+'
+'	DelUAC = DiffAnglePM180(GetBoundAnglePM45(uO), GetBoundAnglePM45(Angle))
+'	DelUAS = DiffAnglePM180(GetBoundAnglePM180(uS + 90.), GetBoundAnglePM180(Angle))
+'	If Abs(DelUAC) > TolAngle Or Abs(DelUAS) > TolAngle Then
+''		Print "Angle between COLDATA string and whole chip sequence result are inconsistent with sequence angles"
+''		Print "Calculated angle (bound within +/-45)     : ", Angle, " (", GetBoundAnglePM45(Angle), ")"
+''		Print "COLDATA string angle                      :", GetBoundAnglePM180(uS + 90.)
+''		Print "Outline sequence angle bound within +/-45 :", GetBoundAnglePM45(uC)
+'		DFFindCOLDATA = False
+'		Exit Function
+'	EndIf
+'	
+'	AvX = (xO + xSCEst) /2
+'	AvY = (yO + ySCEst) /2
+'	AvU = AverageAnglePM180(GetBoundAnglePM180(uS + 90.), GetBoundAnglePM180(Angle))
+'	' If here, and no full chip result, use the average of the sting and the outline
+'	If Not isFoundChip Then
+'		ChipPos(1) = AvX
+'		ChipPos(2) = AvY
+'		ChipPos(3) = AvU
+'		DFFindCOLDATA = True
+'		Exit Function
+'	EndIf
+'	
+'	' For full information, check consistency of above average, then average with whole chip.
+'	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
+''		Print "Average position from string+outline does not match whole chip sequence results"
+''		Print "String estimate               : (", xSCEst, ",", ySCEst, ",", GetBoundAnglePM180(uS + 90.), ")"
+''		Print "Outline result (U in pm45)    : (", xO, ",", yO, ",", GetBoundAnglePM45(uO), ")"
+''		Print "Angle between string and outline results: ", GetBoundAnglePM180(Angle)
+''		Print "Average of string and outline : (", AvX, ",", AvU, ",", AvU, ")"
+''		Print "Whole chip result             : (", xC, ",", yC, ",", GetBoundAnglePM180(uC + 90.), ")"
+'		DFFindCOLDATA = False
+'		Exit Function
+'	EndIf
+'		
+'	' If OK average in with whole chip result	
+'	ChipPos(1) = (xSCEst + xO + xC) / 3
+'	ChipPos(2) = (ySCEst + yO + yC) / 3
+'	ChipPos(3) = AverageAnglePM180(GetBoundAnglePM180(uC + 90.), GetBoundAnglePM180(Angle))
+''	
+''			'''''''''''''''''''''''''''''''''''''''''''''''''''
+''	Print "Success! Found ", FoundFeatures, " XYU: ", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ","
+''	If Abs(GetBoundAnglePM45(ChipPos(3))) > 3. Then
+''		Print "Angles :"
+''		Print "String  ", GetBoundAnglePM180(uS + 90.)
+''		Print "Outline ", GetBoundAnglePM180(uO)
+''		Print "Chip    ", GetBoundAnglePM180(uC + 90.)
+''		Print "Calc    ", GetBoundAnglePM180(Angle)
+''	EndIf
+''	'''''''''''''''''''''''''''''''''''''''''''''''''''	
+'	
+'	DFFindCOLDATA = True
+'Fend
 
 ''' Funvtion to find a chip at the up facing camera and get its positional information
 ' Stores results in global array UFChipPos()
@@ -1532,48 +1583,20 @@ Function GetChipInSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr 
 	GetChipInSocketAlignment = True
 Fend
 
-''' Socket alignment from DF camera
-''' 
-' DFSockRes(1) - defined X
-' DFSockRes(2) - defined Y
-' DFSockRes(3) - defined U
-
-' DFSockRes(4) - measured X
-' DFSockRes(5) - measured Y
-' DFSockRes(6) - measured U
-
-' DFSockRes(7) - Offset X
-' DFSockRes(8) - Offset Y
-' DFSockRes(9) - Offset U
-
-' DFSockRes(10) - J4 offset at measured position
-
-Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As Integer, socket_nr As Integer, ByRef DFSockRes() As Double) As Boolean
-	Print "Getting socket alignment"
-    SetSpeedSetting("PickAndPlace")
-	' Maybe add check to see if already above socket or in sink
-	JumpToSocket_camera(DAT_nr, socket_nr)
+' Gets the position and offsets of the socket from the taught point
+Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int64
+	GetSocketPositionWithDF = 0
 	
+	SocketOffset(1) = 0.
+	SocketOffset(2) = 0.
+	SocketOffset(3) = 0.
+	
+	SetSpeedSetting("PickAndPlace")
+	JumpToSocket_camera(DAT_nr, Socket_nr)
+		
 	Int32 FullSocket_nr
-	FullSocket_nr = DAT_nr * 100 + socket_nr
+	FullSocket_nr = DAT_nr * 100 + Socket_nr
 
-	' Reset results array
-	Int32 i
-	For i = 1 To 10
-		DFSockRes(i) = 0.
-	Next i
-	
-	DFSockRes(1) = CX(P(FullSocket_nr))
-	DFSockRes(2) = CY(P(FullSocket_nr))
-'	DFSockRes(3) = CU(P(FullSocket_nr))
-	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
-	Print "Defined socket position:"
-	Print "DFSockRes(1) = ", DFSockRes(1)
-	Print "DFSockRes(2) = ", DFSockRes(2)
-	Print "DFSockRes(3) = ", DFSockRes(3)
-	
-	
-	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
 	Int32 Attempts
 	Boolean Success
 	Attempts = 20
@@ -1590,152 +1613,214 @@ Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As I
 	Loop
 	If Not Success Then
 		Print "ERROR: Cannot find socket alignment"
-		DFGetSocketAlignment = False
-		Exit Function
-	EndIf
-	DFSockRes(4) = SockPos(1)
-	DFSockRes(5) = SockPos(2)
-	DFSockRes(6) = SockPos(3)
-	Print "Measured socket position:"
-	Print "DFSockRes(4) = ", DFSockRes(4)
-	Print "DFSockRes(5) = ", DFSockRes(5)
-	Print "DFSockRes(6) = ", DFSockRes(6)
-	
-	' Print any deviations between the socket position in camera and defined point
-	' Offset = Measured - Expected
-	DFSockRes(7) = DFSockRes(4) - DFSockRes(1) ' X
-	DFSockRes(8) = DFSockRes(5) - DFSockRes(2) ' Y
-	DFSockRes(9) = DiffAnglePM180(DFSockRes(3), DFSockRes(6)) 'DFSockRes(6) - DFSockRes(3) ' U
-	Print "Offset = measured - Defined ... NB, (9) is DiffAngleBound((3),(6)) i.e. (6) - (3) but within 180 in U."
-	Print "DFSockRes(7) = ", DFSockRes(7)
-	Print "DFSockRes(8) = ", DFSockRes(8)
-	Print "DFSockRes(9) = ", DFSockRes(9)
-	Print Here
-	'Print "moving to (", DFSockRes(4), ",", DFSockRes(5), ",", Str$(DFSockRes(3) + DFSockRes(9)), ")"
-'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(6))
-'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(3) + DFSockRes(9))
-	' Actually want to move to "Here" + offset for direction
-'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(CU(Here) + DFSockRes(9))
-	' OR 
-	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(GetBoundAnglePM180(DFSockRes(6) - HandChipOrientation(CHIPTYPE_NR))) ' Should this be DiffAngleBound?
-'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DiffAnglePM180, DFSockRes(6))??? Not looking to get angle between but to remove offset between chip and hand
-	' May need to consider bound in J4 not in U
-	DFSockRes(10) = CU(Here) - Agl(4)
-	Print "DFSockRes(10) = ", DFSockRes(10)
-	DFGetSocketAlignment = True
-	
-Fend
-
-''' get the position and alignment of a chip in a tray position
-''' Socket alignment from DF camera
-'' Defined position
-' DFTrayRes(1) - defined X
-' DFTrayRes(2) - defined Y
-' DFTrayRes(3) - defined U
-' Measured position
-' DFTrayRes(4) - measured X
-' DFTrayRes(5) - measured Y
-' DFTrayRes(6) - measured U
-' Offsets 
-' DFTrayRes(7) - Offset X
-' DFTrayRes(8) - Offset Y
-' DFTrayRes(9) - Offset U
-
-' DFTrayRes(10) - J4 offset at measured position
-Function DFGetTrayAlignment(id$ As String, ByRef idx() As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer, ByRef DFTrayRes() As Double) As Boolean
-
-	' Reset results array
-	Int32 i ', fileNum
-	For i = 1 To 10
-		DFTrayRes(i) = 0.
-	Next i
-	'fileNum = idx(1)
-
-	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-	
-	' Take a picture of the chip in the tray
-	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-'	String pict_fname$
-'	pict_fname$ = DF_take_picture$(id$ + "_CT")
-'	Print #fileNum, ",", pict_fname$,
-	
-	DFTrayRes(1) = CX(Pallet(pallet_nr, col_nr, row_nr))
-	DFTrayRes(2) = CY(Pallet(pallet_nr, col_nr, row_nr))
-	'DFTrayRes(3) = CU(Pallet(pallet_nr, col_nr, row_nr))
-	' Should (3) be the robot position or the expected chip position?
-	DFTrayRes(3) = GetBoundAnglePM180(CU(Pallet(pallet_nr, col_nr, row_nr)) + TrayChipOrientation(pallet_nr))
-
-	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
-	Integer Attempts
-	Attempts = 20
-	Boolean Success
-	Success = False
-	Do While ((Attempts > 0) And Not Success)
-		' TODO JW: Check chip dimensions are in range
-		If Not FindChipDirectionWithDF Then
-			Attempts = Attempts - 1
-		Else
-			Success = True
-			Exit Do
-		EndIf
-	Loop
-	If Not Success Then
-		Print "Cannot find chip alignment"
+		GetSocketPositionWithDF = False
 		Exit Function
 	EndIf
 	
-	Print "Chip found"
-	DFTrayRes(4) = ChipPos(1)
-	DFTrayRes(5) = ChipPos(2)
-	DFTrayRes(6) = ChipPos(3)
-	' Print any deviations between the socket position in camera and defined point
-	' Offset = Measured - Expected
-	DFTrayRes(7) = DFTrayRes(4) - DFTrayRes(1) ' X
-	DFTrayRes(8) = DFTrayRes(5) - DFTrayRes(2) ' Y
-	' DFTrayRes(9) =DFTrayRes(6) - DFTrayRes(3)
-	DFTrayRes(9) = DiffAnglePM180(DFTrayRes(3), DFTrayRes(6)) ' B - A
-
-	Go Here :X(DFTrayRes(4)) :Y(DFTrayRes(5))
-	DFTrayRes(10) = CU(Here) - Agl(4)
+	Print "Expected socket position (", CX(P(FullSocket_nr)), ",", CY(P(FullSocket_nr)), ",", GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR)), ")"
+	Print "Measured socket position (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
 	
-	DFGetTrayAlignment = True
+	SocketOffset(1) = SockPos(1) - CX(P(FullSocket_nr))
+	SocketOffset(2) = SockPos(2) - CY(P(FullSocket_nr))
+	SocketOffset(3) = DiffAnglePM180((SockPos(3)), (CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))) ' Should this be a socket vision offset? Depends  how vision is taught
 	
-Fend
-
-' Results index
-'' Tool positions
-' UFChipRes(1) - U_0 tool U when moved to camera
-' UFChipRes(2) - U_1 tool U at first measurement
-' UFChipRes(3) - U_2 tool U at second measurement
-'''  First measurements
-' UFChipRes(4) - x1
-' UFChipRes(5) - y1
-' UFChipRes(6) - u1
-''' Second measurements
-' UFChipRes(7) - x2
-' UFChipRes(8) - y2
-' UFChipRes(9) - u2
-''' Caclulated offsets
-' UFChipRes(10) - Offset in X ' FROM AXIS TO CHIP POSITION - PREVIOUSLY OTHER WAY AROUND 
-' UFChipRes(11) - Offset in Y
-' UFChipRes(12) - Offset in U 
-' Previously took target hand U and chip alignment as args, now calculates alignment relative to U_0
-' Can then use rotation and rotation matrix to calculate offsets at socket
-' UFChipRes(13) - Pin analysis status
-Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipRes() As Double, ByRef Images$() As String) As Boolean
-    SetSpeedSetting("AboveCamera")
-	UFGetChipAlignment = False
+		' Add some check that offsets are small
+	If Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(5)) > 3. Then
+		' ERROR SOCKET CORRECTIONS ARE TOO LARGE
 		
-	Int32 i, fileNum
-	For i = 1 To 13
-		UFChipRes(i) = 0.
-	Next i
-	fileNum = idx(1)
+		Exit Function
+	EndIf
 	
+	GetSocketPositionWithDF = -1
+	
+Fend
+
+'''' Socket alignment from DF camera
+'''' 
+'' DFSockRes(1) - defined X
+'' DFSockRes(2) - defined Y
+'' DFSockRes(3) - defined U
+'
+'' DFSockRes(4) - measured X
+'' DFSockRes(5) - measured Y
+'' DFSockRes(6) - measured U
+'
+'' DFSockRes(7) - Offset X
+'' DFSockRes(8) - Offset Y
+'' DFSockRes(9) - Offset U
+'
+'' DFSockRes(10) - J4 offset at measured position
+'
+'Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As Integer, socket_nr As Integer, ByRef DFSockRes() As Double) As Boolean
+'	Print "Getting socket alignment"
+'    SetSpeedSetting("PickAndPlace")
+'	' Maybe add check to see if already above socket or in sink
+'	JumpToSocket_camera(DAT_nr, socket_nr)
+'	
+'	Int32 FullSocket_nr
+'	FullSocket_nr = DAT_nr * 100 + socket_nr
+'
+'	' Reset results array
+'	Int32 i
+'	For i = 1 To 10
+'		DFSockRes(i) = 0.
+'	Next i
+'	
+'	DFSockRes(1) = CX(P(FullSocket_nr))
+'	DFSockRes(2) = CY(P(FullSocket_nr))
+''	DFSockRes(3) = CU(P(FullSocket_nr))
+'	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
+'	Print "Defined socket position:"
+'	Print "DFSockRes(1) = ", DFSockRes(1)
+'	Print "DFSockRes(2) = ", DFSockRes(2)
+'	Print "DFSockRes(3) = ", DFSockRes(3)
+'	
+'	
+'	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
+'	Int32 Attempts
+'	Boolean Success
+'	Attempts = 20
+'	Success = False
+'	Print "Getting precise socket position"
+'	Do While ((Attempts > 0) And Not Success)
+'		If Not FindSocketDirectionWithDF Then
+'			'Print "Not found"
+'			Attempts = Attempts - 1
+'		Else
+'			Success = True
+'			Exit Do
+'		EndIf
+'	Loop
+'	If Not Success Then
+'		Print "ERROR: Cannot find socket alignment"
+'		DFGetSocketAlignment = False
+'		Exit Function
+'	EndIf
+'	DFSockRes(4) = SockPos(1)
+'	DFSockRes(5) = SockPos(2)
+'	DFSockRes(6) = SockPos(3)
+'	Print "Measured socket position:"
+'	Print "DFSockRes(4) = ", DFSockRes(4)
+'	Print "DFSockRes(5) = ", DFSockRes(5)
+'	Print "DFSockRes(6) = ", DFSockRes(6)
+'	
+'	' Print any deviations between the socket position in camera and defined point
+'	' Offset = Measured - Expected
+'	DFSockRes(7) = DFSockRes(4) - DFSockRes(1) ' X
+'	DFSockRes(8) = DFSockRes(5) - DFSockRes(2) ' Y
+'	DFSockRes(9) = DiffAnglePM180(DFSockRes(3), DFSockRes(6)) 'DFSockRes(6) - DFSockRes(3) ' U
+'	Print "Offset = measured - Defined ... NB, (9) is DiffAngleBound((3),(6)) i.e. (6) - (3) but within 180 in U."
+'	Print "DFSockRes(7) = ", DFSockRes(7)
+'	Print "DFSockRes(8) = ", DFSockRes(8)
+'	Print "DFSockRes(9) = ", DFSockRes(9)
+'	Print Here
+'	'Print "moving to (", DFSockRes(4), ",", DFSockRes(5), ",", Str$(DFSockRes(3) + DFSockRes(9)), ")"
+''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(6))
+''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(3) + DFSockRes(9))
+'	' Actually want to move to "Here" + offset for direction
+''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(CU(Here) + DFSockRes(9))
+'	' OR 
+'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(GetBoundAnglePM180(DFSockRes(6) - HandChipOrientation(CHIPTYPE_NR))) ' Should this be DiffAngleBound?
+''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DiffAnglePM180, DFSockRes(6))??? Not looking to get angle between but to remove offset between chip and hand
+'	' May need to consider bound in J4 not in U
+'	DFSockRes(10) = CU(Here) - Agl(4)
+'	Print "DFSockRes(10) = ", DFSockRes(10)
+'	DFGetSocketAlignment = True
+'	
+'Fend
+'
+'''' get the position and alignment of a chip in a tray position
+'''' Socket alignment from DF camera
+''' Defined position
+'' DFTrayRes(1) - defined X
+'' DFTrayRes(2) - defined Y
+'' DFTrayRes(3) - defined U
+'' Measured position
+'' DFTrayRes(4) - measured X
+'' DFTrayRes(5) - measured Y
+'' DFTrayRes(6) - measured U
+'' Offsets 
+'' DFTrayRes(7) - Offset X
+'' DFTrayRes(8) - Offset Y
+'' DFTrayRes(9) - Offset U
+'
+'' DFTrayRes(10) - J4 offset at measured position
+'Function DFGetTrayAlignment(id$ As String, ByRef idx() As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer, ByRef DFTrayRes() As Double) As Boolean
+'
+'	' Reset results array
+'	Int32 i ', fileNum
+'	For i = 1 To 10
+'		DFTrayRes(i) = 0.
+'	Next i
+'	'fileNum = idx(1)
+'
+'	JumpToTray_camera(pallet_nr, col_nr, row_nr)
+'	
+'	' Take a picture of the chip in the tray
+'	JumpToTray_camera(pallet_nr, col_nr, row_nr)
+''	String pict_fname$
+''	pict_fname$ = DF_take_picture$(id$ + "_CT")
+''	Print #fileNum, ",", pict_fname$,
+'	
+'	DFTrayRes(1) = CX(Pallet(pallet_nr, col_nr, row_nr))
+'	DFTrayRes(2) = CY(Pallet(pallet_nr, col_nr, row_nr))
+'	'DFTrayRes(3) = CU(Pallet(pallet_nr, col_nr, row_nr))
+'	' Should (3) be the robot position or the expected chip position?
+'	DFTrayRes(3) = GetBoundAnglePM180(CU(Pallet(pallet_nr, col_nr, row_nr)) + TrayChipOrientation(pallet_nr))
+'
+'	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
+'	Integer Attempts
+'	Attempts = 20
+'	Boolean Success
+'	Success = False
+'	Do While ((Attempts > 0) And Not Success)
+'		' TODO JW: Check chip dimensions are in range
+'		If Not FindChipDirectionWithDF Then
+'			Attempts = Attempts - 1
+'		Else
+'			Success = True
+'			Exit Do
+'		EndIf
+'	Loop
+'	If Not Success Then
+'		Print "Cannot find chip alignment"
+'		Exit Function
+'	EndIf
+'	
+'	Print "Chip found"
+'	DFTrayRes(4) = ChipPos(1)
+'	DFTrayRes(5) = ChipPos(2)
+'	DFTrayRes(6) = ChipPos(3)
+'	' Print any deviations between the socket position in camera and defined point
+'	' Offset = Measured - Expected
+'	DFTrayRes(7) = DFTrayRes(4) - DFTrayRes(1) ' X
+'	DFTrayRes(8) = DFTrayRes(5) - DFTrayRes(2) ' Y
+'	' DFTrayRes(9) =DFTrayRes(6) - DFTrayRes(3)
+'	DFTrayRes(9) = DiffAnglePM180(DFTrayRes(3), DFTrayRes(6)) ' B - A
+'
+'	Go Here :X(DFTrayRes(4)) :Y(DFTrayRes(5))
+'	DFTrayRes(10) = CU(Here) - Agl(4)
+'	
+'	DFGetTrayAlignment = True
+'	
+'Fend
+
+Function FindChipAxisOffsetWithUF As Boolean
+	
+	SetSpeedSetting("AboveCamera")
+	FindChipAxisOffsetWithUF = False
+		
+	Double MeasU0, MeasU1, MeasU2
+	
+	Double ChipX1, ChipY1, ChipU1
+	Double ChipX2, ChipY2, ChipU2
+
 	JumpToCamera
+
 	Go Here :U(HAND_U0)
 	Go Here +U(PickOffset)
-	UFChipRes(1) = CU(Here)
+
+	MeasU0 = CU(Here)
 	
 	' If J4 angle is outside desired range, first add in extra rotation to prevent over turning
 	Double Rotation1
@@ -1749,17 +1834,18 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 	EndIf
 	Go Here +U(Rotation1)
 	
-	UFChipRes(2) = CU(Here)
+	MeasU1 = CU(Here)
 	
 	
 	'' TAKE PICTURE
 	UF_camera_light_ON
 	Wait 0.2
-	'String pict_fname$
-	'pict_fname$ = UF_take_picture$(id$ + "_01")
-    ' Print #fileNum, ",", pict_fname$,
-	Images$(1) = UF_take_picture$(id$ + "_01")
-	' Take first measurements
+'	'String pict_fname$
+'	'pict_fname$ = UF_take_picture$(id$ + "_01")
+'    ' Print #fileNum, ",", pict_fname$,
+'	Images$(1) = UF_take_picture$(id$ + "_01")
+'	' Take first measurements
+
 	Integer Attempts
 	Attempts = 20
 	Boolean Success
@@ -1778,12 +1864,12 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 	EndIf
 	
 	' Store first measurement values
-	UFChipRes(4) = UFChipPos(1)
-	UFChipRes(5) = UFChipPos(2)
-	UFChipRes(6) = UFChipPos(3)
+	ChipX1 = UFChipPos(1)
+	ChipY1 = UFChipPos(2)
+	ChipU1 = UFChipPos(3)
 	
 	If CHIPTYPE$ = "COLDATA" Then
-		UFChipRes(6) = GetBoundAnglePM45(UFChipRes(6))
+		ChipU1 = GetBoundAnglePM45(ChipU1)
 	EndIf
 	
 	' Rotate to 180 deg from first measurements
@@ -1796,12 +1882,12 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 	EndIf
 	Go Here +U(Rotation2)
 	
-	UFChipRes(3) = CU(Here)
+	MeasU2 = CU(Here)
 	
 	' Take another picture
 	UF_camera_light_ON
 	Wait 0.2
-	Images$(2) = UF_take_picture$(id$ + "_02")
+'	Images$(2) = UF_take_picture$(id$ + "_02")
 	'pict_fname$ = UF_take_picture$(id$ + "_02")
     'Print #fileNum, ",", pict_fname$,
 	
@@ -1821,12 +1907,12 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 	EndIf
 
 	' Store second measurement values
-	UFChipRes(7) = UFChipPos(1)
-	UFChipRes(8) = UFChipPos(2)
-	UFChipRes(9) = UFChipPos(3)
+	ChipX2 = UFChipPos(1)
+	ChipY2 = UFChipPos(2)
+	ChipU2 = UFChipPos(3)
 	
 	If CHIPTYPE$ = "COLDATA" Then
-		UFChipRes(6) = GetBoundAnglePM180(GetBoundAnglePM45(UFChipRes(6)) + 180.)
+		ChipU2 = GetBoundAnglePM180(GetBoundAnglePM45(ChipU2) + 180.)
 	EndIf
 
 	' Measurements have been made, return to initial U at camera
@@ -1848,41 +1934,42 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 	
 	' Correct for +90 degrees for first measurement by rotating -90
 	
-	Print "UF chip center measurements"
-	Print "Rotation1 = ", Rotation1, ", Rotation2 = ", Rotation2
-	Print "HAND U1 =", UFChipRes(2), ", HAND U2=", UFChipRes(3)
-	Print "x1 = ", UFChipRes(4), "   x2 = ", UFChipRes(7)
-	Print "y1 = ", UFChipRes(5), "   y2 = ", UFChipRes(8)
-	Print "u1 = ", UFChipRes(6), "   u2 = ", UFChipRes(9)
+'	Print "UF chip center measurements"
+'	Print "Rotation1 = ", Rotation1, ", Rotation2 = ", Rotation2
+'	Print "HAND U1 =", UFChipRes(2), ", HAND U2=", UFChipRes(3)
+'	Print "x1 = ", UFChipRes(4), "   x2 = ", UFChipRes(7)
+'	Print "y1 = ", UFChipRes(5), "   y2 = ", UFChipRes(8)
+'	Print "u1 = ", UFChipRes(6), "   u2 = ", UFChipRes(9)
 	
-	If (Abs(UFChipRes(4) - CX(P_camera)) > 10) Or (Abs(UFChipRes(7) - CX(P_camera)) > 10) Then
+	If (Abs(ChipX1 - CX(P_camera)) > 10) Or (Abs(ChipX2 - CX(P_camera)) > 10) Then
 		Print "ERROR: Position measured is more than 10 mm from P_camera in X"
 		Exit Function
 	EndIf
 	
-	If (Abs(UFChipRes(5) - CY(P_camera)) > 10) Or (Abs(UFChipRes(8) - CY(P_camera)) > 10) Then
+	If (Abs(ChipY1 - CY(P_camera)) > 10) Or (Abs(ChipY2 - CY(P_camera)) > 10) Then
 		Print "ERROR: Position measured is more than 10 mm from P_camera in Y"
 		Exit Function
 	EndIf
 	
+	' Need intermediate variables for matrix multiplication (i.e. to get Y without having already changed X)
+	Double tmpx, tmpy
 	' Set X and Y offsets as distance from axis of rotation to first measurement
-	UFChipRes(10) = (UFChipRes(4) - UFChipRes(7)) / 2 ' X1 - X2 /2
-	UFChipRes(11) = (UFChipRes(5) - UFChipRes(8)) / 2 ' Y1 - Y2 /2
+	tmpx = (ChipX1 - ChipX2) /2 ' X1 - X2 /2
+	tmpy = (ChipY1 - ChipY2) /2 ' Y1 - Y2 /2
 	
-	' X and Y offsets should be corrected for the first rotation offset to get back to HAND_U0
-	' Maybe change so wrt U = 0?
-'	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-Rotation1)) - UFChipRes(11) * Sin(DegToRad(-Rotation1))
-'	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-Rotation1)) + UFChipRes(11) * Cos(DegToRad(-Rotation1))
+
 	' Wrt U = 0
-	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-UFChipRes(2))) - UFChipRes(11) * Sin(DegToRad(-UFChipRes(2)))
-	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-UFChipRes(2))) + UFChipRes(11) * Cos(DegToRad(-UFChipRes(2)))
+
+	CurrentChipOffset(1) = tmpx * Cos(DegToRad(-MeasU1)) - tmpx * Sin(DegToRad(-MeasU1))
+	CurrentChipOffset(2) = tmpx * Sin(DegToRad(-MeasU1)) + tmpy * Cos(DegToRad(-MeasU1))
+
 
 	Double UF_DEL_U1, UF_DEL_U2
 
 	
 	' DIff angle (a, b) is b - a
-	UF_DEL_U1 = DiffAnglePM180(UFChipRes(2), UFChipRes(6))
-	UF_DEL_U2 = DiffAnglePM180(UFChipRes(3), UFChipRes(9))
+	UF_DEL_U1 = DiffAnglePM180(MeasU1, ChipU1)
+	UF_DEL_U2 = DiffAnglePM180(MeasU2, ChipU2)
 	
 	If CHIPTYPE$ = "COLDATA" Then
 		UF_DEL_U1 = GetBoundAnglePM45(UF_DEL_U1)
@@ -1896,15 +1983,15 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 	EndIf
 	
 '	' Need to make sure average is closest angle around -pi/+pi boundary
-	UFChipRes(12) = AverageAnglePM180(UF_DEL_U1, UF_DEL_U2) 'GetBoundAnglePM45(AverageAnglePM180(UF_DEL_U1, UF_DEL_U2))
+	CurrentChipOffset(3) = AverageAnglePM180(UF_DEL_U1, UF_DEL_U2) 'GetBoundAnglePM45(AverageAnglePM180(UF_DEL_U1, UF_DEL_U2))
 	
 	Print "Offset of chip from rotational axis wrt U = 0 " ' HAND_U0"
 	Print "Offsets measured from a rotation of ", Rotation1
-	Print "Offset in x axis : ", UFChipRes(10)
-	Print "Offset in y axis : ", UFChipRes(11)
+	Print "Offset in x axis : ", CurrentChipOffset(1)
+	Print "Offset in y axis : ", CurrentChipOffset(2)
 	Print "Offset in u1   	: ", UF_DEL_U1
 	Print "Offset in u2   	: ", UF_DEL_U2
-	Print "Offset in u   	: ", UFChipRes(12)
+	Print "Offset in u   	: ", CurrentChipOffset(3)
 
 ' Correction requires rotation based on U offset - This is when target U and chip rotation were provided
 ' This should now be done outside of this function
@@ -1926,68 +2013,90 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 ' Use measured socket U to calculate corrections
 ' Go Here +U(CorrU) +X(CorrX_US) +Y(CorrY_US)
 '	
-	' Do the pin analysis 
-	UFRecenter(ByRef UFChipRes())
-	' Commented out for testing (my test chip has a bent pin!)
-'	UFChipRes(13) = UFPinAnalysis(id$, ByRef idx(), ByRef Images$())
-	
-	If UFChipRes(13) <> 0 Then
-		Print "Pin analysis failed"
-		UFGetChipAlignment = False
-		Exit Function
-	EndIf
-	UFGetChipAlignment = True
+'	' Do the pin analysis 
+'	UFRecenterSimple ' (ByRef UFChipRes())
+'	' Commented out for testing (my test chip has a bent pin!)
+''	UFChipRes(13) = UFPinAnalysis(id$, ByRef idx(), ByRef Images$())
+'	
+'	If UFChipRes(13) <> 0 Then
+'		Print "Pin analysis failed"
+'		FindChipAxisOffsetWithUF = False
+'		Exit Function
+'	EndIf
+	FindChipAxisOffsetWithUF = True
     SetSpeedSetting("MoveWithChip")
+	
 	
 Fend
 
 
+
+
 ' Takes measured alignments to U = 0 (Old wrt HAND_U0) and a target U and calculates corrections
 ' C1 -> C2
-Function ChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C2X As Double, C2Y As Double, C2U As Double, TargetHandU As Double, ByRef Corr() As Double) As Int32
+Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C2X As Double, C2Y As Double, C2U As Double, TargetHandU As Double)
 	
 	' Note, the offsets calculated by UFGetChipAlignment were PREVIOUSLY (Before 2025-09-04) ChipPosition -> RotationalAxis
 	' Now UFGetChipAlignmemt returns offset of chip from axis which can be subtracted to get the correction for an individual measurement
 	' This function takes two sets of offsets and uses them to go from C1->C2, where the offsets are	
 	' measured as C1 - Axis, not the other way around
 	
-	ChipToChipCorrections = -1
+	'GetChipToChipCorrections = 0
 	Print "Calculating chip-to-chip correction from offset measurements (going from first measurement args to second)"
 	Print "Targeting hand U of :", TargetHandU
-	Corr(3) = C2U - C1U ' Corr(3) = DiffAnglePM180(C1U, C2U) ' Not sure this is working
-	Print "Moving C1 to C2' by rotating by ", Corr(3)
+	
+	Double CorrX, CorrY
+	
+	ChipToChipCorrection(3) = C2U - C1U ' Corr(3) = DiffAnglePM180(C1U, C2U) ' Not sure this is working
+	Print "Moving C1 to C2' by rotating by ", ChipToChipCorrection(3)
 	
 
 	
 	' Rotate C1 corrections by phi around axis of rotation
 	' Then get difference to C2 wrt axis
-	Corr(1) = C2X - (C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3))))
-	Corr(2) = C2Y - (C1X * Sin(DegToRad(Corr(3))) + C1Y * Cos(DegToRad(Corr(3))))
+	' Needs intermediate variable to change X before changing Y
+	CorrX = C2X - (C1X * Cos(DegToRad(ChipToChipCorrection(3))) - C1Y * Sin(DegToRad(ChipToChipCorrection(3))))
+	CorrY = C2Y - (C1X * Sin(DegToRad(ChipToChipCorrection(3))) + C1Y * Cos(DegToRad(ChipToChipCorrection(3))))
 	
 	' Now rotate corrections wrt axis to the target U value
 '	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU - HAND_U0)) - Corr(2) * Sin(DegToRad(TargetHandU - HAND_U0))
 '	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU - HAND_U0)) + Corr(2) * Cos(DegToRad(TargetHandU - HAND_U0))
 '	
-	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU)) - Corr(2) * Sin(DegToRad(TargetHandU))
-	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU)) + Corr(2) * Cos(DegToRad(TargetHandU))
+
+	ChipToChipCorrection(1) = CorrX * Cos(DegToRad(TargetHandU)) - CorrY * Sin(DegToRad(TargetHandU))
+	ChipToChipCorrection(2) = CorrX * Sin(DegToRad(TargetHandU)) + CorrY * Cos(DegToRad(TargetHandU))
 	
 	Print "Offset X1 :", C1X
-	Print "Offset X1':", ((C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3)))))
+	Print "Offset X1':", ((C1X * Cos(DegToRad(ChipToChipCorrection(3))) - C1Y * Sin(DegToRad(ChipToChipCorrection(3)))))
 	Print "Offset X2 :", C2X
-	Print "Correction:", Corr(1)
+	Print "Correction:", ChipToChipCorrection(1)
 	
 	Print "Offset Y1 :", C1Y
-	Print "Offset Y1':", ((C1X * Sin(DegToRad(Corr(3))) + C1Y * Cos(DegToRad(Corr(3)))))
+	Print "Offset Y1':", ((C1X * Sin(DegToRad(ChipToChipCorrection(3))) + C1Y * Cos(DegToRad(ChipToChipCorrection(3)))))
 	Print "Offset Y2 :", C2Y
-	Print "Correction:", Corr(2)
+	Print "Correction:", ChipToChipCorrection(2)
 	
 	Print "Offset U1 :", C1U
 	Print "Offset U2 :", C2U
-	Print "Correction:", Corr(3)
+	Print "Correction:", ChipToChipCorrection(3)
 	
-	ChipToChipCorrections = 0
+	'GetChipToChipCorrections = -1
 Fend
 
+
+
+''' If chip is picked up in a different orientation to expected, may need to account for                                                                                                                                                                                                      
+' this between tray and socket offset measurements or between successive tray position offsets                                                                                                                                                                                                
+' as X and Y offsets are U dependent.                                                                                                                                                                                                                                                         
+Function CorrectChipAxisOffsetForPickupOrientation(Actual As Double, Expected As Double)
+	
+        Double OrientationOffset
+        OrientationOffset = GetBoundAnglePM180(Actual - Expected) ' Expected - Measured? but bound by 180 degrees                                                                                                                                                                                                                     
+	
+		' Don't want to correct "current" offset here, and it would interfere with Y correction if X gets directly corrected in first line below
+        CorrectedChipOffset(1) = CurrentChipOffset(1) * Cos(DegToRad(OrientationOffset)) - CurrentChipOffset(2) * Sin(DegToRad(OrientationOffset))
+        CorrectedChipOffset(2) = CurrentChipOffset(1) * Sin(DegToRad(OrientationOffset)) + CurrentChipOffset(2) * Cos(DegToRad(OrientationOffset))
+Fend
 
 ''''' FNAL FUNCTIONS ''''''
 
@@ -2117,17 +2226,28 @@ Function GetAllTrayCorrections(pallet_nr As Integer)
 	
 Fend
 
-''' Function to recenter a chip based on the offsets from the image center calculated using the UF camera
-' This is used to then do any pin analysis with the pins aligned with the right search boxes
-'' Args:
-' ByRef CameraResults(Length 13) - The results of the UF camera key finding analysis which finds the position of the chip
-Function UFRecenter(ByRef CameraResults() As Double) As Int32
-	UFRecenter = 0
-	JumpToCamera
-	Double CorX1, CorY1, CorU1
-	CorX1 = CameraResults(10) * Cos(DegToRad(CU(Here))) - CameraResults(11) * Sin(DegToRad(CU(Here)))
-	CorY1 = CameraResults(10) * Sin(DegToRad(CU(Here))) + CameraResults(11) * Cos(DegToRad(CU(Here)))
-	Go Here -X(CorX1) -Y(CorY1) -U(GetBoundAnglePM45(DiffAnglePM180(CameraResults(2), CameraResults(12))))
-	UFRecenter = -1
-Fend
+'''' Function to recenter a chip based on the offsets from the image center calculated using the UF camera
+'' This is used to then do any pin analysis with the pins aligned with the right search boxes
+''' Args:
+'' ByRef CameraResults(Length 13) - The results of the UF camera key finding analysis which finds the position of the chip
+'Function UFRecenter(ByRef CameraResults() As Double) As Int32
+'	UFRecenter = 0
+'	JumpToCamera
+'	Double CorX1, CorY1, CorU1
+'	CorX1 = CameraResults(10) * Cos(DegToRad(CU(Here))) - CameraResults(11) * Sin(DegToRad(CU(Here)))
+'	CorY1 = CameraResults(10) * Sin(DegToRad(CU(Here))) + CameraResults(11) * Cos(DegToRad(CU(Here)))
+'	Go Here -X(CorX1) -Y(CorY1) -U(GetBoundAnglePM45(DiffAnglePM180(CameraResults(2), CameraResults(12))))
+'	UFRecenter = -1
+'Fend
 
+
+Function UFRecenterSimple As Int32
+	UFRecenterSimple = 0
+	JumpToCamera
+	Double CorX1, CorY1 ' , CorU1
+	CorX1 = CurrentChipOffset(1) * Cos(DegToRad(CU(Here))) - CurrentChipOffset(2) * Sin(DegToRad(CU(Here)))
+	CorY1 = CurrentChipOffset(1) * Sin(DegToRad(CU(Here))) + CurrentChipOffset(2) * Cos(DegToRad(CU(Here)))
+	Go Here -X(CorX1) -Y(CorY1) -U(CurrentChipOffset(3))
+	' Or Go Here  -X(CorX1) -Y(CorY1) :U(DiffAnglePM180(CurrentChipOffset(3), CU(Here)))
+	UFRecenterSimple = -1
+Fend

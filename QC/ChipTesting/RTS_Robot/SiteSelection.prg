@@ -211,15 +211,17 @@ Function SetSiteValues
 	EndIf
 Fend
 
+
+''' Some details in here could probably be moved to the site specific file
 Function DefineDirections As Int32
 	DefineDirections = 0
 	
 		' Points relative to world coordinates, i.e. from x-axis anticlockwise when looking down
 	TrayOrientation = -90
 	
-	' WRT taught CU(tray point)
-	TrayChipOrientation(1) = TrayOrientation ' Tray point is at ~U=0, no need to adjust
-	TrayChipOrientation(2) = TrayOrientation + 180 ' Tray point is at ~U=180, adjust so relative to arm U orientation at point
+'	' WRT taught CU(tray point)
+'	TrayChipOrientation(1) = TrayOrientation ' Tray point is at ~U=0, no need to adjust
+'	TrayChipOrientation(2) = TrayOrientation + 180 ' Tray point is at ~U=180, adjust so relative to arm U orientation at point
 	
 '	' WRT taught CU(socket point), L DAT points taught with U~180,0,0 and R DAT U~0,180,180 for LArASIC, ColdADC and COLDATA
 '	SocketMezzanineOrientation(1) = 0	' LArASIC
@@ -234,6 +236,9 @@ Function DefineDirections As Int32
 	HandChipOrientation(1) = 90
 	HandChipOrientation(2) = -90
 	HandChipOrientation(3) = -90
+	
+	' Could be site specific?
+	ChipVisionOffset = 0. ' Need to check difference between what U value the vision sequences return and the RTS coordinates	
 	
 	' TODO, change definition of socket orientation to simplify
 	' All chips are at +90 wrt socket, all sockets are oriented same direction

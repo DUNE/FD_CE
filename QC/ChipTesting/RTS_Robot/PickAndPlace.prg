@@ -301,7 +301,6 @@ Function PickupFromSocket As Boolean
 	Wait 1
 	'Go Here -Z(14)
 
-
     SetSpeedSetting("PickAndPlace")
 
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
@@ -326,435 +325,282 @@ Fend
 
 
 
+Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	Print "GetChipFromTray(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ")"
 
-
-
-
-''' Gets chip from a tray when hand currently has no chip
-'' Args:
-' ts$ - Timestamp string for file names and logging
-' ByRef idx(Length 20) - Standard input indices
-' ByRef Tray_Results(Length 10) - Initialized empty array for tray vision sequence results of length 10
-' ByRef DeltaDir - Desired difference in direction/orientation of chip and hand at target position
-' ByRef SourceTrayImage$ - String to save name of image in to be later passed to log function
-Function GetChipFromTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef SourceTrayImage$ As String) As Int32
-	UpdateRobotLog$("Getting chip from tray " + Str$(idx(2)) + " position (" + Str$(idx(3)) + "," + Str$(idx(4)) + ")")
 	GetChipFromTray = 0
-'	Print "Getting chip from tray (", idx(2), ",", idx(3), ",", idx(4), ")"
-	SetSpeedSetting("MoveWithoutChip")
+	SelectSite("InFunctionDefinePallets")
 
-		JumpToTray_camera(idx(2), idx(3), idx(4))
-		SourceTrayImage$ = DF_take_picture$(ts$ + "_source_tray")
-		UpdateRobotLog$("Picture of chip in tray taken: " + SourceTrayImage$)
-		SetSpeedSetting("PickAndPlace")
+	JumpToTray_camera(Tray, TrayCol, TrayRow)
 
-		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(2), idx(3), idx(4), ByRef Tray_Results()) Then
-			RTS_suberror(idx(1), "Cannot get source chip alignment", -ERR_V_DF_ALIGN)
-			GetChipFromTray = -ERR_V_DF_ALIGN ' - ERR_TRAY_PICK
-			Exit Function
-		EndIf
-				
-		' Correct for offset between chip and tray position
-		JumpToTray(idx(2), idx(3), idx(4))
-		' correct for offsets
-		Go Here +X(Tray_Results(7)) +Y(Tray_Results(8)) '? +U(Tray_Results(9))
+
+	' need to account for offset of tray position from 0 or 180 degrees
+	Double dTU
+	dTU = GetBoundAnglePM45(CU(Pallet(Tray, TrayCol, TrayRow)))
 			
-		' Pick up chip - Angle should be determined by measured position of chip and target orientation in tray
-		'Double DeltaDir
-		' TODOJOE should this be bound 180? Be careful with the values set
-		'DeltaDir = SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)
-		DeltaDir = HandChipOrientation(CHIPTYPE_NR)
-		Double PickU
-		PickU = Tray_Results(6) - DeltaDir '(SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)) ' DeltaDir
-		Go Here :U(PickU + PickOffset)
-		
-'		Print "Calculating pick up angle"
-'		Print "Chip direction at tray (wrt world): ", Tray_Results(6)
-' '       Print "Chip direction at socket (wrt world): ", (CU(P(PSocket(DAT_nr, socket_nr))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
-' '       Print "Chip direction at socket (wrt world): ", (CU(P(PSocket(DAT_nr, socket_nr))) + HandChipOrientation(CHIPTYPE_NR))
-''		Print "Robot hand U at socket : ", CU(P(PSocket(DAT_nr, socket_nr)))
-'		Print "Delta from robot hand U to target chip direction in socket : ", DeltaDir
-'		Print "Robot hand U at tray to get chip at right delta : ", PickU
-'		
-		If Not isPressureOk Then
-			RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)
-			GetChipFromTray = -ERR_PRESSURE
-			Exit Function
-		EndIf
-			
-		If Not isVacuumOk Then
-			RTS_suberror(idx(1), "Bad vacuum", -ERR_VACUUM)
-			GetChipFromTray = -ERR_VACUUM
-			Exit Function
-		EndIf
-		
-		If Not PickupFromTray Then
-			RTS_suberror(idx(1), "Cannot pick up chip from tray", -ERR_TRAY_PICK)
-			GetChipFromTray = -ERR_TRAY_PICK
-			Exit Function
-		EndIf
-		UpdateRobotLog$("Picked up chip from tray")
-		SetSpeedSetting("MoveWithChip")
-
-		JumpToCamera
-		UpdateRobotLog$("Jumped to camera")
-' Use UFC to get chip position relative to axis of rotation, will be used below to calculate offsets
-'		' to return to stored DAT_X, DAT_Y, DAT_U values ''SocketChipOrientation(CHIPTYPE_NR), 
-'		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef Camera_Results()) Then
-'			RTS_error(idx(1), "Cannot get chip position and aligment with up facing camera")
-'			GetChipFromTray = -ERR_V_UF_ALIGN
-'			Exit Function
-'		EndIf
-		Print "Chip picked up from tray with DeltaDir = ", DeltaDir
-		GetChipFromTray = -1 ' -1 is True
-
+	Double MeasuredDirection, MeasuredOrientation, OrientationOffset
+	MeasuredDirection = FindChipDirectionWithDF
+	If MeasuredDirection < -900. Then
+		''ERROR CANNOT FIND CHIP DIRECTION FROM TEXT
+		GetChipFromTray = ERR_V_DF_ALIGN ' Set an error code
+		Exit Function
+	EndIf
+	' subtract small offset in angle and then round to nearest 90deg
+	MeasuredOrientation = RoundAngleTo90(DiffAnglePM180(dTU, MeasuredDirection))
+	
+	' Find difference between this and the intended direction/orientation of the chip in the tray (Set in SiteSelection:DefineDirections)
+	OrientationOffset = DiffAnglePM180(TrayOrientation, MeasuredOrientation)
+	
+	' Go to pick up from tray
+	JumpToTray(Tray, TrayCol, TrayRow)
+	
+	' Calculate U angle to pick up chip at
+	Double PickU
+	' Should pick up at (DefaultChipOrientationInTray - HandChipOrientation) + OrientationOffset +dTU
+	PickU = DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), TrayOrientation)
+	PickU = GetBoundAnglePM180(PickU + dTU + OrientationOffset)
+	
+	Print "Picking up (with offset of ", PickOffset, ") at U = ", PickU
+	' Pick offset is globally defined in case you want to pick chips up at 45deg		
+	' for LArASIC and ColdADC small sockets.
+	Go Here :U(PickU + PickOffset)
+	
+	If Not isPressureOk Then
+		' RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)                                                                                                                                                                                                                             
+		GetChipFromTray = -ERR_PRESSURE
+	   	Exit Function
+	EndIf
+	If Not isVacuumOk Then
+    	' RTS_suberror(idx(1), "Bad vacuum", -ERR_VACUUM)                                                                                                                                                                                                                                 
+		GetChipFromTray = -ERR_VACUUM
+		Exit Function
+	EndIf
+	Print "Picking up with pick offset of ", PickOffset
+	If Not PickupFromTray Then
+		' RTS_suberror(idx(1), "Cannot pick up chip from tray", -ERR_TRAY_PICK)                                                                                                                                                                                                            
+		GetChipFromTray = -ERR_TRAY_PICK
+		Exit Function
+	EndIf
+	
+	Print "Chip picked up, moving to UF camera to measure offsets"
+'	UpdateRobotLog$("Picked up chip from tray, moving to UF camera")
+    SetSpeedSetting("MoveWithChip")
+	
+    ' Go to UFC                                                                                                                                                                                                                                                                           
+	JumpToCamera
+	
+	' Stores offsets in ChipAxisOffset(3) - need to set in tray variables                                                                                                                                                                                                                 
+	If Not FindChipAxisOffsetWithUF Then
+    	GetChipFromTray = -ERR_V_UF_ALIGN
+    	Exit Function
+   	EndIf
+   	Print "Offsets measured"
+   	If Abs(OrientationOffset) > 45 Then
+   		Print "Applying corrections for orientation offset"
+   	EndIf
+   	' Set "Corrected" offsets to be used in setting tray position values
+   	CorrectChipAxisOffsetForPickupOrientation(MeasuredOrientation, TrayOrientation)
+   		
+	tray_X(Tray, TrayCol, TrayRow) = CorrectedChipOffset(1)
+	tray_Y(Tray, TrayCol, TrayRow) = CorrectedChipOffset(2)
+	tray_U(Tray, TrayCol, TrayRow) = CorrectedChipOffset(3)
+	Print "Offsets for tray(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ") : (", tray_X(Tray, TrayCol, TrayRow), ",", tray_Y(Tray, TrayCol, TrayRow), ",", tray_U(Tray, TrayCol, TrayRow), ")"
+	' Set to successful (maybe set to time stamp instead of "True" (-1)
+	GetChipFromTray = -1
+	
 Fend
 
-''' Places chip in tray when chip is being held by hand
-'' Args:
-' ts$ - Timestamp string for file names and logging
-' ByRef idx(Length 20) - Standard input indices
-' ByRef Tray_Results(Length 10) - Initialized empty array for tray vision sequence results of length 10
-' ByRef DeltaDir - Known difference in direction/orientation of chip and hand at source position
-' ByRef SourceTrayImage$ - String to save name of image in to be later passed to log function
-Function PlaceChipInTray(ts$ As String, ByRef idx() As Integer, ByRef Tray_Results() As Double, ByRef DeltaDir As Double, ByRef TargetTrayImage$ As String) As Int32
-	UpdateRobotLog$("Placing chip in tray " + Str$(idx(5)) + " position (" + Str$(idx(6)) + "," + Str$(idx(7)) + ")")
-	
+Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	Print "PlaceChipInTray(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ")"
 	PlaceChipInTray = 0
-		
-		SetSpeedSetting("MoveWithChip")
+	
+	JumpToTray(Tray, TrayCol, TrayRow)
+	
+	' Intended chip position = HandChipOrientation + HandPlaceU
+	Double PlaceU, dTU
+	dTU = GetBoundAnglePM45(CU(Here)) 'CU(Here) - RoundAngleTo90(CU(Here))
+	
+	' (Intended Tray Orientation + dTU) = PlaceU + ChipHand offset
+	PlaceU = DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), (TrayOrientation + dTU))
+	
+	Go Here :U(PlaceU + PickOffset) ' Need to check if this impacts correction calculation, see how it is folded into the pick u
 
-		Print "Placing chip in tray (", idx(5), ",", idx(6), ",", idx(7), ")"
-		JumpToTray(idx(5), idx(6), idx(7))
-		UpdateRobotLog$("Jumped to tray")
+	Print "Placing (with offset of ", Str$(PickOffset), ") at U = ", Str$(PlaceU + PickOffset)
 
-		Go Here :U(TrayOrientation - DeltaDir) ' DeltaDir here should have been measured at socket or defined at previous chip (by defined hand-chip offset at socket, see SiteSelection:DefineDirections)
-		
-		Go Here +U(PickOffset) ' This is the add 45. deg option which is globally set 
-		
-		' Place chip
-		SetSpeedSetting("PickAndPlace")
+	' Calculate correction from current and previous offsets
+	GetChipToChipCorrections(CurrentChipOffset(1), CurrentChipOffset(2), CurrentChipOffset(3), tray_X(Tray, TrayCol, TrayRow), tray_Y(Tray, TrayCol, TrayRow), tray_U(Tray, TrayCol, TrayRow), CU(Here))
+	' Should add a verbosity level here
+' Move in file logging to move function, just print to screen for get/place level
+	Print("Current chip offset  = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+	Print("Tray position offset = (" + Str$(tray_X(Tray, TrayCol, TrayRow)) + "," + Str$(tray_Y(Tray, TrayCol, TrayRow)) + "," + Str$(tray_U(Tray, TrayCol, TrayRow)) + ")")
+	Print("Correction At Tray   = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
 
-		If Not DropToTray Then
-			RTS_suberror(idx(1), "Failed to drop to tray", -ERR_TRAY_PLACE)
-			PlaceChipInTray = -ERR_TRAY_PLACE
-			Exit Function
-		EndIf
-		UpdateRobotLog$("Chip placed in tray, checking alignment")
-
-		JumpToTray_camera(idx(5), idx(6), idx(7))
-		TargetTrayImage$ = DF_take_picture$(ts$ + "_target_tray")
-		UpdateRobotLog$("Picture of chip in tray taken: " + TargetTrayImage$)
-
-		If Not DFGetTrayAlignment(ts$, ByRef idx(), idx(5), idx(6), idx(7), ByRef Tray_Results()) Then
-			RTS_suberror(idx(1), "Cannot get source chip alignment", -ERR_V_DF_ALIGN)
-			PlaceChipInTray = -ERR_V_DF_ALIGN
-			Exit Function
-		EndIf
-		UpdateRobotLog$("Chip alignment okay")
-
-		SetSpeedSetting("MoveWithoutChip")
-		PlaceChipInTray = -1
+	If Abs(ChipToChipCorrection(3)) > 3. Then
+		'RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 3 DEGREES", -ERR_BAD_TOLERANCE)
+		PlaceChipInTray = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
+	If Abs(ChipToChipCorrection(1)) > 1. Or Abs(ChipToChipCorrection(2)) > 1. Then
+		'RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 1 MM in X OR Y", -ERR_BAD_TOLERANCE)
+		PlaceChipInTray = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
+	
+	' apply corrections
+	Print "Corrections within tolerance"
+	Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+	
+	SetSpeedSetting("PickAndPlace")
+	Print "Placing chip in tray"
+	If Not DropToTray Then
+	'	RTS_suberror(idx(1), "Failed to drop to tray", -ERR_TRAY_PLACE)
+		PlaceChipInTray = -ERR_TRAY_PLACE
+		Exit Function
+	EndIf
+	
+	Print "Chip placed"
+	
+	PlaceChipInTray = -1 ' Or timestamp
 Fend
 
-''' Gets chip from a socket when hand currently has no chip
-'' Args:
-' ts$ - Timestamp string for file names and logging
-' ByRef idx(Length 20) - Standard input indices
-' ByRef SocketResults(Length 16) - Initialized empty array for socket vision sequence results
-' ByRef CameraResults(Length 13) - Initialized empty array for UF camera vision sequence results
-' ByRef DeltaDir - Double to store difference in direction between chip and hand at socket
-' ByRef SourceSocketImage$ - String to save name of image in to be later passed to log function
-' ByRef UFCImages$(Length 5) - Array of strings to save names of images taken by UF camera in alignment function for logging (length 5)
-Function GetChipFromSocket(ts$ As String, ByRef idx() As Integer, ByRef SocketResults() As Double, ByRef CameraResults() As Double, ByRef DeltaDir As Double, ByRef SourceSocketImage$ As String, ByRef UFCImages$() As String) As Int32
-		UpdateRobotLog$("Getting chip from DAT " + Str$(idx(8)) + " socket " + Str$(idx(9)))
+
+Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
+	 Print "GetChipFromSocket(", Str$(DAT), ",", Str$(Socket), ")"
+	GetChipFromSocket = 0
+	' TODO JOE for errors need something if chip is in socket in wrong direction 
+	SetSpeedSetting("MoveWithoutChip")
 	
-		GetChipFromSocket = 0
+	JumpToSocket_camera(DAT, Socket)
 	
-		SetSpeedSetting("MoveWithoutChip")
+	' Adjust for socket position drift with DF camera
+	
+	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
+		' ERROR	Cannot get socket position alignment or socket corrections are too large
+		GetChipFromSocket = -ERR_V_SOCKETALIGN
+		Exit Function
+	EndIf
+	' Check corrections are small	
+	
+	If Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(5)) > 3. Then
+		' ERROR SOCKET CORRECTIONS ARE TOO LARGE
+		GetChipFromSocket = ERR_BAD_TOLERANCE
+		Exit Function
 		
-
-		Print "Getting chip from socket (", idx(8), ",", idx(9), ")"
-		' Go to socket
-		JumpToSocket_camera(idx(8), idx(9))
-		UpdateRobotLog$("Jumped to socket")
-		SourceSocketImage$ = DF_take_picture$(ts$ + "_source_socket")
-		UpdateRobotLog$("Picture of chip in socket taken: " + SourceSocketImage$)
-
-		SetSpeedSetting("PickAndPlace")
-		
-		' Run visual check of socket and chip positions
-		If Not GetChipInSocketAlignment(ts$, ByRef idx(), idx(8), idx(9), ByRef SocketResults()) Then
-			RTS_suberror(idx(1), "Cannot get socket and chip alignment", -ERR_V_CHIPSOCKALIGN)
-			GetChipFromSocket = -ERR_V_CHIPSOCKALIGN
-			Exit Function
-		EndIf
-		
-		' Correct for visual offsets of socket from position	
-		' ChipSocketAlignment(i), i=7,8,9 are offsets of measured socket position from defined socket
-		' Could alternatively use measured chip position from defined socket i=10,11,12
-		' Or measured chip from measured socket, i=13,14,15
-		' But these options wouldn't help us then realign as well with UF camera later
-		JumpToSocket(idx(8), idx(9))
-		Print Here
-		Print " moving to here + (", SocketResults(7), ",", SocketResults(8), ",", SocketResults(9), ")"
-		Go Here +X(SocketResults(7)) +Y(SocketResults(8)) +U(SocketResults(9))
-		' Remember offset between hand and chip	
-
-		' Double DeltaDir
-		DeltaDir = SocketResults(12) - CU(Here) ' Measures chip position wrt hand after hand is corrected for socket.
-		Go Here +U(PickOffset) ' i.e. should  you pick up at +45 degrees - probably needs more testing
-		
-		If Not isPressureOk Then
-			RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)
-			GetChipFromSocket = -ERR_PRESSURE
-			Exit Function
-		EndIf
-			
-		If Not isVacuumOk Then
-			RTS_suberror(idx(1), "Bad vacuum", -ERR_VACUUM)
-			GetChipFromSocket = -ERR_VACUUM
-			Exit Function
-		EndIf
-		
+	EndIf
+	Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+	JumpToSocket(DAT, Socket)
+	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+	
+	If Not isPressureOk Then
+		' RTS_suberror(idx(1), "Bad pressure", -ERR_PRESSURE)                                                                                                                                                                                                                             
+		GetChipFromSocket = -ERR_PRESSURE
+	   	Exit Function
+	EndIf
+	If Not isVacuumOk Then
+    	' RTS_suberror(idx(1), "Bad vacuum", -ERR_VACUUM)                                                                                                                                                                                                                                 
+		GetChipFromSocket = -ERR_VACUUM
+		Exit Function
+	EndIf
+	
+	Go Here :U(GetBoundAnglePM180(CU(Here) + PickOffset))
+	Print "Picking up with pick offset of ", PickOffset
+	' Pick up chip
 		If Not PickupFromSocket Then
-			RTS_suberror(idx(1), "Cannot pick up chip from socket", -ERR_SOCK_PICK)
-			GetChipFromSocket = -ERR_SOCK_PICK
+'			RTS_suberror(idx(1), "Cannot pick up chip from socket", -ERR_SOCKET_PICK)
+			GetChipFromSocket = -ERR_SOCKET_PICK
 			Exit Function
 		EndIf
-		UpdateRobotLog$("Picked up chip from socket")
-		SetSpeedSetting("MoveWithChip")
-
-		' Go to UF camera
-		JumpToCamera
-		UpdateRobotLog$("Jumped to camera, beginning analysis")
-		' Measure offset of chip from axis of J4 at HAND_u0 
-		' Store in DAT offset arrays
-		SetSpeedSetting("AboveCamera")
-
-		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef CameraResults(), ByRef UFCImages$()) Then
-			If CameraResults(13) <> 0 Then
-				GetChipFromSocket = -ERR_PINS
-				RTS_suberror(idx(1), "Pin analysis failed", -ERR_PINS)
-				Exit Function
-			EndIf
-			GetChipFromSocket = -ERR_V_UF_ALIGN
-			RTS_suberror(idx(1), "Cannot get chip position and aligment with up facing camera", -ERR_V_UF_ALIGN)
-			Exit Function
-		EndIf
-		
-		' Offsets are calculated wrt HAND_U0, and so need to be corrected back to measured socket + U correction
-		' Can do this later when combined with second measurement
-		DAT_X(idx(8), idx(9)) = CameraResults(10)
-		DAT_Y(idx(8), idx(9)) = CameraResults(11)
-		DAT_U(idx(8), idx(9)) = CameraResults(12)
-		UpdateRobotLog$("Ran chip analysis")
-
-		UpdateRobotLog$("Chip-from-socket offsets measured and stored")
+	Print "Picked up chip from socket, moving to UF camera for offset measurement"
+	SetSpeedSetting("MoveWithChip")
 	
-'		Print "Chip picked up from socket with DeltaDir = ", DeltaDir
-'		GetChipFromSocket = 0
-		SetSpeedSetting("MoveWithChip")
-		GetChipFromSocket = -1
+	' Go to UF camera for measuring offsets and storing in DAT_x/y/u variables.
+	JumpToCamera
+
+	SetSpeedSetting("AboveCamera")
+
+	If Not FindChipAxisOffsetWithUF Then
+		GetChipFromSocket = -ERR_V_UF_ALIGN
+		'RTS_suberror(idx(1), "Cannot get chip position and aligment with up facing camera", -ERR_V_UF_ALIGN)
+		Exit Function
+	EndIf
+	Print "Offsets measured"
+	' Offsets are calculated wrt HAND_U0, and so need to be corrected back to measured socket + U correction
+	' Can do this later when combined with second measurement
+	DAT_X(DAT, Socket) = CurrentChipOffset(1)
+	DAT_Y(DAT, Socket) = CurrentChipOffset(2)
+	DAT_U(DAT, Socket) = CurrentChipOffset(3)
+	Print "Offsets for socket(", Str$(DAT), ",", Str$(Socket), ") : (", DAT_X(DAT, Socket), ",", DAT_Y(DAT, Socket), ",", DAT_U(DAT, Socket), ")"
+
+
+	SetSpeedSetting("MoveWithChip")
+
+	GetChipFromSocket = -1
 Fend
 
-''' Places chip in socket when already in hand
-'' Args:
-' ts$ - Timestamp string for file names and logging
-' ByRef idx(Length 20) - Standard input indices
-' ByRef EmptySocketResults(Length 10) - Initialized empty array for empty socket vision sequence results - note different array length to when chip is in socket
-' ByRef CameraResults(Length 13) - Initialized empty array for UF camera vision sequence results
-' ByRef ChipSocketResults(Length 16) - Initialized empty array for empty socket vision sequence results with chip in - stores extra information about chip socket alignment
-' ByRef TargetSocketImage$ - String to save name of image in to be later passed to log function
-' ByRef UFCImages$(Length 5) - Array of strings to save names of images taken by UF camera in alignment function for logging
-Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySocketResults() As Double, ByRef CameraResults() As Double, ByRef ChipSocketResults() As Double, ByRef TargetSocketImage$ As String, ByRef UFCImages$() As String) As Int32
-		UpdateRobotLog$("Placing chip in DAT " + Str$(idx(10)) + " socket " + Str$(idx(11)))
-		PlaceChipInSocket = 0
+
+Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
+		Print "PlaceChipInSocket(", Str$(DAT), ",", Str$(Socket), ")"
+	PlaceChipInSocket = 0
+	
+	JumpToSocket_camera(DAT, Socket)
+	
+	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
+		' ERROR	Cannot get socket position alignment or socket corrections are too large
+		PlaceChipInSocket = -ERR_V_SOCKETALIGN
+		Exit Function
+	EndIf
+	' Check corrections are small	
+	
+	If Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(5)) > 3. Then
+		' ERROR SOCKET CORRECTIONS ARE TOO LARGE
+		PlaceChipInSocket = ERR_V_SOCKETALIGN
+		Exit Function
 		
-		Print "Placing chip in socket (", idx(10), ",", idx(11), ")"
-		SetSpeedSetting("MoveWithChip")
+	EndIf
+	
+	Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+	
+	' calculate correction from current chip offsets and DAT position offset
+	
+	GetChipToChipCorrections(CurrentChipOffset(1), CurrentChipOffset(2), CurrentChipOffset(3), DAT_X(DAT, Socket), DAT_Y(DAT, Socket), DAT_U(DAT, Socket), CU(Here))
+	Print("Current chip offset  = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+    Print("Tray position offset = (" + Str$(DAT_X(DAT, Socket)) + "," + Str$(DAT_Y(DAT, Socket)) + "," + Str$(DAT_U(DAT, Socket)) + ")")
+	Print("Correction At Tray   = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+	
+	If Abs(ChipToChipCorrection(3)) > 3. Then
+		'RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 3 DEGREES", -ERR_BAD_TOLERANCE)
+		PlaceChipInSocket = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
+	If Abs(ChipToChipCorrection(1)) > 1. Or Abs(ChipToChipCorrection(2)) > 1. Then
+		'RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 1 MM in X OR Y", -ERR_BAD_TOLERANCE)
+		PlaceChipInSocket = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
 
-		' Go to UF camera if not already there
-		JumpToCamera
-		UpdateRobotLog$("Jumped to camera")
-		SetSpeedSetting("AboveCamera")
+    ' apply corrections
+    Print "Corrections within tolerance"
+	Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+	
+	Print "Placing chip in socket"
+	If Not InsertIntoSocketSoft Then
+		'RTS_suberror(idx(1), "Could not insert into socket", -ERR_SOCKET_PLACE)
+		PlaceChipInSocket = -ERR_SOCKET_PLACE
+		Exit Function
+	EndIf
 
-		If Not UFGetChipAlignment(ts$, ByRef idx(), ByRef CameraResults(), ByRef UFCImages$()) Then
-			If CameraResults(13) <> 0 Then
-				PlaceChipInSocket = -ERR_PINS
-				RTS_suberror(idx(1), "Pin analysis failed", -ERR_PINS)
-				Exit Function
-			EndIf
-			PlaceChipInSocket = -ERR_V_UF_ALIGN
-			RTS_suberror(idx(1), "Cannot get chip position and alignment with up facing camera", -ERR_V_UF_ALIGN)
-			Exit Function
-		EndIf
-		SetSpeedSetting("MoveWithChip")
-		UpdateRobotLog$("Chip-to-socket offsets measured")
+' Do any checks, chip alignment etc
 
-
-		' Go to socket
-		JumpToSocket_camera(idx(10), idx(11))
-		UpdateRobotLog$("Jumped to socket")
-
-		SetSpeedSetting("PickAndPlace")
-
-		If Not DFGetSocketAlignment(ts$, ByRef idx(), idx(10), idx(11), ByRef EmptySocketResults()) Then
-			RTS_suberror(idx(1), "Cannot get socket alignment", -ERR_V_SOCKETALIGN)
-			PlaceChipInSocket = -ERR_V_SOCKETALIGN
-			Exit Function
-		EndIf
-		UpdateRobotLog$("Socket alignment measured")
-
-		JumpToSocket(idx(10), idx(11)) ' Is this needed, DFGetSocketAlignment moves to measured position at end
-		' YES! Because in DFGetSocketAlignment it is at the wrong Z height, could combine but there are two different things going on	
-		' DFGSA is just getting X/Y position for U-Agl4 offset. Here we are actually moving to the point to place
-		
-		' This line is essentially the same as end of DFGetSocketAlignment but after moving to socket point at correct height!
-		Go Here :X(EmptySocketResults(4)) :Y(EmptySocketResults(5)) :U(GetBoundAnglePM180(EmptySocketResults(6) - HandChipOrientation(CHIPTYPE_NR)))
-		
-		Go Here +U(PickOffset)
-'		Print "Socket position and orientation AT:"
-'		Print "Here: "
-'		Print Here
-'		Print "Expected : "
-'		Print EmptySocketResults(1), ",", EmptySocketResults(2), ",", EmptySocketResults(3)
-'		Print "Measured : "
-'		Print EmptySocketResults(4), ",", EmptySocketResults(5), ",", EmptySocketResults(6)
-'		Print "Offset : "
-'		Print EmptySocketResults(7), ",", EmptySocketResults(8), ",", EmptySocketResults(9)
-		
-		
-		Double Corrs(3)
-
-		Corrs(1) = 0
-		corrs(2) = 0
-		corrs(3) = 0
-		
-		' Use socket position found earlier to correct, should not have changed since then
-'		If S2T_S_Results(6) <> 0 Then
-'			Go Here +X(S2T_S_Results(7)) +Y(S2T_S_Results(8)) +U(S2T_S_Results(9))
-'		Else
-		Go Here +X(EmptySocketResults(7)) +Y(EmptySocketResults(8)) +U(EmptySocketResults(9))
-'		EndIf
-
-		' Move chip so position matches offsets from J4 axis stored in DAT
-		' Stored values relative to U=0, following function calculates offsets at measured socket position
-		' Assumes chip direction to hand direction at socket is fixed
-		
-		Boolean TestFirstPlaceInSocket
-		TestFirstPlaceInSocket = False
-		If TestFirstPlaceInSocket Then
-			DAT_X(idx(10), idx(11)) = 0
-			DAT_Y(idx(10), idx(11)) = 0
-			DAT_U(idx(10), idx(11)) = 0
-		EndIf
-		
-'		Print "Calculating socket correction: "
-		If (Abs(DAT_X(idx(10), idx(11))) + Abs(DAT_Y(idx(10), idx(11))) + Abs(DAT_U(idx(10), idx(11)))) = 0 Then
-			' DAT offsets from previous entry not stored
-			Print "WARNING: No DAT Socket offsets stored, will attempt placing from DF camera and UF camera measurements"
-			' Careful that offset of chip from UFGetChipAlignment is absolute wrt hand, not from target position	
-			' So correction should be 
-			'Corrs(3) = -DiffAnglePM180((SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)), CameraResults(12))
-			corrs(3) = -DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), CameraResults(12))
-			corrs(1) = -(CameraResults(10) * Cos(CU(Here)) - CameraResults(11) * Sin(CU(Here)))
-			corrs(2) = -(CameraResults(10) * Cos(CU(Here)) + CameraResults(11) * Sin(CU(Here)))
-			
-'			Print "Corrections: "
-'			Print " Del X = ", Corrs(1)
-'			Print " Del Y = ", Corrs(2)
-'			Print " Del U = ", Corrs(3)
-		Else
-			Print "Retrieving last stored offset of chip"
-			ChipToChipCorrections(CameraResults(10), CameraResults(11), CameraResults(12), DAT_X(idx(10), idx(11)), DAT_Y(idx(10), idx(11)), DAT_U(idx(10), idx(11)), CU(Here), ByRef corrs())
-		EndIf
-		UpdateRobotLog$("Chip position correction based on current 'chip-to-socket' and previous 'chip-from-socket' offsets calculated")
-
-		If Abs(corrs(3)) > 3. Then
-			RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 3 DEGREES", -ERR_BAD_TOLERANCE)
-			PlaceChipInSocket = -ERR_BAD_TOLERANCE
-			Exit Function
-		EndIf
-		If Abs(corrs(1)) > 1. Or Abs(corrs(2)) > 1. Then
-			RTS_suberror(idx(1), "CORRECTION TO CHIP POSITION IS MORE THAN 1 MM in X OR Y", -ERR_BAD_TOLERANCE)
-			PlaceChipInSocket = -ERR_BAD_TOLERANCE
-			Exit Function
-		EndIf
-		
-'		Print "At socket, U will be ", CU(Here)
-'		Print "DeltaDir is ", DeltaDir
-'		Print "So chip should presumably be at ", Str$(CU(Here) + DeltaDir)
-'		'''Print "Socket orientation should be ", SocketMezzanineOrientation(CHIPTYPE_NR), " wrt taught socket orientation"
-'		Print "Socket orientation should be ", HandChipOrientation(CHIPTYPE_NR), " wrt taught socket orientation - (aligned with chip direction)"
-'		Print "Chip should be at ", SocketChipOrientation(CHIPTYPE_NR), " wrt to mezzanine "
-'		'''Print "So chip orientation should be ", Str$(CU(Here) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))
-'       Print "So chip orientation should be ", Str$(CU(Here) +HandChipOrientation(CHIPTYPE_NR))
-'		Print "Chip orientation is ", Str$(CU(Here) + CameraResults(12))
-		Go Here +X(corrs(1)) +Y(corrs(2)) +U(corrs(3))
-		
-'		
-'		' Place in socket
-'		
-		If Not InsertIntoSocketSoft Then
-			RTS_suberror(idx(1), "Could not insert into socket", -ERR_SOCK_PLACE)
-			PlaceChipInSocket = -ERR_SOCK_PLACE
-			Exit Function
-		EndIf
-		UpdateRobotLog$("Chip inserted into socket, checking alignment")
-
-
-		' Do alignment check of chip in socket after insertion
-		JumpToSocket_camera(idx(10), idx(11))
-		TargetSocketImage$ = DF_take_picture$(ts$ + "_target_socket")
-		UpdateRobotLog$("Picture of chip in socket taken: " + TargetSocketImage$)
-
-'		Print "Checking alignment"
-		
-		If Not GetChipInSocketAlignment(ts$, ByRef idx(), idx(10), idx(11), ByRef ChipSocketResults()) Then
-			RTS_suberror(idx(1), "Cannot get chip in socket alignment", -ERR_V_CHIPSOCKALIGN)
-			PlaceChipInSocket = -ERR_V_CHIPSOCKALIGN
-			Exit Function
-		EndIf
-'		Print "Robot is at "
-'		Print Here
-		Print "Defined socket position"
-		Print "  X: ", ChipSocketResults(1)
-		Print "  Y: ", ChipSocketResults(2)
-		Print "  U: ", ChipSocketResults(3)
-		Print "Measured socket position"
-		Print "  X: ", ChipSocketResults(4)
-		Print "  Y: ", ChipSocketResults(5)
-		Print "  U: ", ChipSocketResults(6)
-		Print "Socket offsets"
-		Print "  X: ", ChipSocketResults(7)
-		Print "  Y: ", ChipSocketResults(8)
-		Print "  U: ", ChipSocketResults(9)
-		Print "Measured chip position"
-		Print "  X: ", ChipSocketResults(10)
-		Print "  Y: ", ChipSocketResults(11)
-		Print "  U: ", ChipSocketResults(12)
-		Print "Measured chip offset from measured socket position"
-		Print "  X: ", ChipSocketResults(13)
-		Print "  Y: ", ChipSocketResults(14)
-		Print "  U: ", ChipSocketResults(15)
-		'''	Print "Expect the chip to be at Point U + Mezzanine Offset + Chip offset = ", Str$((CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)))
-		Print "Expect the chip to be at Point U + Chip-Hand offset = ", Str$(GetBoundAnglePM180((CU(P(PSocket(idx(10), idx(11)))) + HandChipOrientation(CHIPTYPE_NR))))
-		
-		''' socket now measured orientation to align with chip not socket mezzanine text	
-		'''	Print "Expect offset relative to socket to be ", SocketChipOrientation(CHIPTYPE_NR)
-				
-		'If Abs(ChipSocketResults(12) - (CU(P(PSocket(idx(10), idx(11)))) + SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR))) > 5 Or Abs(ChipSocketResults(15) - (SocketChipOrientation(CHIPTYPE_NR))) > 5 Then
-		If Abs(DiffAnglePM180(ChipSocketResults(12), (CU(P(PSocket(idx(10), idx(11)))) + HandChipOrientation(CHIPTYPE_NR)))) > 5 Or Abs(ChipSocketResults(15)) > 5 Then
-			RTS_suberror(idx(1), "Chip orientation in socket after placement is inconsistent with defined relative orientation to hand!", -ERR_BAD_ORIENTATION)
-			PlaceChipInSocket = -ERR_BAD_ORIENTATION
-			Exit Function
-		EndIf
-		UpdateRobotLog$("Chip alignment in socket O.K.")
-
-		SetSpeedSetting("MoveWithoutChip")
-		PlaceChipInSocket = -1
+	' Do alignment check of chip in socket after insertion
+	JumpToSocket_camera(DAT, Socket)
+	
+	Print "Chip placed"
+	PlaceChipInSocket = -1
+	
 Fend
+
+
 
 ''' For a batch of operations, check intial occupancies of the tray positions
 ' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
@@ -864,6 +710,50 @@ Function SocketPositionOccupied(DAT_nr As Int32, Socket_nr As Int32) As Int32
 	Go Here +Z(10)
 	SetSpeedSetting("MoveWithoutChip")
 
+Fend
+
+Function RotateSocketChip(DAT As Integer, Socket As Integer, Rotation As Double) As Int64
+	' Maybe move to MoveChips file.
+	RotateSocketChip = 0
+	
+	' Can take rotation of -90, 90, 180 deg if chip found in socket at wrong angle	
+		
+	'Jump to socket and and correct for drift - can also check chip direction
+	
+	JumpToSocket_camera(DAT, Socket)
+	
+	'Get socket position
+	
+	'Maybe add chip direction check here - first correct for socket position but keep camera on socket	
+	
+	JumpToSocket(DAT, Socket)
+	
+	' Apply any corrections for socket
+	Move Here +X(SocketOffset(1)) +Y(SocketOffset(2)) :U(CU(Here) + SocketOffset(3)) ' Be careful that U/Agle4 is properly bound
+	
+	' Pick up chip
+	
+	
+	' Go to UF camera, get correction, go back to socket and place with rotated correction.
+	
+	
+	JumpToSocket(DAT, Socket)
+	Move Here +X(SocketOffset(1)) +Y(SocketOffset(2)) :U(CU(Here) + SocketOffset(3))
+	
+	' Now rotate the offsets of the previous chip	
+	
+'	''' chip wrt hand C_1->C_2 : C2 = C_1 * R(Rotation)
+	Double DAT_x_2, DAT_y_2, ChipCorrX, ChipCorrY
+	DAT_x_2 = DAT_X(DAT, Socket) * Cos(DegToRad(Rotation)) - DAT_Y(DAT, Socket) * Sin(DegToRad(Rotation))
+	DAT_y_2 = DAT_X(DAT, Socket) * Sin(DegToRad(Rotation)) + DAT_Y(DAT, Socket) * Cos(DegToRad(Rotation))
+'	' U correction shouldn't change?
+'	
+' So to return C2(x,y) to C1(x,y) after rotation, hand H_1->H_2 : H2-H1 = C1 - C2
+	ChipCorrX = DAT_X(DAT, Socket) - DAT_x_2
+	ChipCorrY = DAT_Y(DAT, Socket) - DAT_y_2
+	Move Here +X(ChipCorrX) +Y(ChipCorrY) +U(Rotation)
+	
+	RotateSocketChip = 1
 Fend
 
 

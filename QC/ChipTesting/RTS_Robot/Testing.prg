@@ -16,6 +16,10 @@ Function Testing
   		Exit Function
 	EndIf
 	
+	DoPinAnalysis = False
+	DoCheckPlace = False
+	DoMeasurePlace = False
+	
 	LoadPositionFiles
 	
 	' left tray
@@ -200,10 +204,10 @@ Function Testing
 		'MoveChipFromTrayToSocket(1, 6, 1, 5, 6)
 		'Wait 5
 		' 180 deg
-		MoveChipFromTrayToSocket(1, 7, 1, 7, 6)
-		Wait 5
-		' -90 deg
-		MoveChipFromTrayToSocket(1, 8, 1, 8, 6)
+'		MoveChipFromTrayToSocket(1, 7, 1, 7, 6)
+'		Wait 5
+'		' -90 deg
+'		MoveChipFromTrayToSocket(1, 8, 1, 8, 6)
 
 
 '		MoveChipFromTrayToTray(1, 7, 6, 1, 8, 6)
