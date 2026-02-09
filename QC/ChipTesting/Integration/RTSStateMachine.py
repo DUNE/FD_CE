@@ -831,7 +831,7 @@ class RTSStateMachine(StateMachine):
             print("[SIMULATION] Disconnecting from robot")
 
 
-    def WriteUserToConfig(user_name, config_file):
+    def WriteUserToConfig(self, user_name, config_file):
         """
         Write the tester username to the RTS config file.
         Inputs:
