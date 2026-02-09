@@ -109,19 +109,16 @@ Fend
 ' next three entries are socket position (DF cam)
 ' next three entries are chip in socket positon (DF cam)
 ' Next three entries are difference (chip position - socket position) (DF Cam)
-' next three entries are chip offset after being removed from the socket (UF Cam)
-Function LogSockMeasure(DAT As Integer, Socket As Integer, OperationID$ As String, ByRef sPosDF() As Double, ByRef cPosDF() As Double, ByRef cOffUF() As Double)
+' Last two entries rotate chip-socket alignment in X and Y to take out U variation
+Function LogDFSocketMeasurements(DAT As Integer, Socket As Integer, OpID$ As String)
 	Int32 FileNum
 	FileNum = FreeFile
 	String SocketFile$
-	SocketFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Measurements.txt"
-	Double CSDiff(3)
-	CSDiff(1) = cPosDF(1) - sPosDF(1)
-	CSDiff(2) = cPosDF(2) - sPosDF(2)
-	CSDiff(3) = cPosDF(3) - sPosDF(3)
-	AOpen SocketFile$ As #fileNum
-		Print #fileNum, OperationID$, ", DF_SocketPosition:", sPosDF(1), ",", sPosDF(2), ",", sPosDF(3), "; DF_ChipPosition:", cPosDF(1), ",", cPosDF(2), ",", cPosDF(3), "; DF_ChipOffset:", CSDiff(1), ",", CSDiff(2), ",", CSDiff(3), ";UF_Offset:", cOffUF(1), ",", cOffUF(2), ",", cOffUF(3)
-	Close #fileNum
+	SocketFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_DF_Measurements.txt"
+	
+	AOpen SocketFile$ As #FileNum
+		Print #FileNum, OpID$, ", DF_SocketPosition:", SockPos(1), ",", SockPos(2), ",", SockPos(3), "; DF_ChipPosition:", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), "; DF_ChipOffset:", CSAlign(1), ",", CSAlign(2), ",", CSAlign(3), ",", CSAlign(4), ",", CSAlign(5)
+	Close #FileNum
 	
 Fend
 
@@ -139,9 +136,14 @@ Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, D
 	Int32 FileNum
 	FileNum = FreeFile
 	String OffsetFile$
-	OffsetFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Measurements.txt"
+	If Tray <> 0 Then
+		OffsetFile$ = RTS_DATA$ + "\Tray_" + Str$(Tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
+	Else
+		OffsetFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
+	EndIf
+		
 	AOpen OffsetFile$ As #FileNum
-		Print #FileNum, ts$, ",", Tray, ",", TrayCol, ",", TrayRow, ",", DAT, ",", Socket, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Print #FileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
 	Close #FileNum
 	LogUFOffsets = -1
 Fend

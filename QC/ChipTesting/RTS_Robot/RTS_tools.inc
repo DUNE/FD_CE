@@ -65,6 +65,7 @@ Global Double SockPos(3)
 Global Double CurrentChipOffset(3)
 Global Double CorrectedChipOffset(3)
 Global Double SocketOffset(3)
+Global Double CSAlign(5)
 
 Global Double ChipToChipCorrection(3)
 
