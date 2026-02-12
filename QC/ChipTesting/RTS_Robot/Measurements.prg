@@ -384,7 +384,7 @@ Fend
 ''' Use DF camera to get chip orientation only
 Function FindChipDirectionWithDF As Double
 	FindChipDirectionWithDF = -999.
-	
+	Print "FindChipDirectionWithDF: Chip type ", CHIPTYPE$
 	Select CHIPTYPE$
 		Case "LArASIC"
 			FindChipDirectionWithDF = DF_ChipDirection_LArASIC
@@ -393,15 +393,19 @@ Function FindChipDirectionWithDF As Double
 		Case "COLDATA"
 '			FindChipDirectionWithDF = DF_ChipDirection_COLDATA
 		Default
-			Return
+			Print "Chip type not defined"
+			Exit Function
 	Send
-		
+	Print "FindChipDirectionWithDF: Direction returned by chip specific function: ", FindChipDirectionWithDF
+	
 	If FindChipDirectionWithDF < -900. Then
-		
+		Print "Could not find chip direction"
 		Return
 	EndIf
 	
 	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
+	Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
+		
 	' FindChipOrientationWithDF = RoundAngleTo90(FindChipOrientationWithDF) ' Might want to do this outside of this function?
 	
 Fend
@@ -422,10 +426,12 @@ Function DF_ChipDirection_LArASIC As Double
 	Send
 	
 	If Not FoundText Then
-		Return
+		Print "DF_ChipDirection_LArASIC: Did not find text"
+		Exit Function
 	EndIf
+	DF_ChipDirection_LArASIC = GetBoundAnglePM180(uT + ChipVisionOffset)
+	Print "DF_ChipDirection_LArASIC: Direction of text =", DF_ChipDirection_LArASIC
 	
-	DF_ChipDirection_LArASIC = uT - ChipVisionOffset
 	
 Fend
 
@@ -2120,7 +2126,6 @@ Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C
 	
 	ChipToChipCorrection(3) = C2U - C1U ' Corr(3) = DiffAnglePM180(C1U, C2U) ' Not sure this is working
 	Print "Moving C1 to C2' by rotating by ", ChipToChipCorrection(3)
-	
 
 	
 	' Rotate C1 corrections by phi around axis of rotation
@@ -2167,6 +2172,7 @@ Function CorrectChipAxisOffsetForPickupOrientation(Actual As Double, Expected As
 		' Don't want to correct "current" offset here, and it would interfere with Y correction if X gets directly corrected in first line below
         CorrectedChipOffset(1) = CurrentChipOffset(1) * Cos(DegToRad(OrientationOffset)) - CurrentChipOffset(2) * Sin(DegToRad(OrientationOffset))
         CorrectedChipOffset(2) = CurrentChipOffset(1) * Sin(DegToRad(OrientationOffset)) + CurrentChipOffset(2) * Cos(DegToRad(OrientationOffset))
+        CorrectedChipOffset(3) = GetBoundAnglePM45(CurrentChipOffset(3))
 Fend
 
 ''''' FNAL FUNCTIONS ''''''

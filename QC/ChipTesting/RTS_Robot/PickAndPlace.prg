@@ -56,7 +56,10 @@ Function isChipInTrayCamera(pallet_nr As Integer, col_nr As Integer, row_nr As I
 Fend
 
 Function isChipInTrayTouch(pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Boolean
-	JumpToTray(pallet_nr, col_nr, row_nr)
+	If Dist(Here, Pallet(pallet_nr, col_nr, row_nr)) > 1.0 Then
+		JumpToTray(pallet_nr, col_nr, row_nr)
+	EndIf
+	
 	SetSpeedSetting("PickAndPlace")
 '    Go Here -Z(12) Till Sw(8) = On Or Sw(9) = Off
 '    Wait 0.5
@@ -320,16 +323,22 @@ Function PickupFromSocket As Boolean
     SetSpeedSetting("MoveWithChip")
 
 	PickupFromSocket = True
-    
-Fend
 
+Fend
 
 
 Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
 	Print "GetChipFromTray(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ")"
     SubError = 0
 	GetChipFromTray = 0
-	SelectSite("InFunctionDefinePallets")
+	
+	If CurrentOperation$ = "" Then
+    '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
+		SelectSite("InFunctionDefinePallets")
+    EndIf
+
+	Print "Resetting current chip offsets for new chip"
+	ResetCurrentChipOffsets
 	SetSpeedSetting("MoveWithoutChip")
 	
 	JumpToTray_camera(Tray, TrayCol, TrayRow)
@@ -337,7 +346,8 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	' need to account for offset of tray position from 0 or 180 degrees
 	Double dTU
 	dTU = GetBoundAnglePM45(CU(Pallet(Tray, TrayCol, TrayRow)))
-			
+	Print "Tray orientation small offset dTU = ", Str$(dTU)
+	
 	Double MeasuredDirection, MeasuredOrientation, OrientationOffset
 	MeasuredDirection = FindChipDirectionWithDF
 	If MeasuredDirection < -900. Then
@@ -351,6 +361,13 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	' Find difference between this and the intended direction/orientation of the chip in the tray (Set in SiteSelection:DefineDirections)
 	OrientationOffset = DiffAnglePM180(TrayOrientation, MeasuredOrientation)
 	
+	Print "Measured chip"
+	Print "		Direction   = ", Str$(MeasuredDirection)
+	Print "		Orientation = ", Str$(MeasuredOrientation)
+	Print "		Intended    = ", Str$(TrayOrientation)
+	Print "		Offset      = ", Str$(OrientationOffset)
+		
+	Print "Going to pick up chip"
 	' Go to pick up from tray
 	JumpToTray(Tray, TrayCol, TrayRow)
 	
@@ -360,7 +377,7 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	PickU = DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), TrayOrientation)
 	PickU = GetBoundAnglePM180(PickU + dTU + OrientationOffset)
 	
-	Print "Picking up (with offset of ", PickOffset, ") at U = ", PickU
+	Print "Picking up (with offset of ", PickOffset, ") at U = ", Str$(PickU + PickOffset)
 	' Pick offset is globally defined in case you want to pick chips up at 45deg		
 	' for LArASIC and ColdADC small sockets.
 	Go Here :U(PickU + PickOffset)
@@ -375,7 +392,6 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 		GetChipFromTray = -ERR_VACUUM
 		Exit Function
 	EndIf
-	Print "Picking up with pick offset of ", PickOffset
 
 	If Not PickupFromTray Then
 		RTS_error("GetChipFromTray: Cannot pick up chip from tray", -ERR_TRAY_PICK)
@@ -400,15 +416,22 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
    	If Abs(OrientationOffset) > 45 Then
    		Print "Applying corrections for orientation offset"
    	EndIf
+   	Print "Picked up with chip-hand offsets of (XYU) uncorrected:"
+   	Print Str$(CurrentChipOffset(1)), ",", Str$(CurrentChipOffset(2)), ",", Str$(CurrentChipOffset(3))
    	' Set "Corrected" offsets to be used in setting tray position values
    	CorrectChipAxisOffsetForPickupOrientation(MeasuredOrientation, TrayOrientation)
+   	Print "After correcting for orientation offset of ", Str$(OrientationOffset)
+   	Print Str$(CorrectedChipOffset(1)), ",", Str$(CorrectedChipOffset(2)), ",", Str$(CorrectedChipOffset(3))
    		
 	tray_X(Tray, TrayCol, TrayRow) = CorrectedChipOffset(1)
 	tray_Y(Tray, TrayCol, TrayRow) = CorrectedChipOffset(2)
 	tray_U(Tray, TrayCol, TrayRow) = CorrectedChipOffset(3)
 	Print "Offsets for tray(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ") : (", tray_X(Tray, TrayCol, TrayRow), ",", tray_Y(Tray, TrayCol, TrayRow), ",", tray_U(Tray, TrayCol, TrayRow), ")"
 	LogUFOffsets(Tray, TrayCol, TrayRow, 0, 0)
-
+	Print "Updating position files"
+	UpdatePositionFiles
+	Print "Updating current offset file"
+	StoreCurrentChipOffset
 	' Set to successful (maybe set to time stamp instead of "True" (-1)
 	GetChipFromTray = -1
 	
@@ -419,6 +442,13 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	PlaceChipInTray = 0
     SubError = 0
     
+     If CurrentOperation$ = "" Then
+    '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
+		SelectSite("InFunctionDefinePallets")
+    EndIf
+    Print "Current chip offsets in memory:"
+    Print Str$(CurrentChipOffset(1)), ",", Str$(CurrentChipOffset(2)), ",", Str$(CurrentChipOffset(3))
+   	
 	SetSpeedSetting("MoveWithChip")
 	JumpToTray(Tray, TrayCol, TrayRow)
 	SetSpeedSetting("PickAndPlace")
@@ -447,7 +477,7 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 		PlaceChipInTray = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
-	If Abs(ChipToChipCorrection(1)) > 1. Or Abs(ChipToChipCorrection(2)) > 1. Then
+	If Abs(ChipToChipCorrection(1)) > 2. Or Abs(ChipToChipCorrection(2)) > 2. Then
 		RTS_error("PlaceChipInTray: X or Y correction outside tolerance ", -ERR_BAD_TOLERANCE)
 		PlaceChipInTray = -ERR_BAD_TOLERANCE
 		Exit Function
@@ -465,10 +495,101 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 		Exit Function
 	EndIf
 	
+	If Not isChipInTrayTouch(Tray, TrayCol, TrayRow) Then
+		RTS_error("PlaceChipInTray: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE)
+		PlaceChipInTray = -ERR_TRAY_PLACE
+		Exit Function
+	EndIf
+	
+	If Not isChipInTrayCamera(Tray, TrayCol, TrayRow) Then
+		RTS_error("PlaceChipInTray: Chip not placed correctly (vision check)", -ERR_TRAY_PLACE)
+		PlaceChipInTray = -ERR_TRAY_PLACE
+		Exit Function
+	EndIf
+	
 	Print "Chip placed"
 	SetSpeedSetting("MoveWithoutChip")
 	
 	PlaceChipInTray = -1 ' Or timestamp
+Fend
+
+Function PlaceChipInTrayDryRun(Tray As Integer, TrayCol As Integer, TrayRow As Integer) As Int64
+	Print "PlaceChipInTrayDryRun(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ")"
+	PlaceChipInTrayDryRun = 0
+    SubError = 0
+    
+    If CurrentOperation$ = "" Then
+    '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
+		SelectSite("InFunctionDefinePallets")
+    EndIf
+    
+    Print "Current chip offsets in memory:"
+    Print Str$(CurrentChipOffset(1)), ",", Str$(CurrentChipOffset(2)), ",", Str$(CurrentChipOffset(3))
+    Print "Loaded tray positions tray_XYU"
+	Print Str$(tray_X(Tray, TrayCol, TrayRow)), ",", Str$(tray_Y(Tray, TrayCol, TrayRow)), ",", Str$(tray_U(Tray, TrayCol, TrayRow))
+   	
+'	SetSpeedSetting("MoveWithChip")
+'	JumpToTray(Tray, TrayCol, TrayRow)
+'	SetSpeedSetting("PickAndPlace")
+'	
+'	' Intended chip position = HandChipOrientation + HandPlaceU
+'	Double PlaceU, dTU
+'	dTU = GetBoundAnglePM45(CU(Here)) 'CU(Here) - RoundAngleTo90(CU(Here))
+'	
+'	' (Intended Tray Orientation + dTU) = PlaceU + ChipHand offset
+'	PlaceU = DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), (TrayOrientation + dTU))
+'	
+'	Go Here :U(PlaceU + PickOffset) ' Need to check if this impacts correction calculation, see how it is folded into the pick u
+'
+'	Print "Placing (with offset of ", Str$(PickOffset), ") at U = ", Str$(PlaceU + PickOffset)
+'
+'	' Calculate correction from current and previous offsets
+	GetChipToChipCorrections(CurrentChipOffset(1), CurrentChipOffset(2), CurrentChipOffset(3), tray_X(Tray, TrayCol, TrayRow), tray_Y(Tray, TrayCol, TrayRow), tray_U(Tray, TrayCol, TrayRow), CU(Here))
+'	' Should add a verbosity level here
+'' Move in file logging to move function, just print to screen for get/place level
+'	Print("Current chip offset  = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+'	Print("Tray position offset = (" + Str$(tray_X(Tray, TrayCol, TrayRow)) + "," + Str$(tray_Y(Tray, TrayCol, TrayRow)) + "," + Str$(tray_U(Tray, TrayCol, TrayRow)) + ")")
+'	Print("Correction At Tray   = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+'
+'	If Abs(ChipToChipCorrection(3)) > 3. Then
+'		RTS_error("PlaceChipInTray: U correction outside tolerance ", -ERR_BAD_TOLERANCE)
+'		PlaceChipInTray = -ERR_BAD_TOLERANCE
+'		Exit Function
+'	EndIf
+'	If Abs(ChipToChipCorrection(1)) > 1. Or Abs(ChipToChipCorrection(2)) > 1. Then
+'		RTS_error("PlaceChipInTray: X or Y correction outside tolerance ", -ERR_BAD_TOLERANCE)
+'		PlaceChipInTray = -ERR_BAD_TOLERANCE
+'		Exit Function
+'	EndIf
+'	
+'	' apply corrections
+'	Print "Corrections within tolerance"
+'	Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+'	
+'	SetSpeedSetting("PickAndPlace")
+'	Print "Placing chip in tray"
+'	If Not DropToTray Then
+'		RTS_error("PlaceChipInTray: Could not place in tray ", -ERR_TRAY_PLACE)
+'		PlaceChipInTray = -ERR_TRAY_PLACE
+'		Exit Function
+'	EndIf
+'	
+'	If Not isChipInTrayTouch(Tray, TrayCol, TrayRow) Then
+'		RTS_error("PlaceChipInTray: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE)
+'		PlaceChipInTray = -ERR_TRAY_PLACE
+'		Exit Function
+'	EndIf
+'	
+'	If Not isChipInTrayCamera(Tray, TrayCol, TrayRow) Then
+'		RTS_error("PlaceChipInTray: Chip not placed correctly (vision check)", -ERR_TRAY_PLACE)
+'		PlaceChipInTray = -ERR_TRAY_PLACE
+'		Exit Function
+'	EndIf
+'	
+'	Print "Chip placed"
+'	SetSpeedSetting("MoveWithoutChip")
+	
+	PlaceChipInTrayDryRun = -1 ' Or timestamp
 Fend
 
 
@@ -476,8 +597,12 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	 Print "GetChipFromSocket(", Str$(DAT), ",", Str$(Socket), ")"
 	GetChipFromSocket = 0
     SubError = 0
+    ResetCurrentChipOffsets
 	' TODO JOE for errors need something if chip is in socket in wrong direction 
-	SetSpeedSetting("MoveWithoutChip")
+	If CurrentOperation$ = "" Then
+    '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
+		SelectSite("InFunctionDefinePallets")
+    EndIf
 	
 	JumpToSocket_camera(DAT, Socket)
 	SetSpeedSetting("PickAndPlace")
@@ -540,7 +665,8 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	Print "Offsets for socket(", Str$(DAT), ",", Str$(Socket), ") : (", DAT_X(DAT, Socket), ",", DAT_Y(DAT, Socket), ",", DAT_U(DAT, Socket), ")"
 	LogUFOffsets(0, 0, 0, DAT, Socket)
 	SetSpeedSetting("MoveWithChip")
-
+	UpdatePositionFiles
+	StoreCurrentChipOffset
 	GetChipFromSocket = -1
 Fend
 
@@ -550,6 +676,11 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	PlaceChipInSocket = 0
     SubError = 0
 	SetSpeedSetting("MoveWithChip")
+
+	If CurrentOperation$ = "" Then
+    '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
+		SelectSite("InFunctionDefinePallets")
+    EndIf
 	
 	JumpToSocket_camera(DAT, Socket)
 	SetSpeedSetting("PickAndPlace")
@@ -599,8 +730,18 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 		Exit Function
 	EndIf
 
-' Do any checks, chip alignment etc
+	If Not isChipInSocketTouch(DAT, Socket) Then
+		RTS_error("PlaceChipInSocket: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE)
+		PlaceChipInSocket = -ERR_SOCKET_PLACE
+		Exit Function
+	EndIf
 
+	If Not isChipInSocketCamera(DAT, Socket) Then
+		RTS_error("PlaceChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE)
+		PlaceChipInSocket = -ERR_SOCKET_PLACE
+		Exit Function
+	EndIf
+	
 	' Do alignment check of chip in socket after insertion
 	JumpToSocket_camera(DAT, Socket)
 	SetSpeedSetting("MoveWithoutChip")
@@ -722,8 +863,13 @@ Function SocketPositionOccupied(DAT_nr As Int32, Socket_nr As Int32) As Int32
 
 Fend
 
+
+
 Function RotateSocketChip(DAT As Integer, Socket As Integer, Rotation As Double) As Int64
 	' Maybe move to MoveChips file.
+	Print "This function is not implemented yet"
+	Exit Function
+	
 	RotateSocketChip = 0
 	
 	' Can take rotation of -90, 90, 180 deg if chip found in socket at wrong angle	

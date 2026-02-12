@@ -21,6 +21,7 @@ Function Testing
 	DoMeasurePlace = False
 	
 	LoadPositionFiles
+	LoadCurrentChipOffset
 	
 	' left tray
 	Pallet 1, Tray_Left_P1, Tray_Left_P2, Tray_Left_P3, Tray_Left_P4, trayNCols, trayNRows
@@ -37,6 +38,17 @@ Function Testing
 	
 '	''' Make changes here	
 '	
+'	DF_ChipDirection_LArASIC
+
+	GetChipFromTray(1, 5, 1)
+	Wait 5
+	SetSpeedSetting("MoveWithChip")
+	PlaceChipInTray(1, 5, 1)
+	
+	PumpOff
+	Motor Off
+	
+	
 
 '	Integer Attempts
 '	Boolean Success
@@ -219,8 +231,9 @@ Function Testing
 ' Do not uncomment pump off if you are not sure if your code will not drop a chip after stopping mid move function!
 '	PumpOff
 '	Motor Off
-'		
+'		''
 	UpdatePositionFiles
+	StoreCurrentChipOffset
 	
 Fend
 

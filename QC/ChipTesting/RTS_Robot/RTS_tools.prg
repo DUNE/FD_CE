@@ -52,7 +52,6 @@ Function UF_take_picture$(basename$ As String) As String
 	VSaveImage UF, UF_take_picture$
 Fend
 
-
 Function DF_take_picture$(basename$ As String) As String
 	DF_take_picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
 	Print DF_take_picture$
@@ -114,7 +113,7 @@ Function LogDFSocketMeasurements(DAT As Integer, Socket As Integer, OpID$ As Str
 	Int32 FileNum
 	FileNum = FreeFile
 	String SocketFile$
-	SocketFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_DF_Measurements.txt"
+	SocketFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_DF_Measurements.txt"
 	
 	AOpen SocketFile$ As #FileNum
 		Print #FileNum, OpID$, ", DF_SocketPosition:", SockPos(1), ",", SockPos(2), ",", SockPos(3), "; DF_ChipPosition:", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), "; DF_ChipOffset:", CSAlign(1), ",", CSAlign(2), ",", CSAlign(3), ",", CSAlign(4), ",", CSAlign(5)
@@ -137,14 +136,14 @@ Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, D
 	FileNum = FreeFile
 	String OffsetFile$
 	If Tray <> 0 Then
-		OffsetFile$ = RTS_DATA$ + "\Tray_" + Str$(Tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
+		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(Tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
 	Else
-		OffsetFile$ = RTS_DATA$ + "\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
+		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
 	EndIf
 		
-	AOpen OffsetFile$ As #FileNum
-	Print #FileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
-	Close #FileNum
+	AOpen OffsetFile$ As #fileNum
+	Print #fileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Close #fileNum
 	LogUFOffsets = -1
 Fend
 
@@ -630,6 +629,20 @@ Function SetupDirectories
   		Print "***ERROR Can't create directory [" + dir_pins$ + "]"
   		Exit Function
 	EndIf
+	
+	' position recording directory
+	String dir_vis_meas$
+	dir_vis_meas$ = RTS_DATA$ + "\VisionMeasurements"
+	
+	If Not FolderExists(dir_vis_meas$) Then
+  		MkDir dir_vis_meas$
+	EndIf
+	
+	If Not FolderExists(dir_vis_meas$) Then
+  		Print "***ERROR Can't create directory [" + dir_vis_meas$ + "]"
+  		Exit Function
+	EndIf
+	
 Fend
 
 Function MakePositionFiles
@@ -730,7 +743,7 @@ Fend
 
 Function LoadPositionFiles
 	' load positions at camera of chips coming from trays
-	
+	Print "Loading position files!"
     Integer fileNum
     String fileName$
     Double x, y, u
@@ -751,6 +764,10 @@ Function LoadPositionFiles
 						tray_X(i, j, k) = x
 						tray_Y(i, j, k) = y
 						tray_U(i, j, k) = u
+						If tray_X(i, j, k) <> 0. Then
+							Print "tray_X(", i, ",", j, ",", k, ") is ", tray_X(i, j, k)
+						EndIf
+						
 					Else
 						Print "Error reading file ", fileName$, " ijk=", i, " ", j, " ", k
 						Exit Function
@@ -758,6 +775,8 @@ Function LoadPositionFiles
 				Next k
 			Next j
 		Next i
+	Else
+		Print "File [", RTS_DATA$, "\tray_xyu.csv] does not exist!"
 	EndIf
 	Close #fileNum
 	
@@ -782,6 +801,57 @@ Function LoadPositionFiles
 		Next i
 	EndIf
 	Close #fileNum
+Fend
+
+Function StoreCurrentChipOffset
+		
+	Integer fileNum
+	String fileName$
+	fileNum = FreeFile
+	fileName$ = RTS_DATA$ + "\CurrentChipOffsets.csv"
+	WOpen fileName$ As #fileNum
+	' Save the position set in the global arrays to the files
+	Print #fileNum, CurrentChipOffset(1), ",", CurrentChipOffset(2), ",", CurrentChipOffset(3), ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Close #fileNum
+
+Fend
+
+Function LoadCurrentChipOffset
+	Print "Loading chip offsets"
+	Integer fileNum
+    String fileName$
+    Double offX, offY, offU, corrOffX, corrOffY, corrOffU
+    
+	fileNum = FreeFile
+	fileName$ = RTS_DATA$ + "\CurrentChipOffsets.csv"
+	
+	If FileExists(fileName$) Then
+		Print "Reading file ", fileName$
+		ROpen fileName$ As #fileNum
+
+		Input #fileNum, offX, offY, offU, corrOffX, corrOffY, corrOffU
+		CurrentChipOffset(1) = offX
+		CurrentChipOffset(2) = offY
+		CurrentChipOffset(3) = offU
+		
+		CorrectedChipOffset(1) = corrOffX
+		CorrectedChipOffset(2) = corrOffX
+		CorrectedChipOffset(3) = corrOffX
+
+	EndIf
+	Close #fileNum
+	
+Fend
+
+Function ResetCurrentChipOffsets
+	Print "Restore function currently commented out"
+'	CurrentChipOffset(1) = 0
+'	CurrentChipOffset(2) = 0
+'	CurrentChipOffset(3) = 0
+'	CorrectedChipOffset(1) = 0
+'	CorrectedChipOffset(2) = 0
+'	CorrectedChipOffset(3) = 0
+'	StoreCurrentChipOffset
 Fend
 
 '''' More generic log updating function
@@ -924,7 +994,7 @@ Function AverageAnglePM180(u1 As Double, u2 As Double) As Double
 			AverageAnglePM180 = (u1 - u2) /2
 		EndIf
 	Else
-		AverageAnglePM180 = (u1 + u2) /2
+		Print AverageAnglePM180 =(u1 + u2) / 2
 	EndIf
 Fend
 
@@ -982,4 +1052,7 @@ Function PhotographAllChipsInTray(pallet_nr As Integer, TrayName$ As String)
 	Close #fileNum
 	SetSpeedSetting("MoveWithoutChip")
 Fend
+
+
+
 

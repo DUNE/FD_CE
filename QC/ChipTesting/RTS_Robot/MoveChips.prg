@@ -5,8 +5,11 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	MoveChipFromTrayToTray = 0
 	ErrorCode = 0
 	SubError = 0
-		
+	
 	SelectSite("InFunctionDefinePallets")
+	
+	LoadPositionFiles
+	ResetCurrentChipOffsets
 	
 	String ts$ ', opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
@@ -150,6 +153,7 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 		UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
 	EndIf
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2T) command complete:")
+	UpdatePositionFiles
 	ResetOperation
 	MoveChipFromTrayToTray = -1
 Fend
@@ -160,6 +164,9 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	SubError = 0
 	
 	SelectSite("InFunctionDefinePallets")
+	
+	LoadPositionFiles
+	ResetCurrentChipOffsets
 	
 	String ts$ ', opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
@@ -331,6 +338,7 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 		EndIf
 	EndIf
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2S) command complete:")
+	UpdatePositionFiles
 	ResetOperation
 	MoveChipFromTrayToSocket = -1
 Fend
@@ -341,6 +349,9 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	SubError = 0
 	
 	SelectSite("InFunctionDefinePallets")
+	
+	LoadPositionFiles
+	ResetCurrentChipOffsets
 	
 	String ts$ ' , opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
@@ -492,7 +503,7 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 		
 	EndIf
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2T) command complete:")
-
+	UpdatePositionFiles
 	ResetOperation
 	MoveChipFromSocketToTray = -1
 Fend
@@ -503,6 +514,9 @@ Function MoveChipFromSocketToSocket(SrcDAT As Integer, SrcSocket As Integer, Tgt
 	SubError = 0
 	
 	SelectSite("InFunctionDefinePallets")
+
+	LoadPositionFiles
+	ResetCurrentChipOffsets
 
 	String ts$ ' , opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
@@ -675,6 +689,7 @@ Function MoveChipFromSocketToSocket(SrcDAT As Integer, SrcSocket As Integer, Tgt
 	EndIf
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2S) command complete:")
 	ResetOperation
+	UpdatePositionFiles
 	MoveChipFromSocketToSocket = -1
 	
 Fend

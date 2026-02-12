@@ -125,6 +125,9 @@ Function SelectSite(OPTION$ As String) As Boolean
 		Pallet 2, Tray_Right_P1, Tray_Right_P2, Tray_Right_P3, Tray_Right_P4, trayNCols, trayNRows
 	EndIf
 	
+    LoadPositionFiles
+    LoadCurrentChipOffset
+	
 	SelectSite = True
 
 Fend
@@ -217,7 +220,7 @@ Function DefineDirections As Int32
 	DefineDirections = 0
 	
 		' Points relative to world coordinates, i.e. from x-axis anticlockwise when looking down
-	TrayOrientation = -90
+	TrayOrientation = 180
 	
 '	' WRT taught CU(tray point)
 '	TrayChipOrientation(1) = TrayOrientation ' Tray point is at ~U=0, no need to adjust
@@ -238,7 +241,7 @@ Function DefineDirections As Int32
 	HandChipOrientation(3) = -90
 	
 	' Could be site specific?
-	ChipVisionOffset = 0. ' Need to check difference between what U value the vision sequences return and the RTS coordinates	
+	ChipVisionOffset = 90. ' Need to check difference between what U value the vision sequences return and the RTS coordinates	
 	
 	' TODO, change definition of socket orientation to simplify
 	' All chips are at +90 wrt socket, all sockets are oriented same direction
