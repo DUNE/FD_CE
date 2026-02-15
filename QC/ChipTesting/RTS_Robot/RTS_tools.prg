@@ -1939,7 +1939,7 @@ Function PlaceChipInSocket(ts$ As String, ByRef idx() As Integer, ByRef EmptySoc
 			'Corrs(3) = -DiffAnglePM180((SocketMezzanineOrientation(CHIPTYPE_NR) + SocketChipOrientation(CHIPTYPE_NR)), CameraResults(12))
 			Corrs(3) = -DiffAnglePM180(HandChipOrientation(CHIPTYPE_NR), CameraResults(12))
 			Corrs(1) = -(CameraResults(10) * Cos(CU(Here)) - CameraResults(11) * Sin(CU(Here)))
-			Corrs(2) = -(CameraResults(10) * Cos(CU(Here)) + CameraResults(11) * Sin(CU(Here)))
+			Corrs(2) = -(CameraResults(10) * Sin(CU(Here)) + CameraResults(11) * Cos(CU(Here)))
 			
 '			Print "Corrections: "
 '			Print " Del X = ", Corrs(1)
@@ -2208,14 +2208,14 @@ Function SocketPositionOccupied(DAT_nr As Int32, Socket_nr As Int32) As Int32
 	SetSpeedSetting("MoveWithoutChip")
 
 	' Go to the tray position and check visualy for a chip
-	If isChipInSocketCamera(DAT_nr, Socket_nr) Then
+	If isChipInSocketCamera(DAT_nr, socket_nr) Then
 		Print "Occupied"
 		SocketPositionOccupied = 1
 		Exit Function
 	EndIf
 	
 	' If no chip found with camera, check no obstruction 
-	If isChipInSocketTouch(DAT_nr, Socket_nr) Then
+	If isChipInSocketTouch(DAT_nr, socket_nr) Then
 		Print "Could not see chip but touched something"
 		SocketPositionOccupied = -2
 	EndIf
@@ -4125,8 +4125,14 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 '	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-Rotation1)) - UFChipRes(11) * Sin(DegToRad(-Rotation1))
 '	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-Rotation1)) + UFChipRes(11) * Cos(DegToRad(-Rotation1))
 	' Wrt U = 0
-	UFChipRes(10) = UFChipRes(10) * Cos(DegToRad(-UFChipRes(2))) - UFChipRes(11) * Sin(DegToRad(-UFChipRes(2)))
-	UFChipRes(11) = UFChipRes(10) * Sin(DegToRad(-UFChipRes(2))) + UFChipRes(11) * Cos(DegToRad(-UFChipRes(2)))
+	' Need intermediate values for rotation
+	Double IntmX, IntmY ' Only really need for the X value but keep consistent
+
+	IntmX = UFChipRes(10) * Cos(DegToRad(-UFChipRes(2))) - UFChipRes(11) * Sin(DegToRad(-UFChipRes(2)))
+	IntmY = UFChipRes(10) * Sin(DegToRad(-UFChipRes(2))) + UFChipRes(11) * Cos(DegToRad(-UFChipRes(2)))
+	UFChipRes(10) = IntmX
+	UFChipRes(11) = IntmY
+
 
 	Double UF_DEL_U1, UF_DEL_U2
 
@@ -4170,7 +4176,7 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 ' These corrections should already take into account that you will rotate by phi but at HAND_U0, so
 ' So to get to correction at socket 
 ' CorrX_US = CorrX_0 * Cos(US - HAND_U0) - CorrY_0 * Sin(US - HAND_U0)
-' CorrX_US = CorrX_0 * Cos(US - HAND_U0) - CorrY_0 * Sin(US - HAND_U0)
+' CorrY_US = CorrX_0 * Sin(US - HAND_U0) + CorrY_0 * Cos(US - HAND_U0)
 ' CorrU = Phi
 ' So go to socket
 ' Correct for socket alignment wrt defined point
@@ -4179,8 +4185,8 @@ Function UFGetChipAlignment(id$ As String, ByRef idx() As Integer, ByRef UFChipR
 '	
 	' Do the pin analysis 
 	UFRecenter(ByRef UFChipRes())
-	' Commented out for testing (my test chip has a bent pin!)
-'	UFChipRes(13) = UFPinAnalysis(id$, ByRef idx(), ByRef Images$())
+	
+	UFChipRes(13) = UFPinAnalysis(id$, ByRef idx(), ByRef Images$())
 	
 	If UFChipRes(13) <> 0 Then
 		Print "Pin analysis failed"
@@ -4212,15 +4218,13 @@ Function ChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C2X 
 	
 	' Rotate C1 corrections by phi around axis of rotation
 	' Then get difference to C2 wrt axis
-	Corr(1) = C2X - (C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3))))
-	Corr(2) = C2Y - (C1X * Sin(DegToRad(Corr(3))) + C1Y * Cos(DegToRad(Corr(3))))
-	
-	' Now rotate corrections wrt axis to the target U value
-'	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU - HAND_U0)) - Corr(2) * Sin(DegToRad(TargetHandU - HAND_U0))
-'	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU - HAND_U0)) + Corr(2) * Cos(DegToRad(TargetHandU - HAND_U0))
-'	
-	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU)) - Corr(2) * Sin(DegToRad(TargetHandU))
-	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU)) + Corr(2) * Cos(DegToRad(TargetHandU))
+	' need intermediate for rotating Y correctly
+	Double CorX, CorY
+	CorX = C2X - (C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3))))
+	CorY = C2Y - (C1X * Sin(DegToRad(Corr(3))) + C1Y * Cos(DegToRad(Corr(3))))
+	' Rotate for hand target U
+	Corr(1) = CorX * Cos(DegToRad(TargetHandU)) - CorX * Sin(DegToRad(TargetHandU))
+	Corr(2) = CorX * Sin(DegToRad(TargetHandU)) + CorY * Cos(DegToRad(TargetHandU))
 	
 	Print "Offset X1 :", C1X
 	Print "Offset X1':", ((C1X * Cos(DegToRad(Corr(3))) - C1Y * Sin(DegToRad(Corr(3)))))
