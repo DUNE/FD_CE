@@ -58,12 +58,12 @@ Function JumpToTray_camera(pallet_nr As Integer, col_nr As Integer, row_nr As In
 		EndIf
 
 	Else
-		If pallet_nr = 1 Then
-			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) LimZ JUMP_LIMIT
-		ElseIf pallet_nr = 2 Then
-			' TODO JOE CHECK Should this be the same for Pallet 1???
+'		If pallet_nr = 1 Then
+'			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) LimZ JUMP_LIMIT
+'		ElseIf pallet_nr = 2 Then
+'			' TODO JOE CHECK Should this be the same for Pallet 1???
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF) LimZ JUMP_LIMIT '  :U(CU(Pallet(pallet_nr, col_nr, row_nr)))
-		EndIf
+'		EndIf
 	EndIf
 	
 Fend

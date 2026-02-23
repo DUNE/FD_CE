@@ -74,7 +74,7 @@ Fend
 '
 '' For subroutines to not close the error file, and close at top level Move Function instead
 'Function RTS_suberror(fileNum As Integer, err_msg$ As String, err_code As Int32)
-'	SubError = err_code
+'	SubError = -ERR_code
 '	Print "***ERROR! ", err_msg$
 '	Print #fileNum, "***ERROR! ", err_msg$,
 'Fend
@@ -764,10 +764,6 @@ Function LoadPositionFiles
 						tray_X(i, j, k) = x
 						tray_Y(i, j, k) = y
 						tray_U(i, j, k) = u
-						If tray_X(i, j, k) <> 0. Then
-							Print "tray_X(", i, ",", j, ",", k, ") is ", tray_X(i, j, k)
-						EndIf
-						
 					Else
 						Print "Error reading file ", fileName$, " ijk=", i, " ", j, " ", k
 						Exit Function
@@ -930,9 +926,10 @@ Fend
 
 Function GetBoundAnglePM180(Angle As Double) As Double
 ' Return an angle within -180 to 180 degrees
-
-	If Abs(Angle) < 180. Then
+	
+	If (Angle > -180.) And (Angle <= 180.) Then
 		GetBoundAnglePM180 = Angle
+		Exit Function
 	EndIf
 	Int32 Quotiant
 	Double Offset
@@ -953,8 +950,9 @@ Fend
 Function GetBoundAnglePM45(Angle As Double) As Double
 ' Return an angle within -180 to 180 degrees
 
-	If Abs(Angle) < 45. Then
+	If (Angle > -45.) And (Angle <= 45.) Then
 		GetBoundAnglePM45 = Angle
+		Exit Function
 	EndIf
 	Int32 Quotiant
 	Double Offset
@@ -984,18 +982,22 @@ Fend
 
 Function AverageAnglePM180(u1 As Double, u2 As Double) As Double
 	' Need to make sure average is closest angle around -pi/+pi boundary
+	AverageAnglePM180 = -999.
 	If Abs(u1 - u2) > 180 Then
+	Print "Diff greater than 180, Av around pi not 0"
 	' Need to average around -pi and pi
 		If Abs(u1) > Abs(u2) Then
-			' Closer to U2
+			Print "U1 Closer to pi boundary, pick value on U2 side"
 			AverageAnglePM180 = (u2 - u1) /2
 		Else
-			' Closer to U1
+			Print "U2 Closer to pi boundary, pick value on U1 side"
 			AverageAnglePM180 = (u1 - u2) /2
 		EndIf
 	Else
-		Print AverageAnglePM180 =(u1 + u2) / 2
+		Print "Diff does not cross pi boundary, av around 0 as usual"
+		AverageAnglePM180 = (u1 + u2) /2
 	EndIf
+	Print "Average = ", AverageAnglePM180
 Fend
 
 Function RoundAngleTo90(angle As Double) As Double

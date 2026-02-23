@@ -1,4 +1,4 @@
-ENVT0100,LM:2025/11/26 21:39:26:445,DS:0000404366,CS:23915,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/02/15 15:38:51:589,DS:0000406912,CS:14635,MA:6C-2B-59-DC-C5-38,EI:           
 sRCVersion="7.5.4"
 sGUID="f965e132-c841-42ba-bafd-fbf5d79f2655"
 nCameraNumber=1
@@ -7252,9 +7252,9 @@ Sequence21 {
 		nPassType=1
 		nPointType=0
 		rXD=1279
-		rYD=958
+		rYD=959
 		nX=1279
-		nY=958
+		nY=959
 		rFrameVectorLength1=0
 		rFrameVectorAngle1=0
 	}
@@ -7292,11 +7292,11 @@ Sequence21 {
 		rModelOrgYD=226
 		nModelOrgX=227
 		nModelOrgY=226
-		nModelWinCenterX=1280
-		nModelWinCenterY=958
+		nModelWinCenterX=1279
+		nModelWinCenterY=959
 		nModelWinHeight=452
-		nModelWinLeft=1053
-		nModelWinTop=732
+		nModelWinLeft=1052
+		nModelWinTop=733
 		nModelWinType=1
 		nModelWinWidth=454
 		sName="Geom01"
@@ -7856,8 +7856,8 @@ Sequence22 {
 		sObjectTypeName="Geometric"
 		nStepRow=5
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=6
+		nNextStepNumberFalse=6
 		nPrevObjectNumberTrue=4
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=False
@@ -8442,453 +8442,6 @@ Sequence24 {
 }
 Sequence25 {
 	bAsyncMode=True
-	nCalibration=6
-	nCamera=2
-	nCameraBrightness=10
-	nCameraContrast=150
-	sDescription=""
-	nExposureDelay=0
-	nExposureTime=30000
-	sGridColor="DarkGray"
-	rGridPitchX=100
-	rGridPitchY=100
-	bGridShow=False
-	nGridType=1
-	nGridUnits=1
-	bHDRMode=False
-	nImageBuffer=0
-	sImageFile="None"
-	rImageFileScale=0
-	nImageSize=8
-	nImageSource=1
-	sName="MSU_DF_ChipDir"
-	nRuntimeAcquire=1
-	bRuntimeFreeze=True
-	bShowProcessing=True
-	bStrobeBlackVideo=True
-	nStrobeDelay=0
-	nStrobeTime=0
-	nTriggerDebounce=0
-	nTriggerMode=1
-	nBacklightFeeder=0
-	nVideoWidth=2560
-	nVideoHeight=1920
-	nStepCount=4
-	Step1 {
-		nObjectType=1
-		sObjectTypeName="Correlation"
-		nStepRow=1
-		nStepColumn=1
-		nNextStepNumberTrue=2
-		nNextStepNumberFalse=2
-		nPrevObjectNumberTrue=0
-		nPrevObjectNumberFalse=0
-		bAbortSeqOnFail=True
-		nAccept=200
-		rAngleAccuracy=1
-		bAngleEnable=False
-		rAngleMaxIncrement=5
-		rAngleOffset=0
-		rAngleRange=10
-		rAngleStart=0
-		sCaption=""
-		nCenterPointObject=0
-		nCenterPntObjResult=1
-		nCenterPntOffsetX=0
-		nCenterPntOffsetY=0
-		bCenterPntRotOffset=False
-		nCheckClearanceFor=0
-		nClearanceCondition=1
-		nConfusion=500
-		sDescription=""
-		bEnabled=True
-		sFailColor="Red"
-		nFrame=0
-		nFrameResult=1
-		nGraphics=1
-		sLabelBackColor="Transparent"
-		nModelObject=0
-		bModelOrgAutoCenter=True
-		rModelOrgXD=189
-		rModelOrgYD=184.5
-		nModelOrgX=189
-		nModelOrgY=185
-		nModelWinCenterX=1293
-		nModelWinCenterY=962
-		nModelWinHeight=369
-		nModelWinLeft=1104
-		nModelWinTop=777
-		nModelWinType=1
-		nModelWinWidth=378
-		sName="Corr01"
-		nNumberToFind=1
-		sPassColor="LightGreen"
-		nPassType=1
-		bRejectOnEdge=False
-		bSaveTeachImage=False
-		nSearchWinCenterX=1300
-		nSearchWinCenterY=938
-		nSearchWinHeight=664
-		nSearchWinLeft=933
-		nSearchWinTop=606
-		nSearchWinType=1
-		nSearchWinWidth=734
-		bSkewFitEnable=False
-		nSort=0
-		nTimeout=5000
-		rFrameVectorLength1=0
-		rFrameVectorAngle1=0
-		rFrameVectorAngle2=0
-		nSearchWinPolygonPointXRot=1300
-		nSearchWinPolygonPointYRot=586
-		rSearchWinPolygonPointFX1=0
-		rSearchWinPolygonPointFY1=0
-		rSearchWinPolygonPointFX2=0
-		rSearchWinPolygonPointFY2=0
-		rSearchWinPolygonPointFX3=0
-		rSearchWinPolygonPointFY3=0
-		rSearchWinPolygonPointFX4=0
-		rSearchWinPolygonPointFY4=0
-		rSearchWinPolygonPointFX5=0
-		rSearchWinPolygonPointFY5=0
-		rSearchWinPolygonPointFX6=0
-		rSearchWinPolygonPointFY6=0
-		rSearchWinPolygonPointFX7=0
-		rSearchWinPolygonPointFY7=0
-		rSearchWinPolygonPointFX8=0
-		rSearchWinPolygonPointFY8=0
-		rSearchWinPolygonPointFX9=0
-		rSearchWinPolygonPointFY9=0
-		rSearchWinPolygonPointFX10=0
-		rSearchWinPolygonPointFY10=0
-		rSearchWinPolygonPointFX11=0
-		rSearchWinPolygonPointFY11=0
-		rSearchWinPolygonPointFX12=0
-		rSearchWinPolygonPointFY12=0
-		rSearchWinPolygonPointFXRot=0
-		rSearchWinPolygonPointFYRot=0
-	}
-	Step2 {
-		nObjectType=11
-		sObjectTypeName="Geometric"
-		nStepRow=2
-		nStepColumn=1
-		nNextStepNumberTrue=2
-		nNextStepNumberFalse=2
-		nPrevObjectNumberTrue=1
-		nPrevObjectNumberFalse=0
-		bAbortSeqOnFail=False
-		nAccept=700
-		bAngleEnable=True
-		rAngleOffset=0
-		rAngleRange=180
-		rAngleStart=0
-		sCaption=""
-		nCenterPointObject=0
-		nCenterPntObjResult=1
-		nCenterPntOffsetX=0
-		nCenterPntOffsetY=0
-		bCenterPntRotOffset=False
-		nCheckClearanceFor=0
-		nClearanceCondition=1
-		nConfusion=800
-		sDescription=""
-		nDetailLevel=1
-		bEnabled=True
-		sFailColor="Red"
-		nFrame=0
-		nFrameResult=1
-		nGraphics=1
-		sLabelBackColor="Transparent"
-		nModelObject=0
-		bModelOrgAutoCenter=True
-		rModelOrgXD=34
-		rModelOrgYD=34
-		nModelOrgX=34
-		nModelOrgY=34
-		nModelWinCenterX=1423
-		nModelWinCenterY=1090
-		nModelWinHeight=68
-		nModelWinLeft=1389
-		nModelWinTop=1056
-		nModelWinType=3
-		nModelWinWidth=68
-		sName="Geom01"
-		nNumberToFind=1
-		sPassColor="LightGreen"
-		nPassType=1
-		bRejectOnEdge=False
-		bSaveTeachImage=False
-		bScaleEnable=False
-		rScaleFactorMax=2
-		rScaleFactorMin=0.5
-		rScaleTarget=1
-		bScaleTargetPriority=False
-		bSearchReducedImage=False
-		nSearchPolarity=0
-		nSearchWinCenterX=1297
-		nSearchWinCenterY=967
-		nSearchWinHeight=486
-		nSearchWinLeft=1063
-		nSearchWinTop=724
-		nSearchWinType=1
-		nSearchWinWidth=467
-		rSeparationAngle=10
-		rSeparationMinX=10
-		rSeparationMinY=10
-		rSeparationScale=1.1
-		bSharedEdges=False
-		bSkewFitEnable=False
-		rSmoothness=50
-		nSort=0
-		nTimeout=2000
-		rFrameVectorLength1=0
-		rFrameVectorAngle1=0
-		rFrameVectorAngle2=0
-		nSearchWinPolygonPointXRot=1297
-		nSearchWinPolygonPointYRot=704
-		rSearchWinPolygonPointFX1=0
-		rSearchWinPolygonPointFY1=0
-		rSearchWinPolygonPointFX2=0
-		rSearchWinPolygonPointFY2=0
-		rSearchWinPolygonPointFX3=0
-		rSearchWinPolygonPointFY3=0
-		rSearchWinPolygonPointFX4=0
-		rSearchWinPolygonPointFY4=0
-		rSearchWinPolygonPointFX5=0
-		rSearchWinPolygonPointFY5=0
-		rSearchWinPolygonPointFX6=0
-		rSearchWinPolygonPointFY6=0
-		rSearchWinPolygonPointFX7=0
-		rSearchWinPolygonPointFY7=0
-		rSearchWinPolygonPointFX8=0
-		rSearchWinPolygonPointFY8=0
-		rSearchWinPolygonPointFX9=0
-		rSearchWinPolygonPointFY9=0
-		rSearchWinPolygonPointFX10=0
-		rSearchWinPolygonPointFY10=0
-		rSearchWinPolygonPointFX11=0
-		rSearchWinPolygonPointFY11=0
-		rSearchWinPolygonPointFX12=0
-		rSearchWinPolygonPointFY12=0
-		rSearchWinPolygonPointFXRot=0
-		rSearchWinPolygonPointFYRot=0
-	}
-	Step3 {
-		nObjectType=11
-		sObjectTypeName="Geometric"
-		nStepRow=3
-		nStepColumn=1
-		nNextStepNumberTrue=3
-		nNextStepNumberFalse=3
-		nPrevObjectNumberTrue=2
-		nPrevObjectNumberFalse=0
-		bAbortSeqOnFail=False
-		nAccept=700
-		bAngleEnable=True
-		rAngleOffset=0
-		rAngleRange=180
-		rAngleStart=0
-		sCaption=""
-		nCenterPointObject=0
-		nCenterPntObjResult=1
-		nCenterPntOffsetX=0
-		nCenterPntOffsetY=0
-		bCenterPntRotOffset=False
-		nCheckClearanceFor=0
-		nClearanceCondition=1
-		nConfusion=800
-		sDescription=""
-		nDetailLevel=1
-		bEnabled=True
-		sFailColor="Red"
-		nFrame=0
-		nFrameResult=1
-		nGraphics=1
-		sLabelBackColor="Transparent"
-		nModelObject=0
-		bModelOrgAutoCenter=True
-		rModelOrgXD=23
-		rModelOrgYD=23
-		nModelOrgX=23
-		nModelOrgY=23
-		nModelWinCenterX=1160
-		nModelWinCenterY=845
-		nModelWinHeight=46
-		nModelWinLeft=1137
-		nModelWinTop=822
-		nModelWinType=3
-		nModelWinWidth=46
-		sName="Geom02"
-		nNumberToFind=1
-		sPassColor="LightGreen"
-		nPassType=1
-		bRejectOnEdge=False
-		bSaveTeachImage=False
-		bScaleEnable=False
-		rScaleFactorMax=2
-		rScaleFactorMin=0.5
-		rScaleTarget=1
-		bScaleTargetPriority=False
-		bSearchReducedImage=False
-		nSearchPolarity=0
-		nSearchWinCenterX=1289
-		nSearchWinCenterY=972
-		nSearchWinHeight=460
-		nSearchWinLeft=1067
-		nSearchWinTop=742
-		nSearchWinType=1
-		nSearchWinWidth=444
-		rSeparationAngle=10
-		rSeparationMinX=10
-		rSeparationMinY=10
-		rSeparationScale=1.1
-		bSharedEdges=False
-		bSkewFitEnable=False
-		rSmoothness=50
-		nSort=0
-		nTimeout=2000
-		rFrameVectorLength1=0
-		rFrameVectorAngle1=0
-		rFrameVectorAngle2=0
-		nSearchWinPolygonPointXRot=1289
-		nSearchWinPolygonPointYRot=722
-		rSearchWinPolygonPointFX1=0
-		rSearchWinPolygonPointFY1=0
-		rSearchWinPolygonPointFX2=0
-		rSearchWinPolygonPointFY2=0
-		rSearchWinPolygonPointFX3=0
-		rSearchWinPolygonPointFY3=0
-		rSearchWinPolygonPointFX4=0
-		rSearchWinPolygonPointFY4=0
-		rSearchWinPolygonPointFX5=0
-		rSearchWinPolygonPointFY5=0
-		rSearchWinPolygonPointFX6=0
-		rSearchWinPolygonPointFY6=0
-		rSearchWinPolygonPointFX7=0
-		rSearchWinPolygonPointFY7=0
-		rSearchWinPolygonPointFX8=0
-		rSearchWinPolygonPointFY8=0
-		rSearchWinPolygonPointFX9=0
-		rSearchWinPolygonPointFY9=0
-		rSearchWinPolygonPointFX10=0
-		rSearchWinPolygonPointFY10=0
-		rSearchWinPolygonPointFX11=0
-		rSearchWinPolygonPointFY11=0
-		rSearchWinPolygonPointFX12=0
-		rSearchWinPolygonPointFY12=0
-		rSearchWinPolygonPointFXRot=0
-		rSearchWinPolygonPointFYRot=0
-	}
-	Step4 {
-		nObjectType=11
-		sObjectTypeName="Geometric"
-		nStepRow=4
-		nStepColumn=1
-		nNextStepNumberTrue=5
-		nNextStepNumberFalse=5
-		nPrevObjectNumberTrue=3
-		nPrevObjectNumberFalse=0
-		bAbortSeqOnFail=False
-		nAccept=700
-		bAngleEnable=True
-		rAngleOffset=0
-		rAngleRange=180
-		rAngleStart=0
-		sCaption=""
-		nCenterPointObject=0
-		nCenterPntObjResult=1
-		nCenterPntOffsetX=0
-		nCenterPntOffsetY=0
-		bCenterPntRotOffset=False
-		nCheckClearanceFor=0
-		nClearanceCondition=1
-		nConfusion=800
-		sDescription=""
-		nDetailLevel=1
-		bEnabled=True
-		sFailColor="Red"
-		nFrame=0
-		nFrameResult=1
-		nGraphics=1
-		sLabelBackColor="Transparent"
-		nModelObject=0
-		bModelOrgAutoCenter=True
-		rModelOrgXD=76
-		rModelOrgYD=43.5
-		nModelOrgX=76
-		nModelOrgY=44
-		nModelWinCenterX=1247
-		nModelWinCenterY=902
-		nModelWinHeight=87
-		nModelWinLeft=1171
-		nModelWinTop=858
-		nModelWinType=1
-		nModelWinWidth=152
-		sName="Geom03"
-		nNumberToFind=1
-		sPassColor="LightGreen"
-		nPassType=1
-		bRejectOnEdge=False
-		bSaveTeachImage=False
-		bScaleEnable=False
-		rScaleFactorMax=2
-		rScaleFactorMin=0.5
-		rScaleTarget=1
-		bScaleTargetPriority=False
-		bSearchReducedImage=False
-		nSearchPolarity=0
-		nSearchWinCenterX=1288
-		nSearchWinCenterY=967
-		nSearchWinHeight=467
-		nSearchWinLeft=1053
-		nSearchWinTop=733
-		nSearchWinType=1
-		nSearchWinWidth=470
-		rSeparationAngle=10
-		rSeparationMinX=10
-		rSeparationMinY=10
-		rSeparationScale=1.1
-		bSharedEdges=False
-		bSkewFitEnable=False
-		rSmoothness=50
-		nSort=0
-		nTimeout=2000
-		rFrameVectorLength1=0
-		rFrameVectorAngle1=0
-		rFrameVectorAngle2=0
-		nSearchWinPolygonPointXRot=1288
-		nSearchWinPolygonPointYRot=713
-		rSearchWinPolygonPointFX1=0
-		rSearchWinPolygonPointFY1=0
-		rSearchWinPolygonPointFX2=0
-		rSearchWinPolygonPointFY2=0
-		rSearchWinPolygonPointFX3=0
-		rSearchWinPolygonPointFY3=0
-		rSearchWinPolygonPointFX4=0
-		rSearchWinPolygonPointFY4=0
-		rSearchWinPolygonPointFX5=0
-		rSearchWinPolygonPointFY5=0
-		rSearchWinPolygonPointFX6=0
-		rSearchWinPolygonPointFY6=0
-		rSearchWinPolygonPointFX7=0
-		rSearchWinPolygonPointFY7=0
-		rSearchWinPolygonPointFX8=0
-		rSearchWinPolygonPointFY8=0
-		rSearchWinPolygonPointFX9=0
-		rSearchWinPolygonPointFY9=0
-		rSearchWinPolygonPointFX10=0
-		rSearchWinPolygonPointFY10=0
-		rSearchWinPolygonPointFX11=0
-		rSearchWinPolygonPointFY11=0
-		rSearchWinPolygonPointFX12=0
-		rSearchWinPolygonPointFY12=0
-		rSearchWinPolygonPointFXRot=0
-		rSearchWinPolygonPointFYRot=0
-	}
-}
-Sequence26 {
-	bAsyncMode=True
 	nCalibration=2
 	nCamera=2
 	nCameraBrightness=0
@@ -9068,7 +8621,7 @@ Sequence26 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence27 {
+Sequence26 {
 	bAsyncMode=True
 	nCalibration=6
 	nCamera=2
@@ -9527,7 +9080,7 @@ Sequence27 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence28 {
+Sequence27 {
 	bAsyncMode=True
 	nCalibration=7
 	nCamera=1
@@ -9990,7 +9543,7 @@ Sequence28 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence29 {
+Sequence28 {
 	bAsyncMode=True
 	nCalibration=7
 	nCamera=1
@@ -10505,7 +10058,7 @@ Sequence29 {
 		rFrameVectorAngle1=0
 	}
 }
-Sequence30 {
+Sequence29 {
 	bAsyncMode=True
 	nCalibration=0
 	nCamera=1
@@ -10752,7 +10305,7 @@ Sequence30 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence31 {
+Sequence30 {
 	bAsyncMode=True
 	nCalibration=1
 	nCamera=1
@@ -10935,7 +10488,7 @@ Sequence31 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence32 {
+Sequence31 {
 	bAsyncMode=True
 	nCalibration=0
 	nCamera=1
@@ -11076,7 +10629,7 @@ Sequence32 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence33 {
+Sequence32 {
 	bAsyncMode=True
 	nCalibration=1
 	nCamera=1
@@ -11259,7 +10812,7 @@ Sequence33 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence34 {
+Sequence33 {
 	bAsyncMode=True
 	nCalibration=0
 	nCamera=2
@@ -11558,7 +11111,7 @@ Sequence34 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence35 {
+Sequence34 {
 	bAsyncMode=True
 	nCalibration=10
 	nCamera=1
@@ -11741,7 +11294,7 @@ Sequence35 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence36 {
+Sequence35 {
 	bAsyncMode=True
 	nCalibration=0
 	nCamera=2
@@ -11918,7 +11471,7 @@ Sequence36 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence37 {
+Sequence36 {
 	bAsyncMode=True
 	nCalibration=6
 	nCamera=2
@@ -12370,7 +11923,7 @@ Sequence37 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence38 {
+Sequence37 {
 	bAsyncMode=True
 	nCalibration=6
 	nCamera=2
@@ -13253,7 +12806,7 @@ Sequence38 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence39 {
+Sequence38 {
 	bAsyncMode=True
 	nCalibration=6
 	nCamera=2
@@ -13643,10 +13196,10 @@ Sequence39 {
 		rModelOrgYD=51
 		nModelOrgX=47
 		nModelOrgY=51
-		nModelWinCenterX=751
+		nModelWinCenterX=774
 		nModelWinCenterY=600
 		nModelWinHeight=102
-		nModelWinLeft=704
+		nModelWinLeft=727
 		nModelWinTop=549
 		nModelWinType=1
 		nModelWinWidth=93
@@ -14136,7 +13689,7 @@ Sequence39 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence40 {
+Sequence39 {
 	bAsyncMode=True
 	nCalibration=12
 	nCamera=2
@@ -15019,7 +14572,7 @@ Sequence40 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence41 {
+Sequence40 {
 	bAsyncMode=True
 	nCalibration=12
 	nCamera=2
@@ -15470,8 +15023,8 @@ Sequence41 {
 		sObjectTypeName="Geometric"
 		nStepRow=5
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=6
+		nNextStepNumberFalse=6
 		nPrevObjectNumberTrue=4
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=False
@@ -15572,7 +15125,7 @@ Sequence41 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence42 {
+Sequence41 {
 	bAsyncMode=True
 	nCalibration=1
 	nCamera=1
@@ -15755,7 +15308,7 @@ Sequence42 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence43 {
+Sequence42 {
 	bAsyncMode=True
 	nCalibration=2
 	nCamera=2
@@ -15936,7 +15489,7 @@ Sequence43 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence44 {
+Sequence43 {
 	bAsyncMode=True
 	nCalibration=7
 	nCamera=1
@@ -16399,7 +15952,7 @@ Sequence44 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
-Sequence45 {
+Sequence44 {
 	bAsyncMode=True
 	nCalibration=7
 	nCamera=1
@@ -16914,7 +16467,7 @@ Sequence45 {
 		rFrameVectorAngle1=0
 	}
 }
-Sequence46 {
+Sequence45 {
 	bAsyncMode=True
 	nCalibration=7
 	nCamera=1
@@ -17377,6 +16930,559 @@ Sequence46 {
 		rSearchWinPolygonPointFYRot=0
 	}
 }
+Sequence46 {
+	bAsyncMode=True
+	nCalibration=12
+	nCamera=2
+	nCameraBrightness=10
+	nCameraContrast=150
+	sDescription=""
+	nExposureDelay=0
+	nExposureTime=30000
+	sGridColor="DarkGray"
+	rGridPitchX=100
+	rGridPitchY=100
+	bGridShow=False
+	nGridType=1
+	nGridUnits=1
+	bHDRMode=False
+	nImageBuffer=0
+	sImageFile="None"
+	rImageFileScale=0
+	nImageSize=8
+	nImageSource=1
+	sName="MSU_DF_ChipDir"
+	nRuntimeAcquire=1
+	bRuntimeFreeze=True
+	bShowProcessing=True
+	bStrobeBlackVideo=True
+	nStrobeDelay=0
+	nStrobeTime=0
+	nTriggerDebounce=0
+	nTriggerMode=1
+	nBacklightFeeder=0
+	nVideoWidth=2560
+	nVideoHeight=1920
+	nStepCount=5
+	Step1 {
+		nObjectType=1
+		sObjectTypeName="Correlation"
+		nStepRow=1
+		nStepColumn=1
+		nNextStepNumberTrue=0
+		nNextStepNumberFalse=0
+		nPrevObjectNumberTrue=0
+		nPrevObjectNumberFalse=0
+		bAbortSeqOnFail=True
+		nAccept=200
+		rAngleAccuracy=1
+		bAngleEnable=False
+		rAngleMaxIncrement=5
+		rAngleOffset=0
+		rAngleRange=10
+		rAngleStart=0
+		sCaption=""
+		nCenterPointObject=0
+		nCenterPntObjResult=1
+		nCenterPntOffsetX=0
+		nCenterPntOffsetY=0
+		bCenterPntRotOffset=False
+		nCheckClearanceFor=0
+		nClearanceCondition=1
+		nConfusion=500
+		sDescription=""
+		bEnabled=False
+		sFailColor="Red"
+		nFrame=0
+		nFrameResult=1
+		nGraphics=1
+		sLabelBackColor="Transparent"
+		nModelObject=0
+		bModelOrgAutoCenter=True
+		rModelOrgXD=189
+		rModelOrgYD=184.5
+		nModelOrgX=189
+		nModelOrgY=185
+		nModelWinCenterX=1293
+		nModelWinCenterY=962
+		nModelWinHeight=369
+		nModelWinLeft=1104
+		nModelWinTop=777
+		nModelWinType=1
+		nModelWinWidth=378
+		sName="Corr01"
+		nNumberToFind=1
+		sPassColor="LightGreen"
+		nPassType=1
+		bRejectOnEdge=False
+		bSaveTeachImage=False
+		nSearchWinCenterX=1300
+		nSearchWinCenterY=938
+		nSearchWinHeight=664
+		nSearchWinLeft=933
+		nSearchWinTop=606
+		nSearchWinType=1
+		nSearchWinWidth=734
+		bSkewFitEnable=False
+		nSort=0
+		nTimeout=5000
+		rFrameVectorLength1=0
+		rFrameVectorAngle1=0
+		rFrameVectorAngle2=0
+		nSearchWinPolygonPointXRot=1300
+		nSearchWinPolygonPointYRot=586
+		rSearchWinPolygonPointFX1=0
+		rSearchWinPolygonPointFY1=0
+		rSearchWinPolygonPointFX2=0
+		rSearchWinPolygonPointFY2=0
+		rSearchWinPolygonPointFX3=0
+		rSearchWinPolygonPointFY3=0
+		rSearchWinPolygonPointFX4=0
+		rSearchWinPolygonPointFY4=0
+		rSearchWinPolygonPointFX5=0
+		rSearchWinPolygonPointFY5=0
+		rSearchWinPolygonPointFX6=0
+		rSearchWinPolygonPointFY6=0
+		rSearchWinPolygonPointFX7=0
+		rSearchWinPolygonPointFY7=0
+		rSearchWinPolygonPointFX8=0
+		rSearchWinPolygonPointFY8=0
+		rSearchWinPolygonPointFX9=0
+		rSearchWinPolygonPointFY9=0
+		rSearchWinPolygonPointFX10=0
+		rSearchWinPolygonPointFY10=0
+		rSearchWinPolygonPointFX11=0
+		rSearchWinPolygonPointFY11=0
+		rSearchWinPolygonPointFX12=0
+		rSearchWinPolygonPointFY12=0
+		rSearchWinPolygonPointFXRot=0
+		rSearchWinPolygonPointFYRot=0
+	}
+	Step2 {
+		nObjectType=11
+		sObjectTypeName="Geometric"
+		nStepRow=2
+		nStepColumn=1
+		nNextStepNumberTrue=0
+		nNextStepNumberFalse=0
+		nPrevObjectNumberTrue=1
+		nPrevObjectNumberFalse=0
+		bAbortSeqOnFail=False
+		nAccept=700
+		bAngleEnable=True
+		rAngleOffset=0
+		rAngleRange=180
+		rAngleStart=0
+		sCaption=""
+		nCenterPointObject=0
+		nCenterPntObjResult=1
+		nCenterPntOffsetX=0
+		nCenterPntOffsetY=0
+		bCenterPntRotOffset=False
+		nCheckClearanceFor=0
+		nClearanceCondition=1
+		nConfusion=800
+		sDescription=""
+		nDetailLevel=1
+		bEnabled=True
+		sFailColor="Red"
+		nFrame=0
+		nFrameResult=1
+		nGraphics=1
+		sLabelBackColor="Transparent"
+		nModelObject=0
+		bModelOrgAutoCenter=True
+		rModelOrgXD=34
+		rModelOrgYD=34
+		nModelOrgX=34
+		nModelOrgY=34
+		nModelWinCenterX=1409
+		nModelWinCenterY=1088
+		nModelWinHeight=68
+		nModelWinLeft=1375
+		nModelWinTop=1054
+		nModelWinType=3
+		nModelWinWidth=68
+		sName="Geom01"
+		nNumberToFind=1
+		sPassColor="LightGreen"
+		nPassType=1
+		bRejectOnEdge=False
+		bSaveTeachImage=False
+		bScaleEnable=False
+		rScaleFactorMax=2
+		rScaleFactorMin=0.5
+		rScaleTarget=1
+		bScaleTargetPriority=False
+		bSearchReducedImage=False
+		nSearchPolarity=0
+		nSearchWinCenterX=1297
+		nSearchWinCenterY=967
+		nSearchWinHeight=486
+		nSearchWinLeft=1063
+		nSearchWinTop=724
+		nSearchWinType=1
+		nSearchWinWidth=467
+		rSeparationAngle=10
+		rSeparationMinX=10
+		rSeparationMinY=10
+		rSeparationScale=1.1
+		bSharedEdges=False
+		bSkewFitEnable=False
+		rSmoothness=50
+		nSort=0
+		nTimeout=2000
+		rFrameVectorLength1=0
+		rFrameVectorAngle1=0
+		rFrameVectorAngle2=0
+		nSearchWinPolygonPointXRot=1297
+		nSearchWinPolygonPointYRot=704
+		rSearchWinPolygonPointFX1=0
+		rSearchWinPolygonPointFY1=0
+		rSearchWinPolygonPointFX2=0
+		rSearchWinPolygonPointFY2=0
+		rSearchWinPolygonPointFX3=0
+		rSearchWinPolygonPointFY3=0
+		rSearchWinPolygonPointFX4=0
+		rSearchWinPolygonPointFY4=0
+		rSearchWinPolygonPointFX5=0
+		rSearchWinPolygonPointFY5=0
+		rSearchWinPolygonPointFX6=0
+		rSearchWinPolygonPointFY6=0
+		rSearchWinPolygonPointFX7=0
+		rSearchWinPolygonPointFY7=0
+		rSearchWinPolygonPointFX8=0
+		rSearchWinPolygonPointFY8=0
+		rSearchWinPolygonPointFX9=0
+		rSearchWinPolygonPointFY9=0
+		rSearchWinPolygonPointFX10=0
+		rSearchWinPolygonPointFY10=0
+		rSearchWinPolygonPointFX11=0
+		rSearchWinPolygonPointFY11=0
+		rSearchWinPolygonPointFX12=0
+		rSearchWinPolygonPointFY12=0
+		rSearchWinPolygonPointFXRot=0
+		rSearchWinPolygonPointFYRot=0
+	}
+	Step3 {
+		nObjectType=11
+		sObjectTypeName="Geometric"
+		nStepRow=3
+		nStepColumn=1
+		nNextStepNumberTrue=0
+		nNextStepNumberFalse=0
+		nPrevObjectNumberTrue=2
+		nPrevObjectNumberFalse=0
+		bAbortSeqOnFail=False
+		nAccept=700
+		bAngleEnable=True
+		rAngleOffset=0
+		rAngleRange=180
+		rAngleStart=0
+		sCaption=""
+		nCenterPointObject=0
+		nCenterPntObjResult=1
+		nCenterPntOffsetX=0
+		nCenterPntOffsetY=0
+		bCenterPntRotOffset=False
+		nCheckClearanceFor=0
+		nClearanceCondition=1
+		nConfusion=800
+		sDescription=""
+		nDetailLevel=1
+		bEnabled=True
+		sFailColor="Red"
+		nFrame=0
+		nFrameResult=1
+		nGraphics=1
+		sLabelBackColor="Transparent"
+		nModelObject=0
+		bModelOrgAutoCenter=True
+		rModelOrgXD=23
+		rModelOrgYD=23
+		nModelOrgX=23
+		nModelOrgY=23
+		nModelWinCenterX=1160
+		nModelWinCenterY=845
+		nModelWinHeight=46
+		nModelWinLeft=1137
+		nModelWinTop=822
+		nModelWinType=3
+		nModelWinWidth=46
+		sName="Geom02"
+		nNumberToFind=1
+		sPassColor="LightGreen"
+		nPassType=1
+		bRejectOnEdge=False
+		bSaveTeachImage=False
+		bScaleEnable=False
+		rScaleFactorMax=2
+		rScaleFactorMin=0.5
+		rScaleTarget=1
+		bScaleTargetPriority=False
+		bSearchReducedImage=False
+		nSearchPolarity=0
+		nSearchWinCenterX=1289
+		nSearchWinCenterY=972
+		nSearchWinHeight=460
+		nSearchWinLeft=1067
+		nSearchWinTop=742
+		nSearchWinType=1
+		nSearchWinWidth=444
+		rSeparationAngle=10
+		rSeparationMinX=10
+		rSeparationMinY=10
+		rSeparationScale=1.1
+		bSharedEdges=False
+		bSkewFitEnable=False
+		rSmoothness=50
+		nSort=0
+		nTimeout=2000
+		rFrameVectorLength1=0
+		rFrameVectorAngle1=0
+		rFrameVectorAngle2=0
+		nSearchWinPolygonPointXRot=1289
+		nSearchWinPolygonPointYRot=722
+		rSearchWinPolygonPointFX1=0
+		rSearchWinPolygonPointFY1=0
+		rSearchWinPolygonPointFX2=0
+		rSearchWinPolygonPointFY2=0
+		rSearchWinPolygonPointFX3=0
+		rSearchWinPolygonPointFY3=0
+		rSearchWinPolygonPointFX4=0
+		rSearchWinPolygonPointFY4=0
+		rSearchWinPolygonPointFX5=0
+		rSearchWinPolygonPointFY5=0
+		rSearchWinPolygonPointFX6=0
+		rSearchWinPolygonPointFY6=0
+		rSearchWinPolygonPointFX7=0
+		rSearchWinPolygonPointFY7=0
+		rSearchWinPolygonPointFX8=0
+		rSearchWinPolygonPointFY8=0
+		rSearchWinPolygonPointFX9=0
+		rSearchWinPolygonPointFY9=0
+		rSearchWinPolygonPointFX10=0
+		rSearchWinPolygonPointFY10=0
+		rSearchWinPolygonPointFX11=0
+		rSearchWinPolygonPointFY11=0
+		rSearchWinPolygonPointFX12=0
+		rSearchWinPolygonPointFY12=0
+		rSearchWinPolygonPointFXRot=0
+		rSearchWinPolygonPointFYRot=0
+	}
+	Step4 {
+		nObjectType=11
+		sObjectTypeName="Geometric"
+		nStepRow=4
+		nStepColumn=1
+		nNextStepNumberTrue=0
+		nNextStepNumberFalse=0
+		nPrevObjectNumberTrue=3
+		nPrevObjectNumberFalse=0
+		bAbortSeqOnFail=False
+		nAccept=900
+		bAngleEnable=True
+		rAngleOffset=0
+		rAngleRange=180
+		rAngleStart=0
+		sCaption=""
+		nCenterPointObject=0
+		nCenterPntObjResult=1
+		nCenterPntOffsetX=0
+		nCenterPntOffsetY=0
+		bCenterPntRotOffset=False
+		nCheckClearanceFor=0
+		nClearanceCondition=1
+		nConfusion=800
+		sDescription=""
+		nDetailLevel=1
+		bEnabled=True
+		sFailColor="Red"
+		nFrame=0
+		nFrameResult=1
+		nGraphics=1
+		sLabelBackColor="Transparent"
+		nModelObject=0
+		bModelOrgAutoCenter=True
+		rModelOrgXD=39.5
+		rModelOrgYD=70.5
+		nModelOrgX=40
+		nModelOrgY=71
+		nModelWinCenterX=1353
+		nModelWinCenterY=926
+		nModelWinHeight=141
+		nModelWinLeft=1313
+		nModelWinTop=855
+		nModelWinType=1
+		nModelWinWidth=79
+		sName="Geom03"
+		nNumberToFind=1
+		sPassColor="LightGreen"
+		nPassType=1
+		bRejectOnEdge=False
+		bSaveTeachImage=False
+		bScaleEnable=False
+		rScaleFactorMax=2
+		rScaleFactorMin=0.5
+		rScaleTarget=1
+		bScaleTargetPriority=False
+		bSearchReducedImage=False
+		nSearchPolarity=0
+		nSearchWinCenterX=1286
+		nSearchWinCenterY=964
+		nSearchWinHeight=468
+		nSearchWinLeft=1040
+		nSearchWinTop=730
+		nSearchWinType=1
+		nSearchWinWidth=491
+		rSeparationAngle=10
+		rSeparationMinX=10
+		rSeparationMinY=10
+		rSeparationScale=1.1
+		bSharedEdges=False
+		bSkewFitEnable=False
+		rSmoothness=50
+		nSort=0
+		nTimeout=2000
+		rFrameVectorLength1=0
+		rFrameVectorAngle1=0
+		rFrameVectorAngle2=0
+		nSearchWinPolygonPointXRot=1286
+		nSearchWinPolygonPointYRot=710
+		rSearchWinPolygonPointFX1=0
+		rSearchWinPolygonPointFY1=0
+		rSearchWinPolygonPointFX2=0
+		rSearchWinPolygonPointFY2=0
+		rSearchWinPolygonPointFX3=0
+		rSearchWinPolygonPointFY3=0
+		rSearchWinPolygonPointFX4=0
+		rSearchWinPolygonPointFY4=0
+		rSearchWinPolygonPointFX5=0
+		rSearchWinPolygonPointFY5=0
+		rSearchWinPolygonPointFX6=0
+		rSearchWinPolygonPointFY6=0
+		rSearchWinPolygonPointFX7=0
+		rSearchWinPolygonPointFY7=0
+		rSearchWinPolygonPointFX8=0
+		rSearchWinPolygonPointFY8=0
+		rSearchWinPolygonPointFX9=0
+		rSearchWinPolygonPointFY9=0
+		rSearchWinPolygonPointFX10=0
+		rSearchWinPolygonPointFY10=0
+		rSearchWinPolygonPointFX11=0
+		rSearchWinPolygonPointFY11=0
+		rSearchWinPolygonPointFX12=0
+		rSearchWinPolygonPointFY12=0
+		rSearchWinPolygonPointFXRot=0
+		rSearchWinPolygonPointFYRot=0
+	}
+	Step5 {
+		nObjectType=11
+		sObjectTypeName="Geometric"
+		nStepRow=5
+		nStepColumn=1
+		nNextStepNumberTrue=0
+		nNextStepNumberFalse=0
+		nPrevObjectNumberTrue=4
+		nPrevObjectNumberFalse=0
+		bAbortSeqOnFail=False
+		nAccept=500
+		bAngleEnable=True
+		rAngleOffset=0
+		rAngleRange=180
+		rAngleStart=0
+		sCaption=""
+		nCenterPointObject=0
+		nCenterPntObjResult=1
+		nCenterPntOffsetX=0
+		nCenterPntOffsetY=0
+		bCenterPntRotOffset=False
+		nCheckClearanceFor=0
+		nClearanceCondition=1
+		nConfusion=800
+		sDescription=""
+		nDetailLevel=1
+		bEnabled=True
+		sFailColor="Red"
+		nFrame=0
+		nFrameResult=1
+		nGraphics=1
+		sLabelBackColor="Transparent"
+		nModelObject=0
+		bModelOrgAutoCenter=True
+		rModelOrgXD=187
+		rModelOrgYD=187
+		nModelOrgX=187
+		nModelOrgY=187
+		nModelWinCenterX=1283
+		nModelWinCenterY=967
+		nModelWinHeight=374
+		nModelWinLeft=1096
+		nModelWinTop=780
+		nModelWinType=1
+		nModelWinWidth=374
+		sName="Geom04"
+		nNumberToFind=1
+		sPassColor="LightGreen"
+		nPassType=1
+		bRejectOnEdge=False
+		bSaveTeachImage=False
+		bScaleEnable=False
+		rScaleFactorMax=2
+		rScaleFactorMin=0.5
+		rScaleTarget=1
+		bScaleTargetPriority=False
+		bSearchReducedImage=False
+		nSearchPolarity=0
+		nSearchWinCenterX=1295
+		nSearchWinCenterY=967
+		nSearchWinHeight=462
+		nSearchWinLeft=1072
+		nSearchWinTop=736
+		nSearchWinType=1
+		nSearchWinWidth=446
+		rSeparationAngle=10
+		rSeparationMinX=10
+		rSeparationMinY=10
+		rSeparationScale=1.1
+		bSharedEdges=False
+		bSkewFitEnable=False
+		rSmoothness=50
+		nSort=0
+		nTimeout=2000
+		rFrameVectorLength1=0
+		rFrameVectorAngle1=0
+		rFrameVectorAngle2=0
+		nSearchWinPolygonPointXRot=1295
+		nSearchWinPolygonPointYRot=716
+		rSearchWinPolygonPointFX1=0
+		rSearchWinPolygonPointFY1=0
+		rSearchWinPolygonPointFX2=0
+		rSearchWinPolygonPointFY2=0
+		rSearchWinPolygonPointFX3=0
+		rSearchWinPolygonPointFY3=0
+		rSearchWinPolygonPointFX4=0
+		rSearchWinPolygonPointFY4=0
+		rSearchWinPolygonPointFX5=0
+		rSearchWinPolygonPointFY5=0
+		rSearchWinPolygonPointFX6=0
+		rSearchWinPolygonPointFY6=0
+		rSearchWinPolygonPointFX7=0
+		rSearchWinPolygonPointFY7=0
+		rSearchWinPolygonPointFX8=0
+		rSearchWinPolygonPointFY8=0
+		rSearchWinPolygonPointFX9=0
+		rSearchWinPolygonPointFY9=0
+		rSearchWinPolygonPointFX10=0
+		rSearchWinPolygonPointFY10=0
+		rSearchWinPolygonPointFX11=0
+		rSearchWinPolygonPointFY11=0
+		rSearchWinPolygonPointFX12=0
+		rSearchWinPolygonPointFY12=0
+		rSearchWinPolygonPointFXRot=0
+		rSearchWinPolygonPointFYRot=0
+	}
+}
 nCalibCount=12
 Calib1 {
 	sApproachPoint=""
@@ -17631,7 +17737,7 @@ Calib6 {
 	rRobotUOffset=0
 	nRobotSpeed=10
 	bShowConfirmation=True
-	nTargetSequence=26
+	nTargetSequence=25
 	bTwoRefPoints=False
 	nUpwardLamp=-1
 	nUpwardSequence=0
@@ -17677,7 +17783,7 @@ Calib7 {
 	nRobotSpeed=10
 	nRobotTool=0
 	bShowConfirmation=True
-	nTargetSequence=31
+	nTargetSequence=30
 	bTwoRefPoints=False
 	nUpwardLamp=-1
 	nUpwardSequence=0
@@ -17723,7 +17829,7 @@ Calib8 {
 	nRobotSpeed=10
 	nRobotTool=0
 	bShowConfirmation=True
-	nTargetSequence=32
+	nTargetSequence=31
 	bTwoRefPoints=False
 	nUpwardLamp=-1
 	nUpwardSequence=0
@@ -17815,7 +17921,7 @@ Calib10 {
 	nRobotSpeed=1
 	nRobotTool=0
 	bShowConfirmation=True
-	nTargetSequence=28
+	nTargetSequence=27
 	bTwoRefPoints=False
 	nUpwardLamp=-1
 	nUpwardSequence=0
@@ -17861,7 +17967,7 @@ Calib11 {
 	nRobotSpeed=10
 	nRobotTool=0
 	bShowConfirmation=True
-	nTargetSequence=42
+	nTargetSequence=41
 	bTwoRefPoints=False
 	nUpwardLamp=-1
 	nUpwardSequence=0
@@ -17905,7 +18011,7 @@ Calib12 {
 	rRobotUOffset=0
 	nRobotSpeed=10
 	bShowConfirmation=True
-	nTargetSequence=43
+	nTargetSequence=42
 	bTwoRefPoints=False
 	nUpwardLamp=-1
 	nUpwardSequence=0

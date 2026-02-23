@@ -528,7 +528,7 @@ Function MoveChipFromSocketToSocket(SrcDAT As Integer, SrcSocket As Integer, Tgt
 	' Check valid operation
 	If Not CheckValidSocketIndex(SrcDAT, SrcSocket) Then
 		RTS_error("Invalid source socket (" + Str$(SrcDAT) + "," + Str$(SrcSocket) + ")", ERR_BAD_COMMAND)
-	    MoveChipFromSocketToSocket = ERR_BAD_COMMAND
+	    MoveChipFromSocketToSocket = -ERR_BAD_COMMAND
 	    ResetOperation
 		Exit Function
 	EndIf
@@ -536,7 +536,7 @@ Function MoveChipFromSocketToSocket(SrcDAT As Integer, SrcSocket As Integer, Tgt
 	
 	If Not CheckValidSocketIndex(TgtDAT, TgtSocket) Then
 		RTS_error("Invalid targer socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")", ERR_BAD_COMMAND)
-	    MoveChipFromSocketToSocket = ERR_BAD_COMMAND
+	    MoveChipFromSocketToSocket = -ERR_BAD_COMMAND
 	    ResetOperation
 		Exit Function
 	EndIf
@@ -569,7 +569,7 @@ Function MoveChipFromSocketToSocket(SrcDAT As Integer, SrcSocket As Integer, Tgt
 		Else
 			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
 		EndIf
-		MoveChipFromSocketToSocket = ErrorCode
+		MoveChipFromSocketToSocket = -ErrorCode
 		ResetOperation
 		Exit Function
 	EndIf

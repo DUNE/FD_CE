@@ -290,7 +290,7 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 	
 	' 2025-09-19 JW: Updated to just take Side 1 for direction due to the fact not all markers are isosceles right angle 	
 	' Still use diagonal average for center position
-	Double AvX, AvY
+	Double AvX, AvY, AvU, DiffU
 	Double DelX1, DelY1, Hyp1, SPolar1, DelX2, DelY2, Hyp2, SPolar2
 	If (Not isFoundTL) And (isFoundTR And isFoundBR And isFoundBL) Then
 		' Missing key is Top Left in image (UP ORIENTED)
@@ -325,6 +325,9 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 		DelY1 = yBL - yTL
 		DelX2 = xTL - xTR
 		DelY2 = yTL - yTR
+		Print "TL = (", xTL, ",", yTL, ")"
+		Print "TR = (", xTR, ",", yTR, ")"
+		Print "BR = (", xBR, ",", yBR, ")"
 	ElseIf (Not isFoundBL) And (isFoundTR And isFoundBR And isFoundTL) Then
 		' Missing key is Bottom left in image (LEFT ORIENTED)
 		' Av TL and BR
@@ -361,19 +364,21 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 	
 	SPolar1 = GetBoundAnglePM180(SPolar1)
 	SPolar2 = GetBoundAnglePM180(SPolar2)
-'	Print "SPolar1 = ", SPolar1
-'	Print "SPolar2 = ", SPolar2
-'	Print " Diff   = ", DiffAnglePM180(SPolar1, SPolar2)
-'	Print " Av     = ", Str$(AverageAnglePM180(SPolar1, SPolar2))
-	' SPolar = RadToDeg(Acos(DelX / Hyp))
-	' SPolar = RadToDeg(Asin(DelY / Hyp))
+	Print "SPolar1 = ", SPolar1
+	Print "SPolar2 = ", SPolar2
+	DiffU = DiffAnglePM180(SPolar1, SPolar2)
+	AvU = AverageAnglePM180(SPolar1, SPolar2)
+	Print " Diff   = ", DiffU ' DiffAnglePM180(SPolar1, SPolar2)
+	Print " Av     = ", AvU 'AverageAnglePM180(SPolar1, SPolar2)
+'	SPolar = RadToDeg(Acos(DelX / Hyp))
+'	SPolar = RadToDeg(Asin(DelY / Hyp))
 	
 	' Since sockets should be roughly at 90 degree increments to world axis, arctan should be fine
 	' SPolar = RadToDeg(Atan(DelY / DelX))
 	'Print "Polar angle from bottom left mark to top left mark is ", SPolar
 	CornerVar(1) = AvX
 	CornerVar(2) = AvY
-	CornerVar(3) = AverageAnglePM180(SPolar1, SPolar2) ' SPolar1 '+ 45. ' 45 was frpm older methos using hypotonuse and right-isosceles triangle
+	CornerVar(3) = AvU 'AverageAnglePM180(SPolar1, SPolar2) ' SPolar1 '+ 45. ' 45 was frpm older methos using hypotonuse and right-isosceles triangle
 	
 
 	
@@ -429,7 +434,7 @@ Function DF_ChipDirection_LArASIC As Double
 		Print "DF_ChipDirection_LArASIC: Did not find text"
 		Exit Function
 	EndIf
-	DF_ChipDirection_LArASIC = GetBoundAnglePM180(uT + ChipVisionOffset)
+	DF_ChipDirection_LArASIC = GetBoundAnglePM180(uT + ChipTextOrientation)
 	Print "DF_ChipDirection_LArASIC: Direction of text =", DF_ChipDirection_LArASIC
 	
 	
@@ -1306,10 +1311,10 @@ Function DFFindLArASICSocket As Boolean
 	Send
 	
 	
-'	Print "isFound TR:", isFoundTR
-'	Print "isFound BR:", isFoundBR
-'	Print "isFound BL:", isFoundBL
-'	Print "isFound TL:", isFoundTL
+	Print "isFound TR:", isFoundTR
+	Print "isFound BR:", isFoundBR
+	Print "isFound BL:", isFoundBL
+	Print "isFound TL:", isFoundTL
 '	
 	' if text upright, missing fiducial marker is top right
 	' if CHIP text is upright, missing fiducial is bottom right!
@@ -1326,11 +1331,16 @@ Function DFFindLArASICSocket As Boolean
 		DFFindLArASICSocket = False
 		Exit Function
 	EndIf
+	Print "ThreeCornerFindDirection returns (", CornerVar(1), ",", CornerVar(2), ",", CornerVar(3), ")"
 	
 	If MSUTESTBOARD Then
 		SockPos(1) = CornerVar(1)
 		SockPos(2) = CornerVar(2)
 		SockPos(3) = GetBoundAnglePM180(CornerVar(3))
+		
+'		SockPos(1) = SockPos(1) - SocketVisionOffset(1)
+'		SockPos(2) = SockPos(2) - SocketVisionOffset(2)
+'		SockPos(3) = DiffAnglePM180(SocketVisionOffset(3), SockPos(3))
 		DFFindLArASICSocket = True
 		Exit Function
 	EndIf
@@ -1353,6 +1363,10 @@ Function DFFindLArASICSocket As Boolean
 	SockPos(2) = (CornerVar(2) + MYAv) / 2
 	SockPos(3) = GetBoundAnglePM180(CornerVar(3) + 180.)
 	
+'	SockPos(1) = SockPos(1) - SocketVisionOffset(1)
+'	SockPos(2) = SockPos(2) - SocketVisionOffset(2)
+'	SockPos(3) = DiffAnglePM180(SocketVisionOffset(3), SockPos(3))
+
 '	Print "Position found with fiducial points"
 '	Print "(", CornerVar(1), ",", CornerVar(2), ",", CornerVar(3), ")"
 '	Print "Position found with mounting points"
@@ -1480,7 +1494,11 @@ Function DFFindCOLDATASocket As Boolean
 	
 	SockPos(1) = CornerVar(1)
 	SockPos(2) = CornerVar(2)
-	SockPos(3) = CornerVar(3)
+	SockPos(3) = GetBoundAnglePM180(CornerVar(3) + 180)
+	
+'	SockPos(1) = SockPos(1) - SocketVisionOffset(1)
+'	SockPos(2) = SockPos(2) - SocketVisionOffset(2)
+'	SockPos(3) = DiffAnglePM180(SocketVisionOffset(3), SockPos(3))
 
 	DFFindCOLDATASocket = True
 	
@@ -1503,9 +1521,9 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	' Check corrections are small	
 
 	' Correct for socket position	
-	If Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(5)) > 3. Then
+	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
 		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-		GetChipInSocketAlignment = ERR_BAD_TOLERANCE
+		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
 	Print "Correcting for socket (", DAT_nr, ",", socket_nr, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
@@ -1524,9 +1542,9 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 '	' Check corrections are small	
 '
 '	' Correct for socket position	
-'	If Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(5)) > 3. Then
+'	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
 '		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-'		GetChipInSocketAlignment = ERR_BAD_TOLERANCE
+'		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
 '		Exit Function
 '	EndIf
 '	' Don't correct this time, just want to have more centered measurement 
@@ -1696,15 +1714,24 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	
 	Print "Expected socket position (", CX(P(FullSocket_nr)), ",", CY(P(FullSocket_nr)), ",", GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR)), ")"
 	Print "Measured socket position (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
+	Print "Subtracting vision offsets of (", SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3), ")"
+	SockPos(1) = SockPos(1) - SocketVisionOffset(1)
+	SockPos(2) = SockPos(2) - SocketVisionOffset(2)
+	'SockPos(3) = SockPos(3) - SocketVisionOffset(3)
+	SockPos(3) = DiffAnglePM180(SocketVisionOffset(3), SockPos(3))
+	'SockPos(3) = GetBoundAnglePM180(SockPos(3) + SocketVisionOffset(3))
+	Print "Corrected measured socket position (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
+
+	
 	
 	SocketOffset(1) = SockPos(1) - CX(P(FullSocket_nr))
 	SocketOffset(2) = SockPos(2) - CY(P(FullSocket_nr))
-	SocketOffset(3) = DiffAnglePM180((SockPos(3)), (CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))) ' Should this be a socket vision offset? Depends  how vision is taught
+	SocketOffset(3) = DiffAnglePM180((CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR)), (SockPos(3))) ' Should this be a socket vision offset? Depends  how vision is taught
 	
 		' Add some check that offsets are small
-	If Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(3)) > 1. Or Abs(SocketOffset(5)) > 3. Then
+	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
 		' ERROR SOCKET CORRECTIONS ARE TOO LARGE
-		
+		Print "ERROR Socket offsets too large"
 		Exit Function
 	EndIf
 	
@@ -1996,28 +2023,6 @@ Function FindChipAxisOffsetWithUF As Boolean
 	' This should be same as U_0
 	Go Here -U(Rotation1 + Rotation2)
 	
-'	Print "Chip position measured with UF camera. Starting from", UFChipRes(1)
-'	Print "Rotate by ", Rotation1
-'	Print "1st measurement at U=", UFChipRes(2)
-'	Print "  x1: ", UFChipRes(4)
-'	Print "  y1: ", UFChipRes(5)
-'	Print "  u1: ", UFChipRes(6)
-'	Print "Rotate by ", Rotation2
-'	Print "2nd measurement at U=", UFChipRes(3)
-'	Print "  x2: ", UFChipRes(7)
-'	Print "  y2: ", UFChipRes(8)
-'	Print "  u2: ", UFChipRes(9)
-'	Print "Return U value by rotating by ", -(Rotation1 + Rotation2)
-	
-	' Correct for +90 degrees for first measurement by rotating -90
-	
-'	Print "UF chip center measurements"
-'	Print "Rotation1 = ", Rotation1, ", Rotation2 = ", Rotation2
-'	Print "HAND U1 =", UFChipRes(2), ", HAND U2=", UFChipRes(3)
-'	Print "x1 = ", UFChipRes(4), "   x2 = ", UFChipRes(7)
-'	Print "y1 = ", UFChipRes(5), "   y2 = ", UFChipRes(8)
-'	Print "u1 = ", UFChipRes(6), "   u2 = ", UFChipRes(9)
-	
 	If (Abs(ChipX1 - CX(P_camera)) > 10) Or (Abs(ChipX2 - CX(P_camera)) > 10) Then
 		Print "ERROR: Position measured is more than 10 mm from P_camera in X"
 		Exit Function
@@ -2070,36 +2075,6 @@ Function FindChipAxisOffsetWithUF As Boolean
 	Print "Offset in u2   	: ", UF_DEL_U2
 	Print "Offset in u   	: ", CurrentChipOffset(3)
 
-' Correction requires rotation based on U offset - This is when target U and chip rotation were provided
-' This should now be done outside of this function
-' Store DelX_1, DelY_1 and DelU_1
-' Then for correction
-' Phi = DelU_1 - DelU_2
-' Del_X2_Phi = DelX_2 * Cos(Phi) - DelY_2 * Sin(Phi)
-' Del_Y2_Phi = DelX_2 * Sin(Phi) + DelY_2 * Cos(Phi)
-' Correction at U=HAND_U0
-' CorrX_0 = Del_X1 - Del_X2_Phi
-' CorrY_0 = Del_Y1 - Del_Y2_Phi
-' These corrections should already take into account that you will rotate by phi but at HAND_U0, so
-' So to get to correction at socket 
-' CorrX_US = CorrX_0 * Cos(US - HAND_U0) - CorrY_0 * Sin(US - HAND_U0)
-' CorrX_US = CorrX_0 * Cos(US - HAND_U0) - CorrY_0 * Sin(US - HAND_U0)
-' CorrU = Phi
-' So go to socket
-' Correct for socket alignment wrt defined point
-' Use measured socket U to calculate corrections
-' Go Here +U(CorrU) +X(CorrX_US) +Y(CorrY_US)
-'	
-'	' Do the pin analysis 
-'	UFRecenterSimple ' (ByRef UFChipRes())
-'	' Commented out for testing (my test chip has a bent pin!)
-''	UFChipRes(13) = UFPinAnalysis(id$, ByRef idx(), ByRef Images$())
-'	
-'	If UFChipRes(13) <> 0 Then
-'		Print "Pin analysis failed"
-'		FindChipAxisOffsetWithUF = False
-'		Exit Function
-'	EndIf
 	FindChipAxisOffsetWithUF = True
     SetSpeedSetting("MoveWithChip")
 	
@@ -2124,8 +2099,8 @@ Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C
 	
 	Double CorrX, CorrY
 	
-	ChipToChipCorrection(3) = C2U - C1U ' Corr(3) = DiffAnglePM180(C1U, C2U) ' Not sure this is working
-	Print "Moving C1 to C2' by rotating by ", ChipToChipCorrection(3)
+	ChipToChipCorrection(3) = DiffAnglePM180(C1U, C2U) 'C2U - C1U ' Corr(3) = DiffAnglePM180(C1U, C2U) ' Not sure this is working
+	Print "Moving C1 to C2' by rotating offsets by ", ChipToChipCorrection(3)
 
 	
 	' Rotate C1 corrections by phi around axis of rotation
@@ -2155,6 +2130,11 @@ Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C
 	Print "Offset U1 :", C1U
 	Print "Offset U2 :", C2U
 	Print "Correction:", ChipToChipCorrection(3)
+	'Print "Only actually apply small offsets, orientation handling is done outsite this function"
+	' May not want this, but rather corrected chip axis offset keeps fixed angle offset only rotates X Y off. See
+	' CorrectChipAxisOffset...
+	'ChipToChipCorrection(3) = GetBoundAnglePM45(ChipToChipCorrection(3))
+	Print "Bound pm45deg Correction:", ChipToChipCorrection(3)
 	
 	'GetChipToChipCorrections = -1
 Fend
@@ -2167,12 +2147,17 @@ Fend
 Function CorrectChipAxisOffsetForPickupOrientation(Actual As Double, Expected As Double)
 	
         Double OrientationOffset
-        OrientationOffset = GetBoundAnglePM180(Actual - Expected) ' Expected - Measured? but bound by 180 degrees                                                                                                                                                                                                                     
+        OrientationOffset = DiffAnglePM180(Expected, Actual) 'GetBoundAnglePM180(Actual - Expected) ' Expected - Measured? but bound by 180 degrees                                                                                                                                                                                                                     
 	
 		' Don't want to correct "current" offset here, and it would interfere with Y correction if X gets directly corrected in first line below
         CorrectedChipOffset(1) = CurrentChipOffset(1) * Cos(DegToRad(OrientationOffset)) - CurrentChipOffset(2) * Sin(DegToRad(OrientationOffset))
         CorrectedChipOffset(2) = CurrentChipOffset(1) * Sin(DegToRad(OrientationOffset)) + CurrentChipOffset(2) * Cos(DegToRad(OrientationOffset))
-        CorrectedChipOffset(3) = GetBoundAnglePM45(CurrentChipOffset(3))
+       	
+       	'CorrectedChipOffset(3) = DiffAnglePM180(OrientationOffset, CurrentChipOffset(3)) ' Current - OrientationOffset 'GetBoundAnglePM45(CurrentChipOffset(3))
+
+        ' Actually want to keep U offset the same as current, as you have already picked up at correct hand chip orientation
+        CorrectedChipOffset(3) = CurrentChipOffset(3)
+        
 Fend
 
 ''''' FNAL FUNCTIONS ''''''

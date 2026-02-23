@@ -39,17 +39,60 @@ Function Testing
 '	''' Make changes here	
 '	
 '	DF_ChipDirection_LArASIC
-
-	GetChipFromTray(1, 5, 1)
+'
+'	On 12
+'	'If Not GetChipFromTray(1, 4, 1) Then
+'	If Not GetChipFromSocket(1, 7) Then
+'		Print "Get function failed to terminate"
+'		Exit Function
+'	EndIf
+'	
+'	Wait 5
+'	SetSpeedSetting("MoveWithChip")
+'	
+'	If Not PlaceChipInTray(1, 4, 1) Then
+'		Print "Place function failed to terminate"
+'		Exit Function
+'	EndIf
+'	
+'	PumpOff
+'	Motor Off
+	
+	On 12
+	'If Not GetChipFromTray(1, 4, 1) Then
+	If Not GetChipFromTray(1, 4, 1) Then
+		Print "Get function failed to terminate"
+		Exit Function
+	EndIf
+	
 	Wait 5
 	SetSpeedSetting("MoveWithChip")
-	PlaceChipInTray(1, 5, 1)
+	
+	If Not PlaceChipInSocket(1, 7) Then
+		Print "Place function failed to terminate"
+		Exit Function
+	EndIf
 	
 	PumpOff
 	Motor Off
 	
 	
-
+	
+	
+'	If Not GetChipFromSocket(1, 8) Then
+'			Print "ERROR: CHIP RETRIEVAL AT SOCKET FAILED"
+'		Exit Function
+'	EndIf
+'	Wait 10
+'	
+'	If Not PlaceChipInSocket(1, 8) Then
+'		Print "ERROR: CHIP PLACEMENT AT SOCKET FAILED"
+'		Exit Function
+'	EndIf
+'	
+'	PumpOff
+'	Motor Off
+	
 '	Integer Attempts
 '	Boolean Success
 '	Attempts = 10

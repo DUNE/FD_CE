@@ -24,7 +24,6 @@ Global Int32 nSoc ' Set by chip type for testing
 
 Global Double PickOffset
 
-
 Global String REPO_DIR$
 Global String PROJ_DIR$
 Global String RTS_DATA$
@@ -69,16 +68,16 @@ Global Double CSAlign(5)
 
 Global Double ChipToChipCorrection(3)
 
-' To be set in set site values, the offset between vision sequence U and world coordinates
-Global Double ChipVisionOffset
-Global Double SocketVisionOffset
-
-' In increments of 90 degrees from X axis, U0 offsets and socket find should
-' account for sub-90 degree variations between sockets and different RTS robots
+'' To be set in set site values, the offset between vision sequence U and world coordinates
+Global Double ChipTextOrientation
+'' Need to correct for overshoot in position vision, check with alignment
+Global Double ChipVisionOffset(3)
+Global Double SocketVisionOffset(3)
+'
+'' In increments of 90 degrees from X axis, U0 offsets and socket find should
+'' account for sub-90 degree variations between sockets and different RTS robots
 Global Double TrayOrientation ' Default direction for chips in tray - in world coordinates
-' Global Double TrayChipOrientation(2) ' Accounts for hand position at each tray separately
-' Global Double SocketMezzanineOrientation(3) ' Relative to work coordinates (1,x) and (2,x) should be 180 deg apart
-' Global Double SocketChipOrientation(3) ' Default direction for chips in sockets - relative to socket Mezzanine direction
+
 Global Double HandChipOrientation(3) ' Diretcion of chip relative to Hand U at socket
 
 ' Define the distance between the fiducial markers on LArASIC
@@ -90,7 +89,6 @@ Global Double HandChipOrientation(3) ' Diretcion of chip relative to Hand U at s
 
 ' Using a non DAT board layout for socket testing
 Global Boolean MSUTESTBOARD
-
 
 ' These will be for options for additional steps in move commands
 ' Should be declared in Main function (as false by default) then toggled on
