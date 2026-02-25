@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
+# Name of all tests saved to hwdb files
 tests = [
     "Test Date",
     "Test Time",
@@ -127,30 +128,72 @@ def GetOneTestResults(file_name, test_name):
 
 def PlotCDVDDIO(files):
     """
-    Grabs CD VDDIO (CUR_7) results from all given files
+    Grabs CD VDDIO results from all given files
     and saves to a histogram.
     Inputs: 
         files [list]: List of string of file names
     """
+    colors = ['blue', 'orange', 'green', 'red', 'purple', 'pink', 'olive', 'cyan']
 
     # Grab cd_vddio values from all given hwdb files
-    cd_vddio_data = []
+    cd_vddio_data = [[],[],[],[],[],[],[], []]
     for file in files:
         if "hwdb" in file:
-            cd_vddio_data.append(GetOneTestResults(file, "CD VDDIO (CUR_7)"))
+            for i in range(8):
+                cd_vddio_data[i].append(GetOneTestResults(file, f"CD VDDIO (CUR_{i})"))
 
     # Filter out tests that do not output a value (failed earilier)
-    cd_vddio_data_filtered = []
+    cd_vddio_data_filtered = [[],[],[],[],[],[],[], []]
     for i in range(len(cd_vddio_data)):
-        if cd_vddio_data[i]:
-            cd_vddio_data_filtered.append(float(cd_vddio_data[i]))
+        for j in range(len(cd_vddio_data[0])):
+            if cd_vddio_data[i][j]:
+                cd_vddio_data_filtered[i].append(float(cd_vddio_data[i][j]))
+
+    cd_vddio_data_filtered = np.array(cd_vddio_data_filtered)
+    vddio_sigmas = np.std(cd_vddio_data_filtered, axis=1)
+    vddio_means = np.mean(cd_vddio_data_filtered, axis=1)
+
+    # Remove outliers for mean/sigma calculation
+    outlier_filter = cd_vddio_data_filtered < 100
+    vddio_means = []
+    vddio_sigmas = []
+    for i in range(len(cd_vddio_data_filtered)):
+        vddio_means.append(np.mean(cd_vddio_data_filtered[i][outlier_filter[i]]))
+        vddio_sigmas.append(np.std(cd_vddio_data_filtered[i][outlier_filter[i]]))
 
     # Plot the data
-    plt.hist(cd_vddio_data_filtered)
-    plt.xlabel("CD VDDIO (CUR_7)")
+    for i in range(len(cd_vddio_data_filtered)):
+        plt.hist(cd_vddio_data_filtered[i], range=(0,350), bins=350, color=colors[i])
+        plt.xlabel(f"CD VDDIO (CUR_{i})")
+        plt.ylabel("Number of QC Tests")
+        #plt.show()
+        plt.savefig(f"cd_vddio_cur{i}_hist.png")
+        plt.close()
+
+    for i in range(len(cd_vddio_data_filtered)):
+        plt.hist(cd_vddio_data_filtered[i], label=f"CUR_{i}", range=(0,350), bins=350, alpha=1, color=colors[i])
+    plt.xlabel(f"CD VDDIO")
     plt.ylabel("Number of QC Tests")
+    plt.legend()
+    plt.yscale("log")
     #plt.show()
-    plt.savefig("cd_vddio_cur7_hist.png")
+    plt.savefig(f"cd_vddio_curs_hist.png")
+    plt.close()
+
+    for i in range(len(cd_vddio_data_filtered)):
+        plt.hist(cd_vddio_data_filtered[i], label=f"CUR_{i}", range=(0,80), bins=80, alpha=1, color=colors[i])
+        plt.axvline(vddio_means[i] - 3*vddio_sigmas[i], color=colors[i], linestyle='dashed')
+        plt.axvline(vddio_means[i] + 3*vddio_sigmas[i], color=colors[i], linestyle='dashed')
+        
+        print(f"Cuts for CUR_{i}=({vddio_means[i] - 3*vddio_sigmas[i]:.1f},{vddio_means[i] + 3*vddio_sigmas[i]:.1f})")
+    plt.xlabel(f"CD VDDIO")
+    plt.ylabel("Number of QC Tests")
+    plt.title("Dashed Lines: 3 STD")
+    plt.legend()
+    #plt.show()
+    plt.savefig(f"cd_vddio_curs_hist_zoom.png")
+    plt.close()
+
 
     return
 
@@ -228,6 +271,7 @@ if __name__ == '__main__':
     getnames = os.popen("ls -d ~/RTS_data/*/*/*")
     filenames = getnames.read().splitlines()
 
-    PlotPLLLock(filenames)
+    #PlotPLLLock(filenames)
+    PlotCDVDDIO(filenames)
 
 
