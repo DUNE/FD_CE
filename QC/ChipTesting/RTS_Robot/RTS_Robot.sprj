@@ -1,12 +1,12 @@
-ENVT0100,LM:2026/02/23 19:00:07:011,DS:0000010775,CS:02833,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/02/26 19:18:04:578,DS:0000010773,CS:03861,MA:6C-2B-59-DC-C5-38,EI:           
 SystemProperties {
 	sRCVersion="7.5.4"
 	sRCRevision="R1"
 	sGUID="f965e132-c841-42ba-bafd-fbf5d79f2655"
 	sPath="C:\\EpsonRC70\\Projects\\SimplifiedDUNE\\FD_CE\\QC\\ChipTesting\\RTS_Robot\\"
 	sCreated="1/31/2024 12:44:32 PM"
-	sLastModified="2/23/2026 2:00:06 PM"
-	bBuildComplete=False
+	sLastModified="2/26/2026 2:18:03 PM"
+	bBuildComplete=True
 	bFirstBuildComplete=True
 	bRebuildRequired=False
 	bClearControllerProject=False
@@ -61,19 +61,19 @@ ProgramFile4 {
 	sName="RTS_tools.prg"
 	bCompiled=True
 	bStoreInController=True
-	sTimeSavedInController="2/22/2026 3:29:14 PM"
+	sTimeSavedInController="2/24/2026 6:26:34 PM"
 }
 ProgramFile5 {
 	sName="SiteSelection.prg"
-	bCompiled=False
+	bCompiled=True
 	bStoreInController=True
-	sTimeSavedInController="2/23/2026 4:48:07 PM"
+	sTimeSavedInController="2/23/2026 7:00:06 PM"
 }
 ProgramFile6 {
 	sName="Testing.prg"
 	bCompiled=True
 	bStoreInController=True
-	sTimeSavedInController="2/20/2026 8:54:02 PM"
+	sTimeSavedInController="2/26/2026 7:18:03 PM"
 }
 ProgramFile7 {
 	sName="EOAT_IO.prg"
@@ -91,19 +91,19 @@ ProgramFile9 {
 	sName="PickAndPlace.prg"
 	bCompiled=True
 	bStoreInController=True
-	sTimeSavedInController="2/23/2026 2:23:22 PM"
+	sTimeSavedInController="2/25/2026 8:19:41 PM"
 }
 ProgramFile10 {
 	sName="Measurements.prg"
 	bCompiled=True
 	bStoreInController=True
-	sTimeSavedInController="2/22/2026 3:29:14 PM"
+	sTimeSavedInController="2/26/2026 6:32:25 PM"
 }
 ProgramFile11 {
 	sName="MoveChips.prg"
 	bCompiled=True
 	bStoreInController=True
-	sTimeSavedInController="2/22/2026 3:49:26 PM"
+	sTimeSavedInController="2/26/2026 7:18:03 PM"
 }
 nIncludeFileCount=4
 IncludeFile1 {
@@ -114,7 +114,7 @@ IncludeFile1 {
 IncludeFile2 {
 	sName="RTS_tools.inc"
 	bStoreInController=True
-	sTimeSavedInController="2/23/2026 3:45:20 PM"
+	sTimeSavedInController="2/25/2026 8:50:17 PM"
 }
 IncludeFile3 {
 	sName="SiteSelection.inc"
@@ -171,7 +171,7 @@ PointFile8 {
 PointFile9 {
 	sName="points_MSU.pts"
 	nRobot=1
-	sTimeSavedInController="2/20/2026 7:28:37 PM"
+	sTimeSavedInController="2/26/2026 6:47:26 PM"
 }
 PointFile10 {
 	sName="MSU_DF_Cal.pts"

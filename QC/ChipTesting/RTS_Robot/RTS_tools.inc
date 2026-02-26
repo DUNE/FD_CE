@@ -1,8 +1,8 @@
 '#define REPO_DIR "C:\EpsonRC70\Projects\DUNE\CE-RTS"
 '#define RTS_DATA "C:\Users\coldelec\RTS\"
 #define NTRAYS 2
-#define TRAY_NCOLS 10 ' For TRAY and DAT arays use maximum size
-#define TRAY_NROWS 4
+#define TRAY_NCOLS 15 ' For TRAY and DAT arays use maximum size
+#define TRAY_NROWS 6 ' DO NOT CHANGE For COLDATA - SEE trayNCols VARIABLE USAGE
 #define TRAY_NCOLS_S 15
 #define TRAY_NROWS_S 6
 #define TRAY_NCOLS_L 10

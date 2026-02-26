@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/02/20 19:28:37:026,DS:0000009467,CS:03392,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/02/26 18:47:26:267,DS:0000009467,CS:00580,MA:6C-2B-59-DC-C5-38,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
@@ -480,7 +480,7 @@ Point19 {
 	nUndefined=0
 	rX=-330.214
 	rY=142.564
-	rZ=-136.005
+	rZ=-135.958
 	rU=179.357
 	rV=0
 	rW=0
@@ -506,7 +506,7 @@ Point20 {
 	nUndefined=0
 	rX=-330.514
 	rY=218.85
-	rZ=-136.533
+	rZ=-136.408
 	rU=179.357
 	rV=0
 	rW=0

@@ -46,7 +46,7 @@ Function isChipInTrayCamera(pallet_nr As Integer, col_nr As Integer, row_nr As I
 	Boolean Success
 	Success = False
 	Do While (Attempts > 0) Or Success
-		If FindChipDirectionWithDF Then
+		If FindChipDirectionWithDF > -900. Then
 			isChipInTrayCamera = True
 			Exit Function
 		EndIf
@@ -160,7 +160,7 @@ Function isChipInSocketCamera(DAT_nr As Integer, socket_nr As Integer) As Boolea
 	Boolean Success
 	Success = False
 	Do While (Attempts > 0) Or Success
-		If FindChipDirectionWithDF Then
+		If FindChipDirectionWithDF > -900. Then
 			isChipInSocketCamera = True
 			Exit Function
 		EndIf
@@ -388,6 +388,9 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	Print Here
 	Print "Chip direction is currently ", GetBoundAnglePM180(CU(Here) + HandChipOrientation(CHIPTYPE_NR))
 	
+	PumpOn
+	Wait 1
+	
 	If Not isPressureOk Then
 		RTS_error("GetChipFromTray: Bad pressure ", -ERR_PRESSURE)
 		GetChipFromTray = -ERR_PRESSURE
@@ -526,6 +529,8 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 		PlaceChipInTray = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
+	
+	PumpOff
 	
 	If Not isChipInTrayTouch(Tray, TrayCol, TrayRow) Then
 		RTS_error("PlaceChipInTray: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE)
@@ -786,7 +791,7 @@ Function TrayPositionOccupied(Tray_nr As Int32, Tray_Col_nr As Int32, Tray_Row_n
 		TrayPositionOccupied = -2
 	EndIf
 	Go Here +Z(10)
-		
+	Print "TrayPositionOccupied = ", TrayPositionOccupied
 	SetSpeedSetting("MoveWithoutChip")
 
 Fend
@@ -886,6 +891,7 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	
 	Print "Target chip orientation is ", TgtOrientation
 	
+
 	' Intended chip position = HandChipOrientation + HandPlaceU
 	Double PlaceU, dTU
 	dTU = GetBoundAnglePM45(CU(Here)) 'CU(Here) - RoundAngleTo90(CU(Here))
@@ -982,14 +988,14 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	SetSpeedSetting("PickAndPlace")
 	
 	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-		RTS_error("ReseatChipInSocke: Could not get socket position ", -ERR_V_SOCKETALIGN)
+		RTS_error("ReseatChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
 		ReseatChipInSocket = -ERR_V_SOCKETALIGN
 		Exit Function
 	EndIf
 	' Check corrections are small	
 	
 	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		RTS_error("ReseatChipInSocke: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("ReseatChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
 		ReseatChipInSocket = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
@@ -1015,19 +1021,20 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	SetSpeedSetting("PickAndPlace")
 	' Now pick up the chip
 	If Not PickupFromSocket Then
-'			RTS_error("ReseatChipInSocke: Cannot pick up chip from socket ", -ERR_SOCKET_PICK)     
+		RTS_error("ReseatChipInSocke:t Cannot pick up chip from socket ", -ERR_SOCKET_PICK)
 		ReseatChipInSocket = -ERR_SOCKET_PICK
 		Exit Function
 	EndIf
 	Print "Picked up chip from socket"
 	
-	
+	' In case lower than intended pick/place point
+	JumpToSocket(DAT, Socket)
 	' Don't need to go to UFC as previous chip placement bad, try reseating with drop function
 		
 	' Now replace thc chip
 	Print "Placing chip back in socket"
 	If Not InsertIntoSocketSoft Then
-		RTS_error("ReseatChipInSocke: Cannot place chip in socket ", -ERR_SOCKET_PLACE)
+		RTS_error("ReseatChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
@@ -1039,7 +1046,7 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	EndIf
 
 	If Not isChipInSocketCamera(DAT, Socket) Then
-		RTS_error("ReseatChipInSocke: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE)
+		RTS_error("ReseatChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf

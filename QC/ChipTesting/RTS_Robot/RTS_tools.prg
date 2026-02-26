@@ -566,7 +566,6 @@ Function CheckValidTrayIndex(tray As Integer, tray_col As Integer, tray_row As I
          If (0 < tray And tray <= 2) And (0 < tray_col And tray_col <= trayNCols) And (0 < tray_row And tray_row <= trayNRows) Then
                 CheckValidTrayIndex = True
          EndIf
-         Return
 Fend
 
 Function CheckValidSocketIndex(DAT As Integer, Socket As Integer) As Boolean
@@ -574,8 +573,6 @@ Function CheckValidSocketIndex(DAT As Integer, Socket As Integer) As Boolean
          If (0 < DAT And DAT <= 2) And (0 < Socket And Socket <= nSoc) Then
                 CheckValidSocketIndex = True
          EndIf
-         Return
-
 Fend
 
 

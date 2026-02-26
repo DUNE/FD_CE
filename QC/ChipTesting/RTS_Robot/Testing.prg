@@ -58,23 +58,81 @@ Function Testing
 '	PumpOff
 '	Motor Off
 	
-	On 12
-	'If Not GetChipFromTray(1, 4, 1) Then
-	If Not GetChipFromTray(1, 4, 1) Then
-		Print "Get function failed to terminate"
+	
+	DoPinAnalysis = False
+'	MoveChipFromTrayToTray(1, 4, 1, 1, 3, 1)
+	
+'	MoveChipFromSocketToTray(1, 1, 1, 1, 3)
+'	MoveChipFromSocketToTray(1, 2, 1, 2, 3)
+'	MoveChipFromSocketToTray(1, 3, 1, 3, 3)
+'	MoveChipFromSocketToTray(1, 4, 1, 4, 3)
+'
+'	MoveChipFromSocketToTray(1, 5, 1, 5, 3)
+'	MoveChipFromSocketToTray(1, 6, 1, 6, 3)
+'	MoveChipFromSocketToTray(1, 7, 1, 7, 3)
+'	MoveChipFromSocketToTray(1, 8, 1, 8, 3)
+	
+	Int64 status
+	
+	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
+	If status < 0 Then
+		Print "ERROR"
 		Exit Function
 	EndIf
-	
-	Wait 5
-	SetSpeedSetting("MoveWithChip")
-	
-	If Not PlaceChipInSocket(1, 7) Then
-		Print "Place function failed to terminate"
+	status = MoveChipFromTrayToSocket(1, 2, 3, 1, 2)
+	If status < 0 Then
+		Print "ERROR"
 		Exit Function
 	EndIf
-	
-	PumpOff
-	Motor Off
+	status = MoveChipFromTrayToSocket(1, 3, 3, 1, 3)
+	If status < 0 Then
+		Print "ERROR"
+		Exit Function
+	EndIf
+	status = MoveChipFromTrayToSocket(1, 4, 3, 1, 4)
+	If status < 0 Then
+		Print "ERROR"
+		Exit Function
+	EndIf
+			
+	status = MoveChipFromTrayToSocket(1, 5, 3, 1, 5)
+	If status < 0 Then
+		Print "ERROR"
+		Exit Function
+	EndIf
+	status = MoveChipFromTrayToSocket(1, 6, 3, 1, 6)
+	If status < 0 Then
+		Print "ERROR"
+		Exit Function
+	EndIf
+	status = MoveChipFromTrayToSocket(1, 7, 3, 1, 7)
+	If status < 0 Then
+		Print "ERROR"
+		Exit Function
+	EndIf
+	status = MoveChipFromTrayToSocket(1, 8, 3, 1, 8)
+	If status < 0 Then
+		Print "ERROR"
+		Exit Function
+	EndIf
+
+'	On 12
+'	'If Not GetChipFromTray(1, 4, 1) Then
+'	If Not GetChipFromTray(1, 4, 1) Then
+'		Print "Get function failed to terminate"
+'		Exit Function
+'	EndIf
+'	
+'	Wait 5
+'	SetSpeedSetting("MoveWithChip")
+'	
+'	If Not PlaceChipInSocket(1, 7) Then
+'		Print "Place function failed to terminate"
+'		Exit Function
+'	EndIf
+'	
+'	PumpOff
+'	Motor Off
 	
 	
 	

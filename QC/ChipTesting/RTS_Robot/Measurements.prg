@@ -199,11 +199,11 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 
@@ -405,7 +405,7 @@ Function FindChipDirectionWithDF As Double
 	
 	If FindChipDirectionWithDF < -900. Then
 		Print "Could not find chip direction"
-		Return
+		Exit Function
 	EndIf
 	
 	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
@@ -2309,7 +2309,7 @@ Function UFRecenterSimple As Int32
 	Double CorX1, CorY1 ' , CorU1
 	CorX1 = CurrentChipOffset(1) * Cos(DegToRad(CU(Here))) - CurrentChipOffset(2) * Sin(DegToRad(CU(Here)))
 	CorY1 = CurrentChipOffset(1) * Sin(DegToRad(CU(Here))) + CurrentChipOffset(2) * Cos(DegToRad(CU(Here)))
-	Go Here -X(CorX1) -Y(CorY1) -U(CurrentChipOffset(3))
+	Go Here :X(CX(P_Camera) - CorX1) :Y(CY(P_Camera) - CorY1) :U(HAND_U0 + HandChipOrientation(CHIPTYPE_NR) - CurrentChipOffset(3))
 	' Or Go Here  -X(CorX1) -Y(CorY1) :U(DiffAnglePM180(CurrentChipOffset(3), CU(Here)))
 	UFRecenterSimple = -1
 Fend
