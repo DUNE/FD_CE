@@ -263,7 +263,146 @@ def PlotPLLLock(files):
 
     return
 
+def PassCDVDDIO(test_name, test_result):
+    chip_pass = False
 
+    test_result = float(test_result)
+
+    # 3sigma ranges, calculated in HWDBTools/plotHWDB_FNAL.py
+    cur_ranges = {"CUR_0": (26.7,35.7), 
+                  "CUR_1":(39.1,50.1), 
+                  "CUR_2":(36.9,52.3), 
+                  "CUR_3":(49.3,64.4), 
+                  "CUR_4":(37.0,52.3), 
+                  "CUR_5":(49.6,64.2), 
+                  "CUR_6":(46.3,67.5), 
+                  "CUR_7":(58.9,76.9)}
+
+    cut_range = (None, None)
+    for key in cur_ranges.keys():
+        if key in test_name:
+            cut_range = cur_ranges[key]
+
+    if test_result > cut_range[0] and test_result < cut_range[1]:
+        chip_pass = True
+    else:
+        print(f"---Failed CD VDDIO range ({cur_ranges[key]}): {test_result}")
+
+    return chip_pass
+
+def CountFailedCDVDDIO(filenames):
+    """
+    Prints various statistics related to the CD VDDIO 
+    QC tests for intial and actual failures.
+    Inputs:
+        filenames [list]: A list of str names of files to loop over
+    """
+
+    # Dictionary to hold statistics of each current test and total
+    cur_fails = {"CUR_0": 0, 
+                 "CUR_1": 0,   
+                 "CUR_2": 0,  
+                 "CUR_3": 0,  
+                 "CUR_4": 0,   
+                 "CUR_5": 0,  
+                 "CUR_6": 0,   
+                 "CUR_7": 0,   
+                 "n_curs":[],
+                 "prev_fails":0,
+                 "new_pass":0}
+    
+    for file in filenames:
+        if "hwdb" in file:
+            data_dict = ReadHWDBLog(file)
+
+            # Loop through data to find CD VDDIO tests
+            # and check the total number (should be 0 or 8)
+            n_curs = 0 # checks that total tests are 0 or 8
+            new_fail = False # keeps track of failures for printing purposes
+            og_fail = False # keeps track of original CD VDDIO failuires (before 3sigma cuts)
+
+            for key in data_dict.keys():
+                if "Power Consumption" in key:
+                    if 'fail' in data_dict[key].lower():
+                        print("Failure: ", key, data_dict[key]) 
+                        if not og_fail:
+                            cur_fails["prev_fails"] += 1
+                        og_fail = True
+
+                if "CD VDDIO" in key:
+                    n_curs += 1
+                    this_pass = PassCDVDDIO(key, data_dict[key])
+
+                    # Save num fails for each current setting
+                    for cur_key in cur_fails.keys():
+                        if cur_key in key:
+                            if not this_pass:
+                                cur_fails[cur_key] += 1
+                                print(f"Failed {cur_key}: {file}")
+                                new_fail = True
+
+            cur_fails["n_curs"].append(n_curs)
+
+            if og_fail and not new_fail:
+                print("----> Previous Fail is now a Pass")
+                cur_fails["new_pass"] += 1
+                for key in data_dict.keys():
+                    if "CD VDDIO" in key:
+                        print(f"-------{key}:{data_dict[key]}")
+
+            if new_fail or og_fail:
+                print("") # skip line for clearer terminal printing
+
+    print(cur_fails)
+    print("Total chips tested:", len(cur_fails["n_curs"]))
+
+    return
+
+def PassPLLLock(data_dict):
+    """
+    Determines if a chip passes or fails the PLL Lock test.
+    Input:
+        data_dict [dict]: dictionary of chip test names and results
+    Returns:
+        chip_pass [bool]: Pass(True) or Fail (False)
+    """
+
+    # Pass/Fail criteria determined based on statistics and 
+    # convenience of programming PLL lock ranges
+    low_max = 35
+    up_min = 39
+    width_min = 10
+    chip_pass = False
+
+    # Grab upper/lower bounds from dictionary
+    lower_bound = -999
+    upper_bound = -999
+    for key in data_dict.keys():
+        if "Lower" in key: 
+            lower_bound = int(data_dict[key])
+        elif "Upper" in key:
+            upper_bound = int(data_dict[key])
+
+    # If upper/lower bounds were found, check pass/fail criteria
+    if lower_bound > 0 and upper_bound > 0:
+        width = upper_bound - lower_bound
+        if width > width_min and lower_bound < low_max and upper_bound > up_min:
+            chip_pass = True
+
+    return chip_pass
+
+def CountPassFailPLLLock(filenames):
+
+    nfails = 0
+    for file in filenames:
+        if "hwdb" in file:
+            data_dict = ReadHWDBLog(file)
+            chip_pass = PassPLLLock(data_dict)
+            if not chip_pass:
+                nfails += 1
+    print(f"Num PLL Lock failures: {nfails}")
+
+    return
 
 if __name__ == '__main__':
 

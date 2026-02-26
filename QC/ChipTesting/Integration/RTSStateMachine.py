@@ -10,7 +10,7 @@ Classes:
 """
 from statemachine import StateMachine, State
 from ChipTesting.Integration.FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
-from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN, PassFailCOLDATA, WriteChipPassFail
 from ChipTesting.Integration.RTS_CFG import RTS_CFG
 from ChipTesting.BNL_QC.LogInfo import WaitForPictures
 import sys
@@ -325,6 +325,16 @@ class RTSStateMachine(StateMachine):
                 # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
             )
             print("COLDATA QC tests completed successfully")
+
+            test_dir = self.logs['PC_rawdata_root']
+            cd_0_file = test_dir + "\hwdb_CD0.txt"
+            cd_1_file = test_dir + "\hwdb_CD1.txt"
+
+            chip0_pass = PassFailCOLDATA(cd_0_file)
+            WriteChipPassFail(chip0_pass, cd_0_file)
+
+            chip1_pass = PassFailCOLDATA(cd_1_file)
+            WriteChipPassFail(chip1_pass, cd_1_file)
 
     def on_enter_burning_serial_number(self):
         print("Starting serial number burn-in process")
