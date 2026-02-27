@@ -6,13 +6,16 @@ Description: This script includes functions to run QC/QA testing of
              COLDATA chips automatically, without user input. 
 """
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+
 import os
 import datetime
 from colorama import just_fix_windows_console
 just_fix_windows_console()
 from ChipTesting.BNL_QC.DAT_chk_cfgfile import dat_chk_cfgfile_auto
 from ChipTesting.BNL_QC.LogInfo import SaveToLog
-from ChipTesting.BNL_QC.DAT_COLDATA_QC_ana import CD_QC_ANA
 
 wibip = "192.168.121.123"
 wibhost = "root@{}".format(wibip)
@@ -205,3 +208,157 @@ def RunCOLDATA_QC(duttype, env, rootdir, pc_wrcfg_fn="./asic_info.csv"):
             print("\033[93m " +"Please contact the tech coordinator" +"\033[0m")
 
     return logs, cd_qc_ana
+
+def ReadHWDBLog(filename):
+    """
+    Reads the HWDB text log output by the QC tests, 
+    creates a dictionary of the tests and results.
+    Inputs:
+        filename [str]: name of the hwdb file to read
+    Returns:
+        data_dict [dict]: dictionary with QC tests names as keys 
+                          and results as values.
+    """
+  
+    with open(filename) as f:
+        lines = f.read().splitlines()
+
+    data_dict = {}
+    #print("Grabbing data:")
+    for line in lines:
+        line_split = line.split(":")
+        data_dict[line_split[0]] = " ".join(line_split[1:])
+
+    return data_dict
+
+def PassCDVDDIO(test_name, test_result):
+    """
+    Determines if a CD VDDIO test passes based on a given
+    current range for that test.
+    Inputs:
+        test_name [str]: name of test (should include CUR 0-7)
+        test_result [str]: result of CD VDDDIO test, converts to float
+    Returns:
+        chip_pass [bool]: Pass(True) or Fail (False)
+    """
+    chip_pass = False
+
+    test_result = float(test_result)
+
+    # 3sigma ranges, calculated in HWDBTools/plotHWDB_FNAL.py
+    cur_ranges = {"CUR_0": (26.7,35.7), 
+                  "CUR_1":(39.1,50.1), 
+                  "CUR_2":(36.9,52.3), 
+                  "CUR_3":(49.3,64.4), 
+                  "CUR_4":(37.0,52.3), 
+                  "CUR_5":(49.6,64.2), 
+                  "CUR_6":(46.3,67.5), 
+                  "CUR_7":(58.9,76.9)}
+
+    cut_range = (None, None)
+    for key in cur_ranges.keys():
+        if key in test_name:
+            cut_range = cur_ranges[key]
+
+    if test_result > cut_range[0] and test_result < cut_range[1]:
+        chip_pass = True
+    else:
+        print(f"---Failed CD VDDIO range ({cur_ranges[key]}): {test_result}")
+
+    return chip_pass
+
+
+def PassPLLLock(data_dict):
+    """
+    Determines if a chip passes or fails the PLL Lock test.
+    Input:
+        data_dict [dict]: dictionary of chip test names and results
+    Returns:
+        chip_pass [bool]: Pass(True) or Fail (False)
+    """
+
+    # Pass/Fail criteria determined based on statistics and 
+    # convenience of programming PLL lock ranges
+    low_max = 35
+    up_min = 39
+    width_min = 10
+    chip_pass = False
+
+    # Grab upper/lower bounds from dictionary
+    lower_bound = -999
+    upper_bound = -999
+    for key in data_dict.keys():
+        if "Lower" in key: 
+            lower_bound = int(data_dict[key])
+        elif "Upper" in key:
+            upper_bound = int(data_dict[key])
+
+    # If upper/lower bounds were found, check pass/fail criteria
+    if lower_bound > 0 and upper_bound > 0:
+        width = upper_bound - lower_bound
+        if width > width_min and lower_bound < low_max and upper_bound > up_min:
+            chip_pass = True
+
+    return chip_pass
+
+
+def PassFailCOLDATA(db_file_name):
+    """
+    This function read the hwdb output log right after the QC tests and
+    determines if a chip has passed all tests successfully.
+
+    Inputs:
+        db_file_name [str]: name of HWDB file
+    Returns:
+        chip_pass [bool]: Pass(True) or Fail (False)
+    """
+
+    data_dict = ReadHWDBLog(db_file_name)
+    chip_pass = True
+
+    # Check if 'Fail' is in any tests
+    for key in data_dict.keys():
+        if 'fail' in data_dict[key].lower():
+            print("Failure: ", key, data_dict[key]) 
+            chip_pass = False
+
+        if "CD VDDIO" in  key:
+            chip_pass = chip_pass and PassCDVDDIO(key, data_dict[key])
+
+    chip_pass = chip_pass and PassPLLLock(data_dict)
+
+    return chip_pass
+
+def WriteChipPassFail(chip_pass, db_file_name):
+    """
+    Update the hardware database file with the final pass/fail result
+    of the given chip.
+    Inputs:
+        chip_pass [bool]: Pass(True) or Fail (False)
+        db_file_name [str]: name of hwdb file
+    """
+
+    # Add full pass/fail to hwdb file
+    db_file = open(db_file_name, "a")
+    if chip_pass:
+        print("\n----------PASS-----------\n--Chip passed all tests---\n")
+        db_file.write("All Tests: Pass")
+    else:
+        print("\n-----------FAIL------------\n--Chip did not pass all tests---\n")
+        db_file.write("All Tests: Fail")
+    db_file.close()
+
+    return
+
+if __name__ == "__main__":
+
+    db_file_name = "hwdb_CD0_dummy.txt"
+    #PassFailCOLDATA(db_file_name)
+    PassPLLLock(ReadHWDBLog(db_file_name))
+
+    # Grab all files in the given directory
+    getnames = os.popen("ls -d ~/RTS_data/*/*/*")
+    filenames = getnames.read().splitlines()
+
+    CountPassFailPLLLock(filenames)
+    
