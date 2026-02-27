@@ -341,13 +341,11 @@ def WriteChipPassFail(chip_pass, db_file_name):
     # Add full pass/fail to hwdb file
     db_file = open(db_file_name, "a")
     if chip_pass:
-        pass_str = "\n----------PASS-----------\n--Chip passed all tests---\n"
-        db_file.write(pass_str)
-        print(pass_str)
+        print("\n----------PASS-----------\n--Chip passed all tests---\n")
+        db_file.write("All Tests: Pass")
     else:
-        fail_str = "\n-----------FAIL------------\n--Chip did not pass all tests---\n"
-        db_file.write(fail_str)
-        print(fail_str)
+        print("\n-----------FAIL------------\n--Chip did not pass all tests---\n")
+        db_file.write("All Tests: Fail")
     db_file.close()
 
     return
