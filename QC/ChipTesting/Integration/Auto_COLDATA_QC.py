@@ -55,8 +55,8 @@ def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burn
         logs = QCresult[2]
         cd_qc_ana = QCresult[3] # class holding qc test results
     else:
-        print('Error, QCresult empty')
-        exit()
+        print('Error, QC result empty')
+        return
 
     return QCstatus, badchips, logs, cd_qc_ana 
 

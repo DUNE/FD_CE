@@ -46,6 +46,7 @@ class RTSStateMachine(StateMachine):
         self.BypassRTS = False
         self.last_normal_state = None
         self.upload_to_hwdb = False # Choose to skip uploading to hwdb
+        self.current_chip_status = "Good"
 
         self.chip_positions = {
             'tray': [],
@@ -100,7 +101,7 @@ class RTSStateMachine(StateMachine):
         self.WriteUserToConfig(self.user_name, self.config_file)
         
         while True:
-            choice = input("Populate chip positions manually (m) or use partial (p) or full tray (f)? ").strip().lower()
+            choice = input("Populate chip positions manually (m) or use partial (p), full tray (f), or retest tray (r)? ").strip().lower()
             if choice in ['m', 'manual']:
                 self.populate_manually()
                 break
@@ -109,6 +110,9 @@ class RTSStateMachine(StateMachine):
                 break
             elif choice in ['p', 'partial']:
                 self.populate_partial_tray()
+                break
+            elif choice in ['r', 'retest']:
+                self.populate_retest_tray()
                 break
             else:
                 print("Please enter 'm' for manual, 'p' for partial tray or 'f' for full tray.")
@@ -257,6 +261,7 @@ class RTSStateMachine(StateMachine):
     def on_enter_moving_chip_to_socket(self):
         print("Moving chips to test socket")
         self.last_normal_state = self.current_state
+        self.current_chip_status = "Good"
 
         if self.current_chip_index >= len(self.chip_positions['col']):
             print("Error: No more chips to process")
@@ -318,13 +323,17 @@ class RTSStateMachine(StateMachine):
             print("Would have called RunCOLDATA_QC(duttype='CD', env='RT', rootdir='C:/Users/RTS/Tested/')")
         else:
             print("Running COLDATA QC tests...")
-            self.logs, self.cd_qc_ana = RunCOLDATA_QC(
-                duttype="CD", 
-                env="RT", 
-                rootdir="C:/Users/ppd-cap-WD-137552/Tested/"
-                # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
-            )
-            print("COLDATA QC tests completed successfully")
+            try:
+                self.logs, self.cd_qc_ana = RunCOLDATA_QC(
+                    duttype="CD", 
+                    env="RT", 
+                    rootdir="C:/Users/ppd-cap-WD-137552/Tested/"
+                    # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
+                )
+                print("COLDATA QC tests completed successfully")
+            except Exception as e:
+                print(f"FAIL: COLDATA QC tests failed to complete with error: {e}.")
+                self.current_chip_status = "Bad"
 
     def on_enter_burning_serial_number(self):
         print("Starting serial number burn-in process")
@@ -333,6 +342,8 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Burning serial number into chip")
             print("Would have called BurninSN() with logs and cd_qc_ana from testing phase")
+        elif self.current_chip_status == "Bad":
+            print("QC tests failed for unknown reason, skipping burning serial number...")
         else:
             if self.sn_ready:
                 try:
@@ -724,6 +735,30 @@ class RTSStateMachine(StateMachine):
                     self.chip_positions['dat_socket'].append(22)
                     self.chip_positions['label'].append('CD1')
                 chip_counter += 1
+
+    def populate_retest_tray(self):
+        """Populate chip_positions with a complete 10x4 tray configuration."""
+        for key in self.chip_positions:
+            self.chip_positions[key] = []
+
+        good_chip = (10,4) # position of good chip
+        for col in range(1, self.max_col + 1):
+            for row in range(1, self.max_row + 1):
+                if (col,row)!=good_chip:
+                    self.chip_positions['col'].append(good_chip[0])
+                    self.chip_positions['row'].append(good_chip[1])
+                    self.chip_positions['tray'].append(2)
+                    self.chip_positions['dat'].append(2)
+                    self.chip_positions['dat_socket'].append(21)
+                    self.chip_positions['label'].append('CD0')
+
+                    self.chip_positions['col'].append(col)
+                    self.chip_positions['row'].append(row)
+                    self.chip_positions['tray'].append(2)
+                    self.chip_positions['dat'].append(2)
+                    self.chip_positions['dat_socket'].append(22)
+                    self.chip_positions['label'].append('CD1')
+
 
     def populate_from_dicts(self, chip_list):
         """
