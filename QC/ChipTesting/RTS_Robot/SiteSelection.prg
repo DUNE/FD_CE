@@ -16,25 +16,25 @@ Function SelectSite(OPTION$ As String) As Boolean
 			Verbose = False
 			DefPallets = False
 		Case "DefinePallets"
-			Print "Will be verbose and define pallets"
+		'	Print "Will be verbose and define pallets"
 			Verbose = True
 			DefPallets = True
 		Default
 			''' This is the standard version which should be called in Main/Testing
 			''' Does not require pallet points to be predefined
 			''' WIll be somewhat verbose
-			Print "Will be verbose, and not define pallets"
+'			Print "Will be verbose, and not define pallets"
 			Verbose = True
 			DefPallets = False
 	Send
 '	
 	If (OPTION$ <> "") And SITE$ <> "" And (DF_CAM_FOCUS * DF_CAM_FOCUS) > 5. Then
 		' If everything is already defined don't need to run again	
-		Print "AlreadyDefined"
+'		Print "AlreadyDefined"
 		SelectSite = True
 		Exit Function
 	Else
-		Print "not defined yet, running selectsite"
+		Print "Site offsets not defined yet, running selectsite"
 	EndIf
 	
 	

@@ -389,7 +389,7 @@ Fend
 ''' Use DF camera to get chip orientation only
 Function FindChipDirectionWithDF As Double
 	FindChipDirectionWithDF = -999.
-	Print "FindChipDirectionWithDF: Chip type ", CHIPTYPE$
+'	Print "FindChipDirectionWithDF: Chip type ", CHIPTYPE$
 	Select CHIPTYPE$
 		Case "LArASIC"
 			FindChipDirectionWithDF = DF_ChipDirection_LArASIC
@@ -401,15 +401,15 @@ Function FindChipDirectionWithDF As Double
 			Print "Chip type not defined"
 			Exit Function
 	Send
-	Print "FindChipDirectionWithDF: Direction returned by chip specific function: ", FindChipDirectionWithDF
+'	Print "FindChipDirectionWithDF: Direction returned by chip specific function: ", FindChipDirectionWithDF
 	
 	If FindChipDirectionWithDF < -900. Then
-		Print "Could not find chip direction"
+'		Print "Could not find chip direction"
 		Exit Function
 	EndIf
 	
 	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
-	Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
+'	Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
 		
 	' FindChipOrientationWithDF = RoundAngleTo90(FindChipOrientationWithDF) ' Might want to do this outside of this function?
 	
@@ -431,7 +431,7 @@ Function DF_ChipDirection_LArASIC As Double
 	Send
 	
 	If Not FoundText Then
-		Print "DF_ChipDirection_LArASIC: Did not find text"
+'		Print "DF_ChipDirection_LArASIC: Did not find text"
 		Exit Function
 	EndIf
 	DF_ChipDirection_LArASIC = GetBoundAnglePM180(uT + ChipTextOrientation)
@@ -2290,26 +2290,14 @@ Fend
 
 '''' Function to recenter a chip based on the offsets from the image center calculated using the UF camera
 '' This is used to then do any pin analysis with the pins aligned with the right search boxes
-''' Args:
-'' ByRef CameraResults(Length 13) - The results of the UF camera key finding analysis which finds the position of the chip
-'Function UFRecenter(ByRef CameraResults() As Double) As Int32
-'	UFRecenter = 0
-'	JumpToCamera
-'	Double CorX1, CorY1, CorU1
-'	CorX1 = CameraResults(10) * Cos(DegToRad(CU(Here))) - CameraResults(11) * Sin(DegToRad(CU(Here)))
-'	CorY1 = CameraResults(10) * Sin(DegToRad(CU(Here))) + CameraResults(11) * Cos(DegToRad(CU(Here)))
-'	Go Here -X(CorX1) -Y(CorY1) -U(GetBoundAnglePM45(DiffAnglePM180(CameraResults(2), CameraResults(12))))
-'	UFRecenter = -1
-'Fend
-
-
-Function UFRecenterSimple As Int32
-	UFRecenterSimple = 0
+Function UFRecenter As Int32
+	UFRecenter = 0
 	JumpToCamera
 	Double CorX1, CorY1 ' , CorU1
+	Go Here :U(HAND_U0 + HandChipOrientation(CHIPTYPE_NR) - CurrentChipOffset(3))
 	CorX1 = CurrentChipOffset(1) * Cos(DegToRad(CU(Here))) - CurrentChipOffset(2) * Sin(DegToRad(CU(Here)))
 	CorY1 = CurrentChipOffset(1) * Sin(DegToRad(CU(Here))) + CurrentChipOffset(2) * Cos(DegToRad(CU(Here)))
-	Go Here :X(CX(P_Camera) - CorX1) :Y(CY(P_Camera) - CorY1) :U(HAND_U0 + HandChipOrientation(CHIPTYPE_NR) - CurrentChipOffset(3))
+	Go Here :X(CX(P_Camera) - CorX1) :Y(CY(P_Camera) - CorY1)
 	' Or Go Here  -X(CorX1) -Y(CorY1) :U(DiffAnglePM180(CurrentChipOffset(3), CU(Here)))
-	UFRecenterSimple = -1
+	UFRecenter = -1
 Fend

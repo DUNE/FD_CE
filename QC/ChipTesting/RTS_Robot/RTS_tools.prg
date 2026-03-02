@@ -740,7 +740,7 @@ Fend
 
 Function LoadPositionFiles
 	' load positions at camera of chips coming from trays
-	Print "Loading position files!"
+'	Print "Loading position files!"
     Integer fileNum
     String fileName$
     Double x, y, u
@@ -751,7 +751,7 @@ Function LoadPositionFiles
 	fileName$ = RTS_DATA$ + "\tray_xyu.csv"
 	
 	If FileExists(fileName$) Then
-		Print "Reading file ", fileName$
+'		Print "Reading file ", fileName$
 		ROpen fileName$ As #fileNum
 		For i = 1 To NTRAYS
 			For j = 1 To TRAY_NCOLS
@@ -810,7 +810,7 @@ Function StoreCurrentChipOffset
 Fend
 
 Function LoadCurrentChipOffset
-	Print "Loading chip offsets"
+'	Print "Loading chip offsets"
 	Integer fileNum
     String fileName$
     Double offX, offY, offU, corrOffX, corrOffY, corrOffU
@@ -819,7 +819,7 @@ Function LoadCurrentChipOffset
 	fileName$ = RTS_DATA$ + "\CurrentChipOffsets.csv"
 	
 	If FileExists(fileName$) Then
-		Print "Reading file ", fileName$
+'		Print "Reading file ", fileName$
 		ROpen fileName$ As #fileNum
 
 		Input #fileNum, offX, offY, offU, corrOffX, corrOffY, corrOffU
@@ -831,76 +831,24 @@ Function LoadCurrentChipOffset
 		CorrectedChipOffset(2) = corrOffX
 		CorrectedChipOffset(3) = corrOffX
 
+		Close #fileNum
+	Else
+		Print "Cannot open file ", fileName$
+		Exit Function
 	EndIf
-	Close #fileNum
 	
 Fend
 
 Function ResetCurrentChipOffsets
-	Print "Restore function currently commented out"
-'	CurrentChipOffset(1) = 0
-'	CurrentChipOffset(2) = 0
-'	CurrentChipOffset(3) = 0
-'	CorrectedChipOffset(1) = 0
-'	CorrectedChipOffset(2) = 0
-'	CorrectedChipOffset(3) = 0
-'	StoreCurrentChipOffset
+'	Print "Restore function currently commented out"
+	CurrentChipOffset(1) = 0
+	CurrentChipOffset(2) = 0
+	CurrentChipOffset(3) = 0
+	CorrectedChipOffset(1) = 0
+	CorrectedChipOffset(2) = 0
+	CorrectedChipOffset(3) = 0
+	StoreCurrentChipOffset
 Fend
-
-'''' More generic log updating function
-'' log_file is the name of the file
-'' Assigned ID is the unique ID of the chip to be added to every string for logging
-'' log_msg is the message
-''' If AssignedID$ is empty = "", will not add to files
-'Function UpdateLog(log_file$ As String, AssignedID$ As String, log_msg$ As String) As Integer
-'	UpdateLog = FreeFile
-'	AOpen log_file$ As #UpdateLog
-'	If AssignedID$ <> "" Then
-'		Print #UpdateLog,(AssignedID$ + " " + log_msg$)
-'	Else
-'		Print #UpdateLog, log_msg$
-'	EndIf
-'
-'	Close #UpdateLog
-'Fend
-
-'Function UpdateLog(UpdateType$ As String, log_msg$ As String) As Integer
-'	
-'	String log_file$, robot_log$, err_log$, op_log$
-'	
-'	'  Update main log
-'	'  RTS_DATA$ + "\RobotLog.txt"	
-'	
-'	'  Update operation log
-'	'  RTS_DATA$ + "\{Operation}.txt"
-'	
-'	'  Update error log
-'	'  RTS_DATA$ + "\RobotErrors.txt"
-'
-'	'  Update specified log
-'	'  RTS_DATA$ + "\log_file$"	
-'
-'
-'	TheMsg$ = ""
-'	Select UpdateType$
-'		Case "operation" ' A log for the specific operation
-'			log_file$ = RTS_DATA$ + "\" + CurrentOperation$ + ".txt"
-'			TheMsg = log_msg$
-'		Case "ERROR" ' An error log
-'			log_file$ = RTS_DATA$ + "\RobotLog.txt"
-'			TheMsg$ = "ERROR: " + log_msg$
-'		Default ' Uses the default RTS log
-'			log_file$ = RTS_DATA$ + "\RobotLog.txt"
-'			TheMsg = log_msg$
-'	Send
-'		
-'	UpdateLog = FreeFile
-'	AOpen log_file$ As #UpdateLog
-'	Print #UpdateLog, TheMsg$
-'	Close #UpdateLog
-'	
-'Fend
-
 
 Function UpdateRobotLog$(log_msg$ As String) As String
 	'Updates the Robot log file with the given log message
@@ -912,8 +860,8 @@ Function UpdateRobotLog$(log_msg$ As String) As String
 	fileName$ = RTS_DATA$ + "\RobotLog.txt"
 	AOpen fileName$ As #fileNum
 	
-	Print "Writing to file: ", fileName$
-	
+'	Print "Writing to file: ", fileName$
+	Print "(RobotLog.txt) ", log_msg$
 	Print #fileNum, log_msg$
 	Close #fileNum
 Fend
