@@ -222,7 +222,7 @@ Function SetSiteValues
 		
 	fileNum = FreeFile
 	WOpen SITE_FILE As #fileNum
-	Print #fileNum, SITE$, CHIPTYPE$
+	Print #fileNum, SITE$, ",", CHIPTYPE$
 	Print #fileNum, REPO_DIR$
 	Print #fileNum, PROJ_DIR$
 	Print #fileNum, RTS_DATA$
@@ -305,8 +305,9 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	SocketVisionOffset(3) = SocketOffset(3)
 	Print "SocketVisionOffset values saved, storing in site file", SITE_FILE
 
+	fileNum = FreeFile
 	WOpen SITE_FILE As #fileNum
-	Print #fileNum, SITE$, CHIPTYPE$
+	Print #fileNum, SITE$, ",", CHIPTYPE$
 	Print #fileNum, REPO_DIR$
 	Print #fileNum, PROJ_DIR$
 	Print #fileNum, RTS_DATA$
@@ -314,95 +315,107 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
 	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
 	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3) ''	Close #fileNum
+	Close #fileNum
 	MeasureSocketVisionOffset = -1
 	 
 Fend
 
-'Function MeasureChipVisionOffset As Int32
-'	MeasureChipVisionOffset = 0
-'	' This is to set the ChipVisionOffset(3) variables.	
-'	' These account for differences between the chip vision sequence measurement and the actual point,
-'	' Should be run once.
-'	
-'	' First make sure you have all the other site specific values loaded	
-'	If Not FileExists(SITE_FILE) Then
-'		Print "Need to provide full path to site.csv location"
-'	EndIf
-'	
-'	Integer fileNum
-'	
-'	fileNum = FreeFile
-'	ROpen SITE_FILE As #fileNum
-'	Input #fileNum, SITE$, CHIPTYPE$
-'	Input #fileNum, REPO_DIR$
-'	Input #fileNum, PROJ_DIR$
-'	Input #fileNum, RTS_DATA$
-'	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
-'	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
-'	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
-'	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3) 
-'	Close #fileNum
+Function MeasureChipVisionOffset As Int32
+	MeasureChipVisionOffset = 0
+	' This is to set the ChipVisionOffset(3) variables.	
+	' These account for differences between the chip vision sequence measurement and the actual point,
+	' Should be run once.
+	
+	' First make sure you have all the other site specific values loaded	
+	If Not FileExists(SITE_FILE) Then
+		Print "Need to provide full path to site.csv location"
+	EndIf
+'	'
+'	SelectSite("")
+	Integer fileNum
+	Print "Reading in current offset values"
+	fileNum = FreeFile
+	ROpen SITE_FILE As #fileNum
+	Input #fileNum, SITE$, CHIPTYPE$
+	Input #fileNum, REPO_DIR$
+	Input #fileNum, PROJ_DIR$
+	Input #fileNum, RTS_DATA$
+	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
+	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
+	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
+	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
+	Close #fileNum
 '		
-'	' After aligning your sockets and teaching their points, realign the socket in the "socket align" vision sequence.
-'	ChipVisionOffset(1) = 0.
-'	ChipVisionOffset(2) = 0.
-'	ChipVisionOffset(3) = 0.
+'	Align a chip so it is as square on in the center of the camera image as possible
+'	Remember, the chips may be slightly out of position from a tray. Line this up manually
+'	We will set these offsets for fine tuning the vision sequence functions
+	ChipVisionOffset(1) = 0.
+	ChipVisionOffset(2) = 0.
+	ChipVisionOffset(3) = 0.
 '	
-'	' Now run the socket vision sequence and see how far off the taught point it is
+'	' Now run the chip vision sequence and see how far off the point is from the
+'   ' value calculated from the camera point offsets
 '	' Remember, if you have taught the point correctly, and the camera vision offsets are measured
 '	' the vision sequence should be fairly close to the actual point
 '	
-'	'If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-'	If Not FindChipPositionWithDF Then
-'		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_DF_ALIGN)
-'		MeasureChipVisionOffset = -ERR_V_DF_ALIGN
-'		Exit Function
-'	EndIf
+
+	Integer Attempts
+	Attempts = 5
+	Boolean Success
+	Success = False
+	Do While (Attempts > 0) And Not Success
+		If FindChipPositionWithDF Then
+			Success = True
+		EndIf
+		Attempts = Attempts - 1
+	Loop
+
+	If Not Success Then
+		Print "Could not find/measure chip position"
+		MeasureChipVisionOffset = -ERR_V_DF_ALIGN
+		Exit Function
+	EndIf
 '	
-'	Double PointX, PointY, PointZ, DelX, DelY, DelU
-'	PointX = CX(Here) - XOffset(CU(Here))
-'	PointY = CY(Here) - YOffset(CU(Here))
-'	PointZ = CZ(Here) - DF_CAM_Z_OFF
-'	DelX = ChipPos(1) - PointX
-'	DelY = ChipPos(2) - PointY
-'	DelU = ChipPos(3) - CU(Here) ' is this 180 out of phase?
-'		
-'	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-'		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-'		MeasureChipVisionOffset = -ERR_BAD_TOLERANCE
-'		Exit Function
-'	EndIf
-'	Print "Running vision from image point"
-'	Print Here
-'	Print "Corresponding to contact point"
-'	Print " X:", PointX
-'	Print " Y:", PointY
-'	Print " U:", CU(Here)
-'	Print " Z:", PointZ
-'	Print "With zeroed out vision corrections, chip position from vision "
-'	Print " X:", ChipPos(1)
-'	Print " Y:", ChipPos(2)
-'	Print " U:", ChipPos(3)
-'	Print "Gives difference of "
-'	Print " X:", DelX
-'	Print " Y:", DelY
-'	Print " U:", DelU
-'	Print "Setting SocketVisionOffset to these values to prevent overcorrection in socket drift"
-'	ChipVisionOffset(1) = DelX
-'	ChipVisionOffset(2) = DelY
-'	ChipVisionOffset(3) = DelU
-'	Print "SocketVisionOffset values saved, storing in file", SITE_FILE
-'
-'	WOpen SITE_FILE As #fileNum
-'	Print #fileNum, SITE$, CHIPTYPE$
-'	Print #fileNum, REPO_DIR$
-'	Print #fileNum, PROJ_DIR$
-'	Print #fileNum, RTS_DATA$
-'	Print #fileNum, HAND_U0, ",", DF_CAM_X_OFF_U0, ",", DF_CAM_Y_OFF_U0, ",", DF_CAM_FOCUS
-'	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
-'	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
-'	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3) '	Close #fileNum
-'	
-'	MeasureChipVisionOffset = -1
-'Fend
+	Double PointX, PointY, PointZ, DelX, DelY, DelU
+	PointX = CX(Here) - XOffset(CU(Here))
+	PointY = CY(Here) - YOffset(CU(Here))
+	PointZ = CZ(Here) - DF_CAM_Z_OFF
+	DelX = ChipPos(1) - PointX
+	DelY = ChipPos(2) - PointY
+	DelU = GetBoundAnglePM45(DiffAnglePM180(CU(Here), ChipPos(3)))
+
+	Print "Current position of hand "
+	Print Here
+	Print " Implies point relative to current image at "
+	Print "XYZU: (", PointX, ",", PointY, ",", PointZ, ",", CU(Here), ")"
+	Print "Chip position measured to be (without correction) "
+	Print "XYU(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	Print " With difference of "
+	Print "XYU(", DelX, ",", DelY, ",", DelU, ")"
+		
+	If Abs(DelX) > 1. Or Abs(DelY) > 1. Or Abs(DelU) > 3. Then
+		Print "Offsets too large, try again or increase tolerance"
+		MeasureChipVisionOffset = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
+	
+	ChipVisionOffset(1) = DelX
+	ChipVisionOffset(2) = DelY
+	ChipVisionOffset(3) = DelU
+	
+	Print "Saving new offsets to file"
+	fileNum = FreeFile
+	WOpen SITE_FILE As #fileNum
+	Print #fileNum, SITE$, ",", CHIPTYPE$
+	Print #fileNum, REPO_DIR$
+	Print #fileNum, PROJ_DIR$
+	Print #fileNum, RTS_DATA$
+	Print #fileNum, HAND_U0, ",", DF_CAM_X_OFF_U0, ",", DF_CAM_Y_OFF_U0, ",", DF_CAM_FOCUS
+	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
+	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
+	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3)
+	Close #fileNum
+	
+	MeasureChipVisionOffset = -1
+Fend
 

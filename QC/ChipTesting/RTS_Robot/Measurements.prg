@@ -538,31 +538,31 @@ Function DFFindLArASIC As Boolean
 			Exit Function
 			
 	Send
-	' Print "isFoundChip = ", isFoundChip
-	
-	If Not isFoundChip Then
-		 'Print "Whole chip correlation step failed"
-		Exit Function
-	EndIf
-	'Print "Found whole chip"
+'	Print "isFoundChip = ", isFoundChip
+'	
+'	If Not isFoundChip Then
+'		 Print "Whole chip correlation step failed"
+'		Exit Function
+'	EndIf
+'	Print "Found whole chip"
 	
 	If Not isFoundL Then
-		'Print "Failed to find largr manufacturing mark (bottom right of chip)"
+		' Print "Failed to find largr manufacturing mark (bottom right of chip)"
 		Exit Function
 	EndIf
-	'Print "Found large manufacturing marker"
+	' Print "Found large manufacturing marker"
 	
 	If Not isFoundS Then
-		 'Print "Failed to find small fiducial mark (top left of chip)"
+		' Print "Failed to find small fiducial mark (top left of chip)"
 		Exit Function
 	EndIf
-	'Print "Found small fiducial marker"
+	' Print "Found small fiducial marker"
 	
 	If Not isFoundT Then
-		'Print "Failed to find text on chip"
+		' Print "Failed to find text on chip"
 		Exit Function
 	EndIf
-	'Print "found text"
+	' Print "found text"
 	
 	Double AvX, AvY
 	AvX = (xL + xS) /2
@@ -586,14 +586,14 @@ Function DFFindLArASIC As Boolean
 		Exit Function
 	EndIf
 
- ' Cannot rely on finding "chip like" correlation, but can maybe use the geometry of the edge of the chip with the pins
-	' Check found position lies lose to correlation step for whole chip
-	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
-		Print "Fiducial marker method disagrees with correlation measurement of chip position"
-		Print "Correlation position X,Y,U = (", xC, ",", yC, ",", GetBoundAnglePM180(uC), ")"
-		Print "Fiducial position    X,Y,U = (", AvX, ",", AvY, ",", GetBoundAnglePM180(Angle - 45.), ")"
-		Exit Function
-	EndIf
+' ' Cannot rely on finding "chip like" correlation, but can maybe use the geometry of the edge of the chip with the pins
+'	' Check found position lies lose to correlation step for whole chip
+'	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
+'		Print "Fiducial marker method disagrees with correlation measurement of chip position"
+'		Print "Correlation position X,Y,U = (", xC, ",", yC, ",", GetBoundAnglePM180(uC), ")"
+'		Print "Fiducial position    X,Y,U = (", AvX, ",", AvY, ",", GetBoundAnglePM180(Angle - 45.), ")"
+'		Exit Function
+'	EndIf
 	
 	' Check text orientation is consistent with the direction of the chip
 	If Abs(DiffAnglePM180(uT, (GetBoundAnglePM180(Angle - 45.)))) > 3. Then
@@ -607,7 +607,7 @@ Function DFFindLArASIC As Boolean
 	ChipPos(3) = GetBoundAnglePM180(Angle - 45.)
 	
 	DFFindLArASIC = True
-	'Print "Got here, should be returning TRUE"
+	' Print "Got here, should be returning TRUE"
 Fend
 
 
@@ -1560,9 +1560,10 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	' Chip positions are stored in ChipPos(3)
 	
 	' Store for logging
-	CSAlign(1) = ChipPos(1) - SockPos(1)
-	CSAlign(2) = ChipPos(2) - SockPos(2)
-	CSAlign(3) = ChipPos(3) - SockPos(3)
+	' Remember, chip vision needs to have fine tuning corrction applied, socket already should have correction applied.
+	CSAlign(1) = (ChipPos(1) - ChipVisionOffset(1)) - SockPos(1)
+	CSAlign(2) = (ChipPos(2) - ChipVisionOffset(2)) - SockPos(2)
+	CSAlign(3) = DiffAnglePM180(SockPos(3), DiffAnglePM180(ChipVisionOffset(3), ChipPos(3)))
 	' Calculate x and y offset after removing socket rotation
 	CSAlign(4) = CSAlign(1) * Cos(DegToRad(SockPos(3))) - CSAlign(2) * Sin(DegToRad(SockPos(3)))
 	CSAlign(5) = CSAlign(1) * Sin(DegToRad(SockPos(3))) - CSAlign(2) * Cos(DegToRad(SockPos(3)))
@@ -1715,6 +1716,8 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	Print "Expected socket position (", CX(P(FullSocket_nr)), ",", CY(P(FullSocket_nr)), ",", GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR)), ")"
 	Print "Measured socket position (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
 	Print "Subtracting vision offsets of (", SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3), ")"
+
+	' Apply fine tuning offset correction for vision sequence function
 	SockPos(1) = SockPos(1) - SocketVisionOffset(1)
 	SockPos(2) = SockPos(2) - SocketVisionOffset(2)
 	'SockPos(3) = SockPos(3) - SocketVisionOffset(3)
