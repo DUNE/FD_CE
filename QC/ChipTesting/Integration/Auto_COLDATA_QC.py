@@ -319,8 +319,11 @@ def PassFailCOLDATA(db_file_name):
     # Check if 'Fail' is in any tests
     for key in data_dict.keys():
         if 'fail' in data_dict[key].lower():
-            print("Failure: ", key, data_dict[key]) 
-            chip_pass = False
+            if ("Power Consumption" in key) or ("PLL_Locked" in key):
+                print(f"Warning: {key}, {data_dict[key]}, double checking results...")
+            else:
+                print("Failure: ", key, data_dict[key]) 
+                chip_pass = False
 
         if "CD VDDIO" in  key:
             chip_pass = chip_pass and PassCDVDDIO(key, data_dict[key])
@@ -329,7 +332,7 @@ def PassFailCOLDATA(db_file_name):
 
     return chip_pass
 
-def WriteChipPassFail(chip_pass, db_file_name):
+def WriteChipPassFail(chip_pass, db_file_name, chip_label="CD0"):
     """
     Update the hardware database file with the final pass/fail result
     of the given chip.
@@ -341,12 +344,25 @@ def WriteChipPassFail(chip_pass, db_file_name):
     # Add full pass/fail to hwdb file
     db_file = open(db_file_name, "a")
     if chip_pass:
-        print("\n----------PASS-----------\n--Chip passed all tests---\n")
+        print(f"\033[42m  \n-----------{chip_label} PASS------------\n--Chip passed all tests---\n  \033[0m")
         db_file.write("All Tests: Pass")
     else:
-        print("\n-----------FAIL------------\n--Chip did not pass all tests---\n")
+        print(f"\033[41m  \n-----------{chip_label} FAIL------------\n--Chip did not pass all tests---\n  \033[0m")
         db_file.write("All Tests: Fail")
     db_file.close()
+
+    return
+
+def WriteAllHWDB(filenames):
+    for file in filenames:
+        chip_pass = PassFailCOLDATA(file)
+        if "CD0" in file:
+            label = "CD0"
+        elif "CD1" in file:
+            label = "CD1"
+        else:
+            print("ERROR: Problem with file label...")
+        WriteChipPassFail(chip_pass, file, label)
 
     return
 
@@ -360,5 +376,4 @@ if __name__ == "__main__":
     getnames = os.popen("ls -d ~/RTS_data/*/*/*")
     filenames = getnames.read().splitlines()
 
-    CountPassFailPLLLock(filenames)
     

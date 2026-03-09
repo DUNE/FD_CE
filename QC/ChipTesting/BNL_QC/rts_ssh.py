@@ -353,6 +353,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
             fsubdirs = fdir.split("/")
             fn = fs.split("/")[-1]
             fddir =logs['PC_rawdata_root'] + fsubdirs[-2] + "/" 
+            logs['hwdb_dir'] = fddir
     
             if not os.path.exists(fddir):
                 try:
