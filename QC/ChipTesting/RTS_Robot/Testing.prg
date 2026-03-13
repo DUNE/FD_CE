@@ -74,47 +74,83 @@ Function Testing
 	
 	Int64 status
 	
-	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
+	status = MoveChipFromTrayToTray(1, 2, 1, 1, 1, 2)
 	If status < 0 Then
 		Print "ERROR"
 		Exit Function
 	EndIf
-	status = MoveChipFromTrayToSocket(1, 2, 3, 1, 2)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-	status = MoveChipFromTrayToSocket(1, 3, 3, 1, 3)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-	status = MoveChipFromTrayToSocket(1, 4, 3, 1, 4)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-			
-	status = MoveChipFromTrayToSocket(1, 5, 3, 1, 5)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-	status = MoveChipFromTrayToSocket(1, 6, 3, 1, 6)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-	status = MoveChipFromTrayToSocket(1, 7, 3, 1, 7)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-	status = MoveChipFromTrayToSocket(1, 8, 3, 1, 8)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
+	
+	
+'	status = MoveChipFromSocketToTray(1, 1, 1, 1, 3)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	
+'	status = MoveChipFromTrayToSocket(1, 1, 2, 1, 1)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+	
+	
+	
+	
+	
+	
+'	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf	
+
+'	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+	
+'	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	status = MoveChipFromTrayToSocket(1, 2, 3, 1, 2)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	status = MoveChipFromTrayToSocket(1, 3, 3, 1, 3)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	status = MoveChipFromTrayToSocket(1, 4, 3, 1, 4)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'			
+'	status = MoveChipFromTrayToSocket(1, 5, 3, 1, 5)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	status = MoveChipFromTrayToSocket(1, 6, 3, 1, 6)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	status = MoveChipFromTrayToSocket(1, 7, 3, 1, 7)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
+'	status = MoveChipFromTrayToSocket(1, 8, 3, 1, 8)
+'	If status < 0 Then
+'		Print "ERROR"
+'		Exit Function
+'	EndIf
 
 '	On 12
 '	'If Not GetChipFromTray(1, 4, 1) Then
@@ -175,7 +211,7 @@ Function Testing
 '	Do While ((Attempts > 0 And Not Success))
 '		Print "Attempts remaining ", Attempts
 '		
-'		If FindSocketDirectionWithDF Then
+'		If FindSocketPositionWithDF Then
 '			Success = True
 '		EndIf
 '		Attempts = Attempts - 1
@@ -228,7 +264,7 @@ Function Testing
 	
 
 
-'	If Not FindSocketDirectionWithDF Then
+'	If Not FindSocketPositionWithDF Then
 '		Print "Could not find socket"
 '	EndIf
 '	

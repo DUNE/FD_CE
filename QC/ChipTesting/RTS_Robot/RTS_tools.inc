@@ -98,4 +98,16 @@ Global Boolean DoMeasurePlace ' Checks position measurement
 
 Global String CurrentOperation$
 
+' variable image exposure time controls 
+Global Integer NAttempts
+
+Global Int32 DF_Exposure
+Global Int32 Default_DF_Exposure
+Global Int32 Min_DF_Exposure
+Global Int32 Max_DF_Exposure
+
+Global Int32 UF_Exposure
+Global Int32 Default_UF_Exposure
+Global Int32 Min_UF_Exposure
+Global Int32 Max_UF_Exposure
 

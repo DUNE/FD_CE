@@ -38,21 +38,15 @@ Function TouchChip As Byte
 Fend
 
 Function isChipInTrayCamera(pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Boolean
-
 	isChipInTrayCamera = False
+	SelectSite("InFunctionDefinePallets")
 	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-	Integer Attempts
-	Attempts = 20
-	Boolean Success
-	Success = False
-	Do While (Attempts > 0) Or Success
-		If FindChipDirectionWithDF > -900. Then
-			isChipInTrayCamera = True
-			Exit Function
-		EndIf
-		Attempts = Attempts - 1
-	Loop
-	
+
+'	NAttempts = 10
+	If FindChipDirectionWithDF > -900. Then
+		isChipInTrayCamera = True
+	EndIf
+
 Fend
 
 Function isChipInTrayTouch(pallet_nr As Integer, col_nr As Integer, row_nr As Integer) As Boolean
@@ -148,24 +142,15 @@ Function DropToTray As Boolean
     DropToTray = True
 Fend
 
-
-
-
 Function isChipInSocketCamera(DAT_nr As Integer, socket_nr As Integer) As Boolean
-	
 	isChipInSocketCamera = False
+	SelectSite("InFunctionDefinePallets")
 	JumpToSocket_camera(DAT_nr, socket_nr)
-	Integer Attempts
-	Attempts = 20
-	Boolean Success
-	Success = False
-	Do While (Attempts > 0) Or Success
-		If FindChipDirectionWithDF > -900. Then
-			isChipInSocketCamera = True
-			Exit Function
-		EndIf
-		Attempts = Attempts - 1
-	Loop
+
+'	NAttempts = 10
+	If FindChipDirectionWithDF > -900. Then
+		isChipInSocketCamera = True
+	EndIf
 	
 Fend
 
@@ -1005,7 +990,7 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	Wait 1
 	
 	' TODO reimplement chip alignment check where available	
-	
+	' May want to add some adjustment based on if the chip seems off in a particular direction	
 	
 	
 	
@@ -1063,5 +1048,46 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	ReseatChipInSocket = -1
 Fend
 
-
+' Just press down on clamping mechanism and release without picking up the chip
+Function SocketOpenAndClose(DAT_nr As Integer, Socket_nr As Integer) As Int64
+	SocketOpenAndClose = 0
+	
+	' First correct for socket drift
+	JumpToSocket_camera(DAT_nr, Socket_nr)
+	SetSpeedSetting("PickAndPlace")
+	
+	If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
+	'	RTS_error("SocketOpenAndClose: Could not get socket position ", -ERR_V_SOCKETALIGN)
+		SocketOpenAndClose = -ERR_V_SOCKETALIGN
+		Exit Function
+	EndIf
+	' Check corrections are small	
+	
+	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
+	'	RTS_error("SocketOpenAndClose: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+		SocketOpenAndClose = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
+	
+	JumpToSocket(DAT_nr, Socket_nr)
+	SetSpeedSetting("PickAndPlace")
+	PlungerOn
+	
+	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
+	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
+	If Not TouchSuccess Then
+		Print "ERROR! Touch chip command failed - did you try to run this without a chip in the socket?"
+		Exit Function
+	EndIf
+	
+	Move Here +Z(CONTACT_DIST)
+	
+	PlungerOff
+	SetSpeedSetting("MoveWithoutChip")
+	
+	JumpToSocket_camera(DAT_nr, Socket_nr)
+		
+	SocketOpenAndClose = -1
+	
+Fend
 

@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/02/15 15:38:51:589,DS:0000406912,CS:14635,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/03/12 17:08:44:374,DS:0000406912,CS:15909,MA:6C-2B-59-DC-C5-38,EI:           
 sRCVersion="7.5.4"
 sGUID="f965e132-c841-42ba-bafd-fbf5d79f2655"
 nCameraNumber=1
@@ -11479,7 +11479,7 @@ Sequence36 {
 	nCameraContrast=0
 	sDescription=""
 	nExposureDelay=0
-	nExposureTime=60000
+	nExposureTime=80000
 	sGridColor="DarkGray"
 	rGridPitchX=100
 	rGridPitchY=100
@@ -16938,7 +16938,7 @@ Sequence46 {
 	nCameraContrast=150
 	sDescription=""
 	nExposureDelay=0
-	nExposureTime=30000
+	nExposureTime=40000
 	sGridColor="DarkGray"
 	rGridPitchX=100
 	rGridPitchY=100
@@ -16969,8 +16969,8 @@ Sequence46 {
 		sObjectTypeName="Correlation"
 		nStepRow=1
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=2
+		nNextStepNumberFalse=2
 		nPrevObjectNumberTrue=0
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=True
@@ -17063,8 +17063,8 @@ Sequence46 {
 		sObjectTypeName="Geometric"
 		nStepRow=2
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=3
+		nNextStepNumberFalse=3
 		nPrevObjectNumberTrue=1
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=False
@@ -17169,8 +17169,8 @@ Sequence46 {
 		sObjectTypeName="Geometric"
 		nStepRow=3
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=4
+		nNextStepNumberFalse=4
 		nPrevObjectNumberTrue=2
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=False
@@ -17275,8 +17275,8 @@ Sequence46 {
 		sObjectTypeName="Geometric"
 		nStepRow=4
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=5
+		nNextStepNumberFalse=5
 		nPrevObjectNumberTrue=3
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=False
@@ -17381,8 +17381,8 @@ Sequence46 {
 		sObjectTypeName="Geometric"
 		nStepRow=5
 		nStepColumn=1
-		nNextStepNumberTrue=0
-		nNextStepNumberFalse=0
+		nNextStepNumberTrue=6
+		nNextStepNumberFalse=6
 		nPrevObjectNumberTrue=4
 		nPrevObjectNumberFalse=0
 		bAbortSeqOnFail=False

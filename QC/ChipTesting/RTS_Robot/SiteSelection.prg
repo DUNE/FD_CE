@@ -359,18 +359,8 @@ Function MeasureChipVisionOffset As Int32
 '	' the vision sequence should be fairly close to the actual point
 '	
 
-	Integer Attempts
-	Attempts = 5
-	Boolean Success
-	Success = False
-	Do While (Attempts > 0) And Not Success
-		If FindChipPositionWithDF Then
-			Success = True
-		EndIf
-		Attempts = Attempts - 1
-	Loop
-
-	If Not Success Then
+'	NAttempts = 5
+	If Not FindChipPositionWithDF Then
 		Print "Could not find/measure chip position"
 		MeasureChipVisionOffset = -ERR_V_DF_ALIGN
 		Exit Function

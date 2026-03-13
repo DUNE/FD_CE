@@ -199,11 +199,11 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 
@@ -389,29 +389,56 @@ Fend
 ''' Use DF camera to get chip orientation only
 Function FindChipDirectionWithDF As Double
 	FindChipDirectionWithDF = -999.
-'	Print "FindChipDirectionWithDF: Chip type ", CHIPTYPE$
-	Select CHIPTYPE$
-		Case "LArASIC"
-			FindChipDirectionWithDF = DF_ChipDirection_LArASIC
-		Case "ColdADC"
-'			FindChipDirectionWithDF = DF_ChipDirection_ColdADC
-		Case "COLDATA"
-'			FindChipDirectionWithDF = DF_ChipDirection_COLDATA
-		Default
-			Print "Chip type not defined"
-			Exit Function
-	Send
-'	Print "FindChipDirectionWithDF: Direction returned by chip specific function: ", FindChipDirectionWithDF
+
+	SelectSite("InFunctionDefinePallets")
+	NAttempts = 10
+	Default_DF_Exposure = 40000
+	Min_DF_Exposure = 10000
+	Max_DF_Exposure = 80000
+	
+	Integer Attempt 's, Attempt
+	Attempt = NAttempts
+'	Boolean Success
+'	Success = False
+		
+	Do While (Attempt > 0) ' Or Success
+			
+		DF_Exposure = Min_DF_Exposure + Attempt * Int((Max_DF_Exposure - Min_DF_Exposure) / (NAttempts))
+		' Print "Attempt ", Str$(10 - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
+		
+	'	Print "FindChipDirectionWithDF: Chip type ", CHIPTYPE$
+		Select CHIPTYPE$
+			Case "LArASIC"
+				FindChipDirectionWithDF = DF_ChipDirection_LArASIC
+			Case "ColdADC"
+	'			FindChipDirectionWithDF = DF_ChipDirection_ColdADC
+			Case "COLDATA"
+	'			FindChipDirectionWithDF = DF_ChipDirection_COLDATA
+			Default
+				Print "Chip type not defined"
+				Exit Function
+		Send
+	'	Print "FindChipDirectionWithDF: Direction returned by chip specific function: ", FindChipDirectionWithDF
+	
+		If FindChipDirectionWithDF > -900. Then
+			Exit Do
+		EndIf
+		Attempt = Attempt - 1
+	
+	Loop
 	
 	If FindChipDirectionWithDF < -900. Then
-'		Print "Could not find chip direction"
-		Exit Function
+		Print "Could not find chip direction after ", NAttempts, " attempts"
+	'		DF_Exposure = Default_DF_Exposure
+	'	Exit Function
+	Else
+		Print "Found chip on ", Str$(NAttempts - Attempt + 1), "th attempt with exposure of ", DF_Exposure, " us"
+		Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
 	EndIf
 	
-	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
+	DF_Exposure = Default_DF_Exposure
+'	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
 '	Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
-		
-	' FindChipOrientationWithDF = RoundAngleTo90(FindChipOrientationWithDF) ' Might want to do this outside of this function?
 	
 Fend
 
@@ -422,6 +449,7 @@ Function DF_ChipDirection_LArASIC As Double
 	
 	Select SITE$
 		Case "MSU"
+			VSet MSU_DF_ChipDir.ExposureTime, DF_Exposure
 			VRun MSU_DF_ChipDir
 			VGet MSU_DF_ChipDir.Geom03.RobotXYU, FoundText, xT, yT, uT
 		Case "BNL"
@@ -447,28 +475,59 @@ Fend
 '' These are set in relevant DFFindLarASIC, DFFindColdADC, DFFindCOLDATA functions
 Function FindChipPositionWithDF As Boolean
 	FindChipPositionWithDF = False
-	
+	' Print "FindChipPositionWithDF"
 	ChipPos(1) = 0
 	ChipPos(2) = 0
 	ChipPos(3) = 0
 	
-	Int32 FindError
-	FindError = 0
-	Select CHIPTYPE$
-		Case "LArASIC"
-			FindChipPositionWithDF = DFFindLArASIC
-		Case "ColdADC"
-			' FindChipPositionWithDF = DFFindColdADC
-			Print "Error, not currently implemented for ColdADC, check if LArASIC works?"
-			Exit Function
-		Case "COLDATA"
-			FindChipPositionWithDF = DFFindCOLDATA
-			' FNAL implementation was previously inline here, but moved to the second commented
-			' out version of DFFindCOLDATA below. May need a little tweaking to work here.
-		Default
-			Print "Error, chiptype not properly defined or DF find function does not exist for ", CHIPTYPE$
-			Exit Function
-	Send
+	' Can comment this line  out after testing	
+	SelectSite("InFunctionDefinePallets")
+	NAttempts = 10
+	Default_DF_Exposure = 40000
+	Min_DF_Exposure = 10000
+	Max_DF_Exposure = 120000
+	
+	Integer Attempt 's, Attempt
+	Attempt = NAttempts
+	
+	Do While (Attempt > 0) 'Or Success
+			
+		DF_Exposure = Min_DF_Exposure + Attempt * Int((Max_DF_Exposure - Min_DF_Exposure) / (NAttempts))
+'		Print "Attempt ", Str$(10 - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
+
+'		Int32 FindError
+'		FindError = 0
+		Select CHIPTYPE$
+			Case "LArASIC"
+				FindChipPositionWithDF = DFFindLArASIC
+			Case "ColdADC"
+				' FindChipPositionWithDF = DFFindColdADC
+				Print "Error, not currently implemented for ColdADC, check if LArASIC works?"
+				Exit Function
+			Case "COLDATA"
+				FindChipPositionWithDF = DFFindCOLDATA
+				' FNAL implementation was previously inline here, but moved to the second commented
+				' out version of DFFindCOLDATA below. May need a little tweaking to work here.
+			Default
+				Print "Error, chiptype not properly defined or DF find function does not exist for ", CHIPTYPE$
+				Exit Function
+		Send
+		
+		If FindChipPositionWithDF Then
+			Print "Found"
+			Exit Do
+		EndIf
+		Attempt = Attempt - 1
+		
+	Loop
+	
+	If FindChipPositionWithDF Then
+		Print "Chip found on ", Str$(NAttempts - Attempt + 1), "th attempt with exposure of ", DF_Exposure, " us"
+		Print "At XYU = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	Else
+		Print "Could not find chip after ", NAttempts, " attempts"
+	EndIf
+	DF_Exposure = Default_DF_Exposure
 
 Fend
 
@@ -494,7 +553,7 @@ Function DFFindLArASIC As Boolean
 	Select SITE$
 		Case "MSU"
 
-			
+			VSet MSU_DF_ChipDir.ExposureTime, DF_Exposure
 			VRun MSU_DF_ChipDir
 			VGet MSU_DF_ChipDir.Corr01.RobotXYU, isFoundChip, xC, yC, uC
 	
@@ -505,6 +564,7 @@ Function DFFindLArASIC As Boolean
 			 VGet MSU_DF_ChipDir.Geom03.RobotXYU, isFoundT, xT, yT, uT
 		Case "TUT"
 			'Print "Using tutorial sequences"
+			VSet TUT_DF_ChipDir.ExposureTime, DF_Exposure
 			VRun TUT_DF_ChipDir
 			
 			' Looks for something overall "chip like" - This does not consistently work, use BNL LArASIC text to make sure you see a chip
@@ -1003,14 +1063,28 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 	' Seems to maybe give different result?
 	Double ResX(4), ResY(4), ResU(4)
 	
+	NAttempts = 10
+	Default_UF_Exposure = 0
+	Min_UF_Exposure = 00000
+	Max_UF_Exposure = 40000
+	
+	Integer Attempt
+	Attempt = NAttempts
+		
+	Do While Attempt > 0
+	' Start from low exposure
+	UF_Exposure = Max_UF_Exposure - Attempt * Int((Max_UF_Exposure - Min_UF_Exposure) / (NAttempts))
+	
 	Select SITE$
 		Case "MSU"
+			VSet MSU_UF_Key.ExposureTime, UF_Exposure
 			VRun MSU_UF_Key
 			VGet MSU_UF_Key.Geom01.Found, found(1) 'isFoundTR
 			VGet MSU_UF_Key.Geom02.Found, found(2) 'isFoundBR
 			VGet MSU_UF_Key.Geom03.Found, found(3) 'isFoundBL
 			VGet MSU_UF_Key.Geom04.Found, found(4) 'isFoundTL
 		Case "TUT"
+			VSet TUT_UF_Key.ExposureTime, UF_Exposure
 			VRun TUT_UF_Key
 			VGet TUT_UF_Key.Geom01.Found, found(1) 'isFoundTR
 			VGet TUT_UF_Key.Geom02.Found, found(2) 'isFoundBR
@@ -1083,48 +1157,85 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 		ResX(1) = -9999.
 		ResY(1) = -9999.
 		ResU(1) = -9999.
-		If Not ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
-			Print "ERROR: Chip corner orientation failed"
-			UF_CHIP_FIND = False
-			Exit Function
+		If ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
+			UF_CHIP_FIND = True
+			Exit Do
 		EndIf
 	Else
-		If Not ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
-			Print "ERROR: Chip corner orientation failed"
-			UF_CHIP_FIND = False
-			Exit Function
+		If ThreeCornerFindDirection(found(1), ResX(1), ResY(1), found(4), ResX(4), ResY(4), found(3), ResX(3), ResY(3), found(2), ResX(2), ResY(2)) Then
+			UF_CHIP_FIND = True
+			Exit Do
 		EndIf
 	EndIf
-
-	UFChipPos(1) = CornerVar(1)
-	UFChipPos(2) = CornerVar(2)
-	UFChipPos(3) = GetBoundAnglePM180(CornerVar(3))
-
-	Print "Camera position in X = ", CX(P_Camera)
-	Print "            Chip AvX = ", UFChipPos(1)
-	Print "            Delta  X = ", (UFChipPos(1) - CX(P_Camera))
-	Print "Camera position in Y = ", CY(P_Camera)
-	Print "            Chip AvY = ", UFChipPos(2)
-	Print "            Delta  Y = ", (UFChipPos(2) - CY(P_Camera))
-	Print "Orientation of chip at ", UFChipPos(3)
-	UF_CHIP_FIND = True
-
-
+	Attempt = Attempt - 1
+	Loop
+	
+	If Not UF_CHIP_FIND Then
+		Print "Could not find chip direction after ", NAttempts, " attempts"
+		Exit Function
+	Else
+'	If UF_CHIP_FIND Then
+		Print "Chip found on ", Str$(NAttempts - Attempt + 1), "th attempt at exposure of ", UF_Exposure, " us"
+		
+		UFChipPos(1) = CornerVar(1)
+		UFChipPos(2) = CornerVar(2)
+		UFChipPos(3) = GetBoundAnglePM180(CornerVar(3))
+	
+		Print "Camera position in X = ", CX(P_Camera)
+		Print "            Chip AvX = ", UFChipPos(1)
+		Print "            Delta  X = ", (UFChipPos(1) - CX(P_Camera))
+		Print "Camera position in Y = ", CY(P_Camera)
+		Print "            Chip AvY = ", UFChipPos(2)
+		Print "            Delta  Y = ", (UFChipPos(2) - CY(P_Camera))
+		Print "Orientation of chip at ", UFChipPos(3)
+	EndIf
+	UF_Exposure = Default_UF_Exposure
 Fend
 
-Function FindSocketDirectionWithDF As Boolean
-	FindSocketDirectionWithDF = False
+Function FindSocketPositionWithDF As Boolean
+	FindSocketPositionWithDF = False
 	
-	Select CHIPTYPE$
-		Case "LArASIC"
-			FindSocketDirectionWithDF = DFFindLArASICSocket
-		Case "ColdADC"
-			Print "ColdADC not yet implemented, check if LArASIC socket works?"
-		Case "COLDATA"
-			FindSocketDirectionWithDF = DFFindCOLDATASocket
-		Default
-			Print "Unsupported chip type: ", CHIPTYPE$
-	Send
+	' Can comment this line  out after testing	
+	SelectSite("InFunctionDefinePallets")
+	NAttempts = 10
+	Default_DF_Exposure = 60000
+	Min_DF_Exposure = 10000
+	Max_DF_Exposure = 120000
+	
+	Integer Attempt 's, Attempt
+	Attempt = NAttempts
+	
+	Do While (Attempt > 0) 'Or Success
+		
+		DF_Exposure = Min_DF_Exposure + Attempt * Int((Max_DF_Exposure - Min_DF_Exposure) / (NAttempts))
+'		Print "Attempt ", Str$(10 - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
+		
+		Select CHIPTYPE$
+			Case "LArASIC"
+				FindSocketPositionWithDF = DFFindLArASICSocket
+			Case "ColdADC"
+				Print "ColdADC not yet implemented, check if LArASIC socket works?"
+			Case "COLDATA"
+				FindSocketPositionWithDF = DFFindCOLDATASocket
+			Default
+				Print "Unsupported chip type: ", CHIPTYPE$
+		Send
+		
+		If FindSocketPositionWithDF Then
+			Exit Do
+		EndIf
+		Attempt = Attempt - 1
+		
+	Loop
+
+	If FindSocketPositionWithDF Then
+		Print "Socket found on ", Str$(NAttempts - Attempt + 1), "th attempt at exposure of ", DF_Exposure, " us"
+		Print " XYU (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
+	Else
+		Print "Could not find socket after ", NAttempts, " attempts"
+	EndIf
+	DF_Exposure = Default_DF_Exposure
+	
 Fend
 
 Function DFFindLArASICSocket As Boolean
@@ -1135,11 +1246,14 @@ Function DFFindLArASICSocket As Boolean
 			Case "MSU"
 				
 				If MSUTESTBOARD Then
+					VSet MSU_SocketFind2.ExposureTime, DF_Exposure
 					VRun MSU_SocketFind2
 				Else
+					VSet MSU_SocketFind.ExposureTime, DF_Exposure
 					VRun MSU_SocketFind
 				EndIf
 			Case "TUT"
+				VSet TUT_SocketFind.ExposureTime, DF_Exposure
 				VRun TUT_SocketFind
 			Default
 				Print "Need to set up LArASIC/Socket find vision sequence, Try MSU_SocketFind"
@@ -1198,7 +1312,7 @@ Function DFFindLArASICSocket As Boolean
 	' Require mounting holes to be found 
 	
 	If Not MSUTESTBOARD And (Not isFoundMTR Or Not isFoundMBR Or Not isFoundMBL Or Not isFoundMTL) Then
-		Print "ERROR: Did not find mounting points for socket"
+'		Print "ERROR: Did not find mounting points for socket"
 		Exit Function
 	EndIf
 
@@ -1386,6 +1500,7 @@ Function DFFindCOLDATASocket As Boolean
 		
 	Select SITE$
 		Case "MSU"
+			VSet MSU_SocketFindL.ExposureTime, DF_Exposure
 			VRun MSU_SocketFindL
 					
 			' Mounting points, should have found all of these
@@ -1509,7 +1624,11 @@ Fend
 Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As Int32
 	GetChipInSocketAlignment = 0
 	SubError = -1
+	SelectSite("InFunctionDefinePallets")
+	Print "GetChipInSocketAlignment(", DAT_nr, ",", socket_nr, ")"
+	
 	SetSpeedSetting("PickAndPlace")
+	Print "Making initial socket position measurement"
 	JumpToSocket_camera(DAT_nr, socket_nr)
 	
 	' Measure the socket position	
@@ -1518,15 +1637,14 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 		GetChipInSocketAlignment = -ERR_V_SOCKETALIGN
 		Exit Function
 	EndIf
-	' Check corrections are small	
-
-	' Correct for socket position	
+	' Check corrections are small		
 	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
 		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
 		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
-	Print "Correcting for socket (", DAT_nr, ",", socket_nr, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+	
+	Print "Correcting for socket drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
 	JumpToSocket_camera(DAT_nr, socket_nr)
 	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
 	
@@ -1534,23 +1652,25 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	
 '	' Remeasure the socket position after recentering?
 '	'''
-'	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-'		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
-'		GetChipInSocketAlignment = -ERR_V_SOCKETALIGN
-'		Exit Function
-'	EndIf
+	Print "Measuring socket position (after recentering)"
+	If Not GetSocketPositionWithDF(DAT_nr, socket_nr) Then ', ByRef SockCorr()) Then
+		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+		GetChipInSocketAlignment = -ERR_V_SOCKETALIGN
+		Exit Function
+	EndIf
 '	' Check corrections are small	
-'
-'	' Correct for socket position	
-'	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-'		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-'		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
-'		Exit Function
-'	EndIf
+'	
+	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
+		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
+		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
+		Exit Function
+	EndIf
+	Print "Socket position XYU = (", SockPos(1), ", ", SockPos(2), ",", SockPos(3), ")"
 '	' Don't correct this time, just want to have more centered measurement 
 	'''
-	
+	Print "Measuring chip position"
 	' Measure the chip position
+	' NAttempts = 20
 	If Not FindChipPositionWithDF Then
 		'RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
 		GetChipInSocketAlignment = -ERR_V_DF_ALIGN ' Set an error code
@@ -1558,130 +1678,35 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	EndIf
 	
 	' Chip positions are stored in ChipPos(3)
-	
+	Print "Chip position XYU = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
 	' Store for logging
 	' Remember, chip vision needs to have fine tuning corrction applied, socket already should have correction applied.
 	CSAlign(1) = (ChipPos(1) - ChipVisionOffset(1)) - SockPos(1)
 	CSAlign(2) = (ChipPos(2) - ChipVisionOffset(2)) - SockPos(2)
 	CSAlign(3) = DiffAnglePM180(SockPos(3), DiffAnglePM180(ChipVisionOffset(3), ChipPos(3)))
 	' Calculate x and y offset after removing socket rotation
-	CSAlign(4) = CSAlign(1) * Cos(DegToRad(SockPos(3))) - CSAlign(2) * Sin(DegToRad(SockPos(3)))
-	CSAlign(5) = CSAlign(1) * Sin(DegToRad(SockPos(3))) - CSAlign(2) * Cos(DegToRad(SockPos(3)))
+	' Rotate by (- socket offset U)?
+	CSAlign(4) = CSAlign(1) * Cos(DegToRad(-SocketOffset(3))) - CSAlign(2) * Sin(DegToRad(-SocketOffset(3)))
+	CSAlign(5) = CSAlign(1) * Sin(DegToRad(-SocketOffset(3))) + CSAlign(2) * Cos(DegToRad(-SocketOffset(3)))
+	
+	Print "Chip in socket alignment check results"
+	Print "Chip-Socket delta calculated at "
+	Print "Delta X (uncorrected) : ", CSAlign(1)
+	Print "Delta Y (uncorrected) : ", CSAlign(2)
+	Print "Delta X (U corrected) : ", CSAlign(4)
+	Print "Delta Y (U corrected) : ", CSAlign(5)
+	Print "Delta U             : ", CSAlign(3)
 	
 	SetSpeedSetting("MoveWithoutChip")
 	GetChipInSocketAlignment = -1
 Fend
 
-''''' JW: Get alignment functions ''''
-'
-'''' Defined position of the socket
-'' CinSRes(1) - X 
-'' CinSRes(2) - Y 
-'' CinSRes(3) - U
-'''' Measured position of the socket
-'' CinSRes(4) - X 
-'' CinSRes(5) - Y 
-'' CinSRes(6) - U
-'''' Socket offsets (Defined -> Measured)
-'' CinSRes(7) - X 
-'' CinSRes(8) - Y 
-'' CinSRes(9) - U
-'''' Measured chip position
-'' CinSRes(10) - X 
-'' CinSRes(11) - Y 
-'' CinSRes(12) - U
-'''' Chip offsets from measured socket position (Measured socket -> Measured chip)
-'' CinSRes(13) - X 
-'' CinSRes(14) - Y 
-'' CinSRes(15) - U
-'
-'Function GetChipInSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As Integer, socket_nr As Integer, ByRef CinSResults() As Double) As Boolean
-'	GetChipInSocketAlignment = False
-'	
-'	Integer i, fileNum
-'	For i = 1 To 15
-'		CinSResults(i) = 0
-'	Next i
-'	fileNum = idx(1)
-'
-'	JumpToSocket_camera(DAT_nr, socket_nr)
-'	
-'	UF_camera_light_ON
-'	Wait 0.2
-''	String pict_fname$
-''	pict_fname$ = DF_take_picture$(id$ + "_CS")
-''    Print #fileNum, ",", pict_fname$,
-'
-'	Int32 FullSocket_nr
-'	FullSocket_nr = DAT_nr * 100 + socket_nr
-'	' defined chip position and orienation
-'	CinSResults(1) = CX(P(FullSocket_nr)) ' Socket X
-'	CinSResults(2) = CY(P(FullSocket_nr)) ' Socket Y
-'	' CinSResults(3) = CU(P(FullSocket_nr)) ' Socket U
-'	CinSResults(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
-'
-'	Int32 Attempts
-'	Boolean Success
-'	Attempts = 20
-'	Success = False
-'	Print "Getting precise socket position"
-'	Do While ((Attempts > 0) And Not Success)
-'		If Not FindSocketDirectionWithDF Then
-'			'Print "Not found"
-'			Attempts = Attempts - 1
-'		Else
-'			Success = True
-'			Exit Do
-'		EndIf
-'	Loop
-'	If Not Success Then
-'		Print "ERROR: Cannot find socket alignment"
-'		Exit Function
-'	EndIf
-'
-'	' Get socket position	
-'	CinSResults(4) = SockPos(1) ' Socket X
-'	CinSResults(5) = SockPos(2) ' Socket Y
-'	CinSResults(6) = SockPos(3) ' Socket U
-'
-'	Attempts = 20
-'	Success = False
-'	Do While ((Attempts > 0) And Not Success)
-'		' TODO JW: Check chip dimensions are in range
-'		If Not FindChipDirectionWithDF Then
-'			Attempts = Attempts - 1
-'		Else
-'			Success = True
-'			Exit Do
-'		EndIf
-'	Loop
-'	If Not Success Then
-'		Print "Cannot find chip alignment"
-'		Exit Function
-'	EndIf
-'	
-'	' Offset of socket from defined position 
-'	CinSResults(7) = CinSResults(4) - CinSResults(1)
-'	CinSResults(8) = CinSResults(5) - CinSResults(2)
-'	CinSResults(9) = DiffAnglePM180(CinSResults(3), CinSResults(6))
-''	CinSResults(9) = CinSResults(6) - CinSResults(3)
-'
-'	' Get chip position
-'	CinSResults(10) = ChipPos(1) ' Chip X
-'	CinSResults(11) = ChipPos(2) ' Chip Y
-'	CinSResults(12) = ChipPos(3) ' Chip U
-'		
-'	' Offsets from measured socket (for analysis)
-'	CinSResults(13) = ChipPos(1) - SockPos(1) ' Offset in X (Socket -> Chip)
-'	CinSResults(14) = ChipPos(2) - SockPos(2)   ' Offset in Y
-'	CinSResults(15) = DiffAnglePM180(SockPos(3), ChipPos(3)) ' ChipPos(3) - SockPos(3)  ' Offset in U (wrt mezzanine direction)
-'	
-'	GetChipInSocketAlignment = True
-'Fend
 
 ' Gets the position and offsets of the socket from the taught point
 Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int64
 	GetSocketPositionWithDF = 0
+	
+	SelectSite("InFuntionDefinePallets")
 	
 	SocketOffset(1) = 0.
 	SocketOffset(2) = 0.
@@ -1693,26 +1718,13 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	Int32 FullSocket_nr
 	FullSocket_nr = DAT_nr * 100 + Socket_nr
 
-	Int32 Attempts
-	Boolean Success
-	Attempts = 20
-	Success = False
-	Print "Getting precise socket position"
-	Do While ((Attempts > 0) And Not Success)
-		If Not FindSocketDirectionWithDF Then
-			'Print "Not found"
-			Attempts = Attempts - 1
-		Else
-			Success = True
-			Exit Do
-		EndIf
-	Loop
-	If Not Success Then
+'	NAttempts = 20
+	If Not FindSocketPositionWithDF Then
 		Print "ERROR: Cannot find socket alignment"
 		GetSocketPositionWithDF = False
 		Exit Function
 	EndIf
-	
+		
 	Print "Expected socket position (", CX(P(FullSocket_nr)), ",", CY(P(FullSocket_nr)), ",", GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR)), ")"
 	Print "Measured socket position (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
 	Print "Subtracting vision offsets of (", SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3), ")"
@@ -1741,176 +1753,6 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	GetSocketPositionWithDF = -1
 	
 Fend
-
-'''' Socket alignment from DF camera
-'''' 
-'' DFSockRes(1) - defined X
-'' DFSockRes(2) - defined Y
-'' DFSockRes(3) - defined U
-'
-'' DFSockRes(4) - measured X
-'' DFSockRes(5) - measured Y
-'' DFSockRes(6) - measured U
-'
-'' DFSockRes(7) - Offset X
-'' DFSockRes(8) - Offset Y
-'' DFSockRes(9) - Offset U
-'
-'' DFSockRes(10) - J4 offset at measured position
-'
-'Function DFGetSocketAlignment(id$ As String, ByRef idx() As Integer, DAT_nr As Integer, socket_nr As Integer, ByRef DFSockRes() As Double) As Boolean
-'	Print "Getting socket alignment"
-'    SetSpeedSetting("PickAndPlace")
-'	' Maybe add check to see if already above socket or in sink
-'	JumpToSocket_camera(DAT_nr, socket_nr)
-'	
-'	Int32 FullSocket_nr
-'	FullSocket_nr = DAT_nr * 100 + socket_nr
-'
-'	' Reset results array
-'	Int32 i
-'	For i = 1 To 10
-'		DFSockRes(i) = 0.
-'	Next i
-'	
-'	DFSockRes(1) = CX(P(FullSocket_nr))
-'	DFSockRes(2) = CY(P(FullSocket_nr))
-''	DFSockRes(3) = CU(P(FullSocket_nr))
-'	DFSockRes(3) = GetBoundAnglePM180(CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR))
-'	Print "Defined socket position:"
-'	Print "DFSockRes(1) = ", DFSockRes(1)
-'	Print "DFSockRes(2) = ", DFSockRes(2)
-'	Print "DFSockRes(3) = ", DFSockRes(3)
-'	
-'	
-'	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
-'	Int32 Attempts
-'	Boolean Success
-'	Attempts = 20
-'	Success = False
-'	Print "Getting precise socket position"
-'	Do While ((Attempts > 0) And Not Success)
-'		If Not FindSocketDirectionWithDF Then
-'			'Print "Not found"
-'			Attempts = Attempts - 1
-'		Else
-'			Success = True
-'			Exit Do
-'		EndIf
-'	Loop
-'	If Not Success Then
-'		Print "ERROR: Cannot find socket alignment"
-'		DFGetSocketAlignment = False
-'		Exit Function
-'	EndIf
-'	DFSockRes(4) = SockPos(1)
-'	DFSockRes(5) = SockPos(2)
-'	DFSockRes(6) = SockPos(3)
-'	Print "Measured socket position:"
-'	Print "DFSockRes(4) = ", DFSockRes(4)
-'	Print "DFSockRes(5) = ", DFSockRes(5)
-'	Print "DFSockRes(6) = ", DFSockRes(6)
-'	
-'	' Print any deviations between the socket position in camera and defined point
-'	' Offset = Measured - Expected
-'	DFSockRes(7) = DFSockRes(4) - DFSockRes(1) ' X
-'	DFSockRes(8) = DFSockRes(5) - DFSockRes(2) ' Y
-'	DFSockRes(9) = DiffAnglePM180(DFSockRes(3), DFSockRes(6)) 'DFSockRes(6) - DFSockRes(3) ' U
-'	Print "Offset = measured - Defined ... NB, (9) is DiffAngleBound((3),(6)) i.e. (6) - (3) but within 180 in U."
-'	Print "DFSockRes(7) = ", DFSockRes(7)
-'	Print "DFSockRes(8) = ", DFSockRes(8)
-'	Print "DFSockRes(9) = ", DFSockRes(9)
-'	Print Here
-'	'Print "moving to (", DFSockRes(4), ",", DFSockRes(5), ",", Str$(DFSockRes(3) + DFSockRes(9)), ")"
-''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(6))
-''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DFSockRes(3) + DFSockRes(9))
-'	' Actually want to move to "Here" + offset for direction
-''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(CU(Here) + DFSockRes(9))
-'	' OR 
-'	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(GetBoundAnglePM180(DFSockRes(6) - HandChipOrientation(CHIPTYPE_NR))) ' Should this be DiffAngleBound?
-''	Go Here :X(DFSockRes(4)) :Y(DFSockRes(5)) :U(DiffAnglePM180, DFSockRes(6))??? Not looking to get angle between but to remove offset between chip and hand
-'	' May need to consider bound in J4 not in U
-'	DFSockRes(10) = CU(Here) - Agl(4)
-'	Print "DFSockRes(10) = ", DFSockRes(10)
-'	DFGetSocketAlignment = True
-'	
-'Fend
-'
-'''' get the position and alignment of a chip in a tray position
-'''' Socket alignment from DF camera
-''' Defined position
-'' DFTrayRes(1) - defined X
-'' DFTrayRes(2) - defined Y
-'' DFTrayRes(3) - defined U
-'' Measured position
-'' DFTrayRes(4) - measured X
-'' DFTrayRes(5) - measured Y
-'' DFTrayRes(6) - measured U
-'' Offsets 
-'' DFTrayRes(7) - Offset X
-'' DFTrayRes(8) - Offset Y
-'' DFTrayRes(9) - Offset U
-'
-'' DFTrayRes(10) - J4 offset at measured position
-'Function DFGetTrayAlignment(id$ As String, ByRef idx() As Integer, pallet_nr As Integer, col_nr As Integer, row_nr As Integer, ByRef DFTrayRes() As Double) As Boolean
-'
-'	' Reset results array
-'	Int32 i ', fileNum
-'	For i = 1 To 10
-'		DFTrayRes(i) = 0.
-'	Next i
-'	'fileNum = idx(1)
-'
-'	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-'	
-'	' Take a picture of the chip in the tray
-'	JumpToTray_camera(pallet_nr, col_nr, row_nr)
-''	String pict_fname$
-''	pict_fname$ = DF_take_picture$(id$ + "_CT")
-''	Print #fileNum, ",", pict_fname$,
-'	
-'	DFTrayRes(1) = CX(Pallet(pallet_nr, col_nr, row_nr))
-'	DFTrayRes(2) = CY(Pallet(pallet_nr, col_nr, row_nr))
-'	'DFTrayRes(3) = CU(Pallet(pallet_nr, col_nr, row_nr))
-'	' Should (3) be the robot position or the expected chip position?
-'	DFTrayRes(3) = GetBoundAnglePM180(CU(Pallet(pallet_nr, col_nr, row_nr)) + TrayChipOrientation(pallet_nr))
-'
-'	' Vision sequence tollerance can be adjusted but sometimes fails, try multiple times
-'	Integer Attempts
-'	Attempts = 20
-'	Boolean Success
-'	Success = False
-'	Do While ((Attempts > 0) And Not Success)
-'		' TODO JW: Check chip dimensions are in range
-'		If Not FindChipDirectionWithDF Then
-'			Attempts = Attempts - 1
-'		Else
-'			Success = True
-'			Exit Do
-'		EndIf
-'	Loop
-'	If Not Success Then
-'		Print "Cannot find chip alignment"
-'		Exit Function
-'	EndIf
-'	
-'	Print "Chip found"
-'	DFTrayRes(4) = ChipPos(1)
-'	DFTrayRes(5) = ChipPos(2)
-'	DFTrayRes(6) = ChipPos(3)
-'	' Print any deviations between the socket position in camera and defined point
-'	' Offset = Measured - Expected
-'	DFTrayRes(7) = DFTrayRes(4) - DFTrayRes(1) ' X
-'	DFTrayRes(8) = DFTrayRes(5) - DFTrayRes(2) ' Y
-'	' DFTrayRes(9) =DFTrayRes(6) - DFTrayRes(3)
-'	DFTrayRes(9) = DiffAnglePM180(DFTrayRes(3), DFTrayRes(6)) ' B - A
-'
-'	Go Here :X(DFTrayRes(4)) :Y(DFTrayRes(5))
-'	DFTrayRes(10) = CU(Here) - Agl(4)
-'	
-'	DFGetTrayAlignment = True
-'	
-'Fend
 
 Function FindChipAxisOffsetWithUF As Boolean
 	
@@ -1953,19 +1795,26 @@ Function FindChipAxisOffsetWithUF As Boolean
 '	Images$(1) = UF_take_picture$(id$ + "_01")
 '	' Take first measurements
 
-	Integer Attempts
-	Attempts = 20
-	Boolean Success
-	Success = False
-	Do While ((Attempts > 0) And Not Success)
-		If Not UF_CHIP_FIND Then
-			Attempts = Attempts - 1
-		Else
-			Success = True
-			Exit Do
-		EndIf
-	Loop
-	If Not Success Then
+
+'	Integer Attempt
+'	Attempt = NAttempts
+'	Boolean Success
+'	Success = False
+'	Do While ((Attempt > 0) And Not Success)
+'		If UF_CHIP_FIND Then
+'			Success = True
+'			Exit Do
+'		Else
+'			Attempt = Attempt - 1
+'		EndIf
+'	Loop
+'	If Not Success Then
+'		Print "ERROR UF camera cannot find chip"
+'		Exit Function
+'	EndIf
+
+'	NAttempts = 10
+	If Not UF_CHIP_FIND Then
 		Print "ERROR UF camera cannot find chip"
 		Exit Function
 	EndIf
@@ -1998,21 +1847,27 @@ Function FindChipAxisOffsetWithUF As Boolean
 	'pict_fname$ = UF_take_picture$(id$ + "_02")
     'Print #fileNum, ",", pict_fname$,
 	
-	Attempts = 20
-	Success = False
-	Do While ((Attempts > 0) And Not Success)
-		If Not UF_CHIP_FIND Then
-			Attempts = Attempts - 1
-		Else
-			Success = True
-			Exit Do
-		EndIf
-	Loop
-	If Not Success Then
-		Print "ERROR UF camera cannot find chip after 180 degree rotation"
+'	Attempt = NAttempts
+'	Success = False
+'	Do While ((Attempt > 0) And Not Success)
+'		If UF_CHIP_FIND Then
+'			Success = True
+'			Exit Do
+'		Else
+'			Attempt = Attempt - 1
+'		EndIf
+'	Loop
+'	If Not Success Then
+'		Print "ERROR UF camera cannot find chip after 180 degree rotation"
+'		Exit Function
+'	EndIf
+
+'	NAttempts = 10
+	If Not UF_CHIP_FIND Then
+		Print "ERROR UF camera cannot find chip on second measurement"
 		Exit Function
 	EndIf
-
+	
 	' Store second measurement values
 	ChipX2 = UFChipPos(1)
 	ChipY2 = UFChipPos(2)
