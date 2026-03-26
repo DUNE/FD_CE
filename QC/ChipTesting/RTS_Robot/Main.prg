@@ -4,7 +4,7 @@
 
 Function main
 	
-	SelectSite
+	SelectSite("")
 	
 	' Make sure RTS_DATA folder exists, create if not
 	If Not FolderExists(RTS_DATA$) Then
@@ -16,11 +16,12 @@ Function main
   		Exit Function
 	EndIf
 	
+
 	LoadPositionFiles
 		
-	VacuumValveClose
-	PumpOn
-	Wait 3
+'	VacuumValveClose
+'	PumpOn
+'	Wait 3
 
 	Motor On
 	' Power Low
@@ -35,26 +36,22 @@ Function main
 
 	' DAT number, socket number, tray, column, row
 	
-	MoveChipFromTrayToSocket(2, 22, 1, 1, 2)
+'	MoveChipFromTrayToSocket(2, 22, 1, 1, 2)
 	'MoveChipFromTrayToSocket(2, 22, 2, 1, 3)
 
-	MoveChipFromSocketToTray(2, 22, 1, 1, 2)
-	'MoveChipFromSocketToTray(2, 22, 2, 2, 3)
-	 
-	'MoveChipFromTrayToSocket(2, 21, 2, 9, 3)
-	'MoveChipFromTrayToSocket(2, 22, 2, 6, 2)
 	
 
 	UpdatePositionFiles
-	
-	Jump P_Home
-	Motor Off
-	PumpOff
+
+
+
+'	Do45DegreeOffset = True
+	PickOffset = 0. ' 45.
+
+
+
 	
 Fend
-
-
-
 
 Function TrayTakePlaceRepeat(pallet_nr As Integer, col_nr As Integer, row_nr As Integer, ncycles As Integer)
 
@@ -66,7 +63,7 @@ Function TrayTakePlaceRepeat(pallet_nr As Integer, col_nr As Integer, row_nr As 
 		Print "Cycle ", i, "/", ncycles
 		
 		Int64 status
-		status = MoveChipFromTrayToTray(pallet_nr, col_nr, row_nr, pallet_nr, col_nr, row_nr, 0)
+		status = MoveChipFromTrayToTray(pallet_nr, col_nr, row_nr, pallet_nr, col_nr, row_nr) ' , 0)
 		If status < 0 Then
 			Print "***ERROR!"
 			Exit For

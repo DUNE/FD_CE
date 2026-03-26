@@ -1,2 +1,2 @@
-#define SITE_FILE "C:\EpsonRC70\projects\RTS_Robot\site_FNAL.csv"
+#define SITE_FILE "C:\EpsonRC70\projects\DUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv"
 
