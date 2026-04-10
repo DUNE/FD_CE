@@ -179,8 +179,7 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	
 	String ts$ ', opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-
-	 'opName$ = "MoveT2S_" + ts$
+	op_ts$ = ts$
 	CurrentOperation$ = "MoveT2S_" + ts$
 	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromTrayToTray(" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + "," + Str$(TgtDAT) + "," + Str$(TgtSocket) + ") " + ts$)
 
