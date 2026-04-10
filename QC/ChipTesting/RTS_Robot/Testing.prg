@@ -19,6 +19,7 @@ Function Testing
 	DoPinAnalysis = False
 	DoCheckPlace = False
 	DoMeasurePlace = False
+	DoOccupancyChecks = True
 	
 	LoadPositionFiles
 	LoadCurrentChipOffset
@@ -74,91 +75,103 @@ Function Testing
 	
 	Int64 status
 	
-	status = MoveChipFromTrayToTray(1, 2, 1, 1, 1, 2)
-	If status < 0 Then
-		Print "ERROR"
-		Exit Function
-	EndIf
-	
-	
-'	status = MoveChipFromSocketToTray(1, 1, 1, 1, 3)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
 '	
-'	status = MoveChipFromTrayToSocket(1, 1, 2, 1, 1)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-	
-	
-	
-	
-	
-	
-'	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf	
-
-'	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-	
-'	status = MoveChipFromTrayToSocket(1, 1, 3, 1, 1)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'	status = MoveChipFromTrayToSocket(1, 2, 3, 1, 2)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'	status = MoveChipFromTrayToSocket(1, 3, 3, 1, 3)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'	status = MoveChipFromTrayToSocket(1, 4, 3, 1, 4)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'			
-'	status = MoveChipFromTrayToSocket(1, 5, 3, 1, 5)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'	status = MoveChipFromTrayToSocket(1, 6, 3, 1, 6)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'	status = MoveChipFromTrayToSocket(1, 7, 3, 1, 7)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-'	status = MoveChipFromTrayToSocket(1, 8, 3, 1, 8)
-'	If status < 0 Then
-'		Print "ERROR"
-'		Exit Function
-'	EndIf
-
-'	On 12
-'	'If Not GetChipFromTray(1, 4, 1) Then
-'	If Not GetChipFromTray(1, 4, 1) Then
-'		Print "Get function failed to terminate"
-'		Exit Function
-'	EndIf
+'	' Removing old chips
+'	Int32 iChip
+'	For iChip = 1 To 8
+'		status = MoveChipFromSocketToTray(1, iChip, 1, iChip, 1)
+'		If status < 0 Then
+'			Print "ERROR removing old chip ", iChip, " from socket"
+'			Exit Function
+'		EndIf
+'	Next
 '	
+'	Print "All old chips removed, placing new chips"
+'
+'' Placing new chips	
+'	For iChip = 1 To 8
+'		status = MoveChipFromTrayToSocket(2, iChip, 1, 1, iChip)
+'		If status < 0 Then
+'			Print "ERROR moving new chip ", iChip, " to socket"
+'			Exit Function
+'		EndIf
+'	Next
+
+'	' remove all chips	
+'	Int32 iChip
+'	For iChip = 1 To 8
+'		status = MoveChipFromSocketToTray(1, iChip, 2, iChip, 1)
+'		If status < 0 Then
+'			Print "ERROR removing old chip ", iChip, " from socket"
+'			Exit Function
+'		EndIf
+'	Next
+	
+
+'	Int32 iChip
+'	For iChip = 1 To 8
+'		status = MoveChipFromTrayToSocket(1, iChip, 1, 1, iChip)
+'		If status < 0 Then
+'			Print "ERROR removing old chip ", iChip, " from socket"
+'			Exit Function
+'		EndIf
+'	Next
+	' [1,  1,  1,  1,  1,  1,  1] [2]
+	' [9, 10, 11, 12, 13, 14, 15] [1]
+	' remove all chips	
+	Int32 iChip
+'	For iChip = 3 To 8
+'		If Not iChip = 6 Then
+'		
+'		status = MoveChipFromSocketToTray(1, iChip, 2, iChip + 1, 2)
+'		If status < 0 Then
+'			Print "ERROR removing old chip ", iChip, " from socket"
+'			Exit Function
+'		EndIf
+'		EndIf
+'	Next
+
+	Int32 nLoop
+	For nLoop = 1 To 1
+		If nLoop = 1 Then
+			DoOccupancyChecks = True
+			
+		Else
+			DoOccupancyChecks = False
+			
+		EndIf
+'		For iChip = 1 To 1
+		iChip = 8
+			DoPinAnalysis = True
+			status = MoveChipFromTrayToSocket(2, iChip, 1, 1, iChip)
+			If status < 0 Then
+				Print "ERROR moving chip ", iChip, " to socket"
+				Exit Function
+			EndIf
+			Wait 1
+			status = MoveChipFromSocketToTray(1, iChip, 2, iChip, 1)
+			If status < 0 Then
+				Print "ERROR removing chip ", iChip, " from socket"
+				Exit Function
+			EndIf
+			Wait 1
+
+'		Next
+	Next
+	DoOccupancyChecks = True
+	
+	
+'	status = MoveChipFromSocketToTray(1, 8, 2, 1, 2)
+'	If status < 0 Then
+'		Print "ERROR removing old chip 8 from socket"
+'		Exit Function
+'	EndIf
+	
+	
+	Wait 1
+	JumpToCamera
+	
+
 '	Wait 5
 '	SetSpeedSetting("MoveWithChip")
 '	
@@ -248,7 +261,7 @@ Function Testing
 '	Do While ((Attempts > 0 And Not Success))
 '		Print "Attempts remaining ", Attempts
 '		
-'		If GetChipInSocketAlignment(testname$, ByRef idx(), 1, 8, ByRef CinSResults()) Then
+'		If GetChipInSockettestname$, ByRef idx(), 1, 8, ByRef CinSResults()) Then
 '			Success = True
 '		EndIf
 '		Attempts = Attempts - 1

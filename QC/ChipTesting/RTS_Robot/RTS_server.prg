@@ -4,6 +4,11 @@ Function RTS_server
 	SelectSite("InFunction")
 	LoadPositionFiles
 	
+	DoPinAnalysis = False
+	DoCheckPlace = False
+	DoMeasurePlace = False
+	DoOccupancyChecks = True
+	
 	Integer portNr
 	portNr = 201
 	String msg$
@@ -20,6 +25,11 @@ Function RTS_server
     Int64 status
     Integer pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr
     Integer src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row
+    String TrayName$
+    
+    op_ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+
+    
     
  	Do
     	Input #portNr, msg$
@@ -36,25 +46,25 @@ Function RTS_server
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
     			Print "Move chip from pallet(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
-    			Print " to DAT board: ", DAT_nr, " socket", socket_nr
+    			Print " to DAT board: ", DAT_nr, " socket", Socket_nr
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = MoveChipFromTrayToSocket(DAT_nr, socket_nr, pallet_nr, pallet_col, pallet_row)
+    			status = MoveChipFromTrayToSocket(pallet_nr, pallet_col, pallet_row, DAT_nr, Socket_nr)
     			Print #portNr, Str$(status)
 
     		Case "MoveChipFromSocketToTray"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
+    			Input #portNr, Socket_nr
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
-    			Print "Move chip from DAT board: ", DAT_nr, " socket", socket_nr
+    			Print "Move chip from DAT board: ", DAT_nr, " socket", Socket_nr
     			Print " to tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = MoveChipFromSocketToTray(DAT_nr, socket_nr, pallet_nr, pallet_col, pallet_row)
+    			status = MoveChipFromSocketToTray(DAT_nr, Socket_nr, pallet_nr, pallet_col, pallet_row)
     			Print #portNr, Str$(status)
 
     		Case "MoveChipFromTrayToTray"
@@ -72,6 +82,22 @@ Function RTS_server
     			status = MoveChipFromTrayToTray(src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row) ', 0)
     			Print #portNr, Str$(status)
     			
+    		Case "ReseatChipInSocket"
+    			PumpOn
+    			' Receive source and destination parameters"
+    			Input #portNr, DAT_nr
+    			Input #portNr, Socket_nr
+    			Print "Reseat chip in socket: ", DAT_nr, " socket", Socket_nr
+    			'Jump Pallet(1, 15, 6) :Z(-10)
+    			'DO stuff
+    			status = ReseatChipInSocket(DAT_nr, Socket_nr)
+    			' SPEL "True" is -1, but integration code treets all negative values as errors	
+    			If status = -1 Then
+    				status = 0
+    			EndIf
+    			
+    			Print #portNr, Str$(status)
+    			
      		Case "JumpToTray"
     			' Receive source and destination parameters"
     			Input #portNr, pallet_nr
@@ -81,6 +107,26 @@ Function RTS_server
     			status = JumpToTray(pallet_nr, pallet_col, pallet_row)
     			Print #portNr, "JumpToTray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")"
 
+			Case "ScanTray"
+				Input #portNr, pallet_nr
+				Input #portNr, TrayName$
+				status = ScanTray(pallet_nr, TrayName$)
+				Print #portNr, status
+				Print #portNr, "DONE"
+				
+			Case "CheckTrayOccupancy"
+    			Input #portNr, pallet_nr
+    			Input #portNr, pallet_col
+    			Input #portNr, pallet_row
+    			status = TrayPositionOccupied(pallet_nr, pallet_col, pallet_row)
+    			Print #portNr, status
+   
+  			Case "CheckSocketOccupancy"
+    			Input #portNr, DAT_nr
+    			Input #portNr, Socket_nr
+    			status = SocketPositionOccupied(DAT_nr, Socket_nr)
+    			Print #portNr, status
+				
      		Case "PickupFromTray"
      			PumpOn
                 PickupFromTray
@@ -173,6 +219,16 @@ Function RTS_server
     		Case "MeasurePlaceOff"
     			DoMeasurePlace = False
     			Print #portNr, "MeasurePlaceOff"
+    			
+    		Case "OccupancyChecksOn"
+    			DoOccupancyChecks = True
+    			Print #portNr, "OccupancyChecksOn"
+    			Print "DoOccupancyChecks = ", DoOccupancyChecks
+    			
+    		Case "OccupancyChecksOff"
+    			DoOccupancyChecks = False
+    			Print #portNr, "OccupancyChecksOff"
+    			Print "DoOccupancyChecks = ", DoOccupancyChecks
     			
     		Case "Shutdown"
 		    	CloseNet #portNr

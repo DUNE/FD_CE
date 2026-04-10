@@ -32,7 +32,7 @@ Function JumpToCamera
     	' Right-handed orientation 
     	Jump P_camera :U(CU(Here)) /R LimZ JUMP_LIMIT
 	EndIf
-	
+
 Fend
 
 ' pallet_nr 1..2 (1-left, 2-right)
@@ -41,6 +41,7 @@ Fend
 Function JumpToTray(pallet_nr As Integer, col_nr As Integer, row_nr As Integer)
 	SelectSite("InFunctionDefinePallets")
 	Jump Pallet(pallet_nr, col_nr, row_nr) LimZ JUMP_LIMIT ' +Z(10)
+
 Fend
 
 ' pallet_nr 1..2 (1-left, 2-right)
@@ -65,7 +66,7 @@ Function JumpToTray_camera(pallet_nr As Integer, col_nr As Integer, row_nr As In
 			Jump Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF) LimZ JUMP_LIMIT '  :U(CU(Pallet(pallet_nr, col_nr, row_nr)))
 '		EndIf
 	EndIf
-	
+
 Fend
 
 
@@ -77,7 +78,7 @@ Function JumpToSocket(DAT_nr As Integer, socket_nr As Integer)
 	' Note, should teach points at 20mm above contact
 	Jump P(100 * DAT_nr + socket_nr) LimZ JUMP_LIMIT
 	Print P(100 * DAT_nr + socket_nr)
-	
+
 Fend
 
 Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
@@ -106,7 +107,7 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
 		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 		check = (x_p1 - x_p2) * (x_p3 - x_p2) - (y_p1 - y_p2) * (y_p3 - y_p2)
@@ -128,7 +129,7 @@ Function JumpToSocket_cor(DAT_nr As Integer, socket_nr As Integer)
 		
 	EndIf
 	
-	
+
 	
 Fend
 

@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/03/12 20:18:27:520,DS:0000009463,CS:07262,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/04/09 15:09:28:844,DS:0000009463,CS:04702,MA:6C-2B-59-DC-C5-38,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
@@ -10,8 +10,8 @@ Point1 {
 	sLabel="P_Camera"
 	sDescription=""
 	nUndefined=0
-	rX=2.248
-	rY=307.22
+	rX=2.014
+	rY=306.62
 	rZ=-79.229
 	rU=-0.489
 	rV=0

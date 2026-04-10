@@ -64,6 +64,14 @@ Function SelectSite(OPTION$ As String) As Boolean
 	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
 	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
 	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
+	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
+	Input #fileNum, Default_DF_Exposure_Chip
+	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
+	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
+	Input #fileNum, Default_DF_Exposure_Soc
+	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
+	Input #fileNum, Default_UF_Exposure
+	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
 	Close #fileNum
 	
 	
@@ -230,6 +238,14 @@ Function SetSiteValues
 	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
 	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
 	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3)
+	Print #fileNum, NAttempts_Chip_Tray, ",", NAttempts_Chip_DAT, ",", NAttempts_Soc, ",", NAttempts_UF
+	Print #fileNum, Default_DF_Exposure_Chip
+	Print #fileNum, Min_DF_Exposure_Chip_Tray, ",", Max_DF_Exposure_Chip_Tray
+	Print #fileNum, Min_DF_Exposure_Chip_DAT, ",", Max_DF_Exposure_Chip_DAT
+	Print #fileNum, Default_DF_Exposure_Soc
+	Print #fileNum, Min_DF_Exposure_Soc, ",", Max_DF_Exposure_Soc
+	Print #fileNum, Default_UF_Exposure
+	Print #fileNum, Min_UF_Exposure, ",", Max_UF_Exposure
 	Close #fileNum
 
 	Exit Function
@@ -270,7 +286,14 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
 	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
 	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
-	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
+	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
+	Input #fileNum, Default_DF_Exposure_Chip
+	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
+	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
+	Input #fileNum, Default_DF_Exposure_Soc
+	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
+	Input #fileNum, Default_UF_Exposure
+	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
 	Close #fileNum
 		
 	' After aligning your sockets and teaching their points, realign the socket in the "socket align" vision sequence.
@@ -283,7 +306,7 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	' the vision sequence should be fairly close to the actual point
 	
 	
-	If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
+	If Not GetSocketPositionWithDF(DAT_nr, socket_nr) Then ', ByRef SockCorr()) Then
 		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
 		MeasureSocketVisionOffset = -ERR_V_SOCKETALIGN
 		Exit Function
@@ -294,7 +317,7 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 		MeasureSocketVisionOffset = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
-	Print "Correcting for socket (", DAT_nr, ",", Socket_nr, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+	Print "Correcting for socket (", DAT_nr, ",", socket_nr, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
 	Print "With zeroed out vision corrections, socket offstes are returned as "
 	Print " X:", SocketOffset(1)
 	Print " Y:", SocketOffset(2)
@@ -315,6 +338,14 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
 	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
 	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3) ''	Close #fileNum
+	Print #fileNum, NAttempts_Chip_Tray, ",", NAttempts_Chip_DAT, ",", NAttempts_Soc, ",", NAttempts_UF
+	Print #fileNum, Default_DF_Exposure_Chip
+	Print #fileNum, Min_DF_Exposure_Chip_Tray, ",", Max_DF_Exposure_Chip_Tray
+	Print #fileNum, Min_DF_Exposure_Chip_DAT, ",", Max_DF_Exposure_Chip_DAT
+	Print #fileNum, Default_DF_Exposure_Soc
+	Print #fileNum, Min_DF_Exposure_Soc, ",", Max_DF_Exposure_Soc
+	Print #fileNum, Default_UF_Exposure
+	Print #fileNum, Min_UF_Exposure, ",", Max_UF_Exposure
 	Close #fileNum
 	MeasureSocketVisionOffset = -1
 	 
@@ -344,6 +375,14 @@ Function MeasureChipVisionOffset As Int32
 	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
 	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
 	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
+	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
+	Input #fileNum, Default_DF_Exposure_Chip
+	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
+	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
+	Input #fileNum, Default_DF_Exposure_Soc
+	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
+	Input #fileNum, Default_UF_Exposure
+	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
 	Close #fileNum
 '		
 '	Align a chip so it is as square on in the center of the camera image as possible
@@ -404,6 +443,14 @@ Function MeasureChipVisionOffset As Int32
 	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
 	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
 	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3)
+	Print #fileNum, NAttempts_Chip_Tray, ",", NAttempts_Chip_DAT, ",", NAttempts_Soc, ",", NAttempts_UF
+	Print #fileNum, Default_DF_Exposure_Chip
+	Print #fileNum, Min_DF_Exposure_Chip_Tray, ",", Max_DF_Exposure_Chip_Tray
+	Print #fileNum, Min_DF_Exposure_Chip_DAT, ",", Max_DF_Exposure_Chip_DAT
+	Print #fileNum, Default_DF_Exposure_Soc
+	Print #fileNum, Min_DF_Exposure_Soc, ",", Max_DF_Exposure_Soc
+	Print #fileNum, Default_UF_Exposure
+	Print #fileNum, Min_UF_Exposure, ",", Max_UF_Exposure
 	Close #fileNum
 	
 	MeasureChipVisionOffset = -1

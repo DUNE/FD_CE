@@ -95,19 +95,37 @@ Global Boolean MSUTESTBOARD
 Global Boolean DoPinAnalysis
 Global Boolean DoCheckPlace ' Checks orientation 
 Global Boolean DoMeasurePlace ' Checks position measurement
+Global Boolean DoOccupancyChecks
 
 Global String CurrentOperation$
+Global String op_ts$
 
-' variable image exposure time controls 
-Global Integer NAttempts
-
+' Variables for exposure and number of attempts with vision sequences
+'internal variable for sequences and function handling
+Global Int32 NAttempts
 Global Int32 DF_Exposure
-Global Int32 Default_DF_Exposure
-Global Int32 Min_DF_Exposure
+Global Int32 UF_Exposure
+Global Int32 Min_DF_Exposure ' Not set directly but location dependent
 Global Int32 Max_DF_Exposure
 
-Global Int32 UF_Exposure
+' Values from site file for chip sequence
+Global Int32 Default_DF_Exposure_Chip
+Global Int32 NAttempts_Chip_Tray
+Global Int32 Min_DF_Exposure_Chip_Tray
+Global Int32 Max_DF_Exposure_Chip_Tray
+Global Int32 NAttempts_Chip_DAT
+Global Int32 Min_DF_Exposure_Chip_DAT
+Global Int32 Max_DF_Exposure_Chip_DAT
+
+' Values from site file for socket sequence
+Global Int32 Default_DF_Exposure_Soc
+Global Int32 NAttempts_Soc
+Global Int32 Min_DF_Exposure_Soc ' set in site file
+Global Int32 Max_DF_Exposure_Soc
+
+' Value from site file for UF chip imaging
 Global Int32 Default_UF_Exposure
-Global Int32 Min_UF_Exposure
+Global Int32 NAttempts_UF
+Global Int32 Min_UF_Exposure ' Set directly from site file
 Global Int32 Max_UF_Exposure
 

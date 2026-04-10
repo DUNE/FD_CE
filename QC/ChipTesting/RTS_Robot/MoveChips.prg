@@ -7,13 +7,12 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	SubError = 0
 	
 	SelectSite("InFunctionDefinePallets")
-	
-	LoadPositionFiles
 	ResetCurrentChipOffsets
 	
 	String ts$ ', opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-
+	op_ts$ = ts$
+	
 	CurrentOperation$ = "MoveT2T_" + ts$
 	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromTrayToTray(" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + "," + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ") " + ts$)
 		
@@ -31,7 +30,9 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 		ResetOperation
 		Exit Function
 	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
+
+	SetSpeedSetting("MoveWithoutChip")
 
 	Motor On
 	On 12
@@ -39,44 +40,42 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	' Check occupancy	
 	Int32 Occupancy
 	Occupancy = -1
-	
-	' Check target first
-	Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
-	'Print "Occupancy = ", Occupancy
-	If Occupancy <> 0 Then
-		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
-		If Occupancy = -2 Then
-			RTS_error(("Target tray position occupancy check value = " + Str$(Occupancy)), ERR_OBSTRUCTION)
-		Else
-			RTS_error(("Target tray position occupied, occupancy check value = " + Str$(Occupancy)), ERR_V_OCCUPIED)
+	If DoOccupancyChecks Then
+		UpdateRobotLog$(CurrentOperation$ + ": Checking occupancies")
+		' Check target first
+		Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
+		'Print "Occupancy = ", Occupancy
+		If Occupancy <> 0 Then
+			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				RTS_error(("Target tray position occupancy check value = " + Str$(Occupancy)), ERR_OBSTRUCTION)
+			Else
+				RTS_error(("Target tray position occupied, occupancy check value = " + Str$(Occupancy)), ERR_V_OCCUPIED)
+			EndIf
+			MoveChipFromTrayToTray = -ErrorCode
+			ResetOperation
+			Exit Function
 		EndIf
-		MoveChipFromTrayToTray = -ErrorCode
-		ResetOperation
-		Exit Function
-	EndIf
-		
-	Occupancy = TrayPositionOccupied(SrcTray, SrcTrayCol, SrcTrayRow)
-	'Print "Occupancy = ", Occupancy
-	If Occupancy <> 1 Then
-		Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
-		If Occupancy = -2 Then
-			RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
-		Else
-			RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+			
+		Occupancy = TrayPositionOccupied(SrcTray, SrcTrayCol, SrcTrayRow)
+		'Print "Occupancy = ", Occupancy
+		If Occupancy <> 1 Then
+			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+			Else
+				RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+			EndIf
+			MoveChipFromTrayToTray = -ErrorCode
+			ResetOperation
+			Exit Function
 		EndIf
-		MoveChipFromTrayToTray = -ErrorCode
-		ResetOperation
-		Exit Function
+		UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	Else
+		UpdateRobotLog$(CurrentOperation$ + ": Skipping occcupancy check")
 	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	SetSpeedSetting("MoveWithoutChip")
 
-	' Take picture of chip and store it for serial number retrieval	
-	String DFChipPicture_SN$
-	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
-'	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
-	UpdateRobotLog$("Picture of chip in tray taken: " + DFChipPicture_SN$)
-	' Chips are in the right place, lets get the chip from the tray	
-	
 	' If chip needs to be in correct orientation here, rotate the chip?	
 	
 	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source tray position (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")")
@@ -163,10 +162,11 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 '	Motor Off
 '	Off 12
 
+	SetSpeedSetting("MoveWithoutChip")
+
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2T) command complete:")
-	UpdatePositionFiles
 	ResetOperation
-	MoveChipFromTrayToTray = -1
+	MoveChipFromTrayToTray = Val(ts$)	' -1
 Fend
 
 Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtDAT As Integer, TgtSocket As Integer) As Int64
@@ -175,8 +175,6 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	SubError = 0
 	
 	SelectSite("InFunctionDefinePallets")
-	
-	LoadPositionFiles
 	ResetCurrentChipOffsets
 	
 	String ts$ ', opName$
@@ -201,51 +199,54 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 		Exit Function
 	EndIf
 	
-	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
+	
+	SetSpeedSetting("MoveWithoutChip")
+	
+	Motor On
+	On 12
 	
 	' Check occupancy
 	Int32 Occupancy
 	Occupancy = -1
-	
-	Occupancy = SocketPositionOccupied(TgtDAT, TgtSocket)
-	'Print "Occupancy = ", Occupancy
-	If Occupancy <> 0 Then
-		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
-		If Occupancy = -2 Then
-			RTS_error("Target socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
-		Else
-			RTS_error("Target socket position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+	If DoOccupancyChecks Then
+		UpdateRobotLog$(CurrentOperation$ + ": Checking occupancies")
+		Occupancy = SocketPositionOccupied(TgtDAT, TgtSocket)
+		'Print "Occupancy = ", Occupancy
+		If Occupancy <> 0 Then
+			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				RTS_error("Target socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+			Else
+				RTS_error("Target socket position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+			EndIf
+			MoveChipFromTrayToSocket = -ErrorCode
+			ResetOperation
+			Exit Function
 		EndIf
-		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
-		Exit Function
-	EndIf
-
-	Occupancy = TrayPositionOccupied(SrcTray, SrcTrayCol, SrcTrayRow)
-	'Print "Occupancy = ", Occupancy
-	If Occupancy <> 1 Then
-		Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
-		If Occupancy = -2 Then
-			RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
-		Else
-			RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
-		EndIf
-		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
-		Exit Function
-	EndIf
 	
-	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+		Occupancy = TrayPositionOccupied(SrcTray, SrcTrayCol, SrcTrayRow)
+		'Print "Occupancy = ", Occupancy
+		If Occupancy <> 1 Then
+			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+			Else
+				RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+			EndIf
+			MoveChipFromTrayToSocket = -ErrorCode
+			ResetOperation
+			Exit Function
+		EndIf
+		
+		UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	Else
+		UpdateRobotLog$(CurrentOperation$ + ": Skipping occcupancy check")
+	EndIf
+	SetSpeedSetting("MoveWithoutChip")
 	
 	' Get chip from tray	
-	
-	' Take picture of chip and store it for serial number retrieval	
-	String DFChipPicture_SN$
-	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
-'	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
-	UpdateRobotLog$("Picture of chip in tray taken: " + DFChipPicture_SN$)
-	' Chips are in the right place, lets get the chip from the tray	
-	
+		
 	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source tray position")
 	' Need to get result from subprocess?
 	SubError = GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow)
@@ -260,17 +261,19 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	UpdateRobotLog$(CurrentOperation$ + ": Chip successfully picked up and tray offsets measured")
 	' While at the UF camera, do any pin analysis	
 	' First need to recenter
-'	If DoPinAnalysis Then
+'	If DoPinAnalysis Then '''  COMMENTED OUT NEEDS FIXING
 '		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
-'		UFRecenterSimple ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
-'		
-'		' Take a picture for pin analysis	
+'		UFRecenter ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
+''		
+''		' Take a picture for pin analysis	
 '		String PinImages$(3)
-'		'UFChipPicture$ = UF_take_picture$(opName$ + "_pins")
-'	 	
+''		UFChipPicture$ = UF_take_picture$(CurrentOperation$ + "_pins")
+''	 	
 '	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
-'	 	'If Not ChipPinAnalysisSimple Then
+'	 	Print "Pin analysis in image ", PinImages$(1) ' extend for COLDATA to 2, and 3 images.
+''	 	'If Not ChipPinAnalysis Then
 '		If Not SubError Then
+'			Print "Pin analysis failed"
 '			RTS_error("Pin analysis failure", ERR_PINS)
 '			MoveChipFromTrayToSocket = -ErrorCode
 '			ResetOperation
@@ -278,6 +281,7 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 '		EndIf
 '		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
 '	EndIf
+	Wait 5
 			
 	' Place chip in socket	
 	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target socket position")
@@ -349,8 +353,10 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 '			UpdateRobotLog$(CurrentOperation$ + ": Chip Socket alignment measured: DF_SocketPosition:" + Str$(SockPos(1)) + "," + Str$(SockPos(2)) + "," + Str$(SockPos(3)) + "; DF_ChipPosition:" + Str$(ChipPos(1)) + "," + Str$(ChipPos(2)) + "," + Str$(ChipPos(3)) + "; DF_ChipOffset:" + Str$(CSAlign(1)) + "," + Str$(CSAlign(2)) + "," + Str$(CSAlign(3)) + "; X and Y after U corrected: " + Str$(CSAlign(4)) + ", " + Str$(CSAlign(5)))
 '		EndIf
 '	EndIf
+
+	SetSpeedSetting("MoveWithoutChip")
+
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2S) command complete:")
-	UpdatePositionFiles
 	ResetOperation
 	MoveChipFromTrayToSocket = Val(ts$) ' -1
 Fend
@@ -361,13 +367,11 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	SubError = 0
 	
 	SelectSite("InFunctionDefinePallets")
-	
-	LoadPositionFiles
 	ResetCurrentChipOffsets
 	
 	String ts$ ' , opName$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-
+	op_ts$ = ts$
 	CurrentOperation$ = "MoveS2T_" + ts$
 	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromSocketToTray(" + Str$(SrcDAT) + "," + Str$(SrcSocket) + "," + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ") " + ts$)
 
@@ -385,49 +389,63 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 		ResetOperation
 		Exit Function
 	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
+
+	SetSpeedSetting("MoveWithoutChip")
+
+	Motor On
+	On 12
 
 	' Check occupancy
 	Int32 Occupancy
 	Occupancy = -1
-	
-	Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
-	If Occupancy <> 0 Then
-		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
-		If Occupancy = -2 Then
-			RTS_error("Target tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
-		Else
-			RTS_error("Target tray position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+	If DoOccupancyChecks Then
+		UpdateRobotLog$(CurrentOperation$ + ": Checking occupancies")
+		Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
+		If Occupancy <> 0 Then
+			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				RTS_error("Target tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+			Else
+				RTS_error("Target tray position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED)
+			EndIf
+			MoveChipFromSocketToTray = -ErrorCode
+			ResetOperation
+			Exit Function
 		EndIf
-		MoveChipFromSocketToTray = -ErrorCode
-		ResetOperation
-		Exit Function
+		
+		Occupancy = SocketPositionOccupied(SrcDAT, SrcSocket)
+		'Print "Occupancy = ", Occupancy
+		If Occupancy <> 1 Then
+			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+			If Occupancy = -2 Then
+				RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
+			Else
+				RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
+			EndIf
+			MoveChipFromSocketToTray = -ErrorCode
+			ResetOperation
+			Exit Function
+		EndIf
+		
+		UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	Else
+		UpdateRobotLog$(CurrentOperation$ + ": Skipping occcupancy check")
 	EndIf
 	
-	Occupancy = SocketPositionOccupied(SrcDAT, SrcSocket)
-	'Print "Occupancy = ", Occupancy
-	If Occupancy <> 1 Then
-		Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
-		If Occupancy = -2 Then
-			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION)
-		Else
-			RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP)
-		EndIf
-		MoveChipFromSocketToTray = -ErrorCode
-		ResetOperation
-		Exit Function
-	EndIf
-	
-	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+	SetSpeedSetting("MoveWithoutChip")
 
 	' Get chip from socket
 ''''''		
 	
-	' Take picture of chip and store it for serial number retrieval	
-	String DFChipPicture_SN$
-	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+	' Do serial number after placement in tray?
+'	' Take picture of chip and store it for serial number retrieval	
+'	String DFChipPicture_SN$
+''	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+'	DFChipPicture_SN$ = DF_take_picture$(ts$ + "_DAT" + Str$(SrcDAT) + "_Skt" + Str$(SrcSocket) + "_SN")
+
 '	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
-	UpdateRobotLog$("Picture of chip in socket taken: " + DFChipPicture_SN$)
+'	UpdateRobotLog$("Picture of chip in socket taken: " + DFChipPicture_SN$)
 
 	' Chips are in the right place, lets get the chip from the tray	
 	
@@ -483,7 +501,13 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	
 	
 	UpdateRobotLog$(CurrentOperation$ + ": Chip placed in target tray position")
-	
+	JumpToTray_camera(TgtTray, TgtTrayCol, TgtTrayRow)
+
+	''' Moved in GetChipFromTray - Careful if uncommenting as nt at tray yet if oc. checks are off.
+'	String DFChipPicture_SN$
+'	DFChipPicture_SN$ = DF_take_picture$(ts$ + "_tr" + Str$(TgtTray) + "_col" + Str$(TgtTrayCol) + "_row" + Str$(TgtTrayRow) + "_SN")
+'	UpdateRobotLog$("Picture of chip in tray taken: " + DFChipPicture_SN$)
+'	
 '	' Do any chip placement diagnostics here
 '	If DoCheckPlace Then
 '		UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
@@ -516,8 +540,10 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 '		UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
 '		
 '	EndIf
+
+	SetSpeedSetting("MoveWithoutChip")
+
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2T) command complete:")
-	UpdatePositionFiles
 	ResetOperation
 	MoveChipFromSocketToTray = Val(ts$) ' -1
 Fend
@@ -528,12 +554,11 @@ Fend
 '	SubError = 0
 '	
 '	SelectSite("InFunctionDefinePallets")
-'
-'	LoadPositionFiles
 '	ResetCurrentChipOffsets
 '
 '	String ts$ ' , opName$
 '	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+'	op_ts$ = ts$
 '
 '	CurrentOperation$ = "MoveT2T_" + ts$
 '	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromSocketToSocket(" + Str$(SrcDAT) + "," + Str$(SrcSocket) + "," + Str$(TgtDAT) + "," + Str$(TgtSocket) + ") " + ts$)
@@ -554,12 +579,13 @@ Fend
 '	    ResetOperation
 '		Exit Function
 '	EndIf
-'	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices, checking position occupancies")
+'	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
 '
 '	' Check occupancy
 '	Int32 Occupancy
 '	Occupancy = -1
-'
+'   If DoOccupancyChecks Then
+'	UpdateRobotLog$(CurrentOperation$ + ": Checking Occupancies")
 '	Occupancy = SocketPositionOccupied(TgtDAT, TgtSocket)
 '	'Print "Occupancy = ", Occupancy
 '	If Occupancy <> 0 Then
@@ -589,11 +615,17 @@ Fend
 '	EndIf
 '
 '	UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
+'   Else
+'       UpdateRobotLog$(CurrentOperation$ + ": Skipping occcupancy check")
+'   EndIf
+'	SetSpeedSetting("MoveWithoutChip")
 '	''' Get chip from socket	
 '	
+' 	''' Moved in GetChipFromTray - Careful if uncommenting 
 '	' Take picture of chip and store it for serial number retrieval	
 '	String DFChipPicture_SN$
-'	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+''	DFChipPicture_SN$ = DF_take_picture$(CurrentOperation$ + "_SN")
+'	DFChipPicture_SN$ = DF_take_picture$(ts$ + "_tr" + Str$(SrcTray) + "_col" + Str$(SrcTrayCol) + "_row" + Str$(SrcTrayRow) + "_SN")
 '	UpdateRobotLog$(CurrentOperation$ + ": Chip image for SN saved to " + DFChipPicture_SN$)
 '	UpdateRobotLog$("Picture of chip in socket taken: " + DFChipPicture_SN$)
 '	' Chips are in the right place, lets get the chip from the tray	
@@ -704,7 +736,6 @@ Fend
 '	EndIf
 '	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2S) command complete:")
 '	ResetOperation
-'	UpdatePositionFiles
 '	MoveChipFromSocketToSocket = Val(ts$)' -1
 '	
 'Fend

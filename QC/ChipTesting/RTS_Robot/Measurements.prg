@@ -199,11 +199,11 @@ Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
 	
 	Do Until check < 20 And check > -20 Or N_round > 10
 		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, Isfound1, x_p1, y_p1, a_p1
+		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
 		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, Isfound2, x_p2, y_p2, a_p2
+		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
 		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, Isfound3, x_p3, y_p3, a_p3
+		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
 		'Print "P3 xyu: ", x_p3, y_p3, a_p3
 	
 
@@ -389,13 +389,22 @@ Fend
 ''' Use DF camera to get chip orientation only
 Function FindChipDirectionWithDF As Double
 	FindChipDirectionWithDF = -999.
-
-	SelectSite("InFunctionDefinePallets")
-	NAttempts = 10
-	Default_DF_Exposure = 40000
-	Min_DF_Exposure = 10000
-	Max_DF_Exposure = 80000
 	
+	SelectSite("InFunctionDefinePallets")
+	
+	If CY(Here) < (CY(P_Camera) - 20) Then
+		NAttempts = NAttempts_Chip_DAT
+		Min_DF_Exposure = Min_DF_Exposure_Chip_DAT
+		Max_DF_Exposure = Max_DF_Exposure_Chip_DAT
+	Else
+		NAttempts = NAttempts_Chip_Tray
+		Min_DF_Exposure = Min_DF_Exposure_Chip_Tray
+		Max_DF_Exposure = Max_DF_Exposure_Chip_Tray
+	EndIf
+	Print "Running find chip direction with NAttempts = ", Str$(NAttempts)
+	Print "Min exposure = ", Min_DF_Exposure
+	Print "Max exposure = ", Max_DF_Exposure
+
 	Integer Attempt 's, Attempt
 	Attempt = NAttempts
 '	Boolean Success
@@ -404,7 +413,7 @@ Function FindChipDirectionWithDF As Double
 	Do While (Attempt > 0) ' Or Success
 			
 		DF_Exposure = Min_DF_Exposure + Attempt * Int((Max_DF_Exposure - Min_DF_Exposure) / (NAttempts))
-		' Print "Attempt ", Str$(10 - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
+		' Print "Attempt ", Str$(NAttempts - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
 		
 	'	Print "FindChipDirectionWithDF: Chip type ", CHIPTYPE$
 		Select CHIPTYPE$
@@ -436,7 +445,7 @@ Function FindChipDirectionWithDF As Double
 		Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
 	EndIf
 	
-	DF_Exposure = Default_DF_Exposure
+	DF_Exposure = Default_DF_Exposure_Chip
 '	FindChipDirectionWithDF = GetBoundAnglePM180(FindChipDirectionWithDF)
 '	Print "FindChipDirectionWithDF: After bounding pm180: ", FindChipDirectionWithDF
 	
@@ -482,18 +491,29 @@ Function FindChipPositionWithDF As Boolean
 	
 	' Can comment this line  out after testing	
 	SelectSite("InFunctionDefinePallets")
-	NAttempts = 10
-	Default_DF_Exposure = 40000
-	Min_DF_Exposure = 10000
-	Max_DF_Exposure = 120000
+
+	' Force more attenpts for position finding
+	If CY(Here) < (CY(P_Camera) - 20) Then
+		NAttempts = NAttempts_Chip_DAT * 5
+		Min_DF_Exposure = Min_DF_Exposure_Chip_DAT
+		Max_DF_Exposure = Max_DF_Exposure_Chip_DAT
+	Else
+		NAttempts = NAttempts_Chip_Tray * 5
+		Min_DF_Exposure = Min_DF_Exposure_Chip_Tray
+		Max_DF_Exposure = Max_DF_Exposure_Chip_Tray
+	EndIf
+	Print "Running find chip position with NAttempts = ", Str$(NAttempts)
+	Print "Min exposure = ", Min_DF_Exposure
+	Print "Max exposure = ", Max_DF_Exposure
 	
+
 	Integer Attempt 's, Attempt
 	Attempt = NAttempts
 	
 	Do While (Attempt > 0) 'Or Success
 			
 		DF_Exposure = Min_DF_Exposure + Attempt * Int((Max_DF_Exposure - Min_DF_Exposure) / (NAttempts))
-'		Print "Attempt ", Str$(10 - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
+		Print "Attempt ", Str$(NAttempts - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
 
 '		Int32 FindError
 '		FindError = 0
@@ -527,7 +547,7 @@ Function FindChipPositionWithDF As Boolean
 	Else
 		Print "Could not find chip after ", NAttempts, " attempts"
 	EndIf
-	DF_Exposure = Default_DF_Exposure
+	DF_Exposure = Default_DF_Exposure_Chip
 
 Fend
 
@@ -1062,29 +1082,27 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 	Boolean isFound(4) ' Check if separate variable is needed for this
 	' Seems to maybe give different result?
 	Double ResX(4), ResY(4), ResU(4)
+	SelectSite("InFunctionDefinePallets") ' To get values for exposures 
 	
-	NAttempts = 10
-	Default_UF_Exposure = 0
-	Min_UF_Exposure = 00000
-	Max_UF_Exposure = 40000
-	
+	' Want a higher number of attempts here
+	NAttempts = NAttempts_UF
 	Integer Attempt
 	Attempt = NAttempts
 		
 	Do While Attempt > 0
-	' Start from low exposure
-	UF_Exposure = Max_UF_Exposure - Attempt * Int((Max_UF_Exposure - Min_UF_Exposure) / (NAttempts))
-	
+	' Exposure variation not working well, will revisit
+'	UF_Exposure = Max_UF_Exposure - Attempt * Int((Max_UF_Exposure - Min_UF_Exposure) / (NAttempts))
+	UF_Exposure = 0
 	Select SITE$
 		Case "MSU"
-			VSet MSU_UF_Key.ExposureTime, UF_Exposure
+'			VSet MSU_UF_Key.ExposureTime, UF_Exposure
 			VRun MSU_UF_Key
 			VGet MSU_UF_Key.Geom01.Found, found(1) 'isFoundTR
 			VGet MSU_UF_Key.Geom02.Found, found(2) 'isFoundBR
 			VGet MSU_UF_Key.Geom03.Found, found(3) 'isFoundBL
 			VGet MSU_UF_Key.Geom04.Found, found(4) 'isFoundTL
 		Case "TUT"
-			VSet TUT_UF_Key.ExposureTime, UF_Exposure
+'			VSet TUT_UF_Key.ExposureTime, UF_Exposure
 			VRun TUT_UF_Key
 			VGet TUT_UF_Key.Geom01.Found, found(1) 'isFoundTR
 			VGet TUT_UF_Key.Geom02.Found, found(2) 'isFoundBR
@@ -1197,10 +1215,10 @@ Function FindSocketPositionWithDF As Boolean
 	
 	' Can comment this line  out after testing	
 	SelectSite("InFunctionDefinePallets")
-	NAttempts = 10
-	Default_DF_Exposure = 60000
-	Min_DF_Exposure = 10000
-	Max_DF_Exposure = 120000
+
+	NAttempts = NAttempts_Soc
+	Min_DF_Exposure = Min_DF_Exposure_Soc
+	Max_DF_Exposure = Max_DF_Exposure_Soc
 	
 	Integer Attempt 's, Attempt
 	Attempt = NAttempts
@@ -1234,7 +1252,7 @@ Function FindSocketPositionWithDF As Boolean
 	Else
 		Print "Could not find socket after ", NAttempts, " attempts"
 	EndIf
-	DF_Exposure = Default_DF_Exposure
+	DF_Exposure = Default_DF_Exposure_Soc
 	
 Fend
 
@@ -1670,7 +1688,6 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	'''
 	Print "Measuring chip position"
 	' Measure the chip position
-	' NAttempts = 20
 	If Not FindChipPositionWithDF Then
 		'RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
 		GetChipInSocketAlignment = -ERR_V_DF_ALIGN ' Set an error code
@@ -1718,7 +1735,6 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	Int32 FullSocket_nr
 	FullSocket_nr = DAT_nr * 100 + Socket_nr
 
-'	NAttempts = 20
 	If Not FindSocketPositionWithDF Then
 		Print "ERROR: Cannot find socket alignment"
 		GetSocketPositionWithDF = False
@@ -1795,25 +1811,6 @@ Function FindChipAxisOffsetWithUF As Boolean
 '	Images$(1) = UF_take_picture$(id$ + "_01")
 '	' Take first measurements
 
-
-'	Integer Attempt
-'	Attempt = NAttempts
-'	Boolean Success
-'	Success = False
-'	Do While ((Attempt > 0) And Not Success)
-'		If UF_CHIP_FIND Then
-'			Success = True
-'			Exit Do
-'		Else
-'			Attempt = Attempt - 1
-'		EndIf
-'	Loop
-'	If Not Success Then
-'		Print "ERROR UF camera cannot find chip"
-'		Exit Function
-'	EndIf
-
-'	NAttempts = 10
 	If Not UF_CHIP_FIND Then
 		Print "ERROR UF camera cannot find chip"
 		Exit Function
@@ -1847,22 +1844,7 @@ Function FindChipAxisOffsetWithUF As Boolean
 	'pict_fname$ = UF_take_picture$(id$ + "_02")
     'Print #fileNum, ",", pict_fname$,
 	
-'	Attempt = NAttempts
-'	Success = False
-'	Do While ((Attempt > 0) And Not Success)
-'		If UF_CHIP_FIND Then
-'			Success = True
-'			Exit Do
-'		Else
-'			Attempt = Attempt - 1
-'		EndIf
-'	Loop
-'	If Not Success Then
-'		Print "ERROR UF camera cannot find chip after 180 degree rotation"
-'		Exit Function
-'	EndIf
 
-'	NAttempts = 10
 	If Not UF_CHIP_FIND Then
 		Print "ERROR UF camera cannot find chip on second measurement"
 		Exit Function
@@ -2149,13 +2131,34 @@ Fend
 '''' Function to recenter a chip based on the offsets from the image center calculated using the UF camera
 '' This is used to then do any pin analysis with the pins aligned with the right search boxes
 Function UFRecenter As Int32
+	SelectSite("InFunctionDefinePallets")
+	LoadCurrentChipOffset
 	UFRecenter = 0
 	JumpToCamera
 	Double CorX1, CorY1 ' , CorU1
-	Go Here :U(HAND_U0 + HandChipOrientation(CHIPTYPE_NR) - CurrentChipOffset(3))
+	'Go Here :U(HAND_U0 + HandChipOrientation(CHIPTYPE_NR) - CurrentChipOffset(3))
+	Go Here :U(DiffAnglePM180(CurrentChipOffset(3), HandChipOrientation(CHIPTYPE_NR)))
 	CorX1 = CurrentChipOffset(1) * Cos(DegToRad(CU(Here))) - CurrentChipOffset(2) * Sin(DegToRad(CU(Here)))
 	CorY1 = CurrentChipOffset(1) * Sin(DegToRad(CU(Here))) + CurrentChipOffset(2) * Cos(DegToRad(CU(Here)))
 	Go Here :X(CX(P_Camera) - CorX1) :Y(CY(P_Camera) - CorY1)
 	' Or Go Here  -X(CorX1) -Y(CorY1) :U(DiffAnglePM180(CurrentChipOffset(3), CU(Here)))
 	UFRecenter = -1
 Fend
+
+' For P_Camera +U(180)
+Function UFRecenterAt180 As Int32
+	SelectSite("InFunctionDefinePallets")
+	LoadCurrentChipOffset
+	UFRecenterAt180 = 0
+	JumpToCamera
+	Double CorX1, CorY1 ' , CorU1
+	'Go Here :U(HAND_U0 + HandChipOrientation(CHIPTYPE_NR) - CurrentChipOffset(3))
+	Go P_Camera :U(DiffAnglePM180(CurrentChipOffset(3), HandChipOrientation(CHIPTYPE_NR) + 180.))
+	'Go Here :U(DiffAnglePM180(CurrentChipOffset(3), HandChipOrientation(CHIPTYPE_NR)))
+	CorX1 = CurrentChipOffset(1) * Cos(DegToRad(CU(Here))) - CurrentChipOffset(2) * Sin(DegToRad(CU(Here)))
+	CorY1 = CurrentChipOffset(1) * Sin(DegToRad(CU(Here))) + CurrentChipOffset(2) * Cos(DegToRad(CU(Here)))
+	Go Here :X(CX(P_Camera) - CorX1) :Y(CY(P_Camera) - CorY1)
+	' Or Go Here  -X(CorX1) -Y(CorY1) :U(DiffAnglePM180(CurrentChipOffset(3), CU(Here)))
+	UFRecenterAt180 = -1
+Fend
+

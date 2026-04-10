@@ -20,6 +20,8 @@
 #define ERR_NO_CONTACT 15
 #define ERR_OBSTRUCTION 16
 
+' General vision error e.g. no sequence defined for site
+#define ERR_VISION 20
 ' Chip finding/measuring with vision
 #define ERR_V_NOCHIP 21
 #define ERR_V_OCCUPIED 22

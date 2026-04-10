@@ -17,18 +17,16 @@ Function SetSpeedSetting(Setting$ As String)
 	Accel 1, 1
 	
 	' Currently keeping non MSU or FNAL speeds low until enclosures are shipped/higher speeds are allowed by safety
-	If SITE$ <> "MSU" Then
-		If SITE$ <> "FNAL" Then
+	If SITE$ <> "MSU" And SITE$ <> "FNAL" Then
 			Exit Function
-		EndIf
 	EndIf
 	
 	Select Setting$
 		Case "MoveWithoutChip"
-			Speed 30
+			Speed 50
 			Accel 10, 10
 		Case "MoveWithChip"
-			Speed 10
+			Speed 15
 			Accel 2, 2
 		Case "PickAndPlace"
 			Speed 1
@@ -61,7 +59,44 @@ Function DF_take_picture$(basename$ As String) As String
 Fend
 
 
+Function SN_take_Picture$(basename$ As String) As String
+	SelectSite("InFunction")
+	SN_take_Picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
+	Print SN_take_Picture$
+	
+	Double ChipDir, Rotation
+	ChipDir = FindChipDirectionWithDF
+	If ChipDir < -900. Then
+		SN_take_Picture$ = "NoChip"
+		Exit Function
+	EndIf
+	
+	Rotation = DiffAnglePM180(RoundAngleTo90(ChipDir), RoundAngleTo90(CU(Here) + 180.))
 
+	Select SITE$
+		Case "MSU"
+			VSet MSU_DF_SN.ImgOp01.RotationAngle, Rotation
+			VRun MSU_DF_SN
+			Wait 0.3
+			VSaveImage MSU_DF_SN, SN_take_Picture$
+		Default
+			Print "No site specific vision sequence for SN preprocessing (rotation) defined, using MSU sequence - not for COLDATA"
+			VSet MSU_DF_SN.ImgOp01.RotationAngle, Rotation
+			VRun MSU_DF_SN
+			Wait 0.3
+			VSaveImage MSU_DF_SN, SN_take_Picture$
+	Send
+ 	
+Fend
+
+
+'Function SN_take_picture$(basename$ As String, Orientation As Double) As String
+'	SN_take_picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
+'	Print DF_take_picture$
+' 	VRun DF
+'    Wait 0.3
+'	VSaveImage DF, DF_take_picture$
+'Fend
 
 
 ' Prints error msg both to console and file
@@ -133,10 +168,10 @@ Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, D
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 	
 	Int32 FileNum
-	FileNum = FreeFile
+	fileNum = FreeFile
 	String OffsetFile$
-	If Tray <> 0 Then
-		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(Tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
+	If tray <> 0 Then
+		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
 	Else
 		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
 	EndIf
@@ -732,10 +767,10 @@ Function UpdatePositionFiles
 	' Save the position set in the global arrays to the files
 	For i = 1 To 2
 		For j = 1 To NSOCKETS
-			Print #fileNum, i, ",", j, ",", DAT_X(i, j), ",", DAT_Y(i, j), ",", DAT_U(i, j)
+			Print #FileNum, i, ",", j, ",", DAT_X(i, j), ",", DAT_Y(i, j), ",", DAT_U(i, j)
 		Next j
 	Next i
-	Close #fileNum
+	Close #FileNum
 Fend
 
 Function LoadPositionFiles
@@ -963,41 +998,63 @@ Function RoundAngleTo90(angle As Double) As Double
 Fend
 
 
-Function PhotographAllChipsInTray(pallet_nr As Integer, TrayName$ As String)
+Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
+	
+	ScanTray = 0
 	SelectSite("InFunctionDefinePallets")
-	SetSpeedSetting("MoveWithChip")
-	String fileName$
-	fileName$ = RTS_DATA$ + "\TrayCatalog_" + TrayName$ + ".txt"
+
+	Motor On
+	UF_camera_light_ON
+
+	String fileName$, ts$
+	fileName$ = RTS_DATA$ + "\TrayCatalogs\TrayCatalog_" + TrayName$ + ".csv"
 	Integer fileNum
 	fileNum = FreeFile
 	AOpen fileName$ As #fileNum
-	Print #fileNum, TrayName$, " chip image catalog"
-	
-	
+	Print #fileNum, "tray,col,row,occupied,image,processed,serial,warnings"
+
+	SetSpeedSetting("moveWithoutChip")
+	'String isChip$
+
 	JumpToTray_camera(pallet_nr, 1, 1)
 	Int32 col_nr, row_nr
+	Double ChipDir
+	ChipDir = -999.
+	String SN_Picture$
+	For row_nr = 1 To trayNRows ' TODO JOE swap back to col then row, this is just for convenince of how we had the chips at first at MSU.
 	For col_nr = 1 To trayNCols
-		For row_nr = 1 To trayNRows
-			If col_nr = 1 And row_nr Then
-				JumpToTray_camera(pallet_nr, 1, 1)
-			Else
-				If pallet_nr = 1 Then
-					Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0 + 180)) +Y(YOffset(HAND_U0 + 180)) +Z(DF_CAM_Z_OFF) :U(HAND_U0 + 180) /(Hand(Pallet(pallet_nr, col_nr, row_nr)))
-				ElseIf pallet_nr = 2 Then
-					Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(HAND_U0)) +Y(YOffset(HAND_U0)) +Z(DF_CAM_Z_OFF) :U(HAND_U0) /(Hand(Pallet(pallet_nr, col_nr, row_nr)))
-				EndIf
-			EndIf
+		SetSpeedSetting("MoveWithChip")
+		
+'		If col_nr <> 1 Then
+'			Exit For
+'		EndIf
+'		For row_nr = 1 To trayNRows
+
+'			' Testing
+'			If row_nr <> 1 Then
+'				Exit For
+'			EndIf
 			
+			Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF)
+				
+			ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+			SN_Picture$ = SN_take_Picture$(ts$ + "_tr" + Str$(pallet_nr) + "_col" + Str$(col_nr) + "_row" + Str$(row_nr) + "_SN")
+			
+			If SN_Picture$ = "NoChip" Then
+				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",0,,,,0"
+				UpdateRobotLog$("No chip found")
+			Else
+				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",1,", SN_Picture$, ",,,0"
+				UpdateRobotLog$("Picture of chip in tray taken: " + SN_Picture$)
+			EndIf
 			Wait 1
-			String name$, picname$
-			name$ = "Tray_" + TrayName$ + "_Chip_" + Str$(col_nr) + "_" + Str$(row_nr) + "_SN"
-			picname$ = DF_take_picture$(name$)
-			Print #fileNum, picname$
 		Next
 	Next
 		
 	Close #fileNum
 	SetSpeedSetting("MoveWithoutChip")
+	ScanTray = Val(ts$)
+	
 Fend
 
 

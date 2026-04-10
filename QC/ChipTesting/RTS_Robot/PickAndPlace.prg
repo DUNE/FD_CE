@@ -145,13 +145,15 @@ Fend
 Function isChipInSocketCamera(DAT_nr As Integer, socket_nr As Integer) As Boolean
 	isChipInSocketCamera = False
 	SelectSite("InFunctionDefinePallets")
-	JumpToSocket_camera(DAT_nr, socket_nr)
 
+ 
+	JumpToSocket_camera(DAT_nr, socket_nr)
+   	SetSpeedSetting("PickAndPlace")
 '	NAttempts = 10
 	If FindChipDirectionWithDF > -900. Then
 		isChipInSocketCamera = True
 	EndIf
-	
+	SetSpeedSetting("")
 Fend
 
 Function isChipInSocketTouch(DAT_nr As Integer, socket_nr As Integer) As Boolean
@@ -169,7 +171,7 @@ Function isChipInSocketTouch(DAT_nr As Integer, socket_nr As Integer) As Boolean
 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
 	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
 	isChipInSocketTouch = TouchSuccess
-	SetSpeedSetting("")
+
 Fend
 
 
@@ -201,7 +203,7 @@ Function InsertIntoSocket As Boolean
 Fend
 
 Function InsertIntoSocketSoft As Boolean
-
+	SelectSite("InFunctionDefinePallets")
 	InsertIntoSocketSoft = False
 
 	If Not isPressureOk Then
@@ -327,6 +329,24 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	SetSpeedSetting("MoveWithoutChip")
 	
 	JumpToTray_camera(Tray, TrayCol, TrayRow)
+	
+	If CurrentOperation$ <> "" Then
+'		String DFChipPicture_SN$
+'		DFChipPicture_SN$ = DF_take_picture$(op_ts$ + "_tr" + Str$(Tray) + "_col" + Str$(TrayCol) + "_row" + Str$(TrayRow) + "_SN")
+			String SN_Picture$
+			SN_Picture$ = SN_take_Picture$(op_ts$ + "_tr" + Str$(Tray) + "_col" + Str$(TrayCol) + "_row" + Str$(TrayRow) + "_SN")
+			
+			If SN_Picture$ = "NoChip" Then
+				UpdateRobotLog$("No chip found")
+				RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
+				GetChipFromTray = -ERR_V_DF_ALIGN
+				Exit Function
+			Else
+				UpdateRobotLog$("Picture of chip in tray taken: " + SN_Picture$)
+			EndIf
+		
+'		UpdateRobotLog$("Picture of chip in tray taken: " + DFChipPicture_SN$)
+	EndIf
 	SetSpeedSetting("PickAndPlace")
 	' need to account for offset of tray position from 0 or 180 degrees
 	Double dTU
@@ -422,11 +442,15 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	tray_U(Tray, TrayCol, TrayRow) = CorrectedChipOffset(3)
 	Print "Offsets for tray(", Str$(Tray), ",", Str$(TrayCol), ",", Str$(TrayRow), ") : (", tray_X(Tray, TrayCol, TrayRow), ",", tray_Y(Tray, TrayCol, TrayRow), ",", tray_U(Tray, TrayCol, TrayRow), ")"
 	LogUFOffsets(Tray, TrayCol, TrayRow, 0, 0)
+
 	Print "Updating position files"
 	UpdatePositionFiles
 	Print "Updating current offset file"
 	StoreCurrentChipOffset
 	' Set to successful (maybe set to time stamp instead of "True" (-1)
+	
+	SetSpeedSetting("MoveWithChip")
+	
 	GetChipFromTray = -1
 	
 Fend
@@ -440,9 +464,13 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
     '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
 		SelectSite("InFunctionDefinePallets")
     EndIf
+    
+    ' Make sure current chip and previous chip from tray position's offsets are loaded
+    LoadCurrentChipOffset
+    LoadPositionFiles
     Print "Current chip offsets in memory:"
     Print Str$(CurrentChipOffset(1)), ",", Str$(CurrentChipOffset(2)), ",", Str$(CurrentChipOffset(3))
-   	
+   	   	
 	SetSpeedSetting("MoveWithChip")
 	JumpToTray(Tray, TrayCol, TrayRow)
 	Print "Position before corrections"
@@ -531,6 +559,7 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	
 	Print "Chip placed"
 	SetSpeedSetting("MoveWithoutChip")
+	ResetCurrentChipOffsets
 	
 	PlaceChipInTray = -1 ' Or timestamp
 Fend
@@ -545,7 +574,8 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
     '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
 		SelectSite("InFunctionDefinePallets")
     EndIf
-	
+ 	SetSpeedSetting("MoveWithoutChip")
+
 	JumpToSocket_camera(DAT, Socket)
 	Wait 1
 	SetSpeedSetting("PickAndPlace")
@@ -612,9 +642,16 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	Print "Offsets measured"
 	' Offsets are calculated wrt HAND_U0, and so need to be corrected back to measured socket + U correction
 	' Can do this later when combined with second measurement
-	DAT_X(DAT, Socket) = CurrentChipOffset(1)
-	DAT_Y(DAT, Socket) = CurrentChipOffset(2)
-	DAT_U(DAT, Socket) = CurrentChipOffset(3)
+
+	' Currently assumes chip is placed down in correct orientation
+	' but this will allow for correction later if orientation check implemented as above
+	' Also LogUFOFfsets stores the ***CorrectedChipOffset***
+	' See GetChipFromTray function
+	' Seeting the args to (0,0) simply sets CorrectedChipOffset(i) = CurrentChipOffset(i)
+	CorrectChipAxisOffsetForPickupOrientation(0, 0)
+	DAT_X(DAT, Socket) = CorrectedChipOffset(1) 'CurrentChipOffset(1)
+	DAT_Y(DAT, Socket) = CorrectedChipOffset(2) 'CurrentChipOffset(2)
+	DAT_U(DAT, Socket) = CorrectedChipOffset(3) 'CurrentChipOffset(3)
 	Print "Offsets for socket(", Str$(DAT), ",", Str$(Socket), ") : (", DAT_X(DAT, Socket), ",", DAT_Y(DAT, Socket), ",", DAT_U(DAT, Socket), ")"
 	LogUFOffsets(0, 0, 0, DAT, Socket)
 	SetSpeedSetting("MoveWithChip")
@@ -634,9 +671,13 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
     '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
 		SelectSite("InFunctionDefinePallets")
     EndIf
+    
+    ' Load the position information for the last chip retrieved from the socket and set DAT_x/y/u and current chip's offset
+	LoadPositionFiles
+    LoadCurrentChipOffset
     Print "Current chip offsets in memory:"
     Print Str$(CurrentChipOffset(1)), ",", Str$(CurrentChipOffset(2)), ",", Str$(CurrentChipOffset(3))
-	
+    	
 	JumpToSocket_camera(DAT, Socket)
 	SetSpeedSetting("PickAndPlace")
 	
@@ -668,6 +709,8 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 '	' calculate correction from current chip offsets and DAT position offset
 '
 	Go Here +U(PickOffset)
+
+
 
 	' If stored socket offsets are empty, want to have expected offset as picked up if it were in  correct position
 	' I think this shuld be the same as HandChipOrientation(CHIPTYPE_NR)
@@ -722,32 +765,11 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	
 	Print "Chip placed"
 	PumpOff
+	ResetCurrentChipOffsets
 	PlaceChipInSocket = -1
 	
 Fend
 
-
-
-''' For a batch of operations, check intial occupancies of the tray positions
-' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
-Function CheckTrayPositionOccupancies(Expectation As Boolean, ByRef TrayNrs() As Int32, ByRef TrayCols() As Int32, ByRef TrayRows() As Int32, ByRef Occupancy() As Int32) As Int32
-	CheckTrayPositionOccupancies = 0
-	Int32 index
-	For index = 1 To 8
-		If Not (TrayNrs(index) = 0 Or TrayCols(index) = 0 Or TrayRows(index) = 0) Then
-		 	Occupancy(index) = TrayPositionOccupied(TrayNrs(index), TrayCols(index), TrayRows(index))
-		 	If Occupancy(index) < -1 Then
-		 		' Log number of errors
-		 		CheckTrayPositionOccupancies = CheckTrayPositionOccupancies + 10
-		 	ElseIf Occupancy(index) > 0 Then
-		 		' Log number of correctly filled (don't care about -1 which means unchecked
-		 		CheckTrayPositionOccupancies = CheckTrayPositionOccupancies + 1
-		 	EndIf
-	 	EndIf
-	Next
-	''' Number of errors is number of 10s
-	''' Number of successes is number of 1s
-Fend
 
 ''' Checks if the tray position is occupied (individual)
 '' Returns
@@ -781,33 +803,33 @@ Function TrayPositionOccupied(Tray_nr As Int32, Tray_Col_nr As Int32, Tray_Row_n
 
 Fend
 
-''' For a batch of operations, check intial occupancies of the socket positions
-' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
-Function CheckSocketPositionOccupancies(Expectation As Boolean, ByRef DATs() As Int32, ByRef Sockets() As Int32, ByRef Occupancy() As Int32) As Int32
-	CheckSocketPositionOccupancies = 0
-	
-	SetSpeedSetting("MoveWithoutChip")
-
-	Int32 index
-	For index = 1 To 8
-		If Not (DATs(index) = 0 Or Sockets(index) = 0) Then
-		 	Occupancy(index) = SocketPositionOccupied(DATs(index), Sockets(index))
-		 	If Occupancy(index) < -1 Then
-		 		' Log number of errors
-		 		CheckSocketPositionOccupancies = CheckSocketPositionOccupancies + 10
-		 	ElseIf Occupancy(index) > 0 Then
-		 		' Log number of correctly filled (don't care about -1 which means unchecked
-		 		CheckSocketPositionOccupancies = CheckSocketPositionOccupancies + 1
-		 	EndIf
-	 	EndIf
-	Next
-	''' Number of errors is number of 10s
-	''' Number of successes is number of 1s
-	
-	SetSpeedSetting("MoveWithoutChip")
-
-
-Fend
+'''' For a batch of operations, check intial occupancies of the socket positions
+'' Batch operations are not fully implemented yet but will take an array of indices for each argument of the move function
+'Function CheckSocketPositionOccupancies(Expectation As Boolean, ByRef DATs() As Int32, ByRef Sockets() As Int32, ByRef Occupancy() As Int32) As Int32
+'	CheckSocketPositionOccupancies = 0
+'	
+'	SetSpeedSetting("MoveWithoutChip")
+'
+'	Int32 index
+'	For index = 1 To 8
+'		If Not (DATs(index) = 0 Or Sockets(index) = 0) Then
+'		 	Occupancy(index) = SocketPositionOccupied(DATs(index), Sockets(index))
+'		 	If Occupancy(index) < -1 Then
+'		 		' Log number of errors
+'		 		CheckSocketPositionOccupancies = CheckSocketPositionOccupancies + 10
+'		 	ElseIf Occupancy(index) > 0 Then
+'		 		' Log number of correctly filled (don't care about -1 which means unchecked
+'		 		CheckSocketPositionOccupancies = CheckSocketPositionOccupancies + 1
+'		 	EndIf
+'	 	EndIf
+'	Next
+'	''' Number of errors is number of 10s
+'	''' Number of successes is number of 1s
+'	
+'	SetSpeedSetting("MoveWithoutChip")
+'
+'
+'Fend
 
 ''' Checks if the socket position is occupied (individual)
 '' Returns
@@ -894,7 +916,8 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	Print Here
 	
 	Print "Chip direction after placing should be ", GetBoundAnglePM180(PlaceU + HandChipOrientation(CHIPTYPE_NR))
-
+	
+	
 	' If stored tray offsets are empty, want to have expected offset as picked up if it were in tray in correct position
 	' I think this shuld be the same as HandChipOrientation(CHIPTYPE_NR)
 	' i.e., if placing a chip into an empty tray which hasn't had a chip removed from it, need to compare ~+90. value to 90, not to 0
@@ -952,7 +975,7 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	
 	Print "Chip placed"
 	SetSpeedSetting("MoveWithoutChip")
-
+	ResetCurrentChipOffsets
 	RotateTrayChip = -1
 
 Fend
@@ -967,6 +990,11 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	
 	' This function will just pick up the chip and place it back down. Hopefully, the fact we are dropping the chip	
 	' from a slight height should give it enough travel if there was some misalignment to correct this.
+	
+	Motor On
+	PumpOn
+	On 12
+	SelectSite("InFunctionDefinePallets")
 	
 	' First correct for socket drift
 	JumpToSocket_camera(DAT, Socket)
@@ -1006,7 +1034,7 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	SetSpeedSetting("PickAndPlace")
 	' Now pick up the chip
 	If Not PickupFromSocket Then
-		RTS_error("ReseatChipInSocke:t Cannot pick up chip from socket ", -ERR_SOCKET_PICK)
+		RTS_error("ReseatChipInSocke: Cannot pick up chip from socket ", -ERR_SOCKET_PICK)
 		ReseatChipInSocket = -ERR_SOCKET_PICK
 		Exit Function
 	EndIf
@@ -1014,6 +1042,7 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	
 	' In case lower than intended pick/place point
 	JumpToSocket(DAT, Socket)
+	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
 	' Don't need to go to UFC as previous chip placement bad, try reseating with drop function
 		
 	' Now replace thc chip
@@ -1039,11 +1068,13 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	' Do alignment check of chip in socket after insertion
 	JumpToSocket_camera(DAT, Socket)
 	SetSpeedSetting("MoveWithoutChip")
-	
+	Wait 5
 	
 	' TODO reimplement chip alignment where available, then compare to first measurement.
-	
-	
+	JumpToCamera
+	Off 12
+	PumpOff
+	Motor Off
 	
 	ReseatChipInSocket = -1
 Fend
