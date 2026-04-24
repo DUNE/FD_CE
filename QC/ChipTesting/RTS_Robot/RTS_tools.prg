@@ -1011,7 +1011,7 @@ Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
 	Integer fileNum
 	fileNum = FreeFile
 	AOpen fileName$ As #fileNum
-	Print #fileNum, "tray,col,row,occupied,image,processed,serial,warnings"
+	Print #fileNum, "tray,col,row,occupied,image,processed,serial,warnings,checked"
 
 	SetSpeedSetting("moveWithoutChip")
 	'String isChip$
@@ -1021,14 +1021,15 @@ Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
 	Double ChipDir
 	ChipDir = -999.
 	String SN_Picture$
-	For row_nr = 1 To trayNRows ' TODO JOE swap back to col then row, this is just for convenince of how we had the chips at first at MSU.
+
 	For col_nr = 1 To trayNCols
 		SetSpeedSetting("MoveWithChip")
 		
+		' for testing
 '		If col_nr <> 1 Then
 '			Exit For
 '		EndIf
-'		For row_nr = 1 To trayNRows
+		For row_nr = 1 To trayNRows
 
 '			' Testing
 '			If row_nr <> 1 Then
@@ -1041,10 +1042,10 @@ Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
 			SN_Picture$ = SN_take_Picture$(ts$ + "_tr" + Str$(pallet_nr) + "_col" + Str$(col_nr) + "_row" + Str$(row_nr) + "_SN")
 			
 			If SN_Picture$ = "NoChip" Then
-				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",0,,,,0"
+				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",0,,,,0,0"
 				UpdateRobotLog$("No chip found")
 			Else
-				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",1,", SN_Picture$, ",,,0"
+				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",1,", SN_Picture$, ",,,0,0"
 				UpdateRobotLog$("Picture of chip in tray taken: " + SN_Picture$)
 			EndIf
 			Wait 1
