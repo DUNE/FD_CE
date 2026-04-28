@@ -5,8 +5,6 @@ Function RTS_server
 	LoadPositionFiles
 	
 	DoPinAnalysis = False
-	DoCheckPlace = False
-	DoMeasurePlace = False
 	DoOccupancyChecks = True
 	
 	Integer portNr
@@ -26,6 +24,7 @@ Function RTS_server
     Integer pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr
     Integer src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row
     String TrayName$
+    Integer DoMeasure
     
     op_ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 
@@ -46,25 +45,23 @@ Function RTS_server
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
     			Print "Move chip from pallet(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
-    			Print " to DAT board: ", DAT_nr, " socket", Socket_nr
-    			'Jump Pallet(1, 15, 6) :Z(-10)
+    			Print " to DAT board: ", DAT_nr, " socket", socket_nr
     			'DO stuff
-    			status = MoveChipFromTrayToSocket(pallet_nr, pallet_col, pallet_row, DAT_nr, Socket_nr)
+    			status = MoveChipFromTrayToSocket(pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr)
     			Print #portNr, Str$(status)
-
+    		
     		Case "MoveChipFromSocketToTray"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
+    			Input #portNr, socket_nr
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
-    			Print "Move chip from DAT board: ", DAT_nr, " socket", Socket_nr
+    			Print "Move chip from DAT board: ", DAT_nr, " socket", socket_nr
     			Print " to tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
-    			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = MoveChipFromSocketToTray(DAT_nr, Socket_nr, pallet_nr, pallet_col, pallet_row)
+    			status = MoveChipFromSocketToTray(DAT_nr, socket_nr, pallet_nr, pallet_col, pallet_row)
     			Print #portNr, Str$(status)
 
     		Case "MoveChipFromTrayToTray"
@@ -81,16 +78,39 @@ Function RTS_server
     			Print " to tray(", tgt_pallet_nr, ",", tgt_pallet_col, ",", tgt_pallet_row, ")"
     			status = MoveChipFromTrayToTray(src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row) ', 0)
     			Print #portNr, Str$(status)
+    		
+    		Case "CheckTrayPlacement"
+    			PumpOn
+    			' Receive source and destination parameters"
+    			Input #portNr, pallet_nr
+    			Input #portNr, pallet_col
+    			Input #portNr, pallet_row
+    			Print "Check placement in tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
+    			'DO stuff
+    			status = CheckTrayPlacement(pallet_nr, pallet_col, pallet_row)
+    			Print #portNr, Str$(status)
+    			
+    		Case "CheckSocketPlacement"
+    			PumpOn
+    			' Receive source and destination parameters"
+    			Input #portNr, DAT_nr
+    			Input #portNr, socket_nr
+    			Input #portNr, DoMeasure
+    			Print "Check placement in DAT board: ", DAT_nr, " socket", socket_nr
+    			Print "Precise measurement set to ", DoMeasure
+    			'DO stuff
+    			status = CheckSocketPlacement(DAT_nr, socket_nr, DoMeasure)
+    			Print #portNr, Str$(status)
     			
     		Case "ReseatChipInSocket"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
-    			Print "Reseat chip in socket: ", DAT_nr, " socket", Socket_nr
+    			Input #portNr, socket_nr
+    			Print "Reseat chip in socket: ", DAT_nr, " socket", socket_nr
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = ReseatChipInSocket(DAT_nr, Socket_nr)
+    			status = ReseatChipInSocket(DAT_nr, socket_nr)
     			' SPEL "True" is -1, but integration code treets all negative values as errors	
     			If status = -1 Then
     				status = 0
@@ -146,7 +166,7 @@ Function RTS_server
     			Print #portNr, "InsertIntoSocket"
     			
     		Case "DropToSocket"
-    			DropToSocket
+    			DropToSocket ' Maybe rename for consistency
     			Print #portNr, "DropToSocket"
     			
     		Case "JumpToCamera"
@@ -203,22 +223,6 @@ Function RTS_server
     		Case "PinAnalysisOff"
     			DoPinAnalysis = False
     			Print #portNr, "PinAnalysisOff"
-    			
-    		Case "CheckPlaceOn"
-    			DoCheckPlace = True
-    			Print #portNr, "CheckPlaceOn"
-    			
-    		Case "CheckPlaceOff"
-    			DoCheckPlace = False
-    			Print #portNr, "CheckPlaceOff"
-    			
-      		Case "MeasurePlaceOn"
-    			DoMeasurePlace = True
-    			Print #portNr, "MeasurePlaceOn"
-    			
-    		Case "MeasurePlaceOff"
-    			DoMeasurePlace = False
-    			Print #portNr, "MeasurePlaceOff"
     			
     		Case "OccupancyChecksOn"
     			DoOccupancyChecks = True

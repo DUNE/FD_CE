@@ -17,8 +17,6 @@ Function main
 	EndIf
 	
 	DoPinAnalysis = False
-	DoCheckPlace = False
-	DoMeasurePlace = False
 	DoOccupancyChecks = True
 
 	LoadPositionFiles

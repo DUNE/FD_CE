@@ -93,8 +93,8 @@ Global Boolean MSUTESTBOARD
 ' These will be for options for additional steps in move commands
 ' Should be declared in Main function (as false by default) then toggled on
 Global Boolean DoPinAnalysis
-Global Boolean DoCheckPlace ' Checks orientation 
-Global Boolean DoMeasurePlace ' Checks position measurement
+'Global Boolean DoCheckPlace ' Checks orientation 
+'Global Boolean DoMeasurePlace ' Checks position measurement
 Global Boolean DoOccupancyChecks
 
 Global String CurrentOperation$

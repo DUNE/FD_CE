@@ -1,12 +1,40 @@
 #include "RTS_tools.inc"
 #include "ErrorDictionary.inc"
 
+''' Runs the pin analysis code
+' Note, this does not find the position, which is found by the UFGetChipAligment() function
+' this checks for uniform pin position/spacing using the PinsAnaly() function
+Function UFPinAnalysis(id$ As String, ByRef Images$() As String) As Int32
+	UpdateRobotLog$("Running pin analysis")
+	UFPinAnalysis = 0
 
+	Images$(1) = UF_take_picture$(id$ + "_pins")
+
+	Integer status
+	status = PinsAnaly(id$, ByRef Images$())
+	' Print #fileNum, ",", status,
+	If status <> 0 Then
+		UFPinAnalysis = status
+	EndIf
+	
+	UFPinAnalysis = -1
+	
+Fend
 
 ''' Analyses row of pins and checks equidistant spacing for bent pins/dust
 Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	
 	PinsRowAnaly = 0
+	
+	Int32 NPins
+	Select CHIPTYPE$
+		Case "LArASIC"
+		Case "ColdADC"
+		Case "COLDATA"
+		Print "Invalid chiptype"
+		PinsRowAnaly = ERR_PINS
+		Default
+	Send
 	
 	Boolean passed
 	Integer nFound, i
@@ -103,20 +131,24 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 Fend
 
 ''' For each side of a chip runs PinsRowAnaly to check pin spacing/dust occlusion
-Function PinsAnaly(id$ As String) As Integer
+Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 	
 	PinsAnaly = 0
 	
 	Integer fileNum
 	fileNum = FreeFile
 	AOpen RTS_DATA$ + "\pins\" + id$ + "_pins.csv" As #fileNum
-		
+	
+	
 	Select SITE$
 		Case "BNL"
+			VSet pins_analy.ImageFile, Images$(1)
 			VRun pins_analy
 		Case "MSU"
+			VSet MSU_ChipAnal.ImageFile, Images$(1)
 			VRun MSU_ChipAnal
 		Case "TUT"
+			VSet TUT_ChipAnal.ImageFile, Images$(1)
 			VRun TUT_ChipAnal
 		Default
 			Print "Need to set up pin analysis for your site"
@@ -135,10 +167,46 @@ Function PinsAnaly(id$ As String) As Integer
 		PinsAnaly = status
 	EndIf
 
+
+	' For COLDATA will want to change image here after moving each way?
+	' Something like
+	' JW: I've not tested this but I think this should work, requires three images of chips
+	' with UF camera
+'	If CHIPTYPE$ = "COLDATA" Then
+	'	Select SITE$
+'		Case "FNAL"
+'			VSet FNAL_ChipAnal.ImageFile, Images$(2)
+'			VRun pins_analy
+'		Case "MSU"
+'			VSet MSU_CDAnal.ImageFile, Images$(2)
+'			VRun MSU_CDAnal
+'		Default
+'			Print "Need to set up COLDATA pin analysis for your site"
+'			PinsAnaly = -100
+'			Close #fileNum
+'	Send	
+'	EndIf
+
 	status = PinsRowAnaly("BlobLeft", fileNum)
 	If status <> 0 Then
 		PinsAnaly = status
 	EndIf
+
+'' And then again for the other side
+'	If CHIPTYPE$ = "COLDATA" Then
+	'	Select SITE$
+'		Case "FNAL"
+'			VSet FNAL_ChipAnal.ImageFile, Images$(3)
+'			VRun pins_analy
+'		Case "MSU"
+'			VSet MSU_CDAnal.ImageFile, Images$32)
+'			VRun MSU_CDAnal
+'		Default
+'			Print "Need to set up COLDATA pin analysis for your site"
+'			PinsAnaly = -100
+'			Close #fileNum
+'	Send	
+'	EndIf
 
 	status = PinsRowAnaly("BlobRight", fileNum)
 	If status <> 0 Then
@@ -149,126 +217,13 @@ Function PinsAnaly(id$ As String) As Integer
 	
 Fend
 
-Function calibrate_socket(DAT_nr As Integer, socket_nr As Integer)
-	Print
-	Print socket_nr, "**********************************************"
-	
-	
-	JumpToSocket_camera(DAT_nr, socket_nr)
-	
-	'Add error: x:  0.888672y:  -0.798645
-	'Go Here +X(0.888672)
-	'Go Here +Y(-0.798645)
-	
-	'Add a position fluctuation for test, only for test!!!	
-	
-	'Real r_x
-  	'Randomize
-  	'r_x = Rnd(2) - 1
-  	
-  	'Real r_y
-    'Randomize
-    'r_y = Rnd(2) - 1
-  	
-  	'Go Here +X(r_x)
-  	'Go Here +Y(r_x)
-  	'Print "Add error: x: ", r_x, "y: ", r_y
-  	
-  	'random end ********************************************************
 
-	
-	VRun skt_cali_test
-	'Integer nP
-	'VGet skt_cali_test.Geom01.NumberFound, nP
-	'Print "number of point found: ", nP
-	
-	Boolean Isfound1, Isfound2, Isfound3
-	Boolean found
-	'VGet skt_cali_test.Geom01.Found, Isfound1
-	'VGet skt_cali_test.Geom02.Found, Isfound2
-	'VGet skt_cali_test.Geom03.Found, Isfound3
-	
-	Double x_p1, y_p1, a_p1, x_p2, y_p2, a_p2, x_p3, y_p3, a_p3
-	Double x_ori, y_ori, a_ori
-	
-	'VGet skt_cali_test.CameraCenter.RobotXYU, found, x_ori, y_ori, a_ori
-	Double check
-	check = 100
-	Integer N_round
-	N_round = 0
-	
-	Do Until check < 20 And check > -20 Or N_round > 10
-		VRun skt_cali_test
-		VGet skt_cali_test.Geom01.RobotXYU, isFound1, x_p1, y_p1, a_p1
-		'Print "P1 xyu: ", x_p1, y_p1, a_p1
-		VGet skt_cali_test.Geom02.RobotXYU, isFound2, x_p2, y_p2, a_p2
-		'Print "P2 xyu: ", x_p2, y_p2, a_p2
-		VGet skt_cali_test.Geom03.RobotXYU, isFound3, x_p3, y_p3, a_p3
-		'Print "P3 xyu: ", x_p3, y_p3, a_p3
-	
-
-		check = (x_p1 - x_p2) * (x_p3 - x_p2) - (y_p1 - y_p2) * (y_p3 - y_p2)
-		N_round = N_round + 1
-		'Print "perpendicular check: ", check, " Loop: ", N_round
-	
-	Loop
-	
-	
-	If check < 20 And check > -20 Then
-		Print "Correctly found"
-	EndIf
-	
-	
-	Double x_c, y_c
-	
-	x_c = (x_p1 + x_p3) /2
-	y_c = (y_p1 + y_p3) /2
-	'Print "HERE: ", Here
-	'Print "ori_center: ", x_ori, y_ori
-	Print "corr_center: ", x_c, y_c
-	'Print P(20 + socket_nr) :Z(-132.5)
-	
-	'Double A_line
-	
-	'VGet skt_cali_test.LineFind01.Angle, A_line
-	'Print A_line
-	
-	
-Fend
-
-
-
-
-''' Runs the pin analysis code
-' Note, this does not find the position, which is found by the UFGetChipAligment() function
-' this checks for uniform pin position/spacing using the PinsAnaly() function
-Function UFPinAnalysis(id$ As String, ByRef Images$() As String) As Int32
-	UpdateRobotLog$("Running pin analysis")
-	UFPinAnalysis = 0
-	'Integer fileNum
-	'fileNum = idx(1)
-	'String pict_fname$
-	Images$(1) = UF_take_picture$(id$ + "_pins")
-	'Print #fileNum, ",", pict_fname$,
-	'VSet pins_analy.ImageFile, pict_fname$
-	
-	Integer status
-	status = PinsAnaly(id$)
-	' Print #fileNum, ",", status,
-	If status <> 0 Then
-		UFPinAnalysis = status
-	EndIf
-	
-	' Images(2) and (3) are for COLDATA extra images after shifting side to side
-	
-Fend
-
-
+Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Double, isFoundTR As Boolean, xTR As Double, yTR As Double, isFoundBR As Boolean, xBR As Double, yBR As Double, isFoundBL As Boolean, xBL As Double, yBL As Double) As Boolean
 '''' Chip and socket direction functions ''''
 ''' Finds the orientation of a right-angled triangle
 ' Note, assumes a specific orientation which must be adapted to the expected layour of of the three points passed/
 ' This may be different for chip/socket layout etc.
-Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Double, isFoundTR As Boolean, xTR As Double, yTR As Double, isFoundBR As Boolean, xBR As Double, yBR As Double, isFoundBL As Boolean, xBL As Double, yBL As Double) As Boolean
+
 	ThreeCornerFindDirection = False
 	
 '	Print "ThreeCornerFind function"
@@ -386,8 +341,9 @@ Function ThreeCornerFindDirection(isFoundTL As Boolean, xTL As Double, yTL As Do
 
 Fend
 
-''' Use DF camera to get chip orientation only
 Function FindChipDirectionWithDF As Double
+''' Use DF camera to get chip orientation only
+' Wraps lower level chip specifc functions
 	FindChipDirectionWithDF = -999.
 	
 	SelectSite("InFunctionDefinePallets")
@@ -452,6 +408,9 @@ Function FindChipDirectionWithDF As Double
 Fend
 
 Function DF_ChipDirection_LArASIC As Double
+	''' LArASIC specific direction finding
+	' Takes care of site specific differences
+	
 	DF_ChipDirection_LArASIC = -999.
 	Boolean FoundText
 	Double xT, yT, uT
@@ -479,11 +438,11 @@ Fend
 
 
 
+Function FindChipPositionWithDF As Boolean
 '''' Wrapper function to find the direction of a chip with the down facing camera
 ''' Initializes global array ChipPos() which will store X,Y,U of chip
-'' These are set in relevant DFFindLarASIC, DFFindColdADC, DFFindCOLDATA functions
-Function FindChipPositionWithDF As Boolean
-	FindChipPositionWithDF = False
+'' These are set in relevant DFFindLarASIC, DFFindColdADC, DFFindCOLDATA functions	FindChipPositionWithDF = False
+
 	' Print "FindChipPositionWithDF"
 	ChipPos(1) = 0
 	ChipPos(2) = 0
@@ -551,14 +510,14 @@ Function FindChipPositionWithDF As Boolean
 
 Fend
 
+Function DFFindLArASIC As Boolean
 ''' Function to get the orientation of LArASIC chip with the down facing camera
 ' This makes use of two marks on the surce, a larger manufacturing mark and a 
 ' smaller mark indicating where pin 1 is.
 ' it then finds the direction between these and subtracts 45 degrees to get the
 ' orienation of the chip
-'' Stores results in global array ChipPos()
-Function DFFindLArASIC As Boolean
-	
+'' Stores results in global array ChipPos()	
+
 	DFFindLArASIC = False
 	
 	' Whole chip recognition
@@ -618,13 +577,6 @@ Function DFFindLArASIC As Boolean
 			Exit Function
 			
 	Send
-'	Print "isFoundChip = ", isFoundChip
-'	
-'	If Not isFoundChip Then
-'		 Print "Whole chip correlation step failed"
-'		Exit Function
-'	EndIf
-'	Print "Found whole chip"
 	
 	If Not isFoundL Then
 		' Print "Failed to find largr manufacturing mark (bottom right of chip)"
@@ -665,15 +617,6 @@ Function DFFindLArASIC As Boolean
 		Print "Large-to-small marker distance not within tolerance: " + Str$(Norm)
 		Exit Function
 	EndIf
-
-' ' Cannot rely on finding "chip like" correlation, but can maybe use the geometry of the edge of the chip with the pins
-'	' Check found position lies lose to correlation step for whole chip
-'	If Sqr((xC - AvX) * (xC - AvX) + (yC - AvY) * (yC - AvY)) > TolXY Then
-'		Print "Fiducial marker method disagrees with correlation measurement of chip position"
-'		Print "Correlation position X,Y,U = (", xC, ",", yC, ",", GetBoundAnglePM180(uC), ")"
-'		Print "Fiducial position    X,Y,U = (", AvX, ",", AvY, ",", GetBoundAnglePM180(Angle - 45.), ")"
-'		Exit Function
-'	EndIf
 	
 	' Check text orientation is consistent with the direction of the chip
 	If Abs(DiffAnglePM180(uT, (GetBoundAnglePM180(Angle - 45.)))) > 3. Then
@@ -1068,11 +1011,10 @@ Fend
 '			FindChipDirectionWithDF = False
 ' Fend
 
-
+Function UF_CHIP_FIND As Boolean
 ''' Funvtion to find a chip at the up facing camera and get its positional information
-' Stores results in global array UFChipPos()
-Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double, ByRef ResY As Double) As Boolean
-	
+' Stores results in global array UFChipPos()	
+
 	' NOTE TODO JW: For COLDATA cannot rely on finding only three corners, just take three of the four corners found 
 	' and use GetBoundAnglePM45 function on differences to ensure in same quadrant of angle or the vision
 	' sequence may find wildly inconsistent angles for each measurement at incremebts of 90 degrees.
@@ -1211,6 +1153,9 @@ Function UF_CHIP_FIND As Boolean '(ByRef Status As Boolean, ByRef ResX As Double
 Fend
 
 Function FindSocketPositionWithDF As Boolean
+''' Wrapper for lwer level chip/socket size specific functions
+' Sets global socket position values
+
 	FindSocketPositionWithDF = False
 	
 	' Can comment this line  out after testing	
@@ -1257,6 +1202,10 @@ Function FindSocketPositionWithDF As Boolean
 Fend
 
 Function DFFindLArASICSocket As Boolean
+'''
+' Finds LArSIC socket positions and sets global position variables
+' Wraps site speicifc vision sequences
+'
 	Double USocket
 	SelectSite("InFunction")
 	
@@ -1637,9 +1586,11 @@ Function DFFindCOLDATASocket As Boolean
 	
 Fend
 
-
-''' For diagnostic check of chip placement, requires finer position measurement functions
 Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As Int32
+''' For diagnostic check of chip placement, requires finer position measurement functions
+' Note, relies on consistent lighting which may not be currently achievable without
+' addition EOAT lighting
+
 	GetChipInSocketAlignment = 0
 	SubError = -1
 	SelectSite("InFunctionDefinePallets")
@@ -1718,9 +1669,11 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	GetChipInSocketAlignment = -1
 Fend
 
-
-' Gets the position and offsets of the socket from the taught point
 Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int64
+' Gets the position and offsets of the socket from the taught point
+' Relies on lower level vision sequence handling functions
+' wrapped by FindSocketPositionWithDF
+
 	GetSocketPositionWithDF = 0
 	
 	SelectSite("InFuntionDefinePallets")
@@ -1748,20 +1701,15 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	' Apply fine tuning offset correction for vision sequence function
 	SockPos(1) = SockPos(1) - SocketVisionOffset(1)
 	SockPos(2) = SockPos(2) - SocketVisionOffset(2)
-	'SockPos(3) = SockPos(3) - SocketVisionOffset(3)
 	SockPos(3) = DiffAnglePM180(SocketVisionOffset(3), SockPos(3))
-	'SockPos(3) = GetBoundAnglePM180(SockPos(3) + SocketVisionOffset(3))
 	Print "Corrected measured socket position (", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
-
-	
 	
 	SocketOffset(1) = SockPos(1) - CX(P(FullSocket_nr))
 	SocketOffset(2) = SockPos(2) - CY(P(FullSocket_nr))
 	SocketOffset(3) = DiffAnglePM180((CU(P(FullSocket_nr)) + HandChipOrientation(CHIPTYPE_NR)), (SockPos(3))) ' Should this be a socket vision offset? Depends  how vision is taught
 	
-		' Add some check that offsets are small
+	' Check offsets are small
 	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		' ERROR SOCKET CORRECTIONS ARE TOO LARGE
 		Print "ERROR Socket offsets too large"
 		Exit Function
 	EndIf
@@ -1771,6 +1719,10 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 Fend
 
 Function FindChipAxisOffsetWithUF As Boolean
+''' Finds the offset of the chip center and direction	
+' from the axis of the robot EOAT.
+' This is used to precisely calculate position corrections
+' between chips
 	
 	SetSpeedSetting("AboveCamera")
 	FindChipAxisOffsetWithUF = False
@@ -1918,22 +1870,19 @@ Function FindChipAxisOffsetWithUF As Boolean
 	FindChipAxisOffsetWithUF = True
     SetSpeedSetting("MoveWithChip")
 	
-	
 Fend
 
-
-
-
-' Takes measured alignments to U = 0 (Old wrt HAND_U0) and a target U and calculates corrections
-' C1 -> C2
 Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C2X As Double, C2Y As Double, C2U As Double, TargetHandU As Double)
+' Takes measured alignments to U = 0 (Old wrt HAND_U0) and a target U and calculates corrections
+' which move first chip into same offet position as second chip.
+' Used to place currently held chip at same precise offset as previous chip picked from target position
+' C1 -> C2
 	
 	' Note, the offsets calculated by UFGetChipAlignment were PREVIOUSLY (Before 2025-09-04) ChipPosition -> RotationalAxis
 	' Now UFGetChipAlignmemt returns offset of chip from axis which can be subtracted to get the correction for an individual measurement
 	' This function takes two sets of offsets and uses them to go from C1->C2, where the offsets are	
 	' measured as C1 - Axis, not the other way around
 	
-	'GetChipToChipCorrections = 0
 	Print "Calculating chip-to-chip correction from offset measurements (going from first measurement args to second)"
 	Print "Targeting hand U of :", TargetHandU
 	
@@ -1949,11 +1898,6 @@ Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C
 	CorrX = C2X - (C1X * Cos(DegToRad(ChipToChipCorrection(3))) - C1Y * Sin(DegToRad(ChipToChipCorrection(3))))
 	CorrY = C2Y - (C1X * Sin(DegToRad(ChipToChipCorrection(3))) + C1Y * Cos(DegToRad(ChipToChipCorrection(3))))
 	
-	' Now rotate corrections wrt axis to the target U value
-'	Corr(1) = Corr(1) * Cos(DegToRad(TargetHandU - HAND_U0)) - Corr(2) * Sin(DegToRad(TargetHandU - HAND_U0))
-'	Corr(2) = Corr(1) * Sin(DegToRad(TargetHandU - HAND_U0)) + Corr(2) * Cos(DegToRad(TargetHandU - HAND_U0))
-'	
-
 	ChipToChipCorrection(1) = CorrX * Cos(DegToRad(TargetHandU)) - CorrY * Sin(DegToRad(TargetHandU))
 	ChipToChipCorrection(2) = CorrX * Sin(DegToRad(TargetHandU)) + CorrY * Cos(DegToRad(TargetHandU))
 	
@@ -1975,16 +1919,13 @@ Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C
 	' CorrectChipAxisOffset...
 	'ChipToChipCorrection(3) = GetBoundAnglePM45(ChipToChipCorrection(3))
 	Print "Bound pm45deg Correction:", ChipToChipCorrection(3)
-	
-	'GetChipToChipCorrections = -1
+
 Fend
 
-
-
+Function CorrectChipAxisOffsetForPickupOrientation(Actual As Double, Expected As Double)
 ''' If chip is picked up in a different orientation to expected, may need to account for                                                                                                                                                                                                      
 ' this between tray and socket offset measurements or between successive tray position offsets                                                                                                                                                                                                
 ' as X and Y offsets are U dependent.                                                                                                                                                                                                                                                         
-Function CorrectChipAxisOffsetForPickupOrientation(Actual As Double, Expected As Double)
 	
         Double OrientationOffset
         OrientationOffset = DiffAnglePM180(Expected, Actual) 'GetBoundAnglePM180(Actual - Expected) ' Expected - Measured? but bound by 180 degrees                                                                                                                                                                                                                     
@@ -1992,10 +1933,8 @@ Function CorrectChipAxisOffsetForPickupOrientation(Actual As Double, Expected As
 		' Don't want to correct "current" offset here, and it would interfere with Y correction if X gets directly corrected in first line below
         CorrectedChipOffset(1) = CurrentChipOffset(1) * Cos(DegToRad(OrientationOffset)) - CurrentChipOffset(2) * Sin(DegToRad(OrientationOffset))
         CorrectedChipOffset(2) = CurrentChipOffset(1) * Sin(DegToRad(OrientationOffset)) + CurrentChipOffset(2) * Cos(DegToRad(OrientationOffset))
-       	
-       	'CorrectedChipOffset(3) = DiffAnglePM180(OrientationOffset, CurrentChipOffset(3)) ' Current - OrientationOffset 'GetBoundAnglePM45(CurrentChipOffset(3))
 
-        ' Actually want to keep U offset the same as current, as you have already picked up at correct hand chip orientation
+        ' Want to keep U offset the same as current, as you have already picked up at correct hand chip orientation
         CorrectedChipOffset(3) = CurrentChipOffset(3)
         
 Fend
@@ -2062,75 +2001,10 @@ Function COLDATA_VisAnalysis(ByRef corrections() As Double) As Integer
 	
 Fend
 
-Function GetTrayCorrection(pallet_nr As Integer, col_nr As Integer, row_nr As Integer)
-	' This functions picks up a chip, runs the vision sequence to get the corrections	
-	' needed, so that a new tray/site can collect the initial chip correction information.
-	' This function would need to be used on each chip position before using the functions
-	' MoveChipFromTrayToSocket or MoveChipFromSocketToTray
-	
-	' Jump to the given tray position
-	JumpToTray(pallet_nr, col_nr, row_nr)
-	
-	' Attempt to pickup chip from tray, exit function if it fails
-	If Not PickupFromTray Then
-		Print "Can't pickup chip from socket"
-		Exit Function
-	EndIf
-	
-	' Move to the upward facing camera for corrections
-	Jump P_Camera
-	Wait 1
-	
-	' Run the calibration sequence and save the correction results
-	Double corrs(2)
-	Double res(3)
-	Integer status
-	
-	If CHIPTYPE$ = "COLDATA" Then
-		status = COLDATA_VisAnalysis(ByRef corrs())
-	Else
-		Print "ERROR: Not implemented for other chip types yet"
-		Exit Function
-	EndIf
-		
-	
-	Print "Previous tray corr:", tray_X(pallet_nr, col_nr, row_nr), tray_Y(pallet_nr, col_nr, row_nr)
-	Print "New corrections:", corrs(1), corrs(2)
-	
-	' Grab corrections from camera calibration
-	Double X_CORR_tray, Y_CORR_tray
-	X_CORR_tray = corrs(1)
-	Y_CORR_tray = corrs(2)
-	
-	' Save/update the tray position corrections
-	tray_X(pallet_nr, col_nr, row_nr) = X_CORR_tray
-	tray_Y(pallet_nr, col_nr, row_nr) = Y_CORR_tray
-	
-	' Jump to the given tray position
-	JumpToTray(pallet_nr, col_nr, row_nr)
-	
-	DropToTray
-	
-Fend
-
-Function GetAllTrayCorrections(pallet_nr As Integer)
-	' This function runs GetTrayCorrection for all chips in a tray,
-	' in order to fill the tray_xyu.csv files initially. This should
-	' only be needed the first time and whenever the tray_xyu.csv
-	' file is reset. 
-	
-	Integer i, j
-	For i = 1 To TRAY_NCOLS
-		For j = 1 To TRAY_NROWS
-			GetTrayCorrection(pallet_nr, i, j)
-		Next j
-	Next i
-	
-Fend
-
+Function UFRecenter As Int32
 '''' Function to recenter a chip based on the offsets from the image center calculated using the UF camera
 '' This is used to then do any pin analysis with the pins aligned with the right search boxes
-Function UFRecenter As Int32
+
 	SelectSite("InFunctionDefinePallets")
 	LoadCurrentChipOffset
 	UFRecenter = 0
@@ -2147,6 +2021,7 @@ Fend
 
 ' For P_Camera +U(180)
 Function UFRecenterAt180 As Int32
+''' Centers a chip as UFRecenter would but at a 180 degree rotation
 	SelectSite("InFunctionDefinePallets")
 	LoadCurrentChipOffset
 	UFRecenterAt180 = 0
