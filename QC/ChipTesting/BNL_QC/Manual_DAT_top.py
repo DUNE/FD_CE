@@ -5,12 +5,16 @@ import time
 import datetime
 import random
 import pickle
-from DAT_read_cfg import dat_read_cfg
+
+# Add the parent directory to Python path to find BNL_QC module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+
+from  ChipTesting.BNL_QC.DAT_read_cfg import dat_read_cfg
 import filecmp
 from colorama import just_fix_windows_console
 just_fix_windows_console()
-from DAT_chk_cfgfile import dat_chk_cfgfile
-from set_rootpath import rootdir_cs
+from ChipTesting.BNL_QC.DAT_chk_cfgfile import dat_chk_cfgfile
+from ChipTesting.BNL_QC.set_rootpath import rootdir_cs
 #import colorama
 #from colorama import Fore, Back
 #colorama.init(autoreset=True)
@@ -19,9 +23,9 @@ wibip = "192.168.121.123"
 wibhost = "root@{}".format(wibip)
 
 #start robot
-from rts_ssh import subrun
-from rts_ssh import rts_ssh
-from rts_ssh import DAT_power_off
+from ChipTesting.BNL_QC.rts_ssh import subrun
+from ChipTesting.BNL_QC.rts_ssh import rts_ssh
+from ChipTesting.BNL_QC.rts_ssh import DAT_power_off
 
 ####### Input test information #######
 #Red = '\033[91m'
@@ -36,7 +40,7 @@ from rts_ssh import DAT_power_off
 #Default = '\033[99m'
 
 # Burn in serial number for COLDATA (or don't)
-burnin_sn = True
+burnin_sn = False
 
 try:
     chiptype = int (input ("\033[96m Chips under test. 1-FE, 2-ADC, 3-CD:  \033[95m"))
@@ -77,7 +81,7 @@ pc_wrcfg_fn = "./asic_info.csv"
 
 def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT" ) :
     while True:
-        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_sn=burnin_sn)
+        QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_sn, burnin_now=burnin_sn, auto=False, config_path = "./asic_info.csv")
         if QCresult != None:
             QCstatus = QCresult[0]
             badchips = QCresult[1]

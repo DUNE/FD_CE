@@ -8,21 +8,18 @@ real hardware modes.
 Classes:
     RTSStateMachine: Main state machine for chip testing automation
 """
-
 from statemachine import StateMachine, State
-from FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
-from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
-from RTS_CFG import RTS_CFG
-from BNL_QC.LogInfo import WaitForPictures
+from ChipTesting.Integration.FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
+from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from ChipTesting.Integration.RTS_CFG import RTS_CFG
+from ChipTesting.BNL_QC.LogInfo import WaitForPictures
 import sys
 import os
 from datetime import datetime
 import time
 import subprocess
 
-# Add OCR path and import
-sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
-import FNAL_CPM as cpm
+import OCR.FNAL_CPM as cpm
 
 
 class RTSStateMachine(StateMachine):
@@ -62,9 +59,9 @@ class RTSStateMachine(StateMachine):
         self.current_chip_index = 0
         
         # OCR configuration
-        self.image_directory = "/Users/RTS/RTS_data/images/"
-        self.ocr_results_dir = "/Users/RTS/DUNE-rts-sn-rec/Tested/fnal_cpm_results/"
-        self.config_file = "/Users/RTS/FD_CE/QC/ChipTesting/BNL_QC/asic_info.csv"
+        self.image_directory = "/Users/ppd-cap-WD-137552/RTS_data/images/"
+        self.ocr_results_dir = "/Users/ppd-cap-WD-137552/RTS_data/ocr_images/"
+        self.config_file = "/Users/ppd-cap-WD-137552/FD_CE/QC/ChipTesting/BNL_QC/asic_info.csv"
         self.sn_ready = True  # Track if OCR was successful
 
         # Ask user if they want to run in simulation mode
@@ -315,7 +312,7 @@ class RTSStateMachine(StateMachine):
             self.logs, self.cd_qc_ana = RunCOLDATA_QC(
                 duttype="CD", 
                 env="RT", 
-                rootdir="C:/Users/RTS/Tested/"
+                rootdir="C:/Users/ppd-cap-WD-137552/Tested/"
                 # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
             )
             print("COLDATA QC tests completed successfully")
@@ -341,6 +338,13 @@ class RTSStateMachine(StateMachine):
     def on_enter_writing_to_hwdb(self):
         print("Writing test results to HWDB")
         self.last_normal_state = self.current_state
+
+        if self.simulation_mode:
+            print("[SIMULATION] Uploading to HWDB")
+
+        else: 
+            upload_result = subprocess.run(["wsl","bash","-l","-c", """source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh && python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py"""], capture_output=True, text=True, check=True)
+            print(upload_result.stdout)
 
     def on_enter_moving_chip_to_tray(self):
         print("Moving chips to tray")

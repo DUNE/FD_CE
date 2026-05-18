@@ -3,14 +3,13 @@ import sys
 import os
 
 # Add the parent directory to Python path to find BNL_QC module
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 import subprocess
 import time 
 import random
 import pickle
 import multiprocessing as mp
-import pandas as pd
 import csv
 
 # To send notification email
@@ -18,12 +17,11 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from BNL_QC.LogInfo import WaitForPictures
-from Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from ChipTesting.BNL_QC.LogInfo import WaitForPictures
+from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
 
 # adding OCR folder to the system path
-sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
-# import FNAL_CPM as cpm
+import OCR.FNAL_CPM as cpm
 
 #from colorama import just_fix_windows_console
 #just_fix_windows_console()
@@ -41,8 +39,8 @@ sys.path.insert(1, r'C:\\Users\RTS\DUNE-rts-sn-rec')
 #Default = '\033[99m'
 
 #start robot
-from BNL_QC.RTS_CFG import RTS_CFG
-from BNL_QC.rts_ssh import subrun
+from ChipTesting.BNL_QC.RTS_CFG import RTS_CFG
+from ChipTesting.BNL_QC.rts_ssh import subrun
 #from rts_ssh import DAT_power_off
 #from rts_ssh import Sinkcover
 #from rts_ssh import rts_ssh
@@ -61,10 +59,10 @@ config_file = 'asic_info.csv'
 email_progress = False
 email = "rtsfnal@gmail.com"
 receiver_email = "tcontrer@fnal.gov"
-pw = "vxbg kdff byla bcvs" # FNAL PC specific password
+pw = "cugo vkfz vhkn egkb" # FNAL PC specific password
 
-image_directory = "/Users/RTS/RTS_data/images/"
-ocr_results_dir = "/Users/RTS/DUNE-rts-sn-rec/Tested/fnal_cpm_results/"
+image_directory = "/Users/ppd-cap-WD-137552/RTS_data/images/"
+ocr_results_dir = "/Users/ppd-cap-WD-137552/RTS_data/ocr_images/"
 
 ################################################
 
@@ -201,7 +199,7 @@ def RTS_Cycle(rts, chip_positions, ocr_results_dir, config_file, run_ocr=True, d
         print('Skipping OCR...')
 
     print('About to run COLDATA_QC')
-    logs, cd_qc_ana = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/RTS/Tested/")
+    logs, cd_qc_ana = RunCOLDATA_QC(duttype="CD", env="RT", rootdir="C:/Users/ppd-cap-WD-137552/Tested/")
 
     # Burn in the serial number found from the OCR
     if sn_ready and do_burnin:
