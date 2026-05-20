@@ -65,6 +65,7 @@ class RTSStateMachine(StateMachine):
         self.image_directory = "/Users/ppd-cap-WD-137552/RTS_data/images/"
         self.ocr_results_dir = "/Users/ppd-cap-WD-137552/RTS_data/ocr_images/"
         self.config_file = "/Users/ppd-cap-WD-137552/FD_CE/QC/ChipTesting/BNL_QC/asic_info.csv"
+        self.test_result_dir = "/Users/ppd-cap-WD-137552/Tested/"
         self.sn_ready = True  # Track if OCR was successful
 
         # Ask user if they want to run in simulation mode
@@ -99,6 +100,7 @@ class RTSStateMachine(StateMachine):
         # Ask tester for their username and update config file
         self.user_name = input("Enter Tester Username: ").strip().lower()
         self.WriteUserToConfig(self.user_name, self.config_file)
+        self.rts_loc = "FNAL"
         
         self.retest = False
         while True:
@@ -120,8 +122,6 @@ class RTSStateMachine(StateMachine):
                 self.populate_partial_retest_tray()
                 self.retest = True
                 break
-            else:
-                print("Please enter 'm' for manual, 'p' for partial tray or 'f' for full tray.")
         
     # State definitions
     ground = State("Ground", initial=True)
@@ -301,8 +301,11 @@ class RTSStateMachine(StateMachine):
             try:
                 # Check the RobotLog to see if the chip pictures are ready before running OCR
                 print('Waiting for chip pictures...')
-                chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
-                                  self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+                if self.retest and self.current_chip_index > 0: # only grab info for chip to be retested
+                    chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
+                else:
+                    chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                                    self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
                 pictures_ready, pictures = WaitForPictures(chip_data, threading=False)
                 
                 if pictures_ready:
@@ -310,7 +313,14 @@ class RTSStateMachine(StateMachine):
                     
                     for i in range(len(pictures)):
                         success = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir,
-                                           True, chip_data['label'][i])
+                                        True, chip_data['label'][i])
+                        self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
+
+                    if self.retest and self.current_chip_index == 0: 
+                        self.retest_good_chip_image = pictures[0] # Save good chip info if this is the first test in retest tray
+                    elif self.retest and self.current_chip_index > 0:
+                        # Rerun OCR for good chip info since no picture was retaken
+                        success = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                     
                     # Kill Ollama used by OCR
@@ -385,9 +395,30 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Uploading to HWDB")
 
-        elif self.upload_to_hwdb: 
-            upload_result = subprocess.run(["wsl","bash","-l","-c", """source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh && python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py"""], capture_output=True, text=True, check=True)
-            print(upload_result.stdout)
+        if self.upload_to_hwdb: 
+            try:
+                setup_hwdb = subprocess.run(["wsl", "bash", "-l", "-c", "source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh"])
+                print(setup_hwdb.stdout)
+
+                # Get token for uploading
+                #get_token = subprocess.run(["wsl","bash","-l","-c", "htgettoken --vaultserver=htvaultprod.fnal.gov --issuer=fermilab"], capture_output=True, text=True, check=True)
+                #print(get_token.stdout)
+
+                # Setup exports
+                #setup_hwdb = subprocess.run(["wsl","bash","-l","-c", f"""export TOKENLOC='/run/user/1000/bt_u1000' && export HWDBSELECT='DEV' && export COMMANDVERB='VERB0' && export SITELOC='{self.rts_loc}'"""], capture_output=True, text=True, check=True) # TODO: fix site loc as a variable
+                #print(setup_hwdb.stdout)
+                
+                # Get the latest created folder (should be this current test)
+                test_dirs = [x[0] for x in os.walk(self.test_result_dir)]
+                test_dirs.sort()
+                test_dir = test_dirs[-2] # second to last for one dir up
+
+                # Upload to hwdb
+                upload_result = subprocess.run([f"python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py {self.user_name} {test_dir} {self.rts_loc}"], capture_output=True, text=True, check=True)
+                print(upload_result.stdout)
+
+            except Exception as e:
+                print(f"ERROR: Failed uploading to HWDB: {e}")
 
         else:
             print("Skipping upload to HWDB.")
