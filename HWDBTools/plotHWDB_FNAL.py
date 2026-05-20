@@ -410,7 +410,7 @@ if __name__ == '__main__':
     getnames = os.popen("ls -d ~/RTS_data/*/*/*")
     filenames = getnames.read().splitlines()
 
-    #PlotPLLLock(filenames)
+    PlotPLLLock(filenames)
     PlotCDVDDIO(filenames)
 
 
