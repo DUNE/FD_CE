@@ -19,7 +19,7 @@ import cv2
 import time
 import tkinter as tk
 from tkinter import messagebox
-from PIL import Image, ImageTk
+#from PIL import Image, ImageTk
 
 poc_names = []
 poc_emails = []
@@ -496,6 +496,7 @@ def Preshipping():
                     inst_loop = False
                 else:
                     input("Wrong entry! Press enter to select again.")
+            print("EnterItemToHWDB")
             ce_shipbox_ID = dune_ce_hwdb.EnterItemToHWDB("ce_shipbox", None, resp_inst, "US", "", None, None, None, None, specification)
             dune_ce_hwdb.GetQRCode(ce_shipbox_ID)
             dune_ce_hwdb.GetBarCode(ce_shipbox_ID)
@@ -534,6 +535,7 @@ def Preshipping():
             input("No CE shipping ID is provided. Exiting to main menu.")
             return
     
+    print('EnterPreshippingInfo')
     EnterPreshippingInfo(ce_shipbox_ID)
     EnterComponents()
     PreparePreshippingChecklist(ce_shipbox_ID)
