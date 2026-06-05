@@ -1686,7 +1686,7 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	JumpToSocket_camera(DAT_nr, Socket_nr)
 		
 	Int32 FullSocket_nr
-	FullSocket_nr = DAT_nr * 100 + Socket_nr
+	FullSocket_nr = DAT_nr * 100 + socket_nr
 
 	If Not FindSocketPositionWithDF Then
 		Print "ERROR: Cannot find socket alignment"
@@ -1724,7 +1724,6 @@ Function FindChipAxisOffsetWithUF As Boolean
 ' This is used to precisely calculate position corrections
 ' between chips
 	
-	SetSpeedSetting("AboveCamera")
 	FindChipAxisOffsetWithUF = False
 		
 	Double MeasU0, MeasU1, MeasU2
@@ -1733,7 +1732,8 @@ Function FindChipAxisOffsetWithUF As Boolean
 	Double ChipX2, ChipY2, ChipU2
 
 	JumpToCamera
-
+	SetSpeedSetting("AboveCamera")
+	
 	Go Here :U(HAND_U0)
 	Go Here +U(PickOffset)
 
@@ -1796,7 +1796,6 @@ Function FindChipAxisOffsetWithUF As Boolean
 	'pict_fname$ = UF_take_picture$(id$ + "_02")
     'Print #fileNum, ",", pict_fname$,
 	
-
 	If Not UF_CHIP_FIND Then
 		Print "ERROR UF camera cannot find chip on second measurement"
 		Exit Function

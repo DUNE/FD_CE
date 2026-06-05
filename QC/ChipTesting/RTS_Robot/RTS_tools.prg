@@ -115,7 +115,7 @@ Function RTS_error(err_msg$ As String, Error_Code As Int32) As Integer
 	' operation log file
 	ErrorCode = Error_Code ' Set global variable to input
 	String log_file$
-	log_file$ = RTS_DATA$ + "\" + CurrentOperation$ + ".txt"
+	log_file$ = RTS_DATA$ + "\RobotErrorLogs\" + CurrentOperation$ + ".txt"
 	RTS_error = FreeFile
 	AOpen log_file$ As #RTS_error
 	Print "***ERROR: ", err_msg$
@@ -128,6 +128,60 @@ Function RTS_error(err_msg$ As String, Error_Code As Int32) As Integer
 	AOpen log_file$ As #RTS_Data
 	Print #RTS_Data, "***ERROR ", ErrorCode, "/", SubError, " in ", CurrentOperation$, " : ", err_msg$
 	Close #RTS_Data
+Fend
+
+Function LogSocketPlacements(DAT As Integer, Socket As Integer, OpID$ As String)
+	''' Logs detailed information about the positioning of the hand during placement for
+	' troubleshooting position drift
+	' For each socket log
+	String DefPos$, MeasPos$, SCor$, SCorPos$, LastChip$, CurrChip$, ChipCor$, PlacePos$
+
+	DefPos$ = ""
+	
+	Int32 FileNum
+	FileNum = FreeFile
+	String SocketFile$
+	SocketFile$ = RTS_DATA$ + "\SocketPlacement\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Placements.txt"
+
+	' Check if file exists, if not, create it with headers
+	If Not FileExists(SocketFile$) Then
+		DefPos$ = "Point_X,Point_Y,Point_U"
+		MeasPos$ = "Meas_X,Meas_Y,Meas_U"
+		SCor$ = "SockCor_X,SockCor_Y,SockCor_U"
+		SCorPos$ = "SCorPos_X,SCorPos_Y,SCorPos_U"
+		LastChip$ = "LastChip_X,LastChip_Y,LastChip_U"
+		CurrChip$ = "CurrChip_X,CurrChip_Y,CurrChip_U"
+		ChipCor$ = "ChipCor_X,ChipCor_Y,ChipCor_U"
+		PlacePos$ = "Placed_X,Placed_Y,Placed_U"
+	EndIf
+	
+	AOpen SocketFile$ As #FileNum
+	
+	If DefPos$ = "Point_X,Point_Y,Point_U" Then
+		' Write headers if new file
+		Print #FileNum, "Operation,", DefPos$, ",", MeasPos$, ",", SCor$, ",", SCorPos$, ",", LastChip$, ",", CurrChip$, ",", ChipCor$, ",", PlacePos$
+	EndIf
+	
+	' - Defined position (1, 2, 3)
+	DefPos$ = Str$(PlacePositions(1)) + "," + Str$(PlacePositions(2)) + "," + Str$(PlacePositions(3))
+	' - Measured position (4, 5, 6)
+	MeasPos$ = Str$(PlacePositions(4)) + "," + Str$(PlacePositions(5)) + "," + Str$(PlacePositions(6))
+	' - Socket corrections (7, 8, 9)
+	SCor$ = Str$(PlacePositions(7)) + "," + Str$(PlacePositions(8)) + "," + Str$(PlacePositions(9))
+	' - Position After Socket correction (10, 11, 12)
+	SCorPos$ = Str$(PlacePositions(10)) + "," + Str$(PlacePositions(11)) + "," + Str$(PlacePositions(12))
+	' -	Last Chip offsets (13, 14, 15)
+	LastChip$ = Str$(PlacePositions(13)) + "," + Str$(PlacePositions(14)) + "," + Str$(PlacePositions(15))
+	' - Current Chip offsets (16, 17, 18)
+	CurrChip$ = Str$(PlacePositions(16)) + "," + Str$(PlacePositions(17)) + "," + Str$(PlacePositions(18))
+	' - Corrections (19, 20, 21)
+	ChipCor$ = Str$(PlacePositions(19)) + "," + Str$(PlacePositions(20)) + "," + Str$(PlacePositions(21))
+	' - Position after chip correction (22, 23, 24)
+	PlacePos$ = Str$(PlacePositions(22)) + "," + Str$(PlacePositions(23)) + "," + Str$(PlacePositions(24))
+	
+	Print #FileNum, OpID$, ",", DefPos$, ",", MeasPos$, ",", SCor$, ",", SCorPos$, ",", LastChip$, ",", CurrChip$, ",", ChipCor$, ",", PlacePos$
+	Close #FileNum
+	
 Fend
 
 Function LogDFSocketMeasurements(DAT As Integer, Socket As Integer, OpID$ As String)
@@ -174,9 +228,9 @@ Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, D
 		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
 	EndIf
 		
-	AOpen OffsetFile$ As #fileNum
-	Print #fileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
-	Close #fileNum
+	AOpen OffsetFile$ As #FileNum
+	Print #FileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Close #FileNum
 	LogUFOffsets = -1
 Fend
 
@@ -325,27 +379,27 @@ Function MakePositionFiles
 	String fileName$
 	fileNum = FreeFile ' Returns an unused file handle
 	fileName$ = RTS_DATA$ + "\tray_xyu.csv"
-	WOpen fileName$ As #fileNum
+	WOpen fileName$ As #FileNum
 	For i = 1 To NTRAYS
 		For j = 1 To TRAY_NCOLS
 			For k = 1 To TRAY_NROWS
-				Print #fileNum, i, ",", j, ",", k, ",", tray_X(i, j, k), ",", tray_Y(i, j, k), ",", tray_U(i, j, k)
+				Print #FileNum, i, ",", j, ",", k, ",", tray_X(i, j, k), ",", tray_Y(i, j, k), ",", tray_U(i, j, k)
 			Next k
 		Next j
 	Next i
-	Close #fileNum
+	Close #FileNum
     
 	' save a file to keep track of socket corrections
-	fileNum = FreeFile
+	FileNum = FreeFile
 	fileName$ = RTS_DATA$ + "\socket_xyu.csv"
-	WOpen fileName$ As #fileNum
+	WOpen fileName$ As #FileNum
 	For i = 1 To 2
 		Print "NSOCKETS", NSOCKETS
 		For j = 1 To NSOCKETS
-			Print #fileNum, i, ",", j, ",", DAT_X(i, j), ",", DAT_Y(i, j), ",", DAT_U(i, j)
+			Print #FileNum, i, ",", j, ",", DAT_X(i, j), ",", DAT_Y(i, j), ",", DAT_U(i, j)
 		Next j
 	Next i
-	Close #fileNum
+	Close #FileNum
 	
 Fend
 
@@ -455,6 +509,11 @@ Function StoreCurrentChipOffset
 	String fileName$
 	fileNum = FreeFile
 	fileName$ = RTS_DATA$ + "\CurrentChipOffsets.csv"
+	If FileExists(fileName$) Then
+		Print "Current offset file exists"
+	Else
+		Print "No file at ", fileName$
+	EndIf
 	WOpen fileName$ As #fileNum
 	' Save the position set in the global arrays to the files
 	Print #fileNum, CurrentChipOffset(1), ",", CurrentChipOffset(2), ",", CurrentChipOffset(3), ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)

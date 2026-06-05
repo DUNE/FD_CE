@@ -3,9 +3,11 @@
 ''' Add to .gitignore. Use this function for tests, not Main in main.prg
 ' This will help keep the repo clean!
 
-Function Testing
+Function Testing As Int64
 	
+	Testing = 0
 	''' Keep this 
+	NotStandalone = True
 	SelectSite("")
 	If Not FolderExists(RTS_DATA$) Then
   		SetupDirectories
@@ -16,9 +18,17 @@ Function Testing
   		Exit Function
 	EndIf
 	
-	DoPinAnalysis = False
-	DoOccupancyChecks = True
-	
+	' Use values in site file as defaults while using server
+	' Other wise all will default to False
+	SocPlaceNotDrop = DefaultPlaceNotDrop ' Defaults to Drop
+	SocClampFirst = DefaultClampFirst ' Defaults to clamp after vacuum off
+	SocFastClamp = DefaultFastClamp ' defaults to soft/slow clamping
+	DoPinAnalysis = DefaultPinAnalysis ' Defaults to not running pin analysis
+	SkipOccupancyChecks = DefaultSkipOcc ' Defaults to running occupancy checks 
+ 	SkipSocketCorrection = DefaultSkipSocCor ' Defaults to applying socket correction
+ 	SkipChipToChipCorrection = DefaultSkipChipCor ' Defaults to applying chip to chip correction
+
+
 	LoadPositionFiles
 	LoadCurrentChipOffset
 	
@@ -36,342 +46,219 @@ Function Testing
 	
 	
 '	''' Make changes here	
-'	
-'	DF_ChipDirection_LArASIC
-'
-'	On 12
-'	'If Not GetChipFromTray(1, 4, 1) Then
-'	If Not GetChipFromSocket(1, 7) Then
-'		Print "Get function failed to terminate"
-'		Exit Function
-'	EndIf
-'	
-'	Wait 5
-'	SetSpeedSetting("MoveWithChip")
-'	
-'	If Not PlaceChipInTray(1, 4, 1) Then
-'		Print "Place function failed to terminate"
-'		Exit Function
-'	EndIf
-'	
-'	PumpOff
-'	Motor Off
-	
+
 	
 	DoPinAnalysis = False
-'	MoveChipFromTrayToTray(1, 4, 1, 1, 3, 1)
-	
-'	MoveChipFromSocketToTray(1, 1, 1, 1, 3)
-'	MoveChipFromSocketToTray(1, 2, 1, 2, 3)
-'	MoveChipFromSocketToTray(1, 3, 1, 3, 3)
-'	MoveChipFromSocketToTray(1, 4, 1, 4, 3)
-'
-'	MoveChipFromSocketToTray(1, 5, 1, 5, 3)
-'	MoveChipFromSocketToTray(1, 6, 1, 6, 3)
-'	MoveChipFromSocketToTray(1, 7, 1, 7, 3)
-'	MoveChipFromSocketToTray(1, 8, 1, 8, 3)
 	
 	Int64 status
 	
-'	
-'	' Removing old chips
-'	Int32 iChip
-'	For iChip = 1 To 8
-'		status = MoveChipFromSocketToTray(1, iChip, 1, iChip, 1)
-'		If status < 0 Then
-'			Print "ERROR removing old chip ", iChip, " from socket"
-'			Exit Function
-'		EndIf
-'	Next
-'	
-'	Print "All old chips removed, placing new chips"
 '
-'' Placing new chips	
-'	For iChip = 1 To 8
-'		status = MoveChipFromTrayToSocket(2, iChip, 1, 1, iChip)
-'		If status < 0 Then
-'			Print "ERROR moving new chip ", iChip, " to socket"
-'			Exit Function
-'		EndIf
-'	Next
-
-'	' remove all chips	
-'	Int32 iChip
-'	For iChip = 1 To 8
-'		status = MoveChipFromSocketToTray(1, iChip, 2, iChip, 1)
-'		If status < 0 Then
-'			Print "ERROR removing old chip ", iChip, " from socket"
-'			Exit Function
-'		EndIf
-'	Next
-	
-
-'	Int32 iChip
-'	For iChip = 1 To 8
-'		status = MoveChipFromTrayToSocket(1, iChip, 1, 1, iChip)
-'		If status < 0 Then
-'			Print "ERROR removing old chip ", iChip, " from socket"
-'			Exit Function
-'		EndIf
-'	Next
-	' [1,  1,  1,  1,  1,  1,  1] [2]
-	' [9, 10, 11, 12, 13, 14, 15] [1]
-	' remove all chips	
 	Int32 iChip
-'	For iChip = 3 To 8
-'		If Not iChip = 6 Then
-'		
-'		status = MoveChipFromSocketToTray(1, iChip, 2, iChip + 1, 2)
-'		If status < 0 Then
-'			Print "ERROR removing old chip ", iChip, " from socket"
+
+
+	Integer Occupancy
+	
+'	For iChip = 1 To 4
+'		Occupancy = TrayPositionOccupied(2, 8, 2 + iChip)
+'		'Print "Occupancy = ", Occupancy
+'		If Occupancy <> 0 Then
+'			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+'			If Occupancy = -2 Then
+'				Print("Target tray position occupancy check value = " + Str$(Occupancy))
+'			Else
+'				Print("Target tray position occupied, occupancy check value = " + Str$(Occupancy))
+'			EndIf
+'			Testing = -10
+'			ResetOperation
 '			Exit Function
 '		EndIf
+'	Next
+'	
+'	For iChip = 1 To 4
+'		Occupancy = SocketPositionOccupied(1, iChip)
+'		'Print "Occupancy = ", Occupancy
+'		If Occupancy <> 1 Then
+'			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+'			If Occupancy = -2 Then
+'				Print("Target tray position occupancy check value = " + Str$(Occupancy))
+'			Else
+'				Print("Target tray position occupied, occupancy check value = " + Str$(Occupancy))
+'			EndIf
+'			Testing = -10
+'			ResetOperation
+'			Exit Function
+'		EndIf
+'	Next
+'
+'	' Chips in sockets 1 to 4 -> (2,8,3) through (2,8,6)
+'	For iChip = 1 To 4
+'		status = MoveChipFromSocketToTray(1, iChip, 2, 8, 2 + iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	
+''	For iChip = 1 To 4
+''		Occupancy = SocketPositionOccupied(1, iChip)
+''		'Print "Occupancy = ", Occupancy
+''		If Occupancy <> 0 Then
+''			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
+''			If Occupancy = -2 Then
+''				Print("Target tray position occupancy check value = " + Str$(Occupancy))
+''			Else
+''				Print("Target tray position occupied, occupancy check value = " + Str$(Occupancy))
+''			EndIf
+''			Testing = -10
+''			ResetOperation
+''			Exit Function
+''		EndIf
+''	Next
+'	For iChip = 1 To 4
+'		Occupancy = TrayPositionOccupied(1, 1, 1 + iChip)
+'		'Print "Occupancy = ", Occupancy
+'		If Occupancy <> 1 Then
+'			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
+'			If Occupancy = -2 Then
+'				Print("Target tray position occupancy check value = " + Str$(Occupancy))
+'			Else
+'				Print("Target tray position occupied, occupancy check value = " + Str$(Occupancy))
+'			EndIf
+'			Testing = -10
+'			ResetOperation
+'			Exit Function
+'		EndIf
+'	Next
+'	' Chips in bad tray back to sockets 1-4 (1, 1, 2) through (1, 1, 5) -> (1,1) through (1,4)
+'	For iChip = 1 To 4
+'		status = MoveChipFromTrayToSocket(1, 1, 1 + iChip, 1, iChip)
+'			If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to socket"
+'			Exit Function
 '		EndIf
 '	Next
 
-	Int32 nLoop
-	For nLoop = 1 To 1
-		If nLoop = 1 Then
-			DoOccupancyChecks = True
-			
-		Else
-			DoOccupancyChecks = False
-			
-		EndIf
-'		For iChip = 1 To 1
-		iChip = 8
-			DoPinAnalysis = True
-			status = MoveChipFromTrayToSocket(2, iChip, 1, 1, iChip)
-			If status < 0 Then
-				Print "ERROR moving chip ", iChip, " to socket"
-				Exit Function
-			EndIf
-			Wait 1
-			status = MoveChipFromSocketToTray(1, iChip, 2, iChip, 1)
-			If status < 0 Then
-				Print "ERROR removing chip ", iChip, " from socket"
-				Exit Function
-			EndIf
-			Wait 1
 
-'		Next
+	SkipOccupancyChecks = True
+	SkipSocketCorrection = False
+	SkipChipToChipCorrection = False
+	
+'	For iChip = 1 To 4
+'		' status = MoveChipFromTrayToSocket(1, 1, iChip, 1, iChip)
+'		status = MoveChipFromSocketToTray(1, iChip, 2, 6, 2 + iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'
+'	' MOving chips to bad tray for now
+'	For iChip = 1 To 4
+'		' status = MoveChipFromTrayToSocket(1, 2, iChip, 1, 4 + iChip)
+'		status = MoveChipFromSocketToTray(1, 4 + iChip, 2, 7, iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'
+'	' (1,1,1) - > (2,5,1) - did manually
+'	' (1,1,2) - > (2,5,2)
+'	' (1,1,3) - > (2,5,3)
+'	' (1,1,4) - > (2,5,4)
+'	For iChip = 2 To 4
+'		status = MoveChipFromTrayToTray(1, 1, iChip, 2, 5, iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	
+'	' (1,5) -> (2,5,5)
+'	' (1,6) -> (2,5,6)
+'	For iChip = 1 To 2
+'		status = MoveChipFromSocketToTray(1, iChip + 4, 2, 5, iChip + 4)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	' (1,7) -> (2,6,1)
+'	' (1,8) -> (2,6,2)
+'	For iChip = 1 To 2
+'		status = MoveChipFromSocketToTray(1, iChip + 6, 2, 6, iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	
+'	' (1,1,5) -> (2,6,3)
+'	' (1,1,6) -> (2,6,4)
+'	For iChip = 1 To 2
+'		status = MoveChipFromTrayToTray(1, 1, 4 + iChip, 2, 6, 2 + iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	
+'	' (1,2,1) -> (2,6,5)
+'	' (1,2,2) -> (2,6,6)
+'	For iChip = 1 To 2
+'		status = MoveChipFromTrayToTray(1, 2, iChip, 2, 6, 4 + iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+	
+	' (1,1) -> (2,7,1)
+	' (1,2) -> (2,7,2)
+	' (1,3) -> (2,7,3)
+	' (1,4) -> (2,7,4)	
+'	For iChip = 1 To 2
+'		status = MoveChipFromSocketToTray(1, 2 + iChip, 2, 7, 2 + iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	
+'		status = MoveChipFromSocketToTray(1, 8, 2, 15, 5)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+
+
+	For iChip = 1 To 6
+		status = MoveChipFromSocketToTray(1, iChip, 2, 1, iChip)
+		If status < 0 Then
+			Print "ERROR moving chip ", iChip, " to tray"
+			Exit Function
+		EndIf
 	Next
-	DoOccupancyChecks = True
 	
-	
-'	status = MoveChipFromSocketToTray(1, 8, 2, 1, 2)
-'	If status < 0 Then
-'		Print "ERROR removing old chip 8 from socket"
-'		Exit Function
-'	EndIf
-	
+	For iChip = 1 To 2
+		status = MoveChipFromSocketToTray(1, 6 + iChip, 2, 2, iChip)
+		If status < 0 Then
+			Print "ERROR moving chip ", Str$(iChip + 6), " to tray"
+			Exit Function
+		EndIf
+	Next
+
+	SkipSocketCorrection = False
+	SkipChipToChipCorrection = False
+
+
+	SkipOccupancyChecks = False
 	
 	Wait 1
 	JumpToCamera
 	
 
-'	Wait 5
-'	SetSpeedSetting("MoveWithChip")
-'	
-'	If Not PlaceChipInSocket(1, 7) Then
-'		Print "Place function failed to terminate"
-'		Exit Function
-'	EndIf
-'	
-'	PumpOff
-'	Motor Off
-	
-	
-	
-	
-'	If Not GetChipFromSocket(1, 8) Then
-'			Print "ERROR: CHIP RETRIEVAL AT SOCKET FAILED"
-'		Exit Function
-'	EndIf
-'	Wait 10
-'	
-'	If Not PlaceChipInSocket(1, 8) Then
-'		Print "ERROR: CHIP PLACEMENT AT SOCKET FAILED"
-'		Exit Function
-'	EndIf
-'	
-'	PumpOff
-'	Motor Off
-	
-'	Integer Attempts
-'	Boolean Success
-'	Attempts = 10
-'	Success = False
-'	Do While ((Attempts > 0 And Not Success))
-'		Print "Attempts remaining ", Attempts
-'		If FindChipDirectionWithDF Then
-'			Success = True
-'		EndIf
-'		Attempts = Attempts - 1
-'	Loop
-'	If Not Success Then
-'		Print "Could not find chip"
-'		Exit Function
-'	EndIf
-'	
-'	Print "Chip found at (X , Y , U):"
-'	Print "(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
-'
-'	Attempts = 10
-'	Success = False
-'	Do While ((Attempts > 0 And Not Success))
-'		Print "Attempts remaining ", Attempts
-'		
-'		If FindSocketPositionWithDF Then
-'			Success = True
-'		EndIf
-'		Attempts = Attempts - 1
-'	Loop
-'	If Not Success Then
-'		Print "Could not find socket"
-'		Exit Function
-'	EndIf
-'	
-'	Print "Socket found at (X , Y , U):"
-'	Print "(", SockPos(1), ",", SockPos(2), ",", SockPos(3), ")"
-'	Print " GETTING CHIP AND SOCKET ALIGNMENT"
-'	
-'	String testname$
-'	testname$ = "TESTSTRING"
-'	Integer idx(20)
-'	Integer i
-'	For i = 1 To 20
-'		idx(i) = 0
-'	Next
-'	Integer fileNum
-'	fileNum = FreeFile
-'	idx(1) = fileNum
-'	idx(10) = 1
-'	idx(11) = 8
-'	
-'	Double CinSResults(15)
-'	For i = 1 To 15
-'		CinSResults(i) = 0.
-'	Next
-'	
-'	Attempts = 10
-'	Success = False
-'	Do While ((Attempts > 0 And Not Success))
-'		Print "Attempts remaining ", Attempts
-'		
-'		If GetChipInSockettestname$, ByRef idx(), 1, 8, ByRef CinSResults()) Then
-'			Success = True
-'		EndIf
-'		Attempts = Attempts - 1
-'	Loop
-'	If Not Success Then
-'		Print "Could not find chip or socket for alignment"
-'		Exit Function
-'	EndIf
-'	Print Here
-'	For i = 1 To 15
-'		Print "Results (", i, ") = ", Str$(CinSResults(i))
-'	Next
-	
 
-
-'	If Not FindSocketPositionWithDF Then
-'		Print "Could not find socket"
-'	EndIf
-'	
-'	Print Here
-'	Print SockPos(1), SockPos(2), SockPos(3)
-
-
-'	MoveChipFromSocketToTray(1, 8, 1, 1, 1)
-'	MoveChipFromTrayToSocket(1, 8, 1, 1, 1)
-
-		' Removing my test chips
-'		If Not MoveChipFromSocketToTray(1, 1, 1, 1, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 2, 1, 2, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 3, 1, 3, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 4, 1, 4, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 5, 1, 5, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 6, 1, 5, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 7, 1, 6, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-'		Wait 5
-'		If Not MoveChipFromSocketToTray(1, 8, 1, 7, 6) Then
-'			Print "ERROR"
-'			Exit Function
-'		EndIf
-
-
-		'MoveChipFromSocketToTray(1, 1, 1, 1, 6)
-		'Wait 5
-'		MoveChipFromSocketToTray(1, 2, 1, 2, 6)
-'		Wait 5
-'		MoveChipFromSocketToTray(1, 3, 1, 3, 6)
-'		Wait 5
-'		MoveChipFromSocketToTray(1, 4, 1, 4, 6)
-'		Wait 5
-' 		MoveChipFromSocketToTray(1, 5, 1, 5, 6)
-'		Wait 5
-'		MoveChipFromSocketToTray(1, 6, 1, 5, 6)
-'		Wait 5
-'		MoveChipFromSocketToTray(1, 7, 1, 6, 6)
-'		Wait 5
-'		MoveChipFromSocketToTray(1, 8, 1, 7, 6)
-		
-'		' 0 deg
-'		MoveChipFromTrayToSocket(1, 1, 1, 1, 6)
-'		Wait 5
-		
-'		' +90 deg
-'		MoveChipFromTrayToSocket(1, 2, 1, 2, 6)
-'		Wait 5
-'		' 180 deg
-'		MoveChipFromTrayToSocket(1, 3, 1, 3, 6)
-'		Wait 5
-'		' -90 deg
-'		MoveChipFromTrayToSocket(1, 4, 1, 4, 6)
-'		Wait 5
-'		' 0 deg
-' 		MoveChipFromTrayToSocket(1, 5, 1, 5, 6)
-'		Wait 5
-		' +90 deg
-		'MoveChipFromTrayToSocket(1, 6, 1, 5, 6)
-		'Wait 5
-		' 180 deg
-'		MoveChipFromTrayToSocket(1, 7, 1, 7, 6)
-'		Wait 5
-'		' -90 deg
-'		MoveChipFromTrayToSocket(1, 8, 1, 8, 6)
-
-
-'		MoveChipFromTrayToTray(1, 7, 6, 1, 8, 6)
-'		MoveChipFromTrayToTray(1, 6, 6, 1, 7, 6)
 '	
 
 '	
@@ -389,17 +276,112 @@ Function CheckForChip(DAT_nr As Integer, socket_nr As Integer) As Boolean
 
 	CheckForChip = False
 	
-	If Not isChipInSocketCamera(DAT_nr, socket_nr) Then
+	If Not isChipInSocketCamera(DAT_nr, Socket_nr) Then
 		Print "Cannot see a chip in the socket"
 	Else
 		Print "Can see chip in the socket"
 	EndIf
 	
-	If Not isChipInSocketTouch(DAT_nr, socket_nr) Then
+	If Not isChipInSocketTouch(DAT_nr, Socket_nr) Then
 		Print "Chip not found at correct height"
 	Else
 		Print "Chip at correct height"
 	EndIf
 	
+Fend
+
+
+Function TestOptionsFromServer(RunSelectSite As Int32)
+	
+	Print "Will check value of global bools which are declared but not set"
+	
+	If RunSelectSite = 1 Then
+		SelectSite("InFunctionDefinePallets")
+	EndIf
+	
+	If NotStandalone Then
+		Print "NotStandalone is True, this is being called within a higher level function like, Main, RTS_Server, or testing"
+	Else
+		Print "NotStandalone is False, this function is being called on its own or a function which does not set NotStandalone"
+	EndIf
+	
+	If DoPinAnalysis Then
+		Print "DoPinAnalysis is True"
+	Else
+		Print "DoPinAnalysis is False"
+	EndIf
+	
+	If SkipOccupancyChecks Then
+		Print "SkipOccupancyChecks is True"
+	Else
+		Print "SkipOccupancyChecks is False"
+	EndIf
+	
+	If SkipSocketCorrection Then
+		Print "SkipSocketCorrection is True"
+	Else
+		Print "SkipSocketCorrection is False"
+	EndIf
+	
+	If SkipChipToChipCorrection Then
+		Print "SkipChipToChipCorrection is True"
+	Else
+		Print "SkipChipToChipCorrection is False"
+	EndIf
+	
+	If SocPlaceNotDrop Then
+		Print "SocPlaceNotDrop is True"
+	Else
+		Print "SocPlaceNotDrop is False"
+	EndIf
+	
+	If SocClampFirst Then
+		Print "SocClampFirst is True"
+	Else
+		Print "SocClampFirst is False"
+	EndIf
+	
+	If SocFastClamp Then
+		Print "SocFastClamp is True"
+	Else
+		Print "SocFastClamp is False"
+	EndIf
+	
+Fend
+
+Function TestSiteFileLoading
+	
+	Print "Without loading from site file"
+	PrintLoadedSiteFileValues
+	
+	Print "RUNNING SELECT SITE"
+	SelectSite("")
+
+	Print "With loading from site file"
+
+	PrintLoadedSiteFileValues
+	
+	Boolean initial_pin_analysis
+	initial_pin_analysis = DefaultPinAnalysis
+	
+	Print "Will now change setting of DoPinAnalysis"
+	Print "DefaultPinAnalysis = ", DefaultPinAnalysis
+	DefaultPinAnalysis = Not initial_pin_analysis
+	Print "changing..."
+	Print "DefaultPinAnalysis = ", DefaultPinAnalysis
+	
+	Print "Will now write new value to file"
+	WriteSiteFile
+	Print "Waiting 20 seconds, please check pin analysis setting in file has changed"
+	Wait 20
+	
+	Print "Now changing back "
+	Print "DefaultPinAnalysis = ", DefaultPinAnalysis
+	DefaultPinAnalysis = False
+	Print "changing..."
+	Print "DefaultPinAnalysis = ", initial_pin_analysis
+	Print "Rewriting site file"
+	WriteSiteFile
+		
 Fend
 

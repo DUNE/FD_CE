@@ -47,45 +47,18 @@ Function SelectSite(OPTION$ As String) As Boolean
 '
 '	' Set up directions of chips and sockets
 '	 DefineDirections
-'
-	If Not FileExists(SITE_FILE) Then
-		Print "Need to provide full path to site.csv location"
+''
+	If Not ReadSiteFile Then
+		Print "Could not read site file"
+		Exit Function
 	EndIf
-	Print "Checking site file", SITE_FILE
-	Integer fileNum
 	
-	fileNum = FreeFile
-	ROpen SITE_FILE As #fileNum
-	Input #fileNum, SITE$, CHIPTYPE$
-	Input #fileNum, REPO_DIR$
-	Input #fileNum, PROJ_DIR$
-	Input #fileNum, RTS_DATA$
-	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
-	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
-	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
-	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
-	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
-	Input #fileNum, Default_DF_Exposure_Chip
-	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
-	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
-	Input #fileNum, Default_DF_Exposure_Soc
-	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
-	Input #fileNum, Default_UF_Exposure
-	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
-	Close #fileNum
+	If Not NotStandalone Then
+		SocPlaceNotDrop = DefaultPlaceNotDrop
+		SocClampFirst = DefaultClampFirst
+		SocFastClamp = DefaultFastClamp
+	EndIf
 	
-	
-'	Print SITE$, CHIPTYPE$
-'	Print REPO_DIR$
-'	Print PROJ_DIR$
-'	Print RTS_DATA$
-'	Print HAND_U0, ",", DF_CAM_X_OFF_U0, ",", DF_CAM_Y_OFF_U0, ",", DF_CAM_FOCUS
-'	Print TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
-'	Print ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
-'	Print SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3)
-	
-
-'	
 	DF_CAM_Z_OFF = DF_CAM_FOCUS - CONTACT_DIST
 	If Verbose Then
 	Print "Site selected is " + SITE$
@@ -176,10 +149,6 @@ Function SetSiteValues
 	
 	' First load site values?
 	SelectSite("")
-
-	Integer fileNum
-'	String SITE_FILE
-'	SITE_FILE = PROJ_DIR + "\site.csv"
 	
 	POINTS_FILE$ = "points_" + SITE$ + ".pts"
 	If Not FileExists(PROJ_DIR$ + "\" + POINTS_FILE$) Then
@@ -228,26 +197,11 @@ Function SetSiteValues
  	Print "Set DF_CAM_Z_OFF to ", DeltaZ - CONTACT_DIST
 	SetSpeed
 		
-	fileNum = FreeFile
-	WOpen SITE_FILE As #fileNum
-	Print #fileNum, SITE$, ",", CHIPTYPE$
-	Print #fileNum, REPO_DIR$
-	Print #fileNum, PROJ_DIR$
-	Print #fileNum, RTS_DATA$
-	Print #fileNum, HAND_U0, ",", DF_CAM_X_OFF_U0, ",", DF_CAM_Y_OFF_U0, ",", DF_CAM_FOCUS
-	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
-	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
-	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3)
-	Print #fileNum, NAttempts_Chip_Tray, ",", NAttempts_Chip_DAT, ",", NAttempts_Soc, ",", NAttempts_UF
-	Print #fileNum, Default_DF_Exposure_Chip
-	Print #fileNum, Min_DF_Exposure_Chip_Tray, ",", Max_DF_Exposure_Chip_Tray
-	Print #fileNum, Min_DF_Exposure_Chip_DAT, ",", Max_DF_Exposure_Chip_DAT
-	Print #fileNum, Default_DF_Exposure_Soc
-	Print #fileNum, Min_DF_Exposure_Soc, ",", Max_DF_Exposure_Soc
-	Print #fileNum, Default_UF_Exposure
-	Print #fileNum, Min_UF_Exposure, ",", Max_UF_Exposure
-	Close #fileNum
-
+	If Not WriteSiteFile Then
+		Print "Could not write to file"
+		Exit Function
+	EndIf
+	
 	Exit Function
 	eHandler:
 	Byte errorTask
@@ -270,32 +224,11 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	' These account for differences between the socket vision sequence measurement and the actual point,
 	' Should be run once, must be run when aligned with socket (DAT_nr, Socket_nr)
 	
-	' First make sure you have all the other site specific values loaded	
-	If Not FileExists(SITE_FILE) Then
-		Print "Need to provide full path to site.csv location"
+	If Not ReadSiteFile Then
+		Print "Could not read site file"
+		Exit Function
 	EndIf
-	
-	Integer fileNum
-	
-	fileNum = FreeFile
-	ROpen SITE_FILE As #fileNum
-	Input #fileNum, SITE$, CHIPTYPE$
-	Input #fileNum, REPO_DIR$
-	Input #fileNum, PROJ_DIR$
-	Input #fileNum, RTS_DATA$
-	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
-	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
-	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
-	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
-	Input #fileNum, Default_DF_Exposure_Chip
-	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
-	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
-	Input #fileNum, Default_DF_Exposure_Soc
-	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
-	Input #fileNum, Default_UF_Exposure
-	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
-	Close #fileNum
-		
+'		
 	' After aligning your sockets and teaching their points, realign the socket in the "socket align" vision sequence.
 	SocketVisionOffset(1) = 0.
 	SocketVisionOffset(2) = 0.
@@ -306,7 +239,7 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	' the vision sequence should be fairly close to the actual point
 	
 	
-	If Not GetSocketPositionWithDF(DAT_nr, socket_nr) Then ', ByRef SockCorr()) Then
+	If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
 		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
 		MeasureSocketVisionOffset = -ERR_V_SOCKETALIGN
 		Exit Function
@@ -317,7 +250,7 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 		MeasureSocketVisionOffset = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
-	Print "Correcting for socket (", DAT_nr, ",", socket_nr, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+	Print "Correcting for socket (", DAT_nr, ",", Socket_nr, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
 	Print "With zeroed out vision corrections, socket offstes are returned as "
 	Print " X:", SocketOffset(1)
 	Print " Y:", SocketOffset(2)
@@ -328,25 +261,11 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	SocketVisionOffset(3) = SocketOffset(3)
 	Print "SocketVisionOffset values saved, storing in site file", SITE_FILE
 
-	fileNum = FreeFile
-	WOpen SITE_FILE As #fileNum
-	Print #fileNum, SITE$, ",", CHIPTYPE$
-	Print #fileNum, REPO_DIR$
-	Print #fileNum, PROJ_DIR$
-	Print #fileNum, RTS_DATA$
-	Print #fileNum, HAND_U0, ",", DF_CAM_X_OFF_U0, ",", DF_CAM_Y_OFF_U0, ",", DF_CAM_FOCUS
-	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
-	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
-	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3) ''	Close #fileNum
-	Print #fileNum, NAttempts_Chip_Tray, ",", NAttempts_Chip_DAT, ",", NAttempts_Soc, ",", NAttempts_UF
-	Print #fileNum, Default_DF_Exposure_Chip
-	Print #fileNum, Min_DF_Exposure_Chip_Tray, ",", Max_DF_Exposure_Chip_Tray
-	Print #fileNum, Min_DF_Exposure_Chip_DAT, ",", Max_DF_Exposure_Chip_DAT
-	Print #fileNum, Default_DF_Exposure_Soc
-	Print #fileNum, Min_DF_Exposure_Soc, ",", Max_DF_Exposure_Soc
-	Print #fileNum, Default_UF_Exposure
-	Print #fileNum, Min_UF_Exposure, ",", Max_UF_Exposure
-	Close #fileNum
+	If Not WriteSiteFile Then
+		Print "Could not write to file"
+		Exit Function
+	EndIf
+
 	MeasureSocketVisionOffset = -1
 	 
 Fend
@@ -357,33 +276,10 @@ Function MeasureChipVisionOffset As Int32
 	' These account for differences between the chip vision sequence measurement and the actual point,
 	' Should be run once.
 	
-	' First make sure you have all the other site specific values loaded	
-	If Not FileExists(SITE_FILE) Then
-		Print "Need to provide full path to site.csv location"
+	If Not ReadSiteFile Then
+		Print "Could not read site file"
+		Exit Function
 	EndIf
-'	'
-'	SelectSite("")
-	Integer fileNum
-	Print "Reading in current offset values"
-	fileNum = FreeFile
-	ROpen SITE_FILE As #fileNum
-	Input #fileNum, SITE$, CHIPTYPE$
-	Input #fileNum, REPO_DIR$
-	Input #fileNum, PROJ_DIR$
-	Input #fileNum, RTS_DATA$
-	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
-	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
-	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
-	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
-	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
-	Input #fileNum, Default_DF_Exposure_Chip
-	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
-	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
-	Input #fileNum, Default_DF_Exposure_Soc
-	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
-	Input #fileNum, Default_UF_Exposure
-	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
-	Close #fileNum
 '		
 '	Align a chip so it is as square on in the center of the camera image as possible
 '	Remember, the chips may be slightly out of position from a tray. Line this up manually
@@ -433,26 +329,304 @@ Function MeasureChipVisionOffset As Int32
 	ChipVisionOffset(3) = DelU
 	
 	Print "Saving new offsets to file"
+	
+	If Not WriteSiteFile Then
+		Print "Could not write to file"
+		Exit Function
+	EndIf
+	
+	MeasureChipVisionOffset = -1
+Fend
+
+Function ReadSiteFileOld
+	ReadSiteFileOld = 0
+	' First make sure you have all the other site specific values loaded	
+	If Not FileExists(SITE_FILE) Then
+		Print "Need to provide full path to site.csv location"
+		ReadSiteFileOld = -999
+	EndIf
+
+	Integer fileNum
+	fileNum = FreeFile
+	ROpen SITE_FILE As #fileNum
+	Input #fileNum, SITE$, CHIPTYPE$
+	Input #fileNum, REPO_DIR$
+	Input #fileNum, PROJ_DIR$
+	Input #fileNum, RTS_DATA$
+	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
+	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
+	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
+	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
+	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
+	Input #fileNum, Default_DF_Exposure_Chip
+	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
+	Input #fileNum, Min_DF_Exposure_Chip_DAT, Max_DF_Exposure_Chip_DAT
+	Input #fileNum, Default_DF_Exposure_Soc
+	Input #fileNum, Min_DF_Exposure_Soc, Max_DF_Exposure_Soc
+	Input #fileNum, Default_UF_Exposure
+	Input #fileNum, Min_UF_Exposure, Max_UF_Exposure
+	Input #fileNum, DefaultPinAnalysis, DefaultSkipOcc, DefaultSkipSocCor, DefaultSkipChipCor
+	Input #fileNum, DefaultPlaceNotDrop, DefaultClampFirst, DefaultFastClamp
+	Close #fileNum
+	ReadSiteFileOld = -9
+Fend
+
+Function WriteSiteFileOld
+	WriteSiteFileOld = 0
+	If SITE_FILE = "" Then
+		Print("No site file defined in SiteSelection.inc ")
+		WriteSiteFileOld = -999
+		Return
+	EndIf
+	
+	Integer fileNum
 	fileNum = FreeFile
 	WOpen SITE_FILE As #fileNum
 	Print #fileNum, SITE$, ",", CHIPTYPE$
 	Print #fileNum, REPO_DIR$
 	Print #fileNum, PROJ_DIR$
 	Print #fileNum, RTS_DATA$
-	Print #fileNum, HAND_U0, ",", DF_CAM_X_OFF_U0, ",", DF_CAM_Y_OFF_U0, ",", DF_CAM_FOCUS
-	Print #fileNum, TrayOrientation, ",", HandChipOrientation(1), ",", HandChipOrientation(2), ",", HandChipOrientation(3)
-	Print #fileNum, ChipTextOrientation, ",", ChipVisionOffset(1), ",", ChipVisionOffset(2), ",", ChipVisionOffset(3)
-	Print #fileNum, SocketVisionOffset(1), ",", SocketVisionOffset(2), ",", SocketVisionOffset(3)
-	Print #fileNum, NAttempts_Chip_Tray, ",", NAttempts_Chip_DAT, ",", NAttempts_Soc, ",", NAttempts_UF
-	Print #fileNum, Default_DF_Exposure_Chip
-	Print #fileNum, Min_DF_Exposure_Chip_Tray, ",", Max_DF_Exposure_Chip_Tray
-	Print #fileNum, Min_DF_Exposure_Chip_DAT, ",", Max_DF_Exposure_Chip_DAT
-	Print #fileNum, Default_DF_Exposure_Soc
-	Print #fileNum, Min_DF_Exposure_Soc, ",", Max_DF_Exposure_Soc
-	Print #fileNum, Default_UF_Exposure
-	Print #fileNum, Min_UF_Exposure, ",", Max_UF_Exposure
+	Print #fileNum, Str$(HAND_U0), ",", Str$(DF_CAM_X_OFF_U0), ",", Str$(DF_CAM_Y_OFF_U0), ",", Str$(DF_CAM_FOCUS)
+	Print #fileNum, Str$(TrayOrientation), ",", Str$(HandChipOrientation(1)), ",", Str$(HandChipOrientation(2)), ",", Str$(HandChipOrientation(3))
+	Print #fileNum, Str$(ChipTextOrientation), ",", Str$(ChipVisionOffset(1)), ",", Str$(ChipVisionOffset(2)), ",", Str$(ChipVisionOffset(3))
+	Print #fileNum, Str$(SocketVisionOffset(1)), ",", Str$(SocketVisionOffset(2)), ",", Str$(SocketVisionOffset(3))
+	Print #fileNum, Str$(NAttempts_Chip_Tray), ",", Str$(NAttempts_Chip_DAT), ",", Str$(NAttempts_Soc), ",", Str$(NAttempts_UF)
+	Print #fileNum, Str$(Default_DF_Exposure_Chip)
+	Print #fileNum, Str$(Min_DF_Exposure_Chip_Tray), ",", Str$(Max_DF_Exposure_Chip_Tray)
+	Print #fileNum, Str$(Min_DF_Exposure_Chip_DAT), ",", Str$(Max_DF_Exposure_Chip_DAT)
+	Print #fileNum, Str$(Default_DF_Exposure_Soc)
+	Print #fileNum, Str$(Min_DF_Exposure_Soc), ",", Str$(Max_DF_Exposure_Soc)
+	Print #fileNum, Str$(Default_UF_Exposure)
+	Print #fileNum, Str$(Min_UF_Exposure), ",", Str$(Max_UF_Exposure)
+	Print #fileNum, Str$(-Int(DefaultPinAnalysis)), ",", Str$(-Int(DefaultSkipOcc)), ",", Str$(-Int(DefaultSkipSocCor)), ",", Str$(-Int(DefaultSkipChipCor))
+	Print #fileNum, Str$(-Int(DefaultPlaceNotDrop)), ",", Str$(-Int(DefaultClampFirst)), ",", Str$(-Int(DefaultFastClamp))
+	Close #fileNum
+	WriteSiteFileOld = -1
+	
+Fend
+
+
+Function ReadSiteFile As Int32
+	ReadSiteFile = 0
+	' First make sure you have all the other site specific values loaded	
+	If Not FileExists(SITE_FILE) Then
+		Print "Need to provide full path to site.csv location"
+		ReadSiteFile = -999
+		Return
+	EndIf
+
+	Integer fileNum
+	fileNum = FreeFile
+	ROpen SITE_FILE As #fileNum
+	Int32 file_line, NfileLines
+	NfileLines = 42
+	String VariableName$, VariableValue$
+
+	' First five values are strings
+	For file_line = 1 To NfileLines
+		Input #fileNum, VariableName$, VariableValue$
+		Select VariableName$
+			Case "Site"
+				SITE$ = VariableValue$
+			Case "Chip"
+				CHIPTYPE$ = VariableValue$
+			Case "Repo"
+				REPO_DIR$ = VariableValue$
+			Case "Proj"
+				PROJ_DIR$ = VariableValue$
+			Case "Data"
+				RTS_DATA$ = VariableValue$
+			Case "HAND_U0"
+				HAND_U0 = Val(VariableValue$)
+			Case "DF_CAM_X_OFF_U0"
+				DF_CAM_X_OFF_U0 = Val(VariableValue$)
+			Case "DF_CAM_Y_OFF_U0"
+				DF_CAM_Y_OFF_U0 = Val(VariableValue$)
+			Case "DF_CAM_FOCUS"
+				DF_CAM_FOCUS = Val(VariableValue$)
+			Case "TrayOrientation"
+				TrayOrientation = Val(VariableValue$)
+				
+			Case "HandChipOrientation_LArASIC"
+				HandChipOrientation(1) = Val(VariableValue$)
+			Case "HandChipOrientation_ColdADC"
+				HandChipOrientation(2) = Val(VariableValue$)
+			Case "HandChipOrientation_COLDATA"
+				HandChipOrientation(3) = Val(VariableValue$)
+			Case "ChipTextOrientation"
+				ChipTextOrientation = Val(VariableValue$)
+			Case "ChipVisionOffsetX"
+				ChipVisionOffset(1) = Val(VariableValue$)
+			Case "ChipVisionOffsetY"
+				ChipVisionOffset(2) = Val(VariableValue$)
+			Case "ChipVisionOffsetU"
+				ChipVisionOffset(3) = Val(VariableValue$)
+			Case "SocketVisionOffsetX"
+				SocketVisionOffset(1) = Val(VariableValue$)
+			Case "SocketVisionOffsetY"
+				SocketVisionOffset(2) = Val(VariableValue$)
+			Case "SocketVisionOffsetU"
+				SocketVisionOffset(3) = Val(VariableValue$)
+				
+			Case "NAttempts_Chip_Tray"
+				NAttempts_Chip_Tray = Val(VariableValue$)
+			Case "NAttempts_Chip_DAT"
+				NAttempts_Chip_DAT = Val(VariableValue$)
+			Case "NAttempts_Soc"
+				NAttempts_Soc = Val(VariableValue$)
+			Case "NAttempts_UF"
+				NAttempts_UF = Val(VariableValue$)
+			Case "Default_DF_Exposure_Chip"
+				Default_DF_Exposure_Chip = Val(VariableValue$)
+			Case "Min_DF_Exposure_Chip_Tray"
+				Min_DF_Exposure_Chip_Tray = Val(VariableValue$)
+			Case "Max_DF_Exposure_Chip_Tray"
+				Max_DF_Exposure_Chip_Tray = Val(VariableValue$)
+			Case "Min_DF_Exposure_Chip_DAT"
+				Min_DF_Exposure_Chip_DAT = Val(VariableValue$)
+			Case "Max_DF_Exposure_Chip_DAT"
+				Max_DF_Exposure_Chip_DAT = Val(VariableValue$)
+			Case "Default_DF_Exposure_Soc"
+				Default_DF_Exposure_Soc = Val(VariableValue$)
+				
+			Case "Min_DF_Exposure_Soc"
+				Min_DF_Exposure_Soc = Val(VariableValue$)
+			Case "Max_DF_Exposure_Soc"
+				Max_DF_Exposure_Soc = Val(VariableValue$)
+			Case "Default_UF_Exposure"
+				Default_UF_Exposure = Val(VariableValue$)
+			Case "Min_UF_Exposure"
+				Min_UF_Exposure = Val(VariableValue$)
+			Case "Max_UF_Exposure"
+				Max_UF_Exposure = Val(VariableValue$)
+			Case "DoPinAnalysis"
+				DefaultPinAnalysis = Val(VariableValue$)
+			Case "SkipOccupancyCheck"
+				DefaultSkipOcc = Val(VariableValue$)
+			Case "SkipSocketCorrection"
+				DefaultSkipSocCor = Val(VariableValue$)
+			Case "SkipChiptoChipCorrection"
+				DefaultSkipChipCor = Val(VariableValue$)
+			Case "PlaceNotDrop"
+				DefaultPlaceNotDrop = Val(VariableValue$)
+				
+			Case "ClampBeforeVacuumOff"
+				DefaultClampFirst = Val(VariableValue$)
+			Case "FastClamp"
+				DefaultFastClamp = Val(VariableValue$)
+			Default
+				Print "NO KNOWN VARIABLE TO SET FOR SITE FILE VARIABLE ", VariableName$
+		Send
+	Next
+
+	Close #fileNum
+	ReadSiteFile = -1
+Fend
+
+Function WriteSiteFile As Int32
+	WriteSiteFile = 0
+	If SITE_FILE = "" Then
+		Print("No site file defined in SiteSelection.inc ")
+		WriteSiteFile = -999
+		Return
+	EndIf
+
+	Integer fileNum
+	fileNum = FreeFile
+	WOpen SITE_FILE As #fileNum
+	Print #fileNum, "Site,", SITE$
+	Print #fileNum, "Chip,", CHIPTYPE$
+	Print #fileNum, "Repo,", REPO_DIR$
+	Print #fileNum, "Proj,", PROJ_DIR$
+	Print #fileNum, "Data,", RTS_DATA$
+	Print #fileNum, "HAND_U0,", Str$(HAND_U0)
+	Print #fileNum, "DF_CAM_X_OFF_U0,", Str$(DF_CAM_X_OFF_U0)
+	Print #fileNum, "DF_CAM_Y_OFF_U0,", Str$(DF_CAM_Y_OFF_U0)
+	Print #fileNum, "DF_CAM_FOCUS,", Str$(DF_CAM_FOCUS)
+	Print #fileNum, "TrayOrientation,", Str$(TrayOrientation)
+	Print #fileNum, "HandChipOrientation_LArASIC,", Str$(HandChipOrientation(1))
+	Print #fileNum, "HandChipOrientation_ColdADC,", Str$(HandChipOrientation(2))
+	Print #fileNum, "HandChipOrientation_COLDATA,", Str$(HandChipOrientation(3))
+	Print #fileNum, "ChipTextOrientation,", Str$(ChipTextOrientation)
+	Print #fileNum, "ChipVisionOffsetX,", Str$(ChipVisionOffset(1))
+	Print #fileNum, "ChipVisionOffsetY,", Str$(ChipVisionOffset(2))
+	Print #fileNum, "ChipVisionOffsetU,", Str$(ChipVisionOffset(3))
+	Print #fileNum, "SocketVisionOffsetX,", Str$(SocketVisionOffset(1))
+	Print #fileNum, "SocketVisionOffsetY,", Str$(SocketVisionOffset(2))
+	Print #fileNum, "SocketVisionOffsetU,", Str$(SocketVisionOffset(3))
+	Print #fileNum, "NAttempts_Chip_Tray,", Str$(NAttempts_Chip_Tray)
+	Print #fileNum, "NAttempts_Chip_DAT,", Str$(NAttempts_Chip_DAT)
+	Print #fileNum, "NAttempts_Soc,", Str$(NAttempts_Soc)
+	Print #fileNum, "NAttempts_UF,", Str$(NAttempts_UF)
+	Print #fileNum, "Default_DF_Exposure_Chip,", Str$(Default_DF_Exposure_Chip)
+	Print #fileNum, "Min_DF_Exposure_Chip_Tray,", Str$(Min_DF_Exposure_Chip_Tray)
+	Print #fileNum, "Max_DF_Exposure_Chip_Tray,", Str$(Max_DF_Exposure_Chip_Tray)
+	Print #fileNum, "Min_DF_Exposure_Chip_DAT,", Str$(Min_DF_Exposure_Chip_DAT)
+    Print #fileNum, "Max_DF_Exposure_Chip_DAT,", Str$(Max_DF_Exposure_Chip_DAT)
+    Print #fileNum, "Default_DF_Exposure_Soc,", Str$(Default_DF_Exposure_Soc)
+    Print #fileNum, "Min_DF_Exposure_Soc,", Str$(Min_DF_Exposure_Soc)
+	Print #fileNum, "Max_DF_Exposure_Soc,", Str$(Max_DF_Exposure_Soc)
+	Print #fileNum, "Default_UF_Exposure,", Str$(Default_UF_Exposure)
+	Print #fileNum, "Min_UF_Exposure,", Str$(Min_UF_Exposure)
+	Print #fileNum, "Max_UF_Exposure,", Str$(Max_UF_Exposure)
+    Print #fileNum, "DoPinAnalysis,", Str$(-Int(DefaultPinAnalysis)) ' Convert true bool (True = -1) to 1 for user
+    Print #fileNum, "SkipOccupancyCheck,", Str$(-Int(DefaultSkipOcc))
+	Print #fileNum, "SkipSocketCorrection,", Str$(-Int(DefaultSkipSocCor))
+	Print #fileNum, "SkipChiptoChipCorrection,", Str$(-Int(DefaultSkipChipCor))
+	Print #fileNum, "PlaceNotDrop,", Str$(-Int(DefaultPlaceNotDrop))
+	Print #fileNum, "ClampBeforeVacuumOff,", Str$(-Int(DefaultClampFirst))
+	Print #fileNum, "FastClamp,", Str$(-Int(DefaultFastClamp))
 	Close #fileNum
 	
-	MeasureChipVisionOffset = -1
+	WriteSiteFile = -1
+	
+Fend
+
+Function PrintLoadedSiteFileValues
+	Print "Current global setting variables from site file"
+	Print "Site,", SITE$
+	Print "Chip,", CHIPTYPE$
+	Print "Repo,", REPO_DIR$
+	Print "Proj,", PROJ_DIR$
+	Print "Data,", RTS_DATA$
+	Print "HAND_U0,", Str$(HAND_U0)
+	Print "DF_CAM_X_OFF_U0,", Str$(DF_CAM_X_OFF_U0)
+	Print "DF_CAM_Y_OFF_U0,", Str$(DF_CAM_Y_OFF_U0)
+	Print "DF_CAM_FOCUS,", Str$(DF_CAM_FOCUS)
+	Print "TrayOrientation,", Str$(TrayOrientation)
+	Print "HandChipOrientation_LArASIC,", Str$(HandChipOrientation(1))
+	Print "HandChipOrientation_ColdADC,", Str$(HandChipOrientation(2))
+	Print "HandChipOrientation_COLDATA,", Str$(HandChipOrientation(3))
+	Print "ChipTextOrientation,", Str$(ChipTextOrientation)
+	Print "ChipVisionOffsetX,", Str$(ChipVisionOffset(1))
+	Print "ChipVisionOffsetY,", Str$(ChipVisionOffset(2))
+	Print "ChipVisionOffsetU,", Str$(ChipVisionOffset(3))
+	Print "SocketVisionOffsetX,", Str$(SocketVisionOffset(1))
+	Print "SocketVisionOffsetY,", Str$(SocketVisionOffset(2))
+	Print "SocketVisionOffsetU,", Str$(SocketVisionOffset(3))
+	Print "NAttempts_Chip_Tray,", Str$(NAttempts_Chip_Tray)
+	Print "NAttempts_Chip_DAT,", Str$(NAttempts_Chip_DAT)
+	Print "NAttempts_Soc,", Str$(NAttempts_Soc)
+	Print "NAttempts_UF,", Str$(NAttempts_UF)
+	Print "Default_DF_Exposure_Chip,", Str$(Default_DF_Exposure_Chip)
+	Print "Min_DF_Exposure_Chip_Tray,", Str$(Min_DF_Exposure_Chip_Tray)
+	Print "Max_DF_Exposure_Chip_Tray,", Str$(Max_DF_Exposure_Chip_Tray)
+	Print "Min_DF_Exposure_Chip_DAT,", Str$(Min_DF_Exposure_Chip_DAT)
+    Print "Max_DF_Exposure_Chip_DAT,", Str$(Max_DF_Exposure_Chip_DAT)
+    Print "Default_DF_Exposure_Soc,", Str$(Default_DF_Exposure_Soc)
+    Print "Min_DF_Exposure_Soc,", Str$(Min_DF_Exposure_Soc)
+	Print "Max_DF_Exposure_Soc,", Str$(Max_DF_Exposure_Soc)
+	Print "Default_UF_Exposure,", Str$(Default_UF_Exposure)
+	Print "Min_UF_Exposure,", Str$(Min_UF_Exposure)
+	Print "Max_UF_Exposure,", Str$(Max_UF_Exposure)
+    Print "DoPinAnalysis,", Str$(-Int(DefaultPinAnalysis)) ' Convert true bool (True = -1) to 1 for user
+    Print "SkipOccupancyCheck,", Str$(-Int(DefaultSkipOcc))
+	Print "SkipSocketCorrection,", Str$(-Int(DefaultSkipSocCor))
+	Print "SkipChiptoChipCorrection,", Str$(-Int(DefaultSkipChipCor))
+	Print "PlaceNotDrop,", Str$(-Int(DefaultPlaceNotDrop))
+	Print "ClampBeforeVacuumOff,", Str$(-Int(DefaultClampFirst))
+	Print "FastClamp,", Str$(-Int(DefaultFastClamp))
+
+	
 Fend
 

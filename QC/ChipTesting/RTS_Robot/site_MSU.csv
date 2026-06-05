@@ -1,16 +1,42 @@
-MSU,LArASIC
-C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
-C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
-C:\Users\neutrino\Desktop\RTS
- -0.889, 57.362499237061, 0.33000183105469, 43.009214401245
- 180, 90, -90, -90
- 0, 0.29285497661601, -0.15577220485199, 1.152316994443
- -0.20516365249364, -0.18533288523562, 0.85716034371001
-6, 6, 6, 20
-32000
-15000,40000
-50000,90000
-40000
-10000,100000
-0
-4000,5000
+Site,MSU
+Chip,LArASIC
+Repo,C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
+Proj,C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
+Data,C:\Users\neutrino\Desktop\RTS
+HAND_U0,-0.889
+DF_CAM_X_OFF_U0,57.362499237061
+DF_CAM_Y_OFF_U0,0.33000183105469
+DF_CAM_FOCUS,43.009214401245
+TrayOrientation,180
+HandChipOrientation_LArASIC,90
+HandChipOrientation_ColdADC,-90
+HandChipOrientation_COLDATA,-90
+ChipTextOrientation,0
+ChipVisionOffsetX,0.29285497661601
+ChipVisionOffsetY,-0.15577220485199
+ChipVisionOffsetU,1.152316994443
+SocketVisionOffsetX,-0.20516365249364
+SocketVisionOffsetY,-0.18533288523562
+SocketVisionOffsetU,0.85716034371001
+NAttempts_Chip_Tray,6
+NAttempts_Chip_DAT,6
+NAttempts_Soc,6
+NAttempts_UF,20
+Default_DF_Exposure_Chip,32000
+Min_DF_Exposure_Chip_Tray,15000
+Max_DF_Exposure_Chip_Tray,40000
+Min_DF_Exposure_Chip_DAT,50000
+Max_DF_Exposure_Chip_DAT,90000
+Default_DF_Exposure_Soc,40000
+Min_DF_Exposure_Soc,10000
+Max_DF_Exposure_Soc,100000
+Default_UF_Exposure,0
+Min_UF_Exposure,4000
+Max_UF_Exposure,5000
+DoPinAnalysis,0
+SkipOccupancyCheck,0
+SkipSocketCorrection,0
+SkipChiptoChipCorrection,0
+PlaceNotDrop,0
+ClampBeforeVacuumOff,0
+FastClamp,0

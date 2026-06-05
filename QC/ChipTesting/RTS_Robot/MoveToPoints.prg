@@ -22,18 +22,27 @@ Function MoveFromImageToPoint
 Fend
 
 ' Jump to camera
-' Preserve U rotation
+' Preserves U rotation
 Function JumpToCamera
 	SelectSite("InFunctionDefinePallets")
 	If Agl(2) < 0 Then
 		' Left-handed orientation
-    	Jump P_camera :U(CU(Here)) /L LimZ JUMP_LIMIT
+		If Dist(Here, P_Camera) > 10 Then
+    		Jump P_camera :U(CU(Here)) /L LimZ JUMP_LIMIT
+    	Else
+    		Go P_camera :U(CU(Here)) /L ' If close to P_camera don't jump
+    	EndIf
     Else
     	' Right-handed orientation 
-    	Jump P_camera :U(CU(Here)) /R LimZ JUMP_LIMIT
+    	If Dist(Here, P_Camera) > 10 Then
+    		Jump P_camera :U(CU(Here)) /R LimZ JUMP_LIMIT
+    	Else
+    		Go P_camera :U(CU(Here)) /R
+    	EndIf
 	EndIf
 
 Fend
+
 
 ' pallet_nr 1..2 (1-left, 2-right)
 ' row_nr = 1..6

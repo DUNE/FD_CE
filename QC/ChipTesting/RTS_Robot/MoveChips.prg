@@ -40,7 +40,7 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	' Check occupancy	
 	Int32 Occupancy
 	Occupancy = -1
-	If DoOccupancyChecks Then
+	If Not SkipOccupancyChecks Then
 		UpdateRobotLog$(CurrentOperation$ + ": Checking occupancies")
 		' Check target first
 		Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
@@ -127,7 +127,9 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 		ResetOperation
 		Exit Function
 	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+	
+'	UpdateRobotLog$(CurrentOperation$ + ": DefaultSkipChipCor = " + Str$(DefaultSkipChipCor) + ", SkipChipToChipCorrection = " + Str$(SkipChipToChipCorrection))
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset (Should be reset) = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
 	UpdateRobotLog$(CurrentOperation$ + ": TgtTray position offset = (" + Str$(tray_X(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_Y(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_U(TgtTray, TgtTrayCol, TgtTrayRow)) + ")")
 	UpdateRobotLog$(CurrentOperation$ + ": Correction At Tray      = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
 
@@ -180,7 +182,7 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	' Check occupancy
 	Int32 Occupancy
 	Occupancy = -1
-	If DoOccupancyChecks Then
+	If Not SkipOccupancyChecks Then
 		UpdateRobotLog$(CurrentOperation$ + ": Checking occupancies")
 		Occupancy = SocketPositionOccupied(TgtDAT, TgtSocket)
 		'Print "Occupancy = ", Occupancy
@@ -266,7 +268,8 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 		ResetOperation
 		Exit Function
 	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+'	UpdateRobotLog$(CurrentOperation$ + ": DefaultSkipChipCor = " + Str$(DefaultSkipChipCor) + ", SkipChipToChipCorrection = " + Str$(SkipChipToChipCorrection))
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset (Should be reset) = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
 	UpdateRobotLog$(CurrentOperation$ + ": TgtSock position offset = (" + Str$(DAT_X(TgtDAT, TgtSocket)) + "," + Str$(DAT_Y(TgtDAT, TgtSocket)) + "," + Str$(DAT_U(TgtDAT, TgtSocket)) + ")")
 	UpdateRobotLog$(CurrentOperation$ + ": Correction At socket    = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
 
@@ -317,7 +320,7 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	' Check occupancy
 	Int32 Occupancy
 	Occupancy = -1
-	If DoOccupancyChecks Then
+	If Not SkipOccupancyChecks Then
 		UpdateRobotLog$(CurrentOperation$ + ": Checking occupancies")
 		Occupancy = TrayPositionOccupied(TgtTray, TgtTrayCol, TgtTrayRow)
 		If Occupancy <> 0 Then
@@ -402,7 +405,8 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 		Exit Function
 	EndIf
 	
-	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset     = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
+' 	UpdateRobotLog$(CurrentOperation$ + ": DefaultSkipChipCor = " + Str$(DefaultSkipChipCor) + ", SkipChipToChipCorrection = " + Str$(SkipChipToChipCorrection))
+	UpdateRobotLog$(CurrentOperation$ + ": Current chip offset (Should be reset) = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
 	UpdateRobotLog$(CurrentOperation$ + ": TgtTray position offset = (" + Str$(tray_X(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_Y(TgtTray, TgtTrayCol, TgtTrayRow)) + "," + Str$(tray_U(TgtTray, TgtTrayCol, TgtTrayRow)) + ")")
 	UpdateRobotLog$(CurrentOperation$ + ": Correction At Tray      = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
 	

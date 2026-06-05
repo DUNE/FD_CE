@@ -240,13 +240,28 @@ class RTS_CFG():
                     status = int(self.msg)
                     if (status < 0) and (status != -200) :
                         tryi = tryi + 1
-                        print ("Move chip to orignal position")
-                        self.JumpToSocket(DAT_nr, socket_nr)    
-                        self.InsertIntoSocket()    
+                        # print ("Move chip to orignal position")
+                        # self.JumpToSocket(DAT_nr, socket_nr)    
+                        # self.InsertIntoSocket()    
+                        # self.JumpToCamera()
+                        # self.rts_idle() 
+                        # time.sleep (1)
+                        # self.MotorOn() 
+                        # Still going to attempt to place in tray
+                        checkstatus = self.CheckTrayOccupancy(tray_nr, col_nr, row_nr)
+                        if checkstatus != 0:
+                            print('Target tray position is occupied!')
+                            self.rts_idle()
+                            time.sleep(1)
+                            self.MotorOn()
+                            return -999
+                        self.JumpToTray(tray_nr, col_nr, row_nr)
+                        self.DropToTray()
                         self.JumpToCamera()
-                        self.rts_idle() 
-                        time.sleep (1)
-                        self.MotorOn() 
+                        self.rts_idle()
+                        time.sleep(1)
+                        self.MotorOn()
+                        return 0
                     else:
                         break
 
@@ -407,7 +422,7 @@ class RTS_CFG():
                 print ("ConnectionAbortedError")
                 self.rts_init(port=2001, host_ip='192.168.0.2')
         return status
-    
+
     def rts_idle(self): 
         while True:
             try:
@@ -447,7 +462,7 @@ class RTS_CFG():
         print("Closing socket connection...")
         time.sleep(3)
         self.s.close()
-
+    
     def rts_disconnect(self): 
         while True:
             try:
@@ -464,8 +479,8 @@ class RTS_CFG():
 
         print("Closing socket connection...")
         time.sleep(3)
-        self.s.close() 
-
+        self.s.close()
+        
     def JumpToTray(self, tray_nr, col_nr, row_nr):
         while True:
             try:
@@ -584,7 +599,6 @@ class RTS_CFG():
                 print ("ConnectionAbortedError")
                 self.rts_init(port=2001, host_ip='192.168.0.2')
 
-
     def ScanTray_Lar(self, rootdir): #
         while True:
             try:
@@ -653,7 +667,7 @@ class RTS_CFG():
             except ConnectionAbortedError:
                 print
 
-    def DoOccupancyChecksOn(self):
+    def OccupancyChecksOn(self):
        while True:
             try:
                 msg = "OccupancyChecksOn"
@@ -670,7 +684,7 @@ class RTS_CFG():
                 print ("ConnectionAbortedError")
                 self.rts_init(port=2001, host_ip='192.168.0.2')
 
-    def DoOccupancyChecksOff(self):
+    def OccupancyChecksOff(self):
        while True:
             try:
                 msg = "OccupancyChecksOff"
@@ -685,7 +699,7 @@ class RTS_CFG():
                     time.sleep(1)
             except ConnectionAbortedError:
                 print ("ConnectionAbortedError")
-                self.rts_init(port=2001, host_ip='192.168.0.2')
+                self.rts_init(port=2001, host_ip='192.168.0.2') 
 
     def CheckTrayOccupancy(self, tray_nr, col_nr, row_nr):
         while True:
@@ -735,6 +749,252 @@ class RTS_CFG():
                     if int(self.msg) == 0 or int(self.msg) == 1 or int(self.msg) == -2 :
                         return int(self.msg)
                 except ValueError:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+    
+    # do pin analysis 
+    def PinAnalysisOn(self):
+       while True:
+            try:
+                msg = "PinAnalysisOn"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "PinAnalysisOn" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')      
+
+    def PinAnalysisOff(self):
+       while True:
+            try:
+                msg = "PinAnalysisOff"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "PinAnalysisOff" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')           
+
+    # Some options for socket placement
+    def SocketCorrectionOn(self):
+       while True:
+            try:
+                msg = "SocketCorrectionOn"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "SocketCorrectionOn" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+    
+    def SocketCorrectionOff(self):
+       while True:
+            try:
+                msg = "SocketCorrectionOff"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "SocketCorrectionOff" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def ChipToChipCorrectionOn(self):
+       while True:
+            try:
+                msg = "ChipToChipCorrectionOn"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "ChipToChipCorrectionOn" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def ChipToChipCorrectionOff(self):
+       while True:
+            try:
+                msg = "ChipToChipCorrectionOff"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "ChipToChipCorrectionOff" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2') 
+
+    def DoPlaceAtSocket(self):
+       while True:
+            try:
+                msg = "DoPlaceAtSocket"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "DoPlaceAtSocket" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def DoDropAtSocket(self):
+       while True:
+            try:
+                msg = "DoDropAtSocket"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "DoDropAtSocket" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+            
+    def ClampThenVacuumOffAtSocket(self):
+       while True:
+            try:
+                msg = "ClampThenVacuumOffAtSocket"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "ClampThenVacuumOffAtSocket" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def VacuumOffThenClampAtSocket(self):
+       while True:
+            try:
+                msg = "VacuumOffThenClampAtSocket"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "VacuumOffThenClampAtSocket" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def FastSocketClamping(self):
+       while True:
+            try:
+                msg = "FastSocketClamping"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "FastSocketClamping" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def SoftSocketClamping(self):
+       while True:
+            try:
+                msg = "SoftSocketClamping"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "SoftSocketClamping" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')
+
+    def UseSiteFileRobotConfigOptions(self):
+        while True:
+            try:
+                msg = "UseSiteFileRobotConfigOptions"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print (self.msg)
+                if "UseSiteFileRobotConfigOptions" in self.msg:
+                    break
+                else:
+                    time.sleep(1)
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=2001, host_ip='192.168.0.2')         
+    
+    def TestRobotConfigOptions(self, select_site):
+       while True:
+            try:
+                print (f"TestRobotConfigOptions {select_site}")
+                msg = "TestOptionsFromServer"
+                self.s.send(msg.encode())
+                self.s.send(b"\r\n")
+
+                self.s.send(str(select_site).encode())
+                self.s.send(b"\r\n")
+
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print ("msg: ", self.msg)
+                response = int(self.msg)
+                if "0" or "1" in self.msg:
+                    break
+                else:
                     time.sleep(1)
             except ConnectionAbortedError:
                 print ("ConnectionAbortedError")

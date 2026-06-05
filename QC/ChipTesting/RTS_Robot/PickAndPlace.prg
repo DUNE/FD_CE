@@ -1,7 +1,6 @@
 #include "RTS_tools.inc"
 #include "ErrorDictionary.inc"
 
-
 Function TouchChip As Byte
 	' Will put the stinger in contact with a chip		
 	' This does several safety checks	
@@ -171,81 +170,81 @@ Function isChipInSocketTouch(DAT_nr As Integer, socket_nr As Integer) As Boolean
 Fend
 
 
-Function InsertIntoSocket As Boolean
+Function PlaceInSocket As Boolean
 	'''
-	' Socket insertion function which uses the plungers
-	' to open the clamp, moves down till the chip is 
-	' seated and contact sensor is activated
-	' releases vacuum, goes up closing clamp before
-	' retracting plungers
+	' Either makes contact and places chip
+	' or drops it from a distance of DROP_DIST
+	' SocketInsertMethod$ allows order of operations
+	' to be configured
 	'''
-	InsertIntoSocket = False
+	PlaceInSocket = False
 
 	If Not isPressureOk Then
 		Exit Function
 	EndIf
-
     SetSpeedSetting("PickAndPlace")
-	PlungerOn
-'	Go Here -Z(12) Till Sw(8) = On Or Sw(9) = Off	
-	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
-	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
-	If Not TouchSuccess Then
-		Print "ERROR! Cannot insert in socket"
-		Exit Function
-	EndIf
-	
-	VacuumValveClose
-	Wait 2
-	InsertIntoSocket = isContactSensorTouches
-	Go Here +Z(CONTACT_DIST)
-	PlungerOff
+    
+    PlungerOn
+  	
+  	Double SocketStartZ
+  	SocketStartZ = CZ(Here)
+  	
+  	If SocPlaceNotDrop Then
+  		' Have chip make contact with socket
+	 	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
+		TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
+		If Not TouchSuccess Then
+			Print "ERROR! Cannot insert in socket"
+			Exit Function
+		EndIf
+	Else
+		' Defaults to drop
+		' Move to drop distance
+  		Go Here -Z(CONTACT_DIST - DROP_DIST)
+  	EndIf
+  	Wait 1
+  	
+  	If SocClampFirst Then
+  		If Not SocFastClamp Then
+  			' Cannot soft clamp as will pull chip out clear of clamp, clamp and then release 
+  			' dropping the chip on top of the socket
+  			Print "Cannot soft clamp before releasing vacuum, will fast clamp"
+  		EndIf
+  		
+		If Not SocPlaceNotDrop Then
+			Print "WARNING: You are clamping while the chip is at ", DROP_DIST, " mm above contact, please make sure the chips is actually clamped after"
+		EndIf
+				
+		' Do fast clamp, retracting plunger before rising up
+		PlungerOff
+		Wait 1
+		 
+		' Now chip is clampped in socket, close vacuum
+  		VacuumValveClose
+  		Wait 1
+  		
+		Go Here :Z(SocketStartZ)
+		
+  	Else
+  		' Close vacuum releasing chip before the clamp shuts
+  		VacuumValveClose
+  		Wait 1
+  		
+		If SocFastClamp Then
+	  		' Do fast clamp, retracting plunger before rising up
+  			PlungerOff
+			Wait 1
+			Go Here :Z(SocketStartZ)
+		Else
+  			' Do soft clamp, rising up slowly before retracting plunger
+  			Go Here :Z(SocketStartZ)
+  			PlungerOff
+  			Wait 1
+  		EndIf
+  		
+  	EndIf
+	PlaceInSocket = True
 	SetSpeedSetting("MoveWithoutChip")
-	
-Fend
-
-Function DropToSocket As Boolean
-	'''	
-	' Gently places chip into socket by
-	' using plunger to open clamp but 
-	' stopping before chip makes contact
-	' then releasing vacuum and droping chip
-	' from DROP_DIST into the socket
-	' Hand then moves up closing clamp befroe
-	' retracting plungers
-	' NOTE: Previously named "InsertIntoSocketSoft"
-	' Replaced FNAL "DropToSocket" function
-	'''
-	
-	SelectSite("InFunctionDefinePallets")
-	DropToSocket = False
-
-	If Not isPressureOk Then
-		Exit Function
-	EndIf
-
-    SetSpeedSetting("PickAndPlace")
-	PlungerOn
-	Go Here -Z(CONTACT_DIST - DROP_DIST)
-
-	VacuumValveClose
-	Wait 1
-	Go Here +Z(CONTACT_DIST - DROP_DIST)
-	PlungerOff
-	Wait 2
-	
-	' Check chip is in socket
-	Boolean TouchSuccess ' Can't just directly use Not Byte for converting 0 to success
-	TouchSuccess = Not TouchChip ' Should be 0 for touch, non zero error code
-	If Not TouchSuccess Then
-		Print "ERROR! Chip not at expected depth"
-		DropToSocket = False
-		Move Here :Z(JUMP_LIMIT - 5) ' Give you some room to see in the socket
-		Exit Function
-	EndIf
-	Move Here +Z(CONTACT_DIST)
-	SetSpeedSetting("MoveWithoutChip")
-	DropToSocket = True
 Fend
 
 Function PickupFromSocket As Boolean
@@ -410,10 +409,8 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	UpdateRobotLog$(CurrentOperation$ + ": Picked up chip from tray, moving to UF camera")
     SetSpeedSetting("MoveWithChip")
 	
-    ' Go to UFC                                                                                                                                                                                                                                                                           
-	JumpToCamera
-	SetSpeedSetting("AboveCamera")
-	' Stores offsets in ChipAxisOffset(3) - need to set in tray variables                                                                                                                                                                                                                 
+    ' Go to UFC and get chip-axis offsets 
+    ' Stores offsets in ChipAxisOffset(3) - need to set in tray variables                                                                                                                                                                                                                 
 	If Not FindChipAxisOffsetWithUF Then
 		RTS_error("GetChipFromTray: Cannot measure chip offsets at UFC ", -ERR_V_UF_ALIGN)
     	GetChipFromTray = -ERR_V_UF_ALIGN
@@ -537,7 +534,12 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	
 	' apply corrections
 	Print "Corrections within tolerance"
-	Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+	If Not SkipChipToChipCorrection Then
+		Print "Applying chip-to-chip corrections"
+		Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+	Else
+		Print "Chip-to-chip corrections turned off!"
+	EndIf
 	Print "Placing at "
 	Print Here
 	Print "Chip currently at U = ", GetBoundAnglePM180(CU(Here) + HandChipOrientation(CHIPTYPE_NR))
@@ -587,7 +589,7 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	Print "GetChipFromSocket(", Str$(DAT), ",", Str$(Socket), ")"
 	GetChipFromSocket = 0
     SubError = 0
-    ResetCurrentChipOffsets
+
 	' TODO JOE for errors need something if chip is in socket in wrong direction 
 	If CurrentOperation$ = "" Then
     '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
@@ -597,31 +599,44 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	Else
 		UpdateRobotLog$(CurrentOperation$ + " : GetChipFromSocket(" + Str$(DAT) + "," + Str$(Socket) + ")")
     EndIf
+    
+    ResetCurrentChipOffsets
+    
  	SetSpeedSetting("MoveWithoutChip")
 
-	JumpToSocket_camera(DAT, Socket)
-	Wait 1
-	SetSpeedSetting("PickAndPlace")
-	' Adjust for socket position drift with DF camera
-	
-	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-		RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
-		GetChipFromSocket = -ERR_V_SOCKETALIGN
-		Exit Function
+	If Not SkipSocketCorrection Then ' Better to have global bool default to false
+		Print("Measuring socket position for corrections")
+		JumpToSocket_camera(DAT, Socket)
+		Wait 1
+		SetSpeedSetting("PickAndPlace")
+		' Adjust for socket position drift with DF camera
+		
+		If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
+			RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			GetChipFromSocket = -ERR_V_SOCKETALIGN
+			Exit Function
+		EndIf
+		' Check corrections are small	
+		
+		If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
+			RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
+			GetChipFromSocket = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
+		Wait 1
 	EndIf
-	' Check corrections are small	
-	
-	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-		GetChipFromSocket = -ERR_BAD_TOLERANCE
-		Exit Function
-	EndIf
-	Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
-	Wait 1
 
+	
 	JumpToSocket(DAT, Socket)
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
-
+	SetSpeedSetting("PickAndPlace")
+	
+	If Not SkipSocketCorrection Then
+		Print("Applying socket correctin")
+		Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+	Else
+		Print("Socket corection not applied")
+	EndIf
 	PumpOn
 	Wait 1
 	
@@ -653,10 +668,6 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	SetSpeedSetting("MoveWithChip")
 	
 	' Go to UF camera for measuring offsets and storing in DAT_x/y/u variables.
-	JumpToCamera
-
-	SetSpeedSetting("AboveCamera")
-
 	If Not FindChipAxisOffsetWithUF Then
 		GetChipFromSocket = -ERR_V_UF_ALIGN
 		RTS_error("GetChipFromSocket: Cannot get chip offsets from UF camera ", -ERR_V_UF_ALIGN)
@@ -700,6 +711,12 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
     SubError = 0
 	SetSpeedSetting("MoveWithChip")
 	
+	''' For monitoring
+	Int32 i
+	For i = 1 To 24
+		PlacePositions(i) = 0
+	Next
+	
 	If CurrentOperation$ = "" Then
     '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
 		SelectSite("InFunctionDefinePallets")
@@ -715,39 +732,69 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
     Print "Current chip offsets in memory:"
     Print Str$(CurrentChipOffset(1)), ",", Str$(CurrentChipOffset(2)), ",", Str$(CurrentChipOffset(3))
     	
-	JumpToSocket_camera(DAT, Socket)
+    If Not SkipSocketCorrection Then
+    	Print("Applying socket correction")
+		JumpToSocket_camera(DAT, Socket)
+		SetSpeedSetting("PickAndPlace")
+		
+		If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
+			RTS_error("PlaceChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			PlaceChipInSocket = -ERR_V_SOCKETALIGN
+			Exit Function
+		EndIf
+		' Check corrections are small	
+		
+		If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
+			RTS_error("PlaceChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+			PlaceChipInSocket = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
+		
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+		Wait 1
+	Else
+		Print("Socket correction not applied")
+	EndIf
+	
+
+	JumpToSocket(DAT, Socket)
 	SetSpeedSetting("PickAndPlace")
 	
-	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-		RTS_error("PlaceChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
-		PlaceChipInSocket = -ERR_V_SOCKETALIGN
-		Exit Function
-	EndIf
-	' Check corrections are small	
-	
-	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		RTS_error("PlaceChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
-		PlaceChipInSocket = -ERR_BAD_TOLERANCE
-		Exit Function
-	EndIf
-	
-	' Uncomment to check socket drift correction at camera
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
-	Wait 1
-	
-	JumpToSocket(DAT, Socket)
 	Print "Defined position of socket"
 	Print Here
 	
-	Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
-	Print Here
+	' Logging defined position
+	PlacePositions(1) = CX(Here)
+	PlacePositions(2) = CY(Here)
+	PlacePositions(3) = CU(Here)
+	
+	' Logging measured position of socket
+	PlacePositions(4) = SockPos(1)
+	PlacePositions(5) = SockPos(3)
+	PlacePositions(6) = SockPos(3)
+	
+	If Not SkipSocketCorrection Then
+		Print "Applying socket correction"
+		Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+			' Logging socket correction
+		PlacePositions(7) = SocketOffset(1)
+		PlacePositions(8) = SocketOffset(2)
+		PlacePositions(9) = SocketOffset(3)
+		Print Here
+	Else
+		Print "Socket correction not applied"
+	EndIf
 
+	
 '	' calculate correction from current chip offsets and DAT position offset
 '
 	Go Here +U(PickOffset)
 
-
+	' Logging socket corrected position (folding in any pick offset)
+	PlacePositions(10) = CX(Here)
+	PlacePositions(11) = CY(Here)
+	PlacePositions(12) = CU(Here)
 
 	' If stored socket offsets are empty, want to have expected offset as picked up if it were in  correct position
 	' I think this shuld be the same as HandChipOrientation(CHIPTYPE_NR)
@@ -756,10 +803,27 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 		DAT_U(DAT, Socket) = HandChipOrientation(CHIPTYPE_NR)
 	EndIf
 
+	' Logging last chip offset
+	PlacePositions(13) = DAT_X(DAT, Socket)
+	PlacePositions(14) = DAT_Y(DAT, Socket)
+	PlacePositions(15) = DAT_U(DAT, Socket)
+	
+	' Logging current chip offset
+	PlacePositions(16) = CurrentChipOffset(1)
+	PlacePositions(17) = CurrentChipOffset(2)
+	PlacePositions(18) = CurrentChipOffset(3)
+
 	GetChipToChipCorrections(CurrentChipOffset(1), CurrentChipOffset(2), CurrentChipOffset(3), DAT_X(DAT, Socket), DAT_Y(DAT, Socket), DAT_U(DAT, Socket), CU(Here))
 	Print("Current chip offset  = (" + Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)) + ")")
     Print("Socket position offset = (" + Str$(DAT_X(DAT, Socket)) + "," + Str$(DAT_Y(DAT, Socket)) + "," + Str$(DAT_U(DAT, Socket)) + ")")
 	Print("Correction At Socket   = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
+		
+	' Logging chip to chip corection
+	If Not SkipChipToChipCorrection Then
+		PlacePositions(19) = ChipToChipCorrection(1)
+		PlacePositions(20) = ChipToChipCorrection(2)
+		PlacePositions(21) = ChipToChipCorrection(3)
+	EndIf
 	
 	If Abs(ChipToChipCorrection(3)) > 3. Then
 		RTS_error("PlaceChipInSocket: Chip position U correction outside tolerance ", -ERR_BAD_TOLERANCE)
@@ -774,11 +838,23 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 
     ' apply corrections
     Print "Corrections within tolerance"
-	Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+    If Not SkipChipToChipCorrection Then
+    	Print "Applying chip-to-chip corrections"
+		Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+	Else
+		Print "Chip-to-chip corrections are turned off!"
+	EndIf
+	
 	Print Here
 	
+	' Logging actual placement position
+	PlacePositions(22) = CX(Here)
+	PlacePositions(23) = CY(Here)
+	PlacePositions(24) = CU(Here)
+	
 	Print "Placing chip in socket"
-	If Not DropToSocket Then
+	
+	If Not PlaceInSocket Then
 		RTS_error("PlaceChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE)
 		PlaceChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
@@ -794,6 +870,12 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 		RTS_error("PlaceChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE)
 		PlaceChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
+	EndIf
+	
+	If CurrentOperation$ <> "" Then
+		LogSocketPlacements(DAT, Socket, CurrentOperation$)
+	Else
+		LogSocketPlacements(DAT, Socket, op_ts$)
 	EndIf
 	
 	' Do alignment check of chip in socket after insertion
@@ -969,7 +1051,13 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	
 	' apply corrections
 	Print "Corrections within tolerance"
+	If Not SkipChipToChipCorrection Then
+		Print "Applying chip-to-chip corrections"
 	Go Here +X(ChipToChipCorrection(1)) +Y(ChipToChipCorrection(2)) +U(ChipToChipCorrection(3))
+	Else
+		Print "Chip-to-chip corrections turned off!"
+	EndIf
+	
 	Print "Placing at "
 	Print Here
 	Print "Chip currently at U = ", GetBoundAnglePM180(CU(Here) + HandChipOrientation(CHIPTYPE_NR))
@@ -1019,39 +1107,49 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	op_ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
    	UpdateRobotLog$(op_ts$ + " ReseatChipInSocket(" + Str$(DAT) + "," + Str$(Socket) + ")")
 	
-	' First correct for socket drift
-	JumpToSocket_camera(DAT, Socket)
-	SetSpeedSetting("PickAndPlace")
-	
-	If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-		RTS_error("ReseatChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
-		ReseatChipInSocket = -ERR_V_SOCKETALIGN
-		Exit Function
+	If Not SkipSocketCorrection Then
+		Print "Will measure and apply socket correction"
+		' First correct for socket drift
+		JumpToSocket_camera(DAT, Socket)
+		SetSpeedSetting("PickAndPlace")
+
+		If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
+			RTS_error("ReseatChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			ReseatChipInSocket = -ERR_V_SOCKETALIGN
+			Exit Function
+		EndIf
+		' Check corrections are small	
+		
+		If (Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3.) Then
+			RTS_error("ReseatChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+			ReseatChipInSocket = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
+		
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+		Wait 1
+	Else
+		Print "Socket corrections will not be applied"
 	EndIf
-	' Check corrections are small	
-	
-	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		RTS_error("ReseatChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
-		ReseatChipInSocket = -ERR_BAD_TOLERANCE
-		Exit Function
-	EndIf
-	
-	' Uncomment to check socket drift correction at camera
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
-	Wait 1
-	
+
 	' TODO reimplement chip alignment check where available	
 	' May want to add some adjustment based on if the chip seems off in a particular direction	
 
 	JumpToSocket(DAT, Socket)
+	SetSpeedSetting("PickAndPlace")
+	Wait 1
+	
 	Print "Defined position of socket"
 	Print Here
 	
-	Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+	If Not SkipSocketCorrection Then
+		Print("Picking up with socket correction applied")
+		Print "Correcting for socket (", DAT, ",", Socket, ") drift : (", SocketOffset(1), ",", SocketOffset(2), ",", SocketOffset(3), ")"
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+		Wait 1
+	EndIf
 	Print Here
-	
-	SetSpeedSetting("PickAndPlace")
+
 	' Now pick up the chip
 	If Not PickupFromSocket Then
 		RTS_error("ReseatChipInSocke: Cannot pick up chip from socket ", -ERR_SOCKET_PICK)
@@ -1062,17 +1160,22 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	
 	' In case lower than intended pick/place point
 	JumpToSocket(DAT, Socket)
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+	
+	If Not SkipSocketCorrection Then
+		Print("Reseating with socket correction applied")
+		Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
+	EndIf
 	' Don't need to go to UFC as previous chip placement bad, try reseating with drop function
 		
 	' Now replace thc chip
 	Print "Placing chip back in socket"
-	If Not DropToSocket Then
+
+	If Not PlaceInSocket Then
 		RTS_error("ReseatChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
-
+	
 	If Not isChipInSocketTouch(DAT, Socket) Then
 		RTS_error("ReseatChipInSocke: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
@@ -1091,10 +1194,7 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	Wait 5
 	
 	' TODO reimplement chip alignment where available, then compare to first measurement.
-	JumpToCamera
-	Off 12
 	PumpOff
-	Motor Off
 	
 	ReseatChipInSocket = -1
 Fend
@@ -1103,21 +1203,24 @@ Fend
 Function SocketOpenAndClose(DAT_nr As Integer, Socket_nr As Integer) As Int64
 	SocketOpenAndClose = 0
 	
-	' First correct for socket drift
-	JumpToSocket_camera(DAT_nr, Socket_nr)
-	SetSpeedSetting("PickAndPlace")
+	If Not SkipSocketCorrection Then
+		Print "Applying socket correction"
+		' First correct for socket drift
+		JumpToSocket_camera(DAT_nr, Socket_nr)
+		SetSpeedSetting("PickAndPlace")
 	
-	If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
-	'	RTS_error("SocketOpenAndClose: Could not get socket position ", -ERR_V_SOCKETALIGN)
-		SocketOpenAndClose = -ERR_V_SOCKETALIGN
-		Exit Function
-	EndIf
-	' Check corrections are small	
-	
-	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-	'	RTS_error("SocketOpenAndClose: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
-		SocketOpenAndClose = -ERR_BAD_TOLERANCE
-		Exit Function
+		If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
+		'	RTS_error("SocketOpenAndClose: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			SocketOpenAndClose = -ERR_V_SOCKETALIGN
+			Exit Function
+		EndIf
+		' Check corrections are small	
+		
+		If (Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3.) Then
+		'	RTS_error("SocketOpenAndClose: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+			SocketOpenAndClose = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
 	EndIf
 	
 	JumpToSocket(DAT_nr, Socket_nr)

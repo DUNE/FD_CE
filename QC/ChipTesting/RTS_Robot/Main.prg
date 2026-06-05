@@ -3,7 +3,7 @@
 
 
 Function main
-	
+	NotStandalone = True
 	SelectSite("")
 	
 	' Make sure RTS_DATA folder exists, create if not
@@ -16,8 +16,15 @@ Function main
   		Exit Function
 	EndIf
 	
-	DoPinAnalysis = False
-	DoOccupancyChecks = True
+	' Use values in site file as defaults while using server
+	' Other wise all will default to False
+	SocPlaceNotDrop = DefaultPlaceNotDrop ' Defaults to Drop
+	SocClampFirst = DefaultClampFirst ' Defaults to clamp after vacuum off
+	SocFastClamp = DefaultFastClamp ' defaults to soft/slow clamping
+	DoPinAnalysis = DefaultPinAnalysis ' Defaults to not running pin analysis
+	SkipOccupancyChecks = DefaultSkipOcc ' Defaults to running occupancy checks 
+ 	SkipSocketCorrection = DefaultSkipSocCor ' Defaults to applying socket correction
+ 	SkipChipToChipCorrection = DefaultSkipChipCor ' Defaults to applying chip to chip correction
 
 	LoadPositionFiles
 		
@@ -102,7 +109,7 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 		String d$, t$
 	 	d$ = Date$
 	 	t$ = Time$
-        Print #fileNum, d$, " ", t$,
+        Print #FileNum, d$, " ", t$,
 
 
 		' Take picture of chip in the socket
@@ -112,7 +119,7 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 		String pict_fname_socket$
 		'DF_take_picture_socket(chip_SN$, socket_nr, ByRef pict_fname_socket$)
 		'DF_take_picture_socket(socket_nr, ByRef pict_fname_socket$)
-		Print #fileNum, ",", pict_fname_socket$,
+		Print #FileNum, ",", pict_fname_socket$,
 		
 		' Pickup from socket
 		JumpToSocket(DAT_nr, socket_nr)
@@ -128,7 +135,7 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 		'UF_take_picture(chip_SN$, ByRef pict_fname_0$)
 		'UF_take_picture(ByRef pict_fname_0$)
 		'UF_camera_light_OFF
-		Print #fileNum, ",", pict_fname_0$,
+		Print #FileNum, ",", pict_fname_0$,
 		
 		'JumpToTray(pallet_nr, col_nr, row_nr)
 		'PickupFromTray
@@ -159,9 +166,9 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 			VGet ChipBottom_Analy.Final.CameraY, Y_0
 			VGet ChipBottom_Analy.Final.Angle, U_0
 
-            Print #fileNum, ",", ret_found,
-            Print #fileNum, ",", camera_X, ",", camera_Y,
-            Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
+            Print #FileNum, ",", ret_found,
+            Print #FileNum, ",", camera_X, ",", camera_Y,
+            Print #FileNum, ",", X_0, ",", Y_0, ",", U_0,
             'Print #fileNum, ",", camera_X - ret_X, ",", camera_Y - ret_Y
 
 		Else
@@ -178,7 +185,7 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 		String pict_fname_180$
 		'UF_take_picture(chip_SN$ + "-180", ByRef pict_fname_180$)
 		'UF_take_picture(ByRef pict_fname_180$)
-		Print #fileNum, ",", pict_fname_180$,
+		Print #FileNum, ",", pict_fname_180$,
 
 		VRun ChipBottom_Analy
 	
@@ -192,9 +199,9 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 			VGet ChipBottom_Analy.Final.CameraY, Y_180
 			VGet ChipBottom_Analy.Final.Angle, U_180
 
-            Print #fileNum, ",", ret_found,
-            Print #fileNum, ",", camera_X, ",", camera_Y,
-            Print #fileNum, ",", X_180, ",", Y_180, ",", U_180,
+            Print #FileNum, ",", ret_found,
+            Print #FileNum, ",", camera_X, ",", camera_Y,
+            Print #FileNum, ",", X_180, ",", Y_180, ",", U_180,
             'Print #fileNum, ",", camera_X - ret_X, ",", camera_Y - ret_Y
 		Else
 			
@@ -221,7 +228,7 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 		Wait 1
 		'UF_take_picture(chip_SN$, ByRef pict_fname_0$)
 		'UF_take_picture(ByRef pict_fname_0$)
-        Print #fileNum, ",", pict_fname_0$,
+        Print #FileNum, ",", pict_fname_0$,
 		
 		VRun ChipBottom_Analy
 		
@@ -232,8 +239,8 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 			VGet ChipBottom_Analy.Final.CameraY, Y_0
 			VGet ChipBottom_Analy.Final.Angle, U_0
 
-            Print #fileNum, ",", ret_found,
-            Print #fileNum, ",", X_0, ",", Y_0, ",", U_0,
+            Print #FileNum, ",", ret_found,
+            Print #FileNum, ",", X_0, ",", Y_0, ",", U_0,
             'Print #fileNum, ",", camera_X - ret_X, ",", camera_Y - ret_Y
 
 		Else
@@ -260,14 +267,14 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 		d_X = 0.5 * (X_0 + X_180) - X_0 - 0.227
 		d_Y = 0.5 * (Y_0 + Y_180) - Y_0 - 0.141
 		'd_U = U_0 + 0.6
-		Print #fileNum, ",", d_X, ",", d_Y, ",", d_U
+		Print #FileNum, ",", d_X, ",", d_Y, ",", d_U
 		Print "Correcting chip position: ",
 		Print "dX = ", d_X,
 		Print "dY = ", d_Y,
 		Print "dU = ", d_U
 		If Abs(d_X) < 1.0 And Abs(d_Y) < 1.0 And Abs(d_U) < 2.0 Then
 			Go Here +X(d_X) +Y(d_Y) +U(d_U)
-			InsertIntoSocket
+			PlaceInSocket
 		Else
 			Print "ERROR 4"
 	        Exit For
@@ -280,10 +287,10 @@ Function SocketTakePlaceRepeat(DAT_nr As Integer, socket_nr As Integer, ncycles 
 	'DropToTray
 	
 	
-	Close #fileNum
+	Close #FileNum
 
 	'JumpToSocket("R", 1)
-	'InsertIntoSocket
+	'PlaceInSocket
 
 	' Take picture of chip in the socket
 	'Jump Socket_R_1 :Z(-97.60) +X(58.0) -U(45)

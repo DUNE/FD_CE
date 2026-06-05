@@ -59,6 +59,7 @@ Global Double CornerVar(3)
 Global Double ChipPos(3)
 Global Double UFChipPos(3)
 Global Double SockPos(3)
+Global Double PlacePositions(24)
 
 ''' For simplified pick and place
 Global Double CurrentChipOffset(3)
@@ -91,11 +92,29 @@ Global Double HandChipOrientation(3) ' Diretcion of chip relative to Hand U at s
 Global Boolean MSUTESTBOARD
 
 ' These will be for options for additional steps in move commands
-' Should be declared in Main function (as false by default) then toggled on
-Global Boolean DoPinAnalysis
-'Global Boolean DoCheckPlace ' Checks orientation 
-'Global Boolean DoMeasurePlace ' Checks position measurement
-Global Boolean DoOccupancyChecks
+' Can be set in config file and turned off or on through server
+Global Boolean DefaultPinAnalysis
+Global Boolean DoPinAnalysis ' Keep default to not do pin analysis for now
+
+' Do occupancy checks or not
+Global Boolean DefaultSkipOcc
+Global Boolean SkipOccupancyChecks
+
+' Apply corrections from measurements at socket?
+Global Boolean DefaultSkipSocCor
+Global Boolean DefaultSkipChipCor
+Global Boolean SkipSocketCorrection
+Global Boolean SkipChipToChipCorrection
+
+' Needs to be negative as unset defaults to Null which is equiv of False
+Global Boolean NotStandalone ' Set if called in testing/main/server???
+
+Global Boolean DefaultPlaceNotDrop
+Global Boolean DefaultClampFirst
+Global Boolean DefaultFastClamp
+Global Boolean SocPlaceNotDrop
+Global Boolean SocClampFirst
+Global Boolean SocFastClamp
 
 Global String CurrentOperation$
 Global String op_ts$
@@ -129,3 +148,8 @@ Global Int32 NAttempts_UF
 Global Int32 Min_UF_Exposure ' Set directly from site file
 Global Int32 Max_UF_Exposure
 
+' Offsets of U to Agl4 when at UFC
+Global Boolean UFC_AGL4_OFFSET_L_stored
+Global Double UFC_AGL4_OFFSET_L
+Global Boolean UFC_AGL4_OFFSET_R_stored
+Global Double UFC_AGL4_OFFSET_R
