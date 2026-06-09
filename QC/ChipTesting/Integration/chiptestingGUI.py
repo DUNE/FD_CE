@@ -62,10 +62,23 @@ class ChipTestingGUI(tk.Tk):
         style.theme_use("default")
 
         # Details of top hotbar
-        top_hotbar = ttk.Frame(self, relief = "raised")
-        top_hotbar.pack(side = "top", fill = "x", padx = 5, pady= 2)
+        top_hotbar = ttk.Frame(self, relief = "groove")
+        top_hotbar.pack(side = "top", fill = "x", padx = 6, pady= 4)
         
-        ttk.Label(top_hotbar, text = "DUNE Chip Testing GC", font = ("Helvetica", 10, "Bold"))
+        ttk.Label(top_hotbar, text = "DUNE Chip Testing GC", font = ("Helvetica", 10, "Bold")).pack(side = "left", padx = 4, pady = 4)
+        
+        self.button_run = ttk.Button(top_hotbar, text = "▶ Play").pack(side = "left", padx = 4, pady = 4)
+        self.button_abort = ttk.Button(top_hotbar, text  = "⏹ Abort").pack(side = "left", padx = 4, pady = 4)
+
+        self.status = tk.StringVar(value = "Idle")
+        ttk.Label(top_hotbar, textvariable = self.status, relief = "sunken", font = ("Helvetica", 10), width = 20).pack(side = "right", padx = 6, pady = 4)
+        ttk.Label(top_hotbar, text = "Status:").pack(side = "right", padx = 4)
+
+        
+
+
+
+
 
 
 
