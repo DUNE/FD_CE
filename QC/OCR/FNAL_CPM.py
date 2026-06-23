@@ -161,8 +161,34 @@ def perform_ocr_minicpm(image_path):
         print(f"Error {response.status_code}: {response.text}")
         print("Error: API request failed")
         return
+    
+def GetUserHelp():
+    """
+    Asks user to input serial number and wafer id manually and returns them.
+    """
 
-def validate_COLDATA_OCR(ocr_result, process_id, allow_input=True):
+    print("User must input the chip information manually. The chips are labeled with four lines:")
+    print("        COLDATA")  
+    print("        WAFER NUMBER (somehting like NBMY62.00)")
+    print("        XXXXX (part of serial number)") 
+    print("        YYYY  (part of serial number)")
+
+    wafer_id = input("Enter the WAFER NUMBER (line 2):")
+    while True:
+        serial_number = input("Enter the serial number (lines 3 and 4, no spaces):")
+        try:
+            if len(serial_number) != 9:
+                raise ValueError("Incorrect number of characters. The serial number must have 9 characters.")
+            elif not serial_number.isnumeric():
+                raise ValueError("Serial number must be an integer.")
+            else:
+                break
+        except Exception as error:
+            print(f"ERROR: {error}. Please try again.")
+
+    return wafer_id, serial_number
+
+def validate_COLDATA_OCR(ocr_result, process_id):
     """
     Validates the OCR result, assuming it processed a COLDATA chip
     which, upon perfect success, should look like:
@@ -176,8 +202,6 @@ def validate_COLDATA_OCR(ocr_result, process_id, allow_input=True):
         ocr_result [str]: string of OCR result
         process_id [int]: process id used to keep track of different
                           OCR tests.
-        allow_input [bool]: If true, then if the OCR fails, the user will
-                            be prompted to input the serial number. 
     Returns:
         serial_number [str]: Returns a string of the serial number in
                              the format XXXXXYYYY, or None if failed
@@ -220,35 +244,11 @@ def validate_COLDATA_OCR(ocr_result, process_id, allow_input=True):
         passed = False
     elif sn.isnumeric():
         serial_number = sn
+
     if not passed:
         warnings.append(f"ERROR: serial number could not be found. OCR found '{sn}'")
-
-        if allow_input:
-            print(f"Warnings: {warnings}")
-            warnings = [] # clear warnings since we now are using user input
-
-            print("User must not input the chip information manually. The chips are labeled with four lines:")
-            print("        COLDATA")  
-            print("        WAFER NUMBER (somehting like NBMY62.00)")
-            print("        XXXXX (part of serial number)") 
-            print("        YYYY  (part of serial number)")
-
-            wafer_id = input("Enter the WAFER NUMBER (line 2):")
-            
-            
-            while True:
-                serial_number = input("Enter the serial number (lines 3 and 4, no spaces):")
-                try:
-                    if len(serial_number) != 9:
-                        raise ValueError("Incorrect number of characters. The serial number must have 9 characters.")
-                    elif not serial_number.isnumeric():
-                        raise ValueError("Serial number must be an integer.")
-                    else:
-                        break
-                except Exception as error:
-                    print(f"ERROR: {error}. Please try again.")
-        else:
-            return None, wafer_id, warnings
+        print(f"Warnings: {warnings}")
+        raise Exception(f"OCR Warnings: {warnings}")
     
 
     if serial_number or wafer_id:
@@ -358,14 +358,22 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     
     if temp_image_path:
         # Perform OCR using MiniCPM
-        ocr_result = perform_ocr_minicpm(temp_image_path)
-        print(f"OCR: {ocr_result}")
-        if ocr_result:
-            serial_number, wafer_id, warnings = validate_COLDATA_OCR(ocr_result, image_number, allow_input=True)
-            [print(w) for w in warnings]
-            
-            chipinfo_file = SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir)
+        try:
+            ocr_result = perform_ocr_minicpm(temp_image_path)
+            print(f"OCR: {ocr_result}")
+            if ocr_result:
+                serial_number, wafer_id, warnings = validate_COLDATA_OCR(ocr_result, image_number, allow_input=True)
+                [print(w) for w in warnings]
+                
+            else:
+                raise Exception("perform_ocr_minicpm return None")
+        except Exception as e:
+            print(f"ERROR with OCR: {e}")
+            serial_number, wafer_id = GetUserHelp()
             success = True
+
+    chipinfo_file = SaveChipInfo(image_number, serial_number, wafer_id, ocr_results_dir)
+    success = True
 
     if to_rts_config:
         WriteToRTSConfig(chipinfo_file, config_file, socket_label)
