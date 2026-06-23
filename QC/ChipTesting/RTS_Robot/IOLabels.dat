@@ -1,4 +1,4 @@
-ENVT0100,LM:2024/01/31 17:44:32:601,DS:0000000497,CS:26638,MA:C8-D9-D2-35-C3-5C,EI:           
+ENVT0100,LM:2026/05/07 13:52:38:346,DS:0000000754,CS:10358,MA:6C-2B-59-DC-C5-38,EI:           
 sRCVersion="7.5.4"
 InputBitLabels {
 	nNumberOfLabels=0
@@ -10,7 +10,27 @@ InputWordLabels {
 	nNumberOfLabels=0
 }
 OutputBitLabels {
-	nNumberOfLabels=0
+	nNumberOfLabels=4
+	Label1 {
+		nBit=9
+		sLabel="Pump"
+		sDescription=""
+	}
+	Label2 {
+		nBit=10
+		sLabel="Vacuum"
+		sDescription=""
+	}
+	Label3 {
+		nBit=11
+		sLabel="Plunger"
+		sDescription=""
+	}
+	Label4 {
+		nBit=12
+		sLabel="Backlight"
+		sDescription=""
+	}
 }
 OutputByteLabels {
 	nNumberOfLabels=0

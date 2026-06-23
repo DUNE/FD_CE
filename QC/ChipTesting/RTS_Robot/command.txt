@@ -1,1 +1,1039 @@
+> SetSpeed
+> LoadPoints "points_MSU.pts"
+> JumpToCamera
+> JumpToSocket_camera(1,1)
+> 
+> JumpToTray_camera(1, 15, 1)
+> SelectSite("")
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+Offsets:
+  HAND_U0          =  -0.889
+  DF_CAM_X_OFF_U0  =  57.362499237061
+  DF_CAM_Y_OFF_U0  =  0.33000183105469
+  DF_CAM_Z_OFF     =  33.009214401245
+  DF_CAM_FOCUS     =  43.009214401245
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+tray_X( 1, 5, 1) is  0.57652315255629
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> MoveFromImageToPoint
+> Go Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> 
+> 
+> 
+> Go Here +Z(10)
+> 
+> 
+> 
+>
+> Print Here
+ X:  -27.204 Y:  441.798 Z:  -54.672 U:   -0.989 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P2
+ X:  -26.803 Y:  441.598 Z:  -53.600 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Jump Tray_Left_P1
+> Jump Tray_Left_P2
+> MoveFromPointToImage
+> JumpToTray_camera(1,1,1)
+> 
+> Jump Tray_Left_P1
+> MoveFromPointToImage
+> 
+> 
+> SelectSite("")
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+Offsets:
+  HAND_U0          =  -0.889
+  DF_CAM_X_OFF_U0  =  57.362499237061
+  DF_CAM_Y_OFF_U0  =  0.33000183105469
+  DF_CAM_Z_OFF     =  33.009214401245
+  DF_CAM_FOCUS     =  43.009214401245
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+tray_X( 1, 5, 1) is  0.57652315255629
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> 
+> 
+> MoveFromImageToPoint
+> 
+> 
+> 
+> Print Here
+ X: -254.286 Y:  443.727 Z:  -20.740 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromImageToPoint
+> Print Here
+ X: -311.648 Y:  443.397 Z:  -53.749 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromPointToImage
+> JumpToTray_camera(1,1,1)
+> Print Here
+ X: -253.885 Y:  442.427 Z:  -20.740 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print DF_CAM_X_OFF_U0
+ 57.362499237061
+> Print DF_CAM_Y_OFF_U0
+ 0.33000183105469
+> Jump Tray_Left_P1
+> Print Here
+ X: -311.248 Y:  442.097 Z:  -53.749 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromPointToImage
+> Print Here
+ X: -253.885 Y:  442.427 Z:  -20.740 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Motor Off
+> PumpOff
+> Off 12
+> Motor On
+> On 12
+> JumpToTray_camera(1,1,1)
+> Print HandU
+!!Error: 2513, Specified point label is not defined.
+> SelectSite
+!!Error: 3207, Formula is missing.
+> SelectSite("")
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+Offsets:
+  HAND_U0          =  -0.889
+  DF_CAM_X_OFF_U0  =  57.362499237061
+  DF_CAM_Y_OFF_U0  =  0.33000183105469
+  DF_CAM_Z_OFF     =  33.009214401245
+  DF_CAM_FOCUS     =  43.009214401245
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+tray_X( 1, 5, 1) is  0.57652315255629
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> JumpToTray_camera(1,1,1)
+> Speed 1
+> Move Tray_Left_P1
+> MoveFromPointToImage
+> Print XOffset(0)
+ 57.350474397158
+> Print YOffset(0)
+ 1.2199616187502
+> 
+> 
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+tray_X( 1, 5, 1) is  0.57652315255629
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> 
+!!Error: 2513, Specified point label is not defined.
+> 
+!!Error: 4005, Current point position is above the specified LimZ value.
+> Print HEre
+ X:   -3.573 Y:  649.894 Z:  -10.612 U:   18.556 V:    0.000 W:    0.000 /L /0
+> Go Here -Z(12)
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> ''''
+> '' This is the camera position above the chip when aligned
+> Print Here
+ X: -254.386 Y:  443.727 Z:  -20.740 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> MoveFromImageToPoint
+> 
+
+> ' Now touch the chip 
+> Go Here -Z(20) Till Sw(8) = On or Sw(9) = Off
+> 
+> ' Contact distance is 10
+> Go Here +Z(10)
+> ' Teach the point
+> Print Here
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromPointToImage
+> ' IMage is aligned 
+> JumpToTray_camera(1,1,1)
+> Print Here
+ X: -253.885 Y:  442.427 Z:  -20.740 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print SITE$
+MSU
+> Jump Tray_Left_P1 
+> MoveFromPointToImage
+> Jump Tray_Left_P2
+> MoveFromPointToImage
+> ' Needs some adjustment
+> Print Here
+ X:   30.559 Y:  441.928 Z:  -20.591 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Here
+ X:   30.059 Y:  442.228 Z:  -20.591 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> ' About - 0.5 in X and +0.3 in Y
+> MoveFromImageToPoint
+> 
+> Go Here -Z(20) Till Sw(8) = On or Sw(9) = Off
+> Go Here +Z(10)
+> ' Teach tray left P2
+> Print Here
+ X:  -27.303 Y:  441.898 Z:  -54.672 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromPointToImage
+> Print Here
+ X:   30.060 Y:  442.228 Z:  -21.662 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P2
+ X:  -27.303 Y:  441.898 Z:  -54.672 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> ' Seem in good alignment
+> Jump Tray_Left_P3
+> MoveFromPointToImage
+> ' Way out
+> Print Here
+ X: -253.775 Y:  547.400 Z:  -20.412 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> ' Realigning
+> MoveFromImageToPoint
+> Print Here
+ X: -311.238 Y:  548.470 Z:  -53.421 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Go Here -Z(20) Till Sw(8)= On or Sw(9) = Off
+> Go Here +Z(10)
+> Print Here
+ X: -311.238 Y:  548.470 Z:  -54.206 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> ' Teach P3
+> Print Tray_Left_P3
+ X: -311.238 Y:  548.470 Z:  -54.206 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromPointToImage
+> ' Well aligned
+> Jump Tray_Left_P4
+> MoveFromPointToImage
+> ' Not bad but will try and adjust a little
+> Print Here
+ X:   30.660 Y:  547.100 Z:  -20.524 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> ' adjusted:
+> Print Here
+ X:   30.660 Y:  547.300 Z:  -20.524 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromImageToPoint
+> Go Here -Z(20) Till Sw(8) = On or Sw(9) = Off
+> Go here +Z(10)
+> Print Here
+ X:  -26.703 Y:  546.970 Z:  -54.414 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P4
+ X:  -26.703 Y:  546.970 Z:  -54.414 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> ' Okay so stored should be
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P2
+ X:  -27.303 Y:  441.898 Z:  -54.672 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P3
+ X: -311.238 Y:  548.470 Z:  -54.206 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P4
+ X:  -26.703 Y:  546.970 Z:  -54.414 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Jump Tray_Left_P1
+> Print Here
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> MoveFromPointToImage
+> ' Seems well aligned
+> LoadPoints "points_MSU.pts"
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> SelectSite("InFunctionPalletDefine")
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Pallet(1,1,1)
+ X: -311.248 Y:  442.097 Z:  -53.749 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print SITE$
+MSU
+> Pallet 1, Tray_Left_P1, Tray_Left_P2, Tray_Left_P3, Tray_Left_P4, trayNCols, trayNRows
+> Print Pallet(1,1,1)
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+!!Error: 10013, Cannot execute LoadPoints with Robot Manager open.
+> SelectSite("InFunctionPalletDefine")
+> Print Pallet(1,1,1)
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+Offsets:
+  HAND_U0          =  -0.889
+  DF_CAM_X_OFF_U0  =  57.362499237061
+  DF_CAM_Y_OFF_U0  =  0.33000183105469
+  DF_CAM_Z_OFF     =  33.009214401245
+  DF_CAM_FOCUS     =  43.009214401245
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+tray_X( 1, 5, 1) is  0.57652315255629
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> 
+!!Error: 3207, Formula is missing.
+> JumpToTray_camera(1,5,1)
+> 
+> 
+> 
+> Motor Off
+> Off 12
+> PumpOff
+> LoadPoints "points_MSU.pts"
+> JumpToSocket_camera(1,8)
+> 
+!!Error: 4031, Cannot execute a motion command when the motor is in the off state.
+> Motor On
+> Speed 1
+> MoveFromImageToPoint
+> Go Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Go Here +Z(10)
+> ' This should be socket L 08
+> 'Previous values
+> Print Socket_L_08
+ X: -330.314 Y:  220.250 Z: -135.270 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Here
+ X: -330.514 Y:  218.850 Z: -136.533 U:  179.357 V:    0.000 W:    0.000 /R /0
+> ' About 2mm off in Y
+> Print Socket_L_08
+ X: -330.514 Y:  218.850 Z: -136.533 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> Move Here +Y(CY(Socket_L_07) - CY(Socket_L_08))
+> ' still a little out
+> 
+!!Error: 2513, Specified point label is not defined.
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move Here +Z(10)
+> Print Here
+ X: -330.214 Y:  142.564 Z: -136.004 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Socket_L_07
+ X: -330.214 Y:  142.564 Z: -136.005 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> Move Here +Y(CY(Socket_L_07) - CY(Socket_L_08))
+> ' That was well aligned
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move Here +Z(10)
+> 'Taught L 6
+> Print Socket_L_06
+ X: -330.214 Y:   66.278 Z: -136.256 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Here
+ X: -330.214 Y:   66.278 Z: -136.256 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> Move Here +Y(CY(Socket_L_07) - CY(Socket_L_08))
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move here +Z(10)
+> Print Here
+ X: -330.014 Y:  -10.008 Z: -136.188 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Socket_L_05
+ X: -330.014 Y:  -10.008 Z: -136.188 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> Move Here +Y(CY(Socket_L_04) - CY(Socket_L_05))
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move Here +Z(10)
+> Print Here
+ X: -329.614 Y:  -98.835 Z: -136.140 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Socket_L_04
+ X: -329.614 Y:  -98.835 Z: -136.140 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Move Here +Y(CY(Socket_L_07) - CY(Socket_L_08))
+> MoveFromPointToImage
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move Here +Z(10)
+> Print Here
+ X: -329.314 Y: -175.121 Z: -136.152 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Socket_L_03
+ X: -329.314 Y: -175.121 Z: -136.152 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> Move Here +Y(CY(Socket_L_07) - CY(Socket_L_08))
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move Here +Z(10)
+> Print Here
+ X: -329.315 Y: -251.406 Z: -135.864 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Socket_L_02
+ X: -329.315 Y: -251.406 Z: -135.864 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> Move Here +Y(CY(Socket_L_07) - CY(Socket_L_08))
+> MoveFromImageToPoint
+> Move Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Move Here +Z(10)
+> Print Here
+ X: -329.115 Y: -327.392 Z: -135.675 U:  179.357 V:    0.000 W:    0.000 /R /0
+> Print Socket_L_01
+ X: -329.115 Y: -327.392 Z: -135.675 U:  179.357 V:    0.000 W:    0.000 /R /0
+> MoveFromPointToImage
+> JumpToSocket_camera(1,8)
+> On 12
+> Off 12
+> Motor Off
+> 
+> 
+> Motor Off
+> 
+> On 12
+> AverageAnglePM180(90.5, 90.2)
+ 0
+> Print   AverageAnglePM180(1.5, -1.5)
+ -1
+ 0
+> 
+ -1
+> 
+ -1
+> 
+!!Error: 3201, Expected ','.
+> 
+!!Error: 3201, Expected ','.
+> 
+!!Error: 3100, Syntax error.
+> 
+ -1
+0
+> 
+ 0
+0
+> 
+ 0
+0
+> 
+ 0
+0
+> 
+ 0
+0
+> 
+ 0
+ 0
+> 
+> Motor Off
+> Off 12
+> On 12
+> Motor On
+>
+> 
+> Go Here +X(-0.24) +Y(-0.15) +U(-1.0)
+> 
+> 
+> 
+> Move Here -X(-0.24) -Y(-0.15) -U(-1.0)
+> 
+> Go here +U(1)
+> Off 12
+> Motor Off
+> 
+> 
+> Motor On
+> On 12
+> 
+!!Error: 4035, Only the tool orientation was attempted to be changed by the CP statement.
+> 
+> isPressureOk
+> isVacuumOk
+> PumpOff
+> isVacuumOk
+> Print isVacuumOk
+ -1
+> 
+> isVacuumOk
+> PumpOn
+> isVacuumOk
+> PumpOff
+> Off 12
+> Motor Off
+> 
+> Motor On
+> LoadPoints "points_MSU.pts"
+> JumpToTray_camera(1,5,1)
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> JumpToSocket_camera(1,8)
+> Off 12
+> Motor Off
+> On 12
+> off 12 
+> 
+> Motor On
+> LoadPoints "points_MSU.pts"
+> SelectSite("InFunctionDefinePallets")
+> 
+!!Error: 3100, Syntax error.
+>Move Here +X(0.147) +Y(0.407) +U(-91.3) 
+!!Error: 5047, Overspeed in low power state. Check the signal cable connection, robot, brake, driver, or motor., Robot 1, Joint 4
+> Speed 1
+> Go Here +X(0.147) +Y(0.407) +U(-91.3) 
+> DropToTray
+ERROR! Contact Sensor detects obstacle in the tray
+> JumpToCamera
+> JumpToTray_camera(1,8,1)
+> 
+> 
+!!Error: 3100, Syntax error.
+> PumpOn
+> GetChipFromSocket(1,8)
+!!Error: 7346, Vision Communication. Cannot execute a vision statement from the command window.
+> On 12
+> GetBoundAnglePM180(-179)
+> 
+> Print GetBoundAnglePM180(179.9)
+Angle in bound range
+ 179.9
+> 
+Angle in bound range
+ -179.9
+> 
+Angle Outside bound range
+ 179.9
+> 
+Angle Outside bound range
+ -179.9
+> 
+Angle in bound range
+ 180
+> 
+Angle Outside bound range
+ -180
+> 
+Angle Outside bound range
+ -179.9
+> 
+Angle Outside bound range
+ -180
+> 
+Angle Outside bound range
+ 180
+> 
+Angle in bound range
+ -179.6
+> 
+ -179.6
+greater than -180
+less than 180
+Angle in bound range
+ -179.6
+> 
+ -179.6
+greater than -180
+less than 180
+Here
+ 180.4
+> 
+ -179.6
+greater than -190
+less than 190
+Here
+ 180.4
+> 
+ -179.6
+Here
+ 180.4
+> 
+ -179.6
+Here
+ 180.4
+> 
+ -179.6
+Here
+ 180.4
+> Print If 
+ -179.1
+Here
+ 180.9
+> 
+Here
+ 180.9
+> 
+Here
+ 180.9
+> 
+Here
+ 180.9
+> 
+Here
+ 180.9
+> 
+ 180.9
+> 
+ -179
+> 
+ 180.9
+> 
+ -179
+> 
+ -179
+> 
+ 180.2
+> 
+ 180.2
+> 
+ 180.2
+> 
+ 180.2
+> 
+ -171
+> 
+ -171
+> 
+ 180.9
+> 
+ -179
+> 
+ 180.6
+> 
+ 180.6
+> 
+ 180.4
+> 
+ 180.4
+> 
+ 180.4
+> 
+ -179
+> PumpOff
+> Motor Off
+> On 12
+> Motor Off
+
+> PumpOff
+> Off 12
+> Off 12
+> Speed 1
+> 
+> Go here -X(0.25) -Y(1.03)
+> Go Here +X(60)
+> Motor On
+> 
+> PumpOff
+> On 12
+> 
+> JumpToCamera
+> Go Here -Z(20)
+> Go Here :CZ(P_Camera)
+!!Error: 3205, Point is not specified.
+> 
+> Motor Off
+> 
+!!Error: 3100, Syntax error.
+> JumpToTray_camera(1,15,6)
+> 
+> LoadPoints "points_MSU.pts"
+!!Error: 10013, Cannot execute LoadPoints with Robot Manager open.
+> MoveFromImageToPoint
+> Print Tray_left_P3
+ X: -311.238 Y:  548.470 Z:  -54.206 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Here
+ X: -311.138 Y:  547.796 Z:  -53.893 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Go Here -Z(30) Till Sw(8) = On Or Sw(9) = Off
+> 
+> Go Here +Z(10)
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Go Here :X(-311.449) :Y(442.597) :Z(-54.460)
+> Print Here
+ X: -311.449 Y:  442.597 Z:  -54.460 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+ X: -311.449 Y:  442.597 Z:  -54.460 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> JumpToTray_camera(1,1,1)
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> 
+> 
+> MoveFromImageToPoint
+> 
+> 
+> 
+> Go Here +Z(10)
+> 
+> 
+> Print Here
+ X:  -26.914 Y:  441.898 Z:  -54.407 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P2
+ X:  -27.303 Y:  441.898 Z:  -54.672 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> 
+> 
+!!Error: 5058, Collision or abnormality of robot movement was detected in Low power mode., Robot 1, Joint 1
+> Go Here +Z(10)
+> 
+!!Error: 4031, Cannot execute a motion command when the motor is in the off state.
+> Motor On
+> Print Here
+ X:  -26.703 Y:  546.970 Z:  -54.149 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P4
+ X:  -26.703 Y:  546.970 Z:  -54.414 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> JumpToTray_camera(1,1,1)
+> 
+> Jump Tray_Left_P4
+> 
+> 
+> 
+> 
+> 
+> MoveFromPointToImage
+> 
+> 
+> 
+> 
+> MoveFromImageToPoint
+> Go Here -Z(20) Till Sw(8) = On Or Sw(9) = Off
+> Go Here +Z(10)
+> 
+> Jump Tray_Left_P1
+> Print Tray_Left_P1
+ X: -311.449 Y:  442.597 Z:  -54.460 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> MoveFromPointToImage
+> MoveFromImageToPoint
+> Go Here -Z(15) Till Sw(8) = On or Sw(9) = Off
+> Go Here +Z(10)
+> Print Here
+ X: -311.449 Y:  442.597 Z:  -56.565 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+!!Error: 5041, Motor torque output failure in low power state. Check the power cable connection, robot, brake, driver, or motor., Robot 1, Joint 3
+> 
+> JumpToCamera
+>Jump Tray_Left_P1
+> Speed 1
+> Go Here -Z(20) Till Sw(8) = On
+> Go Here +Z(10)
+> Print Here
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.449 Y:  442.597 Z:  -54.460 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Jump Tray_Left_P2
+> 
+> Go Here -Z(20) Till Sw(8) = On
+> Go Here +Z(10)
+> Print Here
+ X:  -26.914 Y:  441.898 Z:  -54.428 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P2
+ X:  -26.914 Y:  441.898 Z:  -54.407 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Jump Tray_Left_P3
+> Go Here -Z(20) Till Sw(8) = On
+> Go Here +Z(10)
+> PRint Here
+ X: -311.138 Y:  547.670 Z:  -53.914 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P3
+ X: -311.138 Y:  547.670 Z:  -53.893 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Jump Tray_Left_P4
+> Go Here -Z(20) Till Sw(8) = On
+> Go Here +Z(10)
+> Print Here
+ X:  -26.703 Y:  546.970 Z:  -54.170 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P4
+ X:  -26.703 Y:  546.970 Z:  -54.149 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> SelectSite("InFunctionDefinePallets")
+> JumpToTray_camera(1,1,1)
+> MoveFromImageToPoint
+> Print Here
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> SelectSite("")
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+Offsets:
+  HAND_U0          =  -0.889
+  DF_CAM_X_OFF_U0  =  57.362499237061
+  DF_CAM_Y_OFF_U0  =  0.33000183105469
+  DF_CAM_Z_OFF     =  33.009214401245
+  DF_CAM_FOCUS     =  43.009214401245
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> JumpToTray_camera(1,1,1)
+> MoveFromImageToPoint
+> Print Here
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Pallet(1, 1, 1)
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> SelectSite("InFunctionDefinePallets")
+> Print Pallet(1,1, 1)
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_Left_P1
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> 
+> Print Tray_Left_P1
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print TRay_left_p2
+ X:  -26.914 Y:  441.898 Z:  -54.428 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Tray_LEft_P3
+ X: -311.138 Y:  547.670 Z:  -53.914 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print TRay_Left_P4
+ X:  -26.703 Y:  546.970 Z:  -54.170 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> SelectSite("")
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+Offsets:
+  HAND_U0          =  -0.889
+  DF_CAM_X_OFF_U0  =  57.362499237061
+  DF_CAM_Y_OFF_U0  =  0.33000183105469
+  DF_CAM_Z_OFF     =  33.009214401245
+  DF_CAM_FOCUS     =  43.009214401245
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> Print Tray_LEft_P1
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> Print Pallet(1,1,1)
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> SelectSite("InFunctionDefinePallets")
+> Print Pallet(1,1,1)
+ X: -311.749 Y:  443.397 Z:  -54.725 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> 
+> Pallet 1, Tray_Left_P1, Tray_Left_P2, Tray_Left_P3, Tray_Left_P4, 15, 6
+> Print Pallet(1,1,1)
+ X: -311.449 Y:  442.597 Z:  -54.481 U:   -0.889 V:    0.000 W:    0.000 /L /0
+> JumpToTray_camera(1,3,1)
+> Off 12
+> PumpOff
+> JumpToSocket_camera(1,7)
+> 
+!!Error: 4031, Cannot execute a motion command when the motor is in the off state.
+> PumpOff
+> Motor Off
+> Off 12
+> PumpOff
+> Motor On
+> On 12
+> 
+> JumpToSocket_camera(1,7)
+> SelectSite("")
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> Print SITE$
+MSU
+> PRINT CHIPTYPE$
+LArASIC
+> PRINT REPO_DIR$
+C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
+> Print PROJ_DIR$
+C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
+> Print RTS_DATA$
+C:\Users\neutrino\Desktop\RTS
+> Print HAND_U0
+ -0.889
+> Print DF_CAM_X_OFF_U0
+ 57.362499237061
+> Print DF_CAM_Y_OFF_U0
+ 0.33000183105469
+> Print DF_CAM_FOCUS
+ 43.009214401245
+> Print TrayOrientation
+ 180
+> Print HandChipOrientation(3)
+ -90
+> 
+ -90
+> 
+ 90
+> Print ChipTextOrientation
+ 0
+> Print SocketVisionOffset(1)
+ -0.20516365249364
+> Print SocketVisionOffset(2)
+ -0.18533288523562
+> Print SocketVisionOffset(3)
+ 0.85716034371001
+> Print ChipVisionOffset(3)
+ 0
+> 
+ 0
+> 
+ 0
+> 
+!!Error: 3100, Syntax error.
+> 
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> 
+> SelectSite("")
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> 
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_TUT.csv
+Site selected is MSU
+Chip type to be tested is LArASIC
+WARNING: DF CAMERA OFFSETS NEED SETTING
+Offsets:
+  HAND_U0          =  0
+  DF_CAM_X_OFF_U0  =  0
+  DF_CAM_Y_OFF_U0  =  0
+  DF_CAM_Z_OFF     =  -10
+  DF_CAM_FOCUS     =  0
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> 
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> 
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> 
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> 
+!!Error: 2505, Not enough data for Input statement variable assignment.
+> 
+> 
+> 
+Loading position files!
+Reading file C:\Users\neutrino\Desktop\RTS\tray_xyu.csv
+Reading file C:\Users\neutrino\Desktop\RTS\socket_xyu.csv
+Loading chip offsets
+Reading file C:\Users\neutrino\Desktop\RTS\CurrentChipOffsets.csv
+> 
+> 
+> 
+> SelectSite("")
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+> 
+> SelectSite("")
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+SelectSite()
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> On 12
+> Off 12
+> Print GetBoundAnglePM180(9)
+ 9
+> SelectSite("InFunctionDefinePallets")
+!!Error: 2475, Windows Communication Error. Data buffer overflow.
+> 
+> 
+> 
+> 
+> SelectSite("")
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+> 
+SelectSite()
+Will be verbose, and not define pallets
+not defined yet, running selectsite
+Using site file C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+Checking site fileC:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot\site_MSU.csv
+MSULArASIC
+C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
+C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
+C:\Users\neutrino\Desktop\RTS
+ -0.889, 57.362499237061, 0.33000183105469, 43.009214401245
+ 180, 90, -90, -90
+ 0, 0, 0, 0
+ -0.20516365249364, -0.18533288523562, 0.85716034371001
 > 
