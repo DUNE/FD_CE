@@ -9,10 +9,11 @@ Function UFPinAnalysis(id$ As String, ByRef Images$() As String) As Int32
 	UFPinAnalysis = 0
 
 	Images$(1) = UF_take_picture$(id$ + "_pins")
-
+	WriteMLog(Images$(1)) ' TODO joe check if this needs to be inside a check of CurrentOpertaion$
 	Integer status
 	status = PinsAnaly(id$, ByRef Images$())
 	' Print #fileNum, ",", status,
+	WriteMLog(Str$(status)) ' TODO joe check if this needs to be inside a check of CurrentOpertaion$
 	If status <> 0 Then
 		UFPinAnalysis = status
 	EndIf
@@ -137,8 +138,8 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 	
 	Integer fileNum
 	fileNum = FreeFile
-	AOpen RTS_DATA$ + "\pins\" + id$ + "_pins.csv" As #fileNum
-	
+	' AOpen RTS_DATA$ + "\pins\" + id$ + "_pins.csv" As #fileNum
+	AOpen TrayDirectory$ + "\pins\" + id$ + "_pins.csv" As #fileNum
 	
 	Select SITE$
 		Case "BNL"
@@ -1686,7 +1687,7 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	JumpToSocket_camera(DAT_nr, Socket_nr)
 		
 	Int32 FullSocket_nr
-	FullSocket_nr = DAT_nr * 100 + socket_nr
+	FullSocket_nr = DAT_nr * 100 + Socket_nr
 
 	If Not FindSocketPositionWithDF Then
 		Print "ERROR: Cannot find socket alignment"
@@ -1757,14 +1758,18 @@ Function FindChipAxisOffsetWithUF As Boolean
 	'' TAKE PICTURE
 	UF_camera_light_ON
 	Wait 0.2
-'	'String pict_fname$
-'	'pict_fname$ = UF_take_picture$(id$ + "_01")
+	String pict_fname$
+	If CurrentOperation$ <> "" Then
+		pict_fname$ = UF_take_picture$(CurrentOperation$ + "_01")
+		WriteMLog(pict_fname$)
+	EndIf
 '    ' Print #fileNum, ",", pict_fname$,
 '	Images$(1) = UF_take_picture$(id$ + "_01")
 '	' Take first measurements
 
 	If Not UF_CHIP_FIND Then
 		Print "ERROR UF camera cannot find chip"
+		WriteMLog(Str$(False))
 		Exit Function
 	EndIf
 	
@@ -1772,6 +1777,12 @@ Function FindChipAxisOffsetWithUF As Boolean
 	ChipX1 = UFChipPos(1)
 	ChipY1 = UFChipPos(2)
 	ChipU1 = UFChipPos(3)
+
+	''' NOTE: BNL robot code assumes U is fixed and then later checks at the orientation to 
+	'' be inserted into the sockets, so I will add in CU(here) as U at camera for this measurement 
+	'String mmsg$
+'	mmsg$ = Str$(True) + "," + Str$(CX(Here)) + "," + Str$(CY(Here)) + "," + Str$(CU(Here)) + "," + Str$(ChipX1) + "," + Str$(ChipY1) + "," + Str$(ChipU1)
+	WriteMLog(Str$(True) + "," + Str$(CX(Here)) + "," + Str$(CY(Here)) + "," + Str$(CU(Here)) + "," + Str$(ChipX1) + "," + Str$(ChipY1) + "," + Str$(ChipU1))
 	
 	If CHIPTYPE$ = "COLDATA" Then
 		ChipU1 = GetBoundAnglePM45(ChipU1)
@@ -1795,9 +1806,15 @@ Function FindChipAxisOffsetWithUF As Boolean
 '	Images$(2) = UF_take_picture$(id$ + "_02")
 	'pict_fname$ = UF_take_picture$(id$ + "_02")
     'Print #fileNum, ",", pict_fname$,
+    
+    If CurrentOperation$ <> "" Then
+		pict_fname$ = UF_take_picture$(CurrentOperation$ + "_02")
+		WriteMLog(pict_fname$)
+	EndIf
 	
 	If Not UF_CHIP_FIND Then
 		Print "ERROR UF camera cannot find chip on second measurement"
+		WriteMLog(Str$(False))
 		Exit Function
 	EndIf
 	
@@ -1806,6 +1823,15 @@ Function FindChipAxisOffsetWithUF As Boolean
 	ChipY2 = UFChipPos(2)
 	ChipU2 = UFChipPos(3)
 	
+	''' Here we assume camera is at same x and Y and +/- 180 from measurement 1  
+	'mmsg$ = Str$(True) + "," + Str$(ChipX2) + "," + Str$(ChipY2) + "," + Str$(ChipU2)
+	WriteMLog(Str$(True) + "," + Str$(ChipX2) + "," + Str$(ChipY2) + "," + Str$(ChipU2))
+	Double toolX, toolY
+	toolX = 0.5 * (ChipX1 + ChipX2)
+	toolY = 0.5 * (ChipY1 + ChipY2)
+	'mmsg$ = Str$(toolX) + "," + Str$(toolY)
+	WriteMLog(Str$(toolX) + "," + Str$(toolY))
+		
 	If CHIPTYPE$ = "COLDATA" Then
 		ChipU2 = GetBoundAnglePM180(GetBoundAnglePM45(ChipU2) + 180.)
 	EndIf
@@ -1829,7 +1855,11 @@ Function FindChipAxisOffsetWithUF As Boolean
 	' Set X and Y offsets as distance from axis of rotation to first measurement
 	tmpx = (ChipX1 - ChipX2) /2 ' X1 - X2 /2
 	tmpy = (ChipY1 - ChipY2) /2 ' Y1 - Y2 /2
-	
+
+	' In BNL doesn't seem to be acorrection back to 0 or any rotation of angles, they just 
+	' Take another set of measurements at the target (Global) hand rotation (i.e. U at socket, not Agl(4))
+	'mmsg$ = Str$(tmpx) + "," + Str$(tmpy)
+	WriteMLog(Str$(tmpx) + "," + Str$(tmpy))
 
 	' Wrt U = 0
 
@@ -1857,6 +1887,10 @@ Function FindChipAxisOffsetWithUF As Boolean
 	
 '	' Need to make sure average is closest angle around -pi/+pi boundary
 	CurrentChipOffset(3) = AverageAnglePM180(UF_DEL_U1, UF_DEL_U2) 'GetBoundAnglePM45(AverageAnglePM180(UF_DEL_U1, UF_DEL_U2))
+	
+	' Not going to rotate and take more picturs, just store offsets as calculated for now
+	' Maybe go in and add this as an option for double checking/diagnostics
+	WriteMLog(Str$(CurrentChipOffset(1)) + "," + Str$(CurrentChipOffset(2)) + "," + Str$(CurrentChipOffset(3)))
 	
 	Print "Offset of chip from rotational axis wrt U = 0 " ' HAND_U0"
 	Print "Offsets measured from a rotation of ", Rotation1

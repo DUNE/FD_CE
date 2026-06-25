@@ -18,6 +18,10 @@ Function RTS_server
 	
 	LoadPositionFiles
 	
+	' For safety, make sure this has a value
+	' Although it should be changed server side to a specific directory
+	TrayDirectory$ = RTS_DATA$
+	
 
 	
 	Integer portNr
@@ -33,10 +37,13 @@ Function RTS_server
 	Print "Sending data to client"
     Print #portNr, "RTS ready"
     
+    String tmpTrayID$
+    String str_status$
+    
     Int64 status
     Integer pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr
     Integer src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row
-    String TrayName$
+
     Integer DoMeasure
     Integer RunSelectSite
     op_ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
@@ -65,14 +72,14 @@ Function RTS_server
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
+    			Input #portNr, socket_nr
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
-    			Print "Move chip from DAT board: ", DAT_nr, " socket", Socket_nr
+    			Print "Move chip from DAT board: ", DAT_nr, " socket", socket_nr
     			Print " to tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			'DO stuff
-    			status = MoveChipFromSocketToTray(DAT_nr, Socket_nr, pallet_nr, pallet_col, pallet_row)
+    			status = MoveChipFromSocketToTray(DAT_nr, socket_nr, pallet_nr, pallet_col, pallet_row)
     			Print #portNr, Str$(status)
 
     		Case "MoveChipFromTrayToTray"
@@ -138,12 +145,40 @@ Function RTS_server
     			status = JumpToTray(pallet_nr, pallet_col, pallet_row)
     			Print #portNr, "JumpToTray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")"
 
+			Case "SetTrayID"
+				Input #portNr, TrayID$
+				Print "Setting value of TrayID$: ", TrayID$
+				str_status$ = SetupTrayDirectories$
+				Print #portNr, str_status$
+				
+			Case "CheckTrayID"
+				Print "Returning value of TrayID$: ", TrayID$
+				If TrayID$ = "" Then
+					Print #portNr, Str$(-1)
+				Else
+					Print #portNr, TrayID$
+				EndIf
+				
 			Case "ScanTray"
 				Input #portNr, pallet_nr
-				Input #portNr, TrayName$
-				status = ScanTray(pallet_nr, TrayName$)
-				Print #portNr, status
-				Print #portNr, "DONE"
+				Input #portNr, tmpTrayID$
+				str_status$ = tmpTrayID$
+				If TrayID$ = tmpTrayID$ Then
+					Print #portNr, str_status$
+				Else
+					TrayID$ = tmpTrayID$
+					str_status$ = SetupTrayDirectories$
+					If Not str_status$ = tmpTrayID$ Then
+						Print #portNr, str_status$
+						Print #portNr, "DONE"
+					EndIf
+				EndIf
+				If str_status$ = TrayID$ Then
+					status = ScanTray(pallet_nr)
+					Print #portNr, status
+					Print #portNr, "DONE"
+				EndIf
+
 				
 			Case "CheckTrayOccupancy"
     			Input #portNr, pallet_nr
@@ -261,6 +296,9 @@ Function RTS_server
     		Case "SelectSite"
     			SelectSite("")
     			Print #portNr, "SelectSite"
+    			
+    		Case "SetTrayDir"
+    			
     			
     		Case "LoadPositionFiles"
     			LoadPositionFiles

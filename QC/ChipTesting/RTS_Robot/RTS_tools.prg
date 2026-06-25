@@ -57,7 +57,9 @@ Function UF_take_picture$(basename$ As String) As String
 	''' Takes a picture with the fixed Up Facing (UF) camera	
 	' and stores it in the RTS_DATA$\images directory as a bmp file
 	
- 	UF_take_picture$ = RTS_DATA$ + "\images\UF_" + basename$ + ".bmp"
+ 	'UF_take_picture$ = RTS_DATA$ + "\images\UF_" + basename$ + ".bmp"
+ 	UF_take_picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
+ 	
  	Print UF_take_picture$
  	VRun UF
     Wait 0.3
@@ -68,7 +70,9 @@ Function DF_take_picture$(basename$ As String) As String
 	''' Takes a picture with the Down Facing (UF) camera on the EOAT	
 	' and stores it in the RTS_DATA$\images directory as a bmp file
 	
-	DF_take_picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
+	' DF_take_picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
+	DF_take_picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
+ 	
 	Print DF_take_picture$
  	VRun DF
     Wait 0.3
@@ -82,7 +86,8 @@ Function SN_take_Picture$(basename$ As String) As String
 	' Stores image in RTS_DATA$\images as a bmp file
 	
 	SelectSite("InFunction")
-	SN_take_Picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
+	' SN_take_Picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
+	SN_take_Picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
 	Print SN_take_Picture$
 	
 	Double ChipDir, Rotation
@@ -110,17 +115,22 @@ Function SN_take_Picture$(basename$ As String) As String
  	
 Fend
 
-Function RTS_error(err_msg$ As String, Error_Code As Int32) As Integer
-	''' Sets error code and updates robot log file and
-	' operation log file
-	ErrorCode = Error_Code ' Set global variable to input
+Function RTS_error(err_msg$ As String, Error_Code As Int32, close_mlog As Boolean) As Integer
+
+'	''' Sets error code and updates robot log file and
+'	' operation log file
+'	ErrorCode = Error_Code ' Set global variable to input
+	
+
 	String log_file$
-	log_file$ = RTS_DATA$ + "\RobotErrorLogs\" + CurrentOperation$ + ".txt"
-	RTS_error = FreeFile
-	AOpen log_file$ As #RTS_error
-	Print "***ERROR: ", err_msg$
-	Print #RTS_error, "***ERROR ", ErrorCode, "/", SubError, " : ", err_msg$
-	Close #RTS_error
+'	log_file$ = RTS_DATA$ + "\RobotOperationLogs\" + CurrentOperation$ + ".txt"
+'	Integer op_log
+'	op_log = FreeFile
+'	AOpen log_file$ As #op_log
+'	Print "***ERROR: ", err_msg$
+'	Print #op_log, "***ERROR ", ErrorCode, "/", SubError, " : ", err_msg$
+'	Close #op_Log	
+	
 	
 	Integer RTS_Data
 	RTS_Data = FreeFile
@@ -128,6 +138,28 @@ Function RTS_error(err_msg$ As String, Error_Code As Int32) As Integer
 	AOpen log_file$ As #RTS_Data
 	Print #RTS_Data, "***ERROR ", ErrorCode, "/", SubError, " in ", CurrentOperation$, " : ", err_msg$
 	Close #RTS_Data
+	
+	' TODO JOE, Maybe can't close mlog here as rts_error will return to highr level functions
+	' as Mlog is not opened in each subfunction but at top level only to ensure
+	' print is to single line per move.
+	' Could add an option to RTS_error to close MLog and then only set to true
+	' in Top level, otherwise just write error to mlog file?
+	
+	String mmsg$
+	mmsg$ = "***ERROR " + Str$(ErrorCode) + "/" + Str$(SubError) + " " + err_msg$
+
+	If mlogopen Then
+		If close_mlog Then
+			CloseMLog(mmsg$)
+		Else
+			WriteMLog(mmsg$)
+		EndIf
+	ElseIf close_mlog Then
+		Print "WARNING: Mlog is not open but instructed to close"
+		
+	EndIf
+	
+		
 Fend
 
 Function LogSocketPlacements(DAT As Integer, Socket As Integer, OpID$ As String)
@@ -293,7 +325,7 @@ Function YOffset(UValue As Double) As Double
 Fend
 
 Function SetupDirectories
-	' Creates the directory RTS_DATA set in RTS_tools.inc if not already made 
+	' Creates the directory RTS_DATA set in config file if not already made 
 	' And the subdirectories \images and \pins  
 
 	' RTS DATA directory (set in RTS_tools.inc)
@@ -347,6 +379,58 @@ Function SetupDirectories
 	
 Fend
 
+Function SetupTrayDirectories$() As String
+	' Creates the directory RTS_DATA\TrayID during automation code
+	' And the subdirectories \images and \pins		
+	
+	' Returns file system error if interuppted/can't make a file	
+	' Returns trayID if successful
+
+	SetupTrayDirectories$ = Str$(ERR_FILESYSTEM)
+	
+	TrayDirectory$ = RTS_DATA$ + "\" + TrayID$
+
+	' RTS DATA directory (set in RTS_tools.inc)
+	If Not FolderExists(TrayDirectory$) Then
+  		MkDir TrayDirectory$
+	EndIf
+
+	If Not FolderExists(TrayDirectory$) Then
+  		Print "***ERROR Can't create directory [" + TrayDirectory$ + "]"
+  		Exit Function
+	EndIf
+	
+	' images subdirectory
+	String dir_images$
+	dir_images$ = TrayDirectory$ + "\images"
+
+	If Not FolderExists(dir_images$) Then
+  		MkDir dir_images$
+	EndIf
+	
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+	
+	' pins subdirectory
+	String dir_pins$
+	dir_pins$ = TrayDirectory$ + "\pins"
+
+	If Not FolderExists(dir_pins$) Then
+  		MkDir dir_pins$
+	EndIf
+	
+	If Not FolderExists(dir_pins$) Then
+  		Print "***ERROR Can't create directory [" + dir_pins$ + "]"
+  		Exit Function
+	EndIf
+		
+	' Returns tray ID if no errors
+	SetupTrayDirectories$ = TrayID$
+	
+Fend
+
 Function MakePositionFiles
 	' Sets the global arrays tray_X, tray_Y, tray_U, DAT_X, DAT_Y, and DAT_U to all zeros	
 	' Then updates/makes the files tray_xyu.csv and .csv to the new array values.	
@@ -379,27 +463,27 @@ Function MakePositionFiles
 	String fileName$
 	fileNum = FreeFile ' Returns an unused file handle
 	fileName$ = RTS_DATA$ + "\tray_xyu.csv"
-	WOpen fileName$ As #FileNum
+	WOpen fileName$ As #fileNum
 	For i = 1 To NTRAYS
 		For j = 1 To TRAY_NCOLS
 			For k = 1 To TRAY_NROWS
-				Print #FileNum, i, ",", j, ",", k, ",", tray_X(i, j, k), ",", tray_Y(i, j, k), ",", tray_U(i, j, k)
+				Print #fileNum, i, ",", j, ",", k, ",", tray_X(i, j, k), ",", tray_Y(i, j, k), ",", tray_U(i, j, k)
 			Next k
 		Next j
 	Next i
-	Close #FileNum
+	Close #fileNum
     
 	' save a file to keep track of socket corrections
-	FileNum = FreeFile
+	fileNum = FreeFile
 	fileName$ = RTS_DATA$ + "\socket_xyu.csv"
-	WOpen fileName$ As #FileNum
+	WOpen fileName$ As #fileNum
 	For i = 1 To 2
 		Print "NSOCKETS", NSOCKETS
 		For j = 1 To NSOCKETS
-			Print #FileNum, i, ",", j, ",", DAT_X(i, j), ",", DAT_Y(i, j), ",", DAT_U(i, j)
+			Print #fileNum, i, ",", j, ",", DAT_X(i, j), ",", DAT_Y(i, j), ",", DAT_U(i, j)
 		Next j
 	Next i
-	Close #FileNum
+	Close #fileNum
 	
 Fend
 
@@ -567,6 +651,15 @@ Fend
 Function UpdateRobotLog$(log_msg$ As String) As String
 	'Updates the Robot log file with the given log message
 	
+'	Integer op_log
+'	String log_file$
+'	log_file$ = RTS_DATA$ + "\RobotOperationLogs\" + CurrentOperation$ + ".txt"
+'	op_log = FreeFile
+'	AOpen log_file$ As #op_log
+'	Print "(",CurrentOperation$ , ".txt): ", log_msg$
+'	Print #op_log, log_msg$
+'	Close #op_Log	
+	
 	' Set the file name for the tray position corrections
 	Integer fileNum
 	String fileName$
@@ -609,23 +702,23 @@ Fend
 Function GetBoundAnglePM45(Angle As Double) As Double
 ' Return an angle within -180 to 180 degrees
 
-	If (Angle > -45.) And (Angle <= 45.) Then
-		GetBoundAnglePM45 = Angle
+	If (angle > -45.) And (angle <= 45.) Then
+		GetBoundAnglePM45 = angle
 		Exit Function
 	EndIf
 	Int32 Quotiant
 	Double Offset
-	If Angle > 0 Then
+	If angle > 0 Then
 		Offset = +45.
 	Else
 		Offset = -45
 	EndIf
 	
-	Angle = Angle + Offset
-	Quotiant = Int(Angle) / 90
-	Angle = Angle - Quotiant * 90 - Offset
+	Angle = angle + Offset
+	Quotiant = Int(angle) / 90
+	angle = angle - Quotiant * 90 - Offset
 	'Print Angle
-	GetBoundAnglePM45 = Angle
+	GetBoundAnglePM45 = angle
 
 Fend
 
@@ -663,7 +756,7 @@ Function RoundAngleTo90(angle As Double) As Double
 	''' Returns an angle rounded to the nearest 90 degrees
 	
 	RoundAngleTo90 = -999.
-	RoundAngleTo90 = GetBoundAnglePM180(angle)
+	RoundAngleTo90 = GetBoundAnglePM180(Angle)
 	
 	If RoundAngleTo90 < -135. Then
 		RoundAngleTo90 = 180.
@@ -679,7 +772,7 @@ Function RoundAngleTo90(angle As Double) As Double
 Fend
 
 
-Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
+Function ScanTray(pallet_nr As Integer) As Int64
 	''' Scans a tray and collects images of all the chips for serial number
 	' extraction and stores the image file number and positions in a catalog file
 	' Also sets up columns in the file for use by the integration and OCR code
@@ -691,7 +784,7 @@ Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
 	UF_camera_light_ON
 
 	String fileName$, ts$
-	fileName$ = RTS_DATA$ + "\TrayCatalogs\TrayCatalog_" + TrayName$ + ".csv"
+	fileName$ = RTS_DATA$ + "\TrayCatalogs\TrayCatalog_" + TrayID$ + ".csv"
 	Integer fileNum
 	fileNum = FreeFile
 	AOpen fileName$ As #fileNum
@@ -708,17 +801,8 @@ Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
 
 	For col_nr = 1 To trayNCols
 		SetSpeedSetting("MoveWithChip")
-		
-		' for testing
-'		If col_nr <> 1 Then
-'			Exit For
-'		EndIf
-		For row_nr = 1 To trayNRows
 
-'			' Testing
-'			If row_nr <> 1 Then
-'				Exit For
-'			EndIf
+		For row_nr = 1 To trayNRows
 			
 			Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF)
 				
@@ -743,5 +827,117 @@ Function ScanTray(pallet_nr As Integer, TrayName$ As String) As Int64
 Fend
 
 
+'
+' MLog functions for producing logs in style of BNL
+'
 
+Function OpenMLog(init_msg$ As String) As Boolean
+	''' Adds bnl style manip.csv output for compatibility with BNL automation code '''	
+	
+	If mlogopen Then
+		Print "MLOG FILE IS ALREADY OPEN, should not be opening now!"
+		OpenMLog = False
+		Exit Function
+	EndIf
+	
+	OpenMLog = False
+	Print "Opening bnl style mlog (manip.csv)"
+	If mlog$ = "" Then
+		Print "No mlog defined!"
+		Exit Function
+	EndIf
+	
+	mlog_nr = FreeFile
+	
+	OnErr GoTo errHandler
+	
+	AOpen mlog$ As #mlog_nr
+	Print "[OPENED MLOG]"
+	If Not init_msg$ = "" Then
+		Print "[MLOG]:", init_msg$
+		Print #mlog_nr, init_msg$,
+	EndIf
+	OpenMLog = True
+	' Set global bool for proper closing
+	mlogopen = True
+errHandler:
+	Print "Could not open or write to mlog file (manip.csv)"
+	' Will return false
+	Exit Function
+Fend
+
+Function WriteMLog(mlog_message$ As String)
+	If Not mlogopen Then
+		Print "ERROR: MLOG IS NOT OPEN"
+		Exit Function
+	EndIf
+	Print "[MLOG]:", mlog_message$
+	Print #mlog_nr, ",", mlog_message$,
+Fend
+
+Function CloseMLog(close_msg$ As String)
+	If Not mlogopen Then
+		Print "ERROR: THE MLOG IS ALREADY CLOSED"
+		Exit Function
+	EndIf
+
+	Close #mlog_nr
+	If Not close_msg$ = "" Then
+		Print "[MLOG]:", close_msg$
+		Print #mlog_nr, ",", close_msg$
+	Else
+		Print #mlog_nr, " " ' Still need to close the file by adding a space and end line character 
+		' not actually sure if it needs to be a space, might do as "" is an empty string
+	EndIf
+	Print "[CLOSED MLOG]"
+	mlogopen = False
+Fend
+
+''' For handling information in bnl style - might not be needed
+Function Init_BNL_Arrays
+	
+	Integer i
+	For i = 1 To 12
+		bnl_idx(i) = 0
+	Next i
+
+	For i = 1 To 30
+		bnl_res(i) = 0
+	Next i
+	
+Fend
+
+Function SetSourceTray_idx(pallet_nr As Integer, col_nr As Integer, row_nr As Integer)
+	bnl_idx(2) = pallet_nr
+	bnl_idx(3) = col_nr
+	bnl_idx(4) = row_nr
+Fend
+
+Function SetTargetTray_idx(pallet_nr As Integer, col_nr As Integer, row_nr As Integer)
+	bnl_idx(5) = pallet_nr
+	bnl_idx(6) = col_nr
+	bnl_idx(7) = row_nr
+Fend
+
+Function SetSourceSocket_idx(DAT_nr As Integer, socket_nr As Integer)
+	bnl_idx(8) = DAT_nr
+	bnl_idx(9) = socket_nr
+Fend
+
+Function SetTargetSocket_idx(DAT_nr As Integer, socket_nr As Integer)
+	bnl_idx(10) = DAT_nr
+	bnl_idx(11) = socket_nr
+Fend
+
+Function MLogIdx
+	' Don't want to log idx(1) which is the file name
+	Print "Writing move indices to mlog"
+	String idx_msg$
+	idx_msg$ = Str$(bnl_idx(2))
+	Integer i
+	For i = 3 To 11
+		idx_msg$ = idx_msg$ + "," + Str$(bnl_idx(2))
+	Next
+	WriteMLog(idx_msg$)
+Fend
 

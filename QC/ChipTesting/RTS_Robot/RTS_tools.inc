@@ -153,3 +153,14 @@ Global Boolean UFC_AGL4_OFFSET_L_stored
 Global Double UFC_AGL4_OFFSET_L
 Global Boolean UFC_AGL4_OFFSET_R_stored
 Global Double UFC_AGL4_OFFSET_R
+
+' BNL compatible logging
+Global Boolean mlogopen
+Global String mlog$ ' Manip file
+Global Integer mlog_nr ' Number for manip file
+Global String TrayID$
+Global String TrayDirectory$
+
+Global Integer bnl_idx(11)
+Global Double bnl_res(30)
+

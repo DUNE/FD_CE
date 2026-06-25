@@ -326,10 +326,10 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 
 		String SN_Picture$
 		SN_Picture$ = SN_take_Picture$(op_ts$ + "_tr" + Str$(Tray) + "_col" + Str$(TrayCol) + "_row" + Str$(TrayRow) + "_SN")
-		
+		WriteMLog(SN_Picture$)
 		If SN_Picture$ = "NoChip" Then
 			UpdateRobotLog$("No chip found")
-			RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
+			RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN, False)
 			GetChipFromTray = -ERR_V_DF_ALIGN
 			Exit Function
 		Else
@@ -348,7 +348,7 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	Double MeasuredDirection, MeasuredOrientation, OrientationOffset
 	MeasuredDirection = FindChipDirectionWithDF
 	If MeasuredDirection < -900. Then
-		RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
+		RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN, False)
 		GetChipFromTray = -ERR_V_DF_ALIGN ' Set an error code
 		Exit Function
 	EndIf
@@ -389,18 +389,18 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	Wait 1
 	
 	If Not isPressureOk Then
-		RTS_error("GetChipFromTray: Bad pressure ", -ERR_PRESSURE)
+		RTS_error("GetChipFromTray: Bad pressure ", -ERR_PRESSURE, False)
 		GetChipFromTray = -ERR_PRESSURE
 	   	Exit Function
 	EndIf
 	If Not isVacuumOk Then
-    	RTS_error("GetChipFromTray: Bad vacuum ", -ERR_VACUUM)
+    	RTS_error("GetChipFromTray: Bad vacuum ", -ERR_VACUUM, False)
 		GetChipFromTray = -ERR_VACUUM
 		Exit Function
 	EndIf
 
 	If Not PickupFromTray Then
-		RTS_error("GetChipFromTray: Cannot pick up chip from tray", -ERR_TRAY_PICK)
+		RTS_error("GetChipFromTray: Cannot pick up chip from tray", -ERR_TRAY_PICK, False)
 		GetChipFromTray = -ERR_TRAY_PICK
 		Exit Function
 	EndIf
@@ -412,7 +412,7 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
     ' Go to UFC and get chip-axis offsets 
     ' Stores offsets in ChipAxisOffset(3) - need to set in tray variables                                                                                                                                                                                                                 
 	If Not FindChipAxisOffsetWithUF Then
-		RTS_error("GetChipFromTray: Cannot measure chip offsets at UFC ", -ERR_V_UF_ALIGN)
+		RTS_error("GetChipFromTray: Cannot measure chip offsets at UFC ", -ERR_V_UF_ALIGN, False)
     	GetChipFromTray = -ERR_V_UF_ALIGN
     	Exit Function
    	EndIf
@@ -522,12 +522,12 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	Print("Correction At Tray   = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
 
 	If Abs(GetBoundAnglePM45(ChipToChipCorrection(3))) > 3. Then
-		RTS_error("PlaceChipInTray: U correction outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("PlaceChipInTray: U correction outside tolerance ", -ERR_BAD_TOLERANCE, False)
 		PlaceChipInTray = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
 	If Abs(ChipToChipCorrection(1)) > 2. Or Abs(ChipToChipCorrection(2)) > 2. Then
-		RTS_error("PlaceChipInTray: X or Y correction outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("PlaceChipInTray: X or Y correction outside tolerance ", -ERR_BAD_TOLERANCE, False)
 		PlaceChipInTray = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
@@ -549,7 +549,7 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	SetSpeedSetting("PickAndPlace")
 	Print "Placing chip in tray"
 	If Not DropToTray Then
-		RTS_error("PlaceChipInTray: Could not place in tray ", -ERR_TRAY_PLACE)
+		RTS_error("PlaceChipInTray: Could not place in tray ", -ERR_TRAY_PLACE, False)
 		PlaceChipInTray = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
@@ -557,13 +557,13 @@ Function PlaceChipInTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	PumpOff
 	
 	If Not isChipInTrayTouch(Tray, TrayCol, TrayRow) Then
-		RTS_error("PlaceChipInTray: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE)
+		RTS_error("PlaceChipInTray: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE, False)
 		PlaceChipInTray = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
 	
 	If Not isChipInTrayCamera(Tray, TrayCol, TrayRow) Then
-		RTS_error("PlaceChipInTray: Chip not placed correctly (vision check)", -ERR_TRAY_PLACE)
+		RTS_error("PlaceChipInTray: Chip not placed correctly (vision check)", -ERR_TRAY_PLACE, False)
 		PlaceChipInTray = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
@@ -612,14 +612,14 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 		' Adjust for socket position drift with DF camera
 		
 		If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-			RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN, False)
 			GetChipFromSocket = -ERR_V_SOCKETALIGN
 			Exit Function
 		EndIf
 		' Check corrections are small	
 		
 		If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-			RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
+			RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE, False)
 			GetChipFromSocket = -ERR_BAD_TOLERANCE
 			Exit Function
 		EndIf
@@ -641,12 +641,12 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	Wait 1
 	
 	If Not isPressureOk Then
-		RTS_error("GetChipFromSocket: Bad pressure ", -ERR_PRESSURE)
+		RTS_error("GetChipFromSocket: Bad pressure ", -ERR_PRESSURE, False)
 		GetChipFromSocket = -ERR_PRESSURE
 	   	Exit Function
 	EndIf
 	If Not isVacuumOk Then
-  		RTS_error("GetChipFromSocket: Bad vacuum ", -ERR_VACUUM)
+  		RTS_error("GetChipFromSocket: Bad vacuum ", -ERR_VACUUM, False)
 		GetChipFromSocket = -ERR_VACUUM
 		Exit Function
 	EndIf
@@ -660,7 +660,7 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 '	Wait 5
 '	' Pick up chip
 	If Not PickupFromSocket Then
-'			RTS_error("GetChipFromSocket: Cannot pick up chip from socket ", -ERR_SOCKET_PICK)     
+'			RTS_error("GetChipFromSocket: Cannot pick up chip from socket ", -ERR_SOCKET_PICK, False)     
 		GetChipFromSocket = -ERR_SOCKET_PICK
 		Exit Function
 	EndIf
@@ -670,7 +670,7 @@ Function GetChipFromSocket(DAT As Integer, Socket As Integer) As Int64
 	' Go to UF camera for measuring offsets and storing in DAT_x/y/u variables.
 	If Not FindChipAxisOffsetWithUF Then
 		GetChipFromSocket = -ERR_V_UF_ALIGN
-		RTS_error("GetChipFromSocket: Cannot get chip offsets from UF camera ", -ERR_V_UF_ALIGN)
+		RTS_error("GetChipFromSocket: Cannot get chip offsets from UF camera ", -ERR_V_UF_ALIGN, False)
 		Exit Function
 	EndIf
 	Print "Offsets measured"
@@ -738,14 +738,14 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 		SetSpeedSetting("PickAndPlace")
 		
 		If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-			RTS_error("PlaceChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			RTS_error("PlaceChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN, False)
 			PlaceChipInSocket = -ERR_V_SOCKETALIGN
 			Exit Function
 		EndIf
 		' Check corrections are small	
 		
 		If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-			RTS_error("PlaceChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+			RTS_error("PlaceChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE, False)
 			PlaceChipInSocket = -ERR_BAD_TOLERANCE
 			Exit Function
 		EndIf
@@ -826,12 +826,12 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	EndIf
 	
 	If Abs(ChipToChipCorrection(3)) > 3. Then
-		RTS_error("PlaceChipInSocket: Chip position U correction outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("PlaceChipInSocket: Chip position U correction outside tolerance ", -ERR_BAD_TOLERANCE, False)
 		PlaceChipInSocket = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
 	If Abs(ChipToChipCorrection(1)) > 1. Or Abs(ChipToChipCorrection(2)) > 1. Then
-		RTS_error("PlaceChipInSocket: Chip position X or Y corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("PlaceChipInSocket: Chip position X or Y corrections outside tolerance ", -ERR_BAD_TOLERANCE, False)
 		PlaceChipInSocket = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
@@ -855,19 +855,19 @@ Function PlaceChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	Print "Placing chip in socket"
 	
 	If Not PlaceInSocket Then
-		RTS_error("PlaceChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE)
+		RTS_error("PlaceChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE, False)
 		PlaceChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
 
 	If Not isChipInSocketTouch(DAT, Socket) Then
-		RTS_error("PlaceChipInSocket: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE)
+		RTS_error("PlaceChipInSocket: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE, False)
 		PlaceChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
 
 	If Not isChipInSocketCamera(DAT, Socket) Then
-		RTS_error("PlaceChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE)
+		RTS_error("PlaceChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE, False)
 		PlaceChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
@@ -983,7 +983,7 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	
 	SubError = GetChipFromTray(Tray, TrayCol, TrayRow)
 	If Not SubError Then
-		RTS_error("RotateTrayChip: Could not pick up chip from tray", ERR_TRAY_PICK)
+		RTS_error("RotateTrayChip: Could not pick up chip from tray", ERR_TRAY_PICK, False)
 		RotateTrayChip = -ErrorCode
 	EndIf
 		
@@ -1039,12 +1039,12 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	Print("Correction At Tray   = (" + Str$(ChipToChipCorrection(1)) + "," + Str$(ChipToChipCorrection(2)) + "," + Str$(ChipToChipCorrection(3)) + ")")
 
 	If Abs(GetBoundAnglePM45(ChipToChipCorrection(3))) > 3. Then
-		RTS_error("RotateTrayChip: U correction outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("RotateTrayChip: U correction outside tolerance ", -ERR_BAD_TOLERANCE, False)
 		RotateTrayChip = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
 	If Abs(ChipToChipCorrection(1)) > 2. Or Abs(ChipToChipCorrection(2)) > 2. Then
-		RTS_error("RotateTrayChip: X or Y correction outside tolerance ", -ERR_BAD_TOLERANCE)
+		RTS_error("RotateTrayChip: X or Y correction outside tolerance ", -ERR_BAD_TOLERANCE, False)
 		RotateTrayChip = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
@@ -1067,19 +1067,19 @@ Function RotateTrayChip(Tray As Integer, TrayCol As Integer, TrayRow As Integer,
 	SetSpeedSetting("PickAndPlace")
 	Print "Placing chip in tray"
 	If Not DropToTray Then
-		RTS_error("RotateTrayChip: Could not place in tray ", -ERR_TRAY_PLACE)
+		RTS_error("RotateTrayChip: Could not place in tray ", -ERR_TRAY_PLACE, False)
 		RotateTrayChip = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
 	
 	If Not isChipInTrayTouch(Tray, TrayCol, TrayRow) Then
-		RTS_error("RotateTrayChip: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE)
+		RTS_error("RotateTrayChip: Chip not placed correctly (touch check)", -ERR_TRAY_PLACE, False)
 		RotateTrayChip = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
 	
 	If Not isChipInTrayCamera(Tray, TrayCol, TrayRow) Then
-		RTS_error("RotateTrayChip : Chip not placed correctly (vision check)", -ERR_TRAY_PLACE)
+		RTS_error("RotateTrayChip : Chip not placed correctly (vision check)", -ERR_TRAY_PLACE, False)
 		RotateTrayChip = -ERR_TRAY_PLACE
 		Exit Function
 	EndIf
@@ -1114,14 +1114,14 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 		SetSpeedSetting("PickAndPlace")
 
 		If Not GetSocketPositionWithDF(DAT, Socket) Then ', ByRef SockCorr()) Then
-			RTS_error("ReseatChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
+			RTS_error("ReseatChipInSocket: Could not get socket position ", -ERR_V_SOCKETALIGN, False)
 			ReseatChipInSocket = -ERR_V_SOCKETALIGN
 			Exit Function
 		EndIf
 		' Check corrections are small	
 		
 		If (Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3.) Then
-			RTS_error("ReseatChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE)
+			RTS_error("ReseatChipInSocket: Socket corrections outside tolerance ", -ERR_BAD_TOLERANCE, False)
 			ReseatChipInSocket = -ERR_BAD_TOLERANCE
 			Exit Function
 		EndIf
@@ -1152,7 +1152,7 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 
 	' Now pick up the chip
 	If Not PickupFromSocket Then
-		RTS_error("ReseatChipInSocke: Cannot pick up chip from socket ", -ERR_SOCKET_PICK)
+		RTS_error("ReseatChipInSocke: Cannot pick up chip from socket ", -ERR_SOCKET_PICK, False)
 		ReseatChipInSocket = -ERR_SOCKET_PICK
 		Exit Function
 	EndIf
@@ -1171,19 +1171,19 @@ Function ReseatChipInSocket(DAT As Integer, Socket As Integer) As Int64
 	Print "Placing chip back in socket"
 
 	If Not PlaceInSocket Then
-		RTS_error("ReseatChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE)
+		RTS_error("ReseatChipInSocket: Cannot place chip in socket ", -ERR_SOCKET_PLACE, False)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
 	
 	If Not isChipInSocketTouch(DAT, Socket) Then
-		RTS_error("ReseatChipInSocke: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE)
+		RTS_error("ReseatChipInSocke: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE, False)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
 
 	If Not isChipInSocketCamera(DAT, Socket) Then
-		RTS_error("ReseatChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE)
+		RTS_error("ReseatChipInSocket: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE, False)
 		ReseatChipInSocket = -ERR_SOCKET_PLACE
 		Exit Function
 	EndIf
