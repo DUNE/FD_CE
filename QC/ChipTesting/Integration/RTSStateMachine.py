@@ -437,24 +437,6 @@ class RTSStateMachine(StateMachine):
 
         if self.upload_to_hwdb: 
             try:
-                setup_hwdb = subprocess.run(["wsl", "bash", "-l", "-c", "source /mnt/c/Users/jazielgutierrezvillanueva/FD_CE/HWDBTools/setup_hwdb.sh"])
-                print(setup_hwdb.stdout)
-
-                # Get token for uploading
-                #get_token = subprocess.run(["wsl","bash","-l","-c", "htgettoken --vaultserver=htvaultprod.fnal.gov --issuer=fermilab"], capture_output=True, text=True, check=True)
-                #print(get_token.stdout)
-
-                # Setup exports
-                #setup_hwdb = subprocess.run(["wsl","bash","-l","-c", f"""export TOKENLOC='/run/user/1000/bt_u1000' && export HWDBSELECT='DEV' && export COMMANDVERB='VERB0' && export SITELOC='{self.rts_loc}'"""], capture_output=True, text=True, check=True) # TODO: fix site loc as a variable
-                #print(setup_hwdb.stdout)
-                
-                # Get the latest created folder (should be this current test)
-                test_dirs = [x[0] for x in os.walk(self.test_result_dir)]
-                test_dirs.sort()
-                test_dir = test_dirs[-2] # second to last for one dir up
-
-        if self.upload_to_hwdb: 
-            try:
                 setup_hwdb = subprocess.run(["wsl", "bash", "-l", "-c", "source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh"])
                 print(setup_hwdb.stdout)
 
