@@ -355,7 +355,7 @@ if __name__ == '__main__':
    
     print('Testtype', args.TestType)
     if args.TestType == None or args.TestType == "l":
-        test_dirs = [GetLastTest(args.Directory)]
+        test_dirs = [GetLastTest(test_dir)]
     elif args.TestType == "t":
         test_dirs = GetTodaysTests(test_dir)
     elif args.TestType == "a":
