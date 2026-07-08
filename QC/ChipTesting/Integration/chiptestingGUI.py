@@ -125,30 +125,30 @@ class ChipTestingGUI(tk.Tk):
         # Creates console on right-hand side of GUI
         self.output = scrolledtext.ScrolledText(
             out_frame, state = "disabled", wrap = "word",
-            font = ("Courier", 10), height = 22, bg = "black", fg = "white", insertbackground = "white"
+            font = ("Courier", 20), height = 22, bg = "black", fg = "white", insertbackground = "white"
         )
         self.output.pack(fill = "both", expand = True, padx = 4, pady = 4)
 
         # Configures console text to differentiate between information types
-        self.output.tag_configure("info", foreground = "white", font = ("Courier", 10))
-        self.output.tag_configure("error", foreground = "red", font = ("Courier", 10))
-        self.output.tag_configure("prompt", foreground = "blue", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("answer", foreground = "white", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("state", foreground = "orange", font = ("Courier", 10, "bold"))
+        self.output.tag_configure("info", foreground = "white", font = ("Courier", 20))
+        self.output.tag_configure("error", foreground = "red", font = ("Courier", 20))
+        self.output.tag_configure("prompt", foreground = "blue", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("answer", foreground = "white", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("state", foreground = "orange", font = ("Courier", 20, "bold"))
         # Configures console text to differentiate between ANSI color codes
-        self.output.tag_configure("ansi_blue", foreground = "#5555ff", font = ("Courier", 10))
-        self.output.tag_configure("ansi_magenta", foreground = "#ff55ff", font = ("Courier", 10))
-        self.output.tag_configure("ansi_cyan", foreground = "#55ffff", font = ("Courier", 10))
-        self.output.tag_configure("ansi_white", foreground = "#ffffff", font = ("Courier", 10)) 
-        self.output.tag_configure("ansi_green", foreground = "#55ff55", font = ("Courier", 10))
-        self.output.tag_configure("ansi_red", foreground = "#ff5555", font = ("Courier", 10))
-        self.output.tag_configure("ansi_yellow", foreground = "#ffff55", font = ("Courier", 10))
-        self.output.tag_configure("ansi_bright_red", foreground = "#ff5555", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("ansi_bright_green", foreground = "#55ff55", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("ansi_bright_yellow", foreground = "#ffff55", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("ansi_bg_green", foreground = "white", background = "#00aa00", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("ansi_bg_red", foreground = "white", background = "#aa0000", font = ("Courier", 10, "bold"))
-        self.output.tag_configure("ansi_bg_yellow", foreground = "black", background = "#aaaa00", font = ("Courier", 10, "bold"))
+        self.output.tag_configure("ansi_blue", foreground = "#5555ff", font = ("Courier", 20))
+        self.output.tag_configure("ansi_magenta", foreground = "#ff55ff", font = ("Courier", 20))
+        self.output.tag_configure("ansi_cyan", foreground = "#55ffff", font = ("Courier", 20))
+        self.output.tag_configure("ansi_white", foreground = "#ffffff", font = ("Courier", 20)) 
+        self.output.tag_configure("ansi_green", foreground = "#55ff55", font = ("Courier", 20))
+        self.output.tag_configure("ansi_red", foreground = "#ff5555", font = ("Courier", 20))
+        self.output.tag_configure("ansi_yellow", foreground = "#ffff55", font = ("Courier", 20))
+        self.output.tag_configure("ansi_bright_red", foreground = "#ff5555", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("ansi_bright_green", foreground = "#55ff55", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("ansi_bright_yellow", foreground = "#ffff55", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("ansi_bg_green", foreground = "white", background = "#00aa00", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("ansi_bg_red", foreground = "white", background = "#aa0000", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("ansi_bg_yellow", foreground = "black", background = "#aaaa00", font = ("Courier", 20, "bold"))
 
         self.input_frame = ttk.LabelFrame(intro, text = "Input")
         self.input_frame.pack(fill = "both", padx = 6, pady = 6)
