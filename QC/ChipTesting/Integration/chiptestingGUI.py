@@ -546,7 +546,7 @@ class ChipTestingGUI(tk.Tk):
             # Ask live GUI when startup_queue is empty
             prompt_counter["n"] += 1
             request_id = prompt_counter["n"]
-            self.output_queue.put("prompt", (request_id,prompt))
+            self.output_queue.put(("prompt", (request_id, prompt)))
             answer = provider.ask(prompt, request_id) # Calls GUIInputProvider.ask() to put prompt into input_queue and wait for reply_queue to get answer 
             return answer
 
