@@ -130,25 +130,25 @@ class ChipTestingGUI(tk.Tk):
         self.output.pack(fill = "both", expand = True, padx = 4, pady = 4)
 
         # Configures console text to differentiate between information types
-        self.output.tag_configure("info", foreground = "white", font = ("Courier", 20))
-        self.output.tag_configure("error", foreground = "red", font = ("Courier", 20))
-        self.output.tag_configure("prompt", foreground = "blue", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("answer", foreground = "white", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("state", foreground = "orange", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("info", foreground = "white", font = ("Courier", 15))
+        self.output.tag_configure("error", foreground = "red", font = ("Courier", 15))
+        self.output.tag_configure("prompt", foreground = "blue", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("answer", foreground = "white", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("state", foreground = "orange", font = ("Courier", 15, "bold"))
         # Configures console text to differentiate between ANSI color codes
-        self.output.tag_configure("ansi_blue", foreground = "#5555ff", font = ("Courier", 20))
-        self.output.tag_configure("ansi_magenta", foreground = "#ff55ff", font = ("Courier", 20))
-        self.output.tag_configure("ansi_cyan", foreground = "#55ffff", font = ("Courier", 20))
-        self.output.tag_configure("ansi_white", foreground = "#ffffff", font = ("Courier", 20)) 
-        self.output.tag_configure("ansi_green", foreground = "#55ff55", font = ("Courier", 20))
-        self.output.tag_configure("ansi_red", foreground = "#ff5555", font = ("Courier", 20))
-        self.output.tag_configure("ansi_yellow", foreground = "#ffff55", font = ("Courier", 20))
-        self.output.tag_configure("ansi_bright_red", foreground = "#ff5555", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("ansi_bright_green", foreground = "#55ff55", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("ansi_bright_yellow", foreground = "#ffff55", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("ansi_bg_green", foreground = "white", background = "#00aa00", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("ansi_bg_red", foreground = "white", background = "#aa0000", font = ("Courier", 20, "bold"))
-        self.output.tag_configure("ansi_bg_yellow", foreground = "black", background = "#aaaa00", font = ("Courier", 20, "bold"))
+        self.output.tag_configure("ansi_blue", foreground = "#5555ff", font = ("Courier", 15))
+        self.output.tag_configure("ansi_magenta", foreground = "#ff55ff", font = ("Courier", 15))
+        self.output.tag_configure("ansi_cyan", foreground = "#55ffff", font = ("Courier", 15))
+        self.output.tag_configure("ansi_white", foreground = "#ffffff", font = ("Courier", 15)) 
+        self.output.tag_configure("ansi_green", foreground = "#55ff55", font = ("Courier", 15))
+        self.output.tag_configure("ansi_red", foreground = "#ff5555", font = ("Courier", 15))
+        self.output.tag_configure("ansi_yellow", foreground = "#ffff55", font = ("Courier", 15))
+        self.output.tag_configure("ansi_bright_red", foreground = "#ff5555", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("ansi_bright_green", foreground = "#55ff55", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("ansi_bright_yellow", foreground = "#ffff55", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("ansi_bg_green", foreground = "white", background = "#00aa00", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("ansi_bg_red", foreground = "white", background = "#aa0000", font = ("Courier", 15, "bold"))
+        self.output.tag_configure("ansi_bg_yellow", foreground = "black", background = "#aaaa00", font = ("Courier", 15, "bold"))
 
         self.input_frame = ttk.LabelFrame(intro, text = "Input")
         self.input_frame.pack(fill = "both", padx = 6, pady = 6)
@@ -591,10 +591,12 @@ class ChipTestingGUI(tk.Tk):
 
                             self.output_queue.put(("__resumed__", ""))
 
-                            if sm.current_state.id == "ground":
+                            if sm.last_pause_action == "1":
                                 aborted_to_ground = True
                                 break
 
+                            if sm.current_state.id == "ground":
+                                break
                             continue
 
                         if sm.current_state.id == "ground" and len(sm.chip_positions['col']) > 0: # If the current state is "ground" and there are chips to process, we can proceed to the next state
@@ -610,12 +612,13 @@ class ChipTestingGUI(tk.Tk):
                                 raise state_err # Reraises the exception to be caught by the outer try-except block for further handling
 
                     if not aborted_to_ground:
+                        chips_processed += 2 # Increments the number of chips processed by 2 to keep track of how many chips have been processed
                         sm.current_chip_index += 2 # Increments the current chip index by 2 to move to the next pair of chips
                         if sm.current_chip_index >= len(sm.chip_positions['col']): # If the current chip index exceeds the number of chips, reset it to 0 to start over
                             sm.current_chip_index = 0
                     else:
                         break
-                print(f"\nTray processing complete! Processed {sm.current_chip_index} chips.")
+                print(f"\nTray processing complete! Processed {chips_processed} chips.")
             sm.end_state_machine()
             self.output_queue.put(("state", "Program ran successfully"))
             self.status.set("Finished")

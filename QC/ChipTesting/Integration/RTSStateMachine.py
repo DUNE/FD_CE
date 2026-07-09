@@ -45,6 +45,7 @@ class RTSStateMachine(StateMachine):
         self.BypassRTS = False
         self.last_normal_state = None
         self.prior_normal_state = None
+        self.last_pause_action = None
         self.upload_to_hwdb = False # Choose to skip uploading to hwdb
         self.current_chip_status = "Good"
 
@@ -598,19 +599,23 @@ class RTSStateMachine(StateMachine):
             try:
                 user_input = input("").strip().lower()
                 if user_input == "1":
+                    self.last_normal_state = "1"
                     self.reset_cycle()
                     print(f"Resumed to Ground state")
                     print(f"Current state: {self.current_state}")
                     break
                 elif user_input == "2":
+                    self.last_normal_state = "2"
                     self.resume_to_previous()
                     print(f"\nResumed to previous state")
                     print(f"Current state: {self.current_state}")
                     break
                 elif user_input == "3":
+                    self.last_normal_state = "3"
                     self.advance_to_next_in_cycle()
                     break
                 elif user_input == "4":
+                    self.last_normal_state = "4"
                     print("Exiting system...")
                     sys.exit()
             except (EOFError, KeyboardInterrupt):
