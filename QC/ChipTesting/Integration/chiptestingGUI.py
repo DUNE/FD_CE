@@ -552,8 +552,8 @@ class ChipTestingGUI(tk.Tk):
 
 
         original_input = builtins.input # Saves the functions of the original input()
-        original_stdout = sys.stdout # Saves 
-        original_stderr = sys.stderr
+        original_stdout = sys.stdout # Saves the functions of the original sys.stdout
+        original_stderr = sys.stderr # Saves the functions of the original sys.stderr
 
         builtins.input = gui_input # Reassigns function of input() to gui_input as to have input requests be sent to CLI
         sys.stdout = InputOutput(self.output_queue, "info") 
@@ -612,13 +612,13 @@ class ChipTestingGUI(tk.Tk):
                                 raise state_err # Reraises the exception to be caught by the outer try-except block for further handling
 
                     if not aborted_to_ground:
-                        chips_processed += 2 # Increments the number of chips processed by 2 to keep track of how many chips have been processed
+                        self.chips_processed += 2 # Increments the number of chips processed by 2 to keep track of how many chips have been processed
                         sm.current_chip_index += 2 # Increments the current chip index by 2 to move to the next pair of chips
                         if sm.current_chip_index >= len(sm.chip_positions['col']): # If the current chip index exceeds the number of chips, reset it to 0 to start over
                             sm.current_chip_index = 0
                     else:
                         break
-                print(f"\nTray processing complete! Processed {chips_processed} chips.")
+                print(f"\nTray processing complete! Processed {self.chips_processed} chips.")
             sm.end_state_machine()
             self.output_queue.put(("state", "Program ran successfully"))
             self.status.set("Finished")
