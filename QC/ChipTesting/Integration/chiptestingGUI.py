@@ -209,7 +209,7 @@ class ChipTestingGUI(tk.Tk):
         self.username_variable = tk.StringVar(value = "")
         ttk.Entry(row0, textvariable = self.username_variable, width = 15).grid(row = 2, column = 1, columnspan = 2, sticky = "w", padx = 4)
 
-        ttk.Label(row0, text = "Populate mode:").grid(row = 3, column = 0, sticky = "w")
+        ttk.Label(row0, text = "Population mode:").grid(row = 3, column = 0, sticky = "w")
         self.populate_mode = tk.StringVar(value = "f")
         ttk.Radiobutton(row0, text = "Full tray", variable = self.populate_mode, value = "f", command  = self.show_frames).grid(row = 3, column = 1, sticky = "w")
         ttk.Radiobutton(row0, text = "Manual", variable = self.populate_mode, value = "m", command  = self.show_frames).grid(row = 3, column = 2, sticky = "w")
@@ -239,7 +239,7 @@ class ChipTestingGUI(tk.Tk):
 
         self.start_pos_frame.pack_forget()
 
-        self.chip_row_frame = ttk.LabelFrame(intro, text = "Manual Chip Data Entry (Use only when in manual populate mode)")
+        self.chip_row_frame = ttk.LabelFrame(intro, text = "Manual Chip Data Entry (Use only when in manual population mode)")
         self.chip_row_frame.pack(fill = "x", padx = 6, pady = 4)
         
         data_entry_headers = ["#", "Tray", "Column", "Row", "DAT", "DAT Socket", "Delete"]
