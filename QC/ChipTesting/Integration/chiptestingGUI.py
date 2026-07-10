@@ -573,6 +573,7 @@ class ChipTestingGUI(tk.Tk):
 
             num_chips = len(sm.chip_positions['col'])
             num_full_cycles = num_chips // 2
+            chips_processed = 0
             if num_chips %2 != 0:
                 print("ERROR: Odd number of chips. Two chips must be tested at once.")
             else:
@@ -612,13 +613,13 @@ class ChipTestingGUI(tk.Tk):
                                 raise state_err # Reraises the exception to be caught by the outer try-except block for further handling
 
                     if not aborted_to_ground:
-                        self.chips_processed += 2 # Increments the number of chips processed by 2 to keep track of how many chips have been processed
+                        chips_processed += 2 # Increments the number of chips processed by 2 to keep track of how many chips have been processed
                         sm.current_chip_index += 2 # Increments the current chip index by 2 to move to the next pair of chips
                         if sm.current_chip_index >= len(sm.chip_positions['col']): # If the current chip index exceeds the number of chips, reset it to 0 to start over
                             sm.current_chip_index = 0
                     else:
                         break
-                print(f"\nTray processing complete! Processed {self.chips_processed} chips.")
+                print(f"\nTray processing complete! Processed {chips_processed} chips.")
             sm.end_state_machine()
             self.output_queue.put(("state", "Program ran successfully"))
             self.status.set("Finished")
