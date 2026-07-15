@@ -62,7 +62,7 @@ class ChipTestingGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("DUNE Chip Testing QC")
-        self.geometry('1500x700')
+        self.geometry('1500x1080')
         self.minsize(900 , 900)
 
         self.output_queue = queue.Queue() # Carries print call from worker thread to a queue for CLI output
@@ -95,7 +95,8 @@ class ChipTestingGUI(tk.Tk):
         style.configure("TEntry", font = base_font, padding = 4)
         style.configure("TLabelFrame.Label", font = bold_font) # Sets the font for all label frames to bold_font
         style.configure("TNotebook.Tab", font = bold_font, padding = 4) # Sets the font for all label frames to bold_font and adds padding to make them larger
-
+        style.configure("TStringVar", font = base_font, padding = 4)
+        self.option_add("*TCombobox*Listbox*Font", base_font) # Sets the font for all combobox listboxes to base_font
 
 
         # Details of top hotbar
@@ -259,7 +260,7 @@ class ChipTestingGUI(tk.Tk):
         data_entry_headers = ["#", "Tray", "Column", "Row", "DAT", "DAT Socket", "Delete"]
         # Creates tuple for each entry in data_entry_headers to create a column for each 
         for col, header in enumerate(data_entry_headers):
-            ttk.Label(self.chip_row_frame, text = header, font= ("Helvetica", 10)).grid(row = 0, column = col, padx = 4, pady = 2, sticky = "w")
+            ttk.Label(self.chip_row_frame, text = header, font= ("Helvetica", 20)).grid(row = 0, column = col, padx = 4, pady = 2, sticky = "w")
         
         self.chip_row_frame.pack_forget() # Hides chip_row_frame until user selects manual populate mode
 
