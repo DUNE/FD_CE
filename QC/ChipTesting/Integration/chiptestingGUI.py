@@ -62,7 +62,7 @@ class ChipTestingGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("DUNE Chip Testing QC")
-        self.geometry('1500x1080')
+        self.geometry('1500x1000')
         self.minsize(900 , 900)
 
         self.output_queue = queue.Queue() # Carries print call from worker thread to a queue for CLI output
@@ -84,8 +84,8 @@ class ChipTestingGUI(tk.Tk):
         style = ttk.Style(self)
         style.theme_use("default")
 
-        base_font = ("", 20)
-        bold_font = ("", 20, "bold")
+        base_font = ("", 15)
+        bold_font = ("", 15, "bold")
         style.configure(".", font = base_font) # Sets the default font for all widgets to base_font
         style.configure("TButton", font = base_font, padding  = (10,8)) # Sets the font for all buttons to bold_font and adds padding to make them larger
         style.configure("TLabel", font = base_font)
@@ -94,7 +94,7 @@ class ChipTestingGUI(tk.Tk):
         style.configure("TCombobox", font = base_font, padding = 4)
         style.configure("TEntry", font = base_font, padding = 4)
         style.configure("TLabelFrame.Label", font = bold_font) # Sets the font for all label frames to bold_font
-        style.configure("TNotebook.Tab", font = bold_font, padding = 4) # Sets the font for all label frames to bold_font and adds padding to make them larger
+        style.configure("TNotebook.Tab", font = base_font, padding = 4) # Sets the font for all label frames to bold_font and adds padding to make them larger
         style.configure("TStringVar", font = base_font, padding = 4)
         self.option_add("*TCombobox*Listbox*Font", base_font) # Sets the font for all combobox listboxes to base_font
 
@@ -111,7 +111,7 @@ class ChipTestingGUI(tk.Tk):
         self.pause_button.pack(side = "left", padx = 4, pady = 4)
 
         self.status = tk.StringVar(value = "Idle")
-        ttk.Label(top_hotbar, textvariable = self.status, relief = "sunken", font = ("Helvetica", 20), width = 20).pack(side = "right", padx = 6, pady = 4)
+        ttk.Label(top_hotbar, textvariable = self.status, relief = "sunken", font = ("Helvetica", 15), width = 20).pack(side = "right", padx = 6, pady = 4)
         ttk.Label(top_hotbar, text = "Status:").pack(side = "right", padx = 4)
 
         # Creates tabs under hot bar
@@ -170,13 +170,13 @@ class ChipTestingGUI(tk.Tk):
 
         self.answer_var = tk.StringVar()
         self.prompt_var = tk.StringVar(value = "{Waiting for program to ask for input}")
-        self.prompt_label = ttk.Label(self.input_frame, textvariable = self.prompt_var, font = ("Courier", 20), width = 40, wraplength = 900, justify = "left") # Remember self.answer_var for input func
+        self.prompt_label = ttk.Label(self.input_frame, textvariable = self.prompt_var, font = ("Courier", 15), width = 40, wraplength = 900, justify = "left") # Remember self.answer_var for input func
         self.prompt_label.pack(anchor = "w", padx = 6, pady = 6)
 
         input_row = ttk.Frame(self.input_frame)
         input_row.pack(fill = "x", padx = 6, pady = 6)
 
-        self.answer_entry = ttk.Entry(input_row, textvariable = self.answer_var, font = ("Courier", 10), width  = 40) 
+        self.answer_entry = ttk.Entry(input_row, textvariable = self.answer_var, font = ("Courier", 15), width  = 40) 
         self.answer_entry.pack(side = "left", pady = 6)
         self.submit_button = ttk.Button(input_row, text = "Submit", command = self.submit_answer, state = "normal") # self.submit_answer to be a function that passed text into response_queue
         self.submit_button.pack(side = "left", padx = 6, pady = 6)
@@ -260,7 +260,7 @@ class ChipTestingGUI(tk.Tk):
         data_entry_headers = ["#", "Tray", "Column", "Row", "DAT", "DAT Socket", "Delete"]
         # Creates tuple for each entry in data_entry_headers to create a column for each 
         for col, header in enumerate(data_entry_headers):
-            ttk.Label(self.chip_row_frame, text = header, font= ("Helvetica", 20)).grid(row = 0, column = col, padx = 4, pady = 2, sticky = "w")
+            ttk.Label(self.chip_row_frame, text = header, font= ("", 15)).grid(row = 0, column = col, padx = 4, pady = 2, sticky = "w")
         
         self.chip_row_frame.pack_forget() # Hides chip_row_frame until user selects manual populate mode
 
