@@ -63,7 +63,7 @@ class ChipTestingGUI(tk.Tk):
         super().__init__()
         self.title("DUNE Chip Testing QC")
         self.geometry('1500x700')
-        self.minsize(1100 , 750)
+        self.minsize(900 , 900)
 
         self.output_queue = queue.Queue() # Carries print call from worker thread to a queue for CLI output
         self.input_queue = queue.Queue() # Carries any request for user input from worker thread to a queue for CLI output
@@ -84,11 +84,25 @@ class ChipTestingGUI(tk.Tk):
         style = ttk.Style(self)
         style.theme_use("default")
 
+        base_font = ("", 20)
+        bold_font = ("", 20, "bold")
+        style.configure(".", font = base_font) # Sets the default font for all widgets to base_font
+        style.configure("TButton", font = base_font, padding  = (10,8)) # Sets the font for all buttons to bold_font and adds padding to make them larger
+        style.configure("TLabel", font = base_font)
+        style.configure("TRadiobutton", font = base_font)
+        style.configure("TCheckbutton", font = base_font)
+        style.configure("TCombobox", font = base_font, padding = 4)
+        style.configure("TEntry", font = base_font, padding = 4)
+        style.configure("TLabelFrame.Label", font = bold_font) # Sets the font for all label frames to bold_font
+        style.configure("TNotebook.Tab", font = bold_font, padding = 4) # Sets the font for all label frames to bold_font and adds padding to make them larger
+
+
+
         # Details of top hotbar
         top_hotbar = ttk.Frame(self, relief = "groove")
         top_hotbar.pack(side = "top", fill = "x", padx = 6, pady= 4)
         
-        ttk.Label(top_hotbar, text = "DUNE Chip Testing QC", font = ("Helvetica", 10, "bold")).pack(side = "left", padx = 4, pady = 4)
+        ttk.Label(top_hotbar, text = "DUNE Chip Testing QC", font = ("Helvetica", 20, "bold")).pack(side = "left", padx = 4, pady = 4)
         
         self.run_button = ttk.Button(top_hotbar, text = "▶ Run", state = "normal", command = self.run)
         self.run_button.pack(side = "left", padx = 4, pady = 4)
@@ -96,7 +110,7 @@ class ChipTestingGUI(tk.Tk):
         self.pause_button.pack(side = "left", padx = 4, pady = 4)
 
         self.status = tk.StringVar(value = "Idle")
-        ttk.Label(top_hotbar, textvariable = self.status, relief = "sunken", font = ("Helvetica", 10), width = 20).pack(side = "right", padx = 6, pady = 4)
+        ttk.Label(top_hotbar, textvariable = self.status, relief = "sunken", font = ("Helvetica", 20), width = 20).pack(side = "right", padx = 6, pady = 4)
         ttk.Label(top_hotbar, text = "Status:").pack(side = "right", padx = 4)
 
         # Creates tabs under hot bar
@@ -155,7 +169,7 @@ class ChipTestingGUI(tk.Tk):
 
         self.answer_var = tk.StringVar()
         self.prompt_var = tk.StringVar(value = "{Waiting for program to ask for input}")
-        self.prompt_label = ttk.Label(self.input_frame, textvariable = self.prompt_var, font = ("Courier", 10), width = 40, wraplength = 900, justify = "left") # Remember self.answer_var for input func
+        self.prompt_label = ttk.Label(self.input_frame, textvariable = self.prompt_var, font = ("Courier", 20), width = 40, wraplength = 900, justify = "left") # Remember self.answer_var for input func
         self.prompt_label.pack(anchor = "w", padx = 6, pady = 6)
 
         input_row = ttk.Frame(self.input_frame)
@@ -188,11 +202,11 @@ class ChipTestingGUI(tk.Tk):
     # Set Up tab
     def build_set_up_tab(self):
         intro = ttk.LabelFrame(self.set_up_tab, text = "Set Up Configuration")
-        intro.pack(fill = "x", padx = 6, pady = 4)
+        intro.pack(fill = "both", padx = 6, pady = 4)
 
         # Creates Frame for start up configuration as well as buttons for y/n or m/f
         row0 = ttk.Frame(intro)
-        row0.pack(fill = "x", padx = 6, pady = 4)
+        row0.pack(fill = "both", padx = 6, pady = 4)
 
         ttk.Label(row0, text = "Simulation Mode:").grid(row = 0, column = 0, sticky = "w")
         self.simulation_variable = tk.StringVar(value = "n")
@@ -209,7 +223,7 @@ class ChipTestingGUI(tk.Tk):
         self.username_variable = tk.StringVar(value = "")
         ttk.Entry(row0, textvariable = self.username_variable, width = 15).grid(row = 2, column = 1, columnspan = 2, sticky = "w", padx = 4)
 
-        ttk.Label(row0, text = "Population mode:").grid(row = 3, column = 0, sticky = "w")
+        ttk.Label(row0, text = "Population Mode:").grid(row = 3, column = 0, sticky = "w")
         self.populate_mode = tk.StringVar(value = "f")
         ttk.Radiobutton(row0, text = "Full tray", variable = self.populate_mode, value = "f", command  = self.show_frames).grid(row = 3, column = 1, sticky = "w")
         ttk.Radiobutton(row0, text = "Manual", variable = self.populate_mode, value = "m", command  = self.show_frames).grid(row = 3, column = 2, sticky = "w")
@@ -354,7 +368,7 @@ class ChipTestingGUI(tk.Tk):
         cols = 3
         for i, s in enumerate(self.state_names):
             r, c = divmod(i, cols) # Calculates row and column for each state label based on index and number of columns
-            lbl = ttk.Label(states_frame, relief = "groove", text = s, width = 26, anchor = "center", padding = (4,3))
+            lbl = ttk.Label(states_frame, relief = "groove", text = s, width = 26, font = ("Courier", 20, "normal"), anchor = "center", padding = (6,8))
             lbl.grid(row = r, column = c, padx = 4, pady = 2, sticky = "ew")
             states_frame.columnconfigure(c, weight = 1) # Makes each column expand equally when window is resized
             self.state_labels[s] = lbl # Saves each label in a dictionary with state name as key for easy access to highlight_state()
