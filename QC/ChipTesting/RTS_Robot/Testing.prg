@@ -232,16 +232,16 @@ Function Testing As Int64
 '		EndIf
 
 
-	For iChip = 1 To 6
-		status = MoveChipFromSocketToTray(1, iChip, 2, 1, iChip)
-		If status < 0 Then
-			Print "ERROR moving chip ", iChip, " to tray"
-			Exit Function
-		EndIf
-	Next
-	
+'	For iChip = 2 To 6
+'		status = MoveChipFromSocketToTray(2, iChip, 2, 1, iChip)
+'		If status < 0 Then
+'			Print "ERROR moving chip ", iChip, " to tray"
+'			Exit Function
+'		EndIf
+'	Next
+'	
 	For iChip = 1 To 2
-		status = MoveChipFromSocketToTray(1, 6 + iChip, 2, 2, iChip)
+		status = MoveChipFromSocketToTray(2, 6 + iChip, 2, 2, iChip)
 		If status < 0 Then
 			Print "ERROR moving chip ", Str$(iChip + 6), " to tray"
 			Exit Function
@@ -276,13 +276,13 @@ Function CheckForChip(DAT_nr As Integer, socket_nr As Integer) As Boolean
 
 	CheckForChip = False
 	
-	If Not isChipInSocketCamera(DAT_nr, Socket_nr) Then
+	If Not isChipInSocketCamera(DAT_nr, socket_nr) Then
 		Print "Cannot see a chip in the socket"
 	Else
 		Print "Can see chip in the socket"
 	EndIf
 	
-	If Not isChipInSocketTouch(DAT_nr, Socket_nr) Then
+	If Not isChipInSocketTouch(DAT_nr, socket_nr) Then
 		Print "Chip not found at correct height"
 	Else
 		Print "Chip at correct height"

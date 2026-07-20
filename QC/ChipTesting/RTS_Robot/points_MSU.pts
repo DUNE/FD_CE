@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/04/09 15:09:28:844,DS:0000009463,CS:04702,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/07/15 17:41:25:432,DS:0000009458,CS:08273,MA:6C-2B-59-DC-C5-38,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
@@ -582,10 +582,10 @@ Point23 {
 	sLabel="Socket_R_01"
 	sDescription=""
 	nUndefined=0
-	rX=329.861
-	rY=219.869
-	rZ=-126.302
-	rU=-0.653
+	rX=330.373
+	rY=219.97
+	rZ=-136.161
+	rU=-0.689
 	rV=0
 	rW=0
 	rR=0
@@ -608,10 +608,10 @@ Point24 {
 	sLabel="Socket_R_02"
 	sDescription=""
 	nUndefined=0
-	rX=329.861
-	rY=143.768
-	rZ=-126.445
-	rU=-0.654
+	rX=330.371
+	rY=143.87
+	rZ=-136.325
+	rU=-0.889
 	rV=0
 	rW=0
 	rR=0
@@ -634,10 +634,10 @@ Point25 {
 	sLabel="Socket_R_03"
 	sDescription=""
 	nUndefined=0
-	rX=329.762
-	rY=67.468
-	rZ=-126.731
-	rU=-0.554
+	rX=330.371
+	rY=67.57
+	rZ=-136.49
+	rU=-0.889
 	rV=0
 	rW=0
 	rR=0
@@ -660,10 +660,10 @@ Point26 {
 	sLabel="Socket_R_04"
 	sDescription=""
 	nUndefined=0
-	rX=329.861
-	rY=-8.732
-	rZ=-126.635
-	rU=-0.654
+	rX=330.371
+	rY=-8.73
+	rZ=-136.464
+	rU=-0.889
 	rV=0
 	rW=0
 	rR=0
@@ -686,10 +686,10 @@ Point27 {
 	sLabel="Socket_R_05"
 	sDescription=""
 	nUndefined=0
-	rX=329.96
-	rY=-97.731
-	rZ=-126.683
-	rU=-0.754
+	rX=330.472
+	rY=-97.53
+	rZ=-136.437
+	rU=-0.789
 	rV=0
 	rW=0
 	rR=0
@@ -709,13 +709,13 @@ Point27 {
 }
 Point28 {
 	nNumber=206
-	sLabel="Scoket_R_06"
+	sLabel="Socket_R_06"
 	sDescription=""
 	nUndefined=0
-	rX=329.86
-	rY=-173.931
-	rZ=-126.778
-	rU=-0.754
+	rX=330.572
+	rY=-173.831
+	rZ=-136.506
+	rU=-0.79
 	rV=0
 	rW=0
 	rR=0
@@ -738,10 +738,10 @@ Point29 {
 	sLabel="Socket_R_07"
 	sDescription=""
 	nUndefined=0
-	rX=329.661
-	rY=-250.131
-	rZ=-126.587
-	rU=-0.754
+	rX=330.263
+	rY=-250.231
+	rZ=-136.363
+	rU=-0.654
 	rV=0
 	rW=0
 	rR=0
@@ -764,9 +764,9 @@ Point30 {
 	sLabel="Socket_R_08"
 	sDescription=""
 	nUndefined=0
-	rX=329.661
+	rX=330.461
 	rY=-326.431
-	rZ=-126.443
+	rZ=-136.247
 	rU=-0.754
 	rV=0
 	rW=0

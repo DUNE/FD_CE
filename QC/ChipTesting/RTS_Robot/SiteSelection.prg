@@ -224,6 +224,8 @@ Function MeasureSocketVisionOffset(DAT_nr As Integer, Socket_nr As Integer) As I
 	' These account for differences between the socket vision sequence measurement and the actual point,
 	' Should be run once, must be run when aligned with socket (DAT_nr, Socket_nr)
 	
+	SelectSite("InFunctionDefinePallets")
+	
 	If Not ReadSiteFile Then
 		Print "Could not read site file"
 		Exit Function

@@ -15,9 +15,9 @@ ChipTextOrientation,0
 ChipVisionOffsetX,0.29285497661601
 ChipVisionOffsetY,-0.15577220485199
 ChipVisionOffsetU,1.152316994443
-SocketVisionOffsetX,-0.20516365249364
-SocketVisionOffsetY,-0.18533288523562
-SocketVisionOffsetU,0.85716034371001
+SocketVisionOffsetX,0.13873863564527
+SocketVisionOffsetY,0.16369894678888
+SocketVisionOffsetU,0.6654712063993
 NAttempts_Chip_Tray,6
 NAttempts_Chip_DAT,6
 NAttempts_Soc,6
