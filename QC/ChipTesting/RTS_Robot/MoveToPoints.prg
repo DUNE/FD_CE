@@ -84,8 +84,8 @@ Function JumpToSocket(DAT_nr As Integer, socket_nr As Integer)
 		Exit Function
 	EndIf
 	' Note, should teach points at 20mm above contact
-	Jump P(100 * DAT_nr + socket_nr) LimZ JUMP_LIMIT
-	Print P(100 * DAT_nr + socket_nr)
+	Jump P(100 * DAT_nr + Socket_nr) LimZ JUMP_LIMIT
+	Print P(100 * DAT_nr + Socket_nr)
 
 Fend
 
@@ -101,11 +101,19 @@ Function JumpToSocket_camera(DAT_nr As Integer, socket_nr As Integer)
 	If Dist(Here, XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU)) < 0.1 Then
 		Exit Function
 	EndIf
-
+'	Print "Jumping to image of global point ", SockP
+'	Print P(SockP)
+'	Print "Cam X = ", (CX(P(SockP)) + XOffset(SockU))
+'	Print "Cam Y = ", (CY(P(SockP)) + YOffset(SockU))
+'	Print "Cam Z = ", (CZ(P(SockP)) + DF_CAM_Z_OFF)
+'	Print "Cam U = ", (SockU)
+		
 	' Use different handedness with each DAT board
 	If DAT_nr = 1 Then
+'		Print "/R"
 		Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /R LimZ JUMP_LIMIT
 	Else
+'		Print "/L"
 		Jump XY((CX(P(SockP)) + XOffset(SockU)), (CY(P(SockP)) + YOffset(SockU)), (CZ(P(SockP)) + DF_CAM_Z_OFF), SockU) /L LimZ JUMP_LIMIT
 	EndIf
 

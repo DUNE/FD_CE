@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/04/10 15:40:59:516,DS:0000411034,CS:08559,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/07/15 17:28:17:060,DS:0000411034,CS:08559,MA:6C-2B-59-DC-C5-38,EI:           
 sRCVersion="7.5.4"
 sGUID="f965e132-c841-42ba-bafd-fbf5d79f2655"
 nCameraNumber=1
@@ -13555,7 +13555,7 @@ Sequence38 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=1796
-		nSearchWinPolygonPointYRot=1306
+		nSearchWinPolygonPointYRot=1246
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
@@ -13661,7 +13661,7 @@ Sequence38 {
 		rFrameVectorAngle1=0
 		rFrameVectorAngle2=0
 		nSearchWinPolygonPointXRot=791
-		nSearchWinPolygonPointYRot=1330
+		nSearchWinPolygonPointYRot=1270
 		rSearchWinPolygonPointFX1=0
 		rSearchWinPolygonPointFY1=0
 		rSearchWinPolygonPointFX2=0
