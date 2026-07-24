@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext
 import threading
 import io
-from datetime import datetime
 import queue
 import os 
 import re # Regular expression module for matching ANSI escape sequences
@@ -53,17 +52,17 @@ class GUIInputProvider:
     def ask(self, prompt = "", request_id = None):
         self.prompt_queue.put(prompt) # Takes prompt and drops into prompt queue 
         while True:
-            reply_id, answer = self.reply_prompt.get()
+            reply_id, answer = self.reply_prompt.get() # Blocks until user responds with GUI input and returns the answer to the worker thread
             if request_id is None or reply_id == request_id:
                 return answer
 # Actual GUI for the program
 class ChipTestingGUI(tk.Tk):
     # Sets initial window parameters
     def __init__(self):
-        super().__init__()
-        self.title("DUNE Chip Testing QC")
-        self.geometry('1500x1000')
-        self.minsize(900 , 900)
+        super().__init__() # Calls the constructor of the parent class (tk.Tk) to initialize the GUI window
+        self.title("GOO-E for ASIC testing")
+        self.geometry('1500x950')
+        self.minsize(900 , 950)
 
         self.output_queue = queue.Queue() # Carries print call from worker thread to a queue for CLI output
         self.input_queue = queue.Queue() # Carries any request for user input from worker thread to a queue for CLI output
@@ -103,7 +102,7 @@ class ChipTestingGUI(tk.Tk):
         top_hotbar = ttk.Frame(self, relief = "groove")
         top_hotbar.pack(side = "top", fill = "x", padx = 6, pady= 4)
         
-        ttk.Label(top_hotbar, text = "DUNE Chip Testing QC", font = ("Helvetica", 20, "bold")).pack(side = "left", padx = 4, pady = 4)
+        ttk.Label(top_hotbar, text = "GOO-E", font = ("Helvetica", 20, "bold")).pack(side = "left", padx = 4, pady = 4)
         
         self.run_button = ttk.Button(top_hotbar, text = "▶ Run", state = "normal", command = self.run)
         self.run_button.pack(side = "left", padx = 4, pady = 4)
@@ -117,6 +116,7 @@ class ChipTestingGUI(tk.Tk):
         # Creates tabs under hot bar
         tabs = ttk.Notebook(self)
         tabs.pack(fill = "both", expand = True, padx = 6, pady = 4)
+        tabs.bind("<<NotebookTabChanged>>", lambda e: self.update_idletasks()) # Forces GUI to update when switching tabs to prevent lag
 
         self.results_tab = ttk.Frame(tabs)
         self.set_up_tab = ttk.Frame(tabs)
@@ -246,7 +246,7 @@ class ChipTestingGUI(tk.Tk):
 
         ttk.Label(pos_row, text = "Row:").grid(row = 0, column = 5, sticky = "w", pady = 4)
         self.start_row = tk.StringVar(value = "1")
-        ttk.Combobox(pos_row, textvariable = self.start_row, values = ["1", "2", "3", "4"], width = 5, state = "readonly").grid(row = 0, column = 6, padx = 12)
+        ttk.Combobox(pos_row, textvariable = self.start_row, values = ["1", "2", "3"], width = 5, state = "readonly").grid(row = 0, column = 6, padx = 12)
 
         ttk.Label(pos_row, text = "DAT:").grid(row = 0, column = 7, sticky = "w", pady = 4)
         self.start_DAT = tk.StringVar(value = "1")
@@ -428,7 +428,7 @@ class ChipTestingGUI(tk.Tk):
             if segment: # If there is a segment of text before the ANSI escape sequence, insert it into the output with the current tag for coloring
                 lines = segment.split("\n") # Splits the segment into lines to handle newlines properly
                 for i, line in enumerate(lines):
-                    if line:
+                    if line: # If the line is not empty, insert it into the output with the current tag for coloring
                         self.output.insert("end", line, current_tag)
                     if i < len(lines) - 1:
                         self.output.insert("end", "\n")
