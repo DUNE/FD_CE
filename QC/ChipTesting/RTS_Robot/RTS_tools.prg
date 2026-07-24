@@ -58,7 +58,7 @@ Function UF_take_picture$(basename$ As String) As String
 	' and stores it in the RTS_DATA$\images directory as a bmp file
 	
  	'UF_take_picture$ = RTS_DATA$ + "\images\UF_" + basename$ + ".bmp"
- 	UF_take_picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
+ 	UF_take_picture$ = TrayDirectory$ + "\images\UF\" + basename$ + ".bmp"
  	
  	Print UF_take_picture$
  	VRun UF
@@ -71,7 +71,7 @@ Function DF_take_picture$(basename$ As String) As String
 	' and stores it in the RTS_DATA$\images directory as a bmp file
 	
 	' DF_take_picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
-	DF_take_picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
+	DF_take_picture$ = TrayDirectory$ + "\images\DF\" + basename$ + ".bmp"
  	
 	Print DF_take_picture$
  	VRun DF
@@ -79,7 +79,7 @@ Function DF_take_picture$(basename$ As String) As String
 	VSaveImage DF, DF_take_picture$
 Fend
 
-Function SN_take_Picture$(basename$ As String) As String
+Function SN_take_Picture$(ocr_dir$ As String, basename$ As String) As String
 	''' Takes a picture of a chip for serial number recognition
 	' Uses FindChipDirectionWithDF to preprocess the image so
 	' the text is right way up to help with OCR
@@ -87,7 +87,9 @@ Function SN_take_Picture$(basename$ As String) As String
 	
 	SelectSite("InFunction")
 	' SN_take_Picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
-	SN_take_Picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
+	'SN_take_Picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
+	SN_take_Picture$ = ocr_dir$ + "\" + basename$ + ".bmp"
+	
 	Print SN_take_Picture$
 	
 	Double ChipDir, Rotation
@@ -243,7 +245,7 @@ Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, D
 ''' In one file store the current offset along with the tray/socket position and the timestamp
 
 	LogUFOffsets = 0
-	If (Tray <> 0 Or TrayCol <> 0 Or TrayRow <> 0) And (DAT <> 0 Or Socket <> 0) Then
+	If (tray <> 0 Or TrayCol <> 0 Or TrayRow <> 0) And (DAT <> 0 Or Socket <> 0) Then
 		Print "Invalid indices"
 		Exit Function
 	EndIf
@@ -252,23 +254,23 @@ Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, D
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 	
 	Int32 FileNum
-	FileNum = FreeFile
+	fileNum = FreeFile
 	String OffsetFile$
-	If Tray <> 0 Then
-		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(Tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
+	If tray <> 0 Then
+		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
 	Else
 		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
 	EndIf
 		
-	AOpen OffsetFile$ As #FileNum
-	Print #FileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
-	Close #FileNum
+	AOpen OffsetFile$ As #fileNum
+	Print #fileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Close #fileNum
 	LogUFOffsets = -1
 Fend
 
 ''' Returns the global point of the socket from its DAT and position numbers
 Function PSocket(DAT_nr As Int32, Socket_nr As Int32) As Int32
-	PSocket = DAT_nr * 100 + Socket_nr
+	PSocket = DAT_nr * 100 + socket_nr
 Fend
 
 'Function FindTrayAgl4Offsets(TrayNumber As Int32) As Int32
@@ -298,7 +300,7 @@ Fend
 Function CheckValidTrayIndex(tray As Integer, tray_col As Integer, tray_row As Integer) As Boolean
 	''' Checks tray indices are within bounds
          CheckValidTrayIndex = False
-         If (0 < tray And tray <= 2) And (0 < tray_col And tray_col <= trayNCols) And (0 < tray_row And tray_row <= trayNRows) Then
+         If (0 < Tray And Tray <= 2) And (0 < tray_col And tray_col <= trayNCols) And (0 < tray_row And tray_row <= trayNRows) Then
                 CheckValidTrayIndex = True
          EndIf
 Fend
@@ -351,6 +353,46 @@ Function SetupDirectories
   		Exit Function
 	EndIf
 	
+	' DF images subdirectory
+	String dir_dfimages$
+	dir_dfimages$ = RTS_DATA$ + "\images\DF"
+
+	If Not FolderExists(dir_dfimages$) Then
+  		MkDir dir_dfimages$
+	EndIf
+	
+	If Not FolderExists(dir_dfimages$) Then
+  		Print "***ERROR Can't create directory [" + dir_dfimages$ + "]"
+  		Exit Function
+	EndIf
+	
+	' UF images subdirectory
+	String dir_ufimages$
+	dir_ufimages$ = RTS_DATA$ + "\images\UF"
+
+	If Not FolderExists(dir_ufimages$) Then
+  		MkDir dir_ufimages$
+	EndIf
+	
+	If Not FolderExists(dir_ufimages$) Then
+  		Print "***ERROR Can't create directory [" + dir_ufimages$ + "]"
+  		Exit Function
+	EndIf
+	
+	' Move OCR images subdirectory
+	String dir_m_sn$
+	dir_m_sn$ = RTS_DATA$ + "\images\Move_SN"
+
+	If Not FolderExists(dir_m_sn$) Then
+  		MkDir dir_m_sn$
+	EndIf
+	
+	If Not FolderExists(dir_m_sn$) Then
+  		Print "***ERROR Can't create directory [" + dir_m_sn$ + "]"
+  		Exit Function
+	EndIf
+	
+	
 	' pins subdirectory
 	String dir_pins$
 	dir_pins$ = RTS_DATA$ + "\pins"
@@ -379,8 +421,8 @@ Function SetupDirectories
 	
 Fend
 
-Function SetupTrayDirectories$() As String
-	' Creates the directory RTS_DATA\TrayID during automation code
+Function SetupTrayDirectories$ As String
+	' Creates the directory RTS_DATA\Tested\TrayID during automation code
 	' And the subdirectories \images and \pins		
 	
 	' Returns file system error if interuppted/can't make a file	
@@ -388,7 +430,7 @@ Function SetupTrayDirectories$() As String
 
 	SetupTrayDirectories$ = Str$(ERR_FILESYSTEM)
 	
-	TrayDirectory$ = RTS_DATA$ + "\" + TrayID$
+	TrayDirectory$ = RTS_DATA$ + "\Tested\" + TrayID$
 
 	' RTS DATA directory (set in RTS_tools.inc)
 	If Not FolderExists(TrayDirectory$) Then
@@ -410,6 +452,45 @@ Function SetupTrayDirectories$() As String
 	
 	If Not FolderExists(dir_images$) Then
   		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+	
+	' DF images subdirectory
+	String dir_dfimages$
+	dir_dfimages$ = TrayDirectory$ + "\images\DF"
+
+	If Not FolderExists(dir_dfimages$) Then
+  		MkDir dir_dfimages$
+	EndIf
+	
+	If Not FolderExists(dir_dfimages$) Then
+  		Print "***ERROR Can't create directory [" + dir_dfimages$ + "]"
+  		Exit Function
+	EndIf
+	
+	' UF images subdirectory
+	String dir_ufimages$
+	dir_ufimages$ = TrayDirectory$ + "\images\UF"
+
+	If Not FolderExists(dir_ufimages$) Then
+  		MkDir dir_ufimages$
+	EndIf
+	
+	If Not FolderExists(dir_ufimages$) Then
+  		Print "***ERROR Can't create directory [" + dir_ufimages$ + "]"
+  		Exit Function
+	EndIf
+	
+	' Move OCR images subdirectory
+	String dir_m_sn$
+	dir_m_sn$ = TrayDirectory$ + "\images\Move_SN"
+
+	If Not FolderExists(dir_m_sn$) Then
+  		MkDir dir_m_sn$
+	EndIf
+	
+	If Not FolderExists(dir_m_sn$) Then
+  		Print "***ERROR Can't create directory [" + dir_m_sn$ + "]"
   		Exit Function
 	EndIf
 	
@@ -772,23 +853,46 @@ Function RoundAngleTo90(angle As Double) As Double
 Fend
 
 
-Function ScanTray(pallet_nr As Integer) As Int64
+Function ScanTray(pallet_nr As Integer, port_nr As Integer) As Int64
 	''' Scans a tray and collects images of all the chips for serial number
 	' extraction and stores the image file number and positions in a catalog file
 	' Also sets up columns in the file for use by the integration and OCR code
 	
 	ScanTray = 0
+	'ScanTray$ = "FAIL"
 	SelectSite("InFunctionDefinePallets")
 
 	Motor On
 	UF_camera_light_ON
 
 	String fileName$, ts$
-	fileName$ = RTS_DATA$ + "\TrayCatalogs\TrayCatalog_" + TrayID$ + ".csv"
+	
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	String scan_sn_dir$
+	
+	fileName$ = TrayDirectory$ + "\TrayCatalog_" + TrayID$ + ".csv"
+	scan_sn_dir$ = TrayDirectory$ + "\images\Scan_" + ts$ + "_SN"
+	
+	' Create scan OCR images subdirectory
+	If Not FolderExists(scan_sn_dir$) Then
+  		MkDir scan_sn_dir$
+	EndIf
+	
+	If Not FolderExists(scan_sn_dir$) Then
+  		Print "***ERROR Can't create directory [" + scan_sn_dir$ + "]"
+  		Exit Function
+	EndIf
+	
+	' fileName$ = RTS_DATA$ + "\TrayCatalogs\TrayCatalog_" + TrayID$ + ".csv"
 	Integer fileNum
 	fileNum = FreeFile
+	Print "File path is ", fileName$
 	AOpen fileName$ As #fileNum
 	Print #fileNum, "tray,col,row,occupied,image,processed,serial,warnings,checked"
+'
+'	String list$ ''' Can't put all indices in one string as the string gets too large
+'	list$ = ""
+' Have to print to port in function
 
 	SetSpeedSetting("moveWithoutChip")
 	'String isChip$
@@ -799,21 +903,34 @@ Function ScanTray(pallet_nr As Integer) As Int64
 	ChipDir = -999.
 	String SN_Picture$
 
+	Int32 idx
+	idx = 0
+
 	For col_nr = 1 To trayNCols
 		SetSpeedSetting("MoveWithChip")
 
+
 		For row_nr = 1 To trayNRows
+			
+			idx = idx + 1
+			' For testing
+			If idx > 16 Then
+				Exit For
+			EndIf
 			
 			Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF)
 				
 			ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-			SN_Picture$ = SN_take_Picture$(ts$ + "_tr" + Str$(pallet_nr) + "_col" + Str$(col_nr) + "_row" + Str$(row_nr) + "_SN")
+			SN_Picture$ = SN_take_Picture$(scan_sn_dir$, TrayID$ + "_" + Str$(idx) + "_" + ts$ + "_tr" + Str$(pallet_nr) + "_col" + Str$(col_nr) + "_row" + Str$(row_nr) + "_SN")
 			
 			If SN_Picture$ = "NoChip" Then
 				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",0,,,,0,0"
 				UpdateRobotLog$("No chip found")
 			Else
 				Print #fileNum, pallet_nr, ",", col_nr, ",", row_nr, ",1,", SN_Picture$, ",,,0,0"
+				If port_nr <> -1 Then
+					Print #port_nr, idx
+				EndIf
 				UpdateRobotLog$("Picture of chip in tray taken: " + SN_Picture$)
 			EndIf
 			Wait 1

@@ -355,6 +355,7 @@ Function ReadSiteFileOld
 	Input #fileNum, REPO_DIR$
 	Input #fileNum, PROJ_DIR$
 	Input #fileNum, RTS_DATA$
+	Input #fileNum, mlog$
 	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
 	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
 	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
@@ -388,6 +389,7 @@ Function WriteSiteFileOld
 	Print #fileNum, REPO_DIR$
 	Print #fileNum, PROJ_DIR$
 	Print #fileNum, RTS_DATA$
+	Print #fileNum, mlog$
 	Print #fileNum, Str$(HAND_U0), ",", Str$(DF_CAM_X_OFF_U0), ",", Str$(DF_CAM_Y_OFF_U0), ",", Str$(DF_CAM_FOCUS)
 	Print #fileNum, Str$(TrayOrientation), ",", Str$(HandChipOrientation(1)), ",", Str$(HandChipOrientation(2)), ",", Str$(HandChipOrientation(3))
 	Print #fileNum, Str$(ChipTextOrientation), ",", Str$(ChipVisionOffset(1)), ",", Str$(ChipVisionOffset(2)), ",", Str$(ChipVisionOffset(3))
@@ -438,6 +440,8 @@ Function ReadSiteFile As Int32
 				PROJ_DIR$ = VariableValue$
 			Case "Data"
 				RTS_DATA$ = VariableValue$
+			Case "MLog"
+				mlog$ = VariableValue$
 			Case "HAND_U0"
 				HAND_U0 = Val(VariableValue$)
 			Case "DF_CAM_X_OFF_U0"
@@ -541,6 +545,7 @@ Function WriteSiteFile As Int32
 	Print #fileNum, "Repo,", REPO_DIR$
 	Print #fileNum, "Proj,", PROJ_DIR$
 	Print #fileNum, "Data,", RTS_DATA$
+	Print #fileNum, "MLog,", mlog$
 	Print #fileNum, "HAND_U0,", Str$(HAND_U0)
 	Print #fileNum, "DF_CAM_X_OFF_U0,", Str$(DF_CAM_X_OFF_U0)
 	Print #fileNum, "DF_CAM_Y_OFF_U0,", Str$(DF_CAM_Y_OFF_U0)

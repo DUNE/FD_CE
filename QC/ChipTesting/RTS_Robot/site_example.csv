@@ -3,6 +3,7 @@ Chip,LArASIC
 Repo,C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
 Proj,C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
 Data,C:\Users\neutrino\Desktop\RTS
+MLog,C:\Users\neutrino\Desktop\RTS\manip.csv
 HAND_U0,0.0
 DF_CAM_X_OFF_U0,0.0
 DF_CAM_Y_OFF_U0,0.0

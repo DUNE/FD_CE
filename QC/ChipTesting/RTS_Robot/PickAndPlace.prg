@@ -321,11 +321,13 @@ Function GetChipFromTray(Tray As Integer, TrayCol As Integer, TrayRow As Integer
 	SetSpeedSetting("MoveWithoutChip")
 	
 	JumpToTray_camera(Tray, TrayCol, TrayRow)
+	String move_sn_dir$
+	move_sn_dir$ = TrayDirectory$ + "/images/Move_SN"
 	
 	If CurrentOperation$ <> "" Then
 
 		String SN_Picture$
-		SN_Picture$ = SN_take_Picture$(op_ts$ + "_tr" + Str$(Tray) + "_col" + Str$(TrayCol) + "_row" + Str$(TrayRow) + "_SN")
+		SN_Picture$ = SN_take_Picture$(move_sn_dir$, op_ts$ + "_tr" + Str$(Tray) + "_col" + Str$(TrayCol) + "_row" + Str$(TrayRow) + "_SN")
 		WriteMLog(SN_Picture$)
 		If SN_Picture$ = "NoChip" Then
 			UpdateRobotLog$("No chip found")

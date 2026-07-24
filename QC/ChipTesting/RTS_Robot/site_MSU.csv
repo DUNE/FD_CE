@@ -2,7 +2,8 @@ Site,MSU
 Chip,LArASIC
 Repo,C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
 Proj,C:\EpsonRC70\projects\SimplifiedDUNE\FD_CE\QC\ChipTesting\RTS_Robot
-Data,C:\Users\neutrino\Desktop\RTS
+Data,C:\Users\neutrino\LArASIC_Testing
+MLog,C:\Users\neutrino\LArASIC_Testing\manip.csv
 HAND_U0,-0.889
 DF_CAM_X_OFF_U0,57.362499237061
 DF_CAM_Y_OFF_U0,0.33000183105469

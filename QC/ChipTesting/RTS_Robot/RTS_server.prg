@@ -57,11 +57,13 @@ Function RTS_server
     		Case "MoveChipFromTrayToSocket"
     			PumpOn
     			' Receive source and destination parameters"
-    			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
+    			
+    			Input #portNr, DAT_nr
+    			Input #portNr, socket_nr
+    			
     			Print "Move chip from pallet(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			Print " to DAT board: ", DAT_nr, " socket", socket_nr
     			'DO stuff
@@ -71,11 +73,14 @@ Function RTS_server
     		Case "MoveChipFromSocketToTray"
     			PumpOn
     			' Receive source and destination parameters"
+    			
     			Input #portNr, DAT_nr
     			Input #portNr, socket_nr
+    			
     			Input #portNr, pallet_nr
     			Input #portNr, pallet_col
     			Input #portNr, pallet_row
+    			
     			Print "Move chip from DAT board: ", DAT_nr, " socket", socket_nr
     			Print " to tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			'DO stuff
@@ -88,6 +93,7 @@ Function RTS_server
     			Input #portNr, src_pallet_nr
     			Input #portNr, src_pallet_col
     			Input #portNr, src_pallet_row
+    			
     			Input #portNr, tgt_pallet_nr
     			Input #portNr, tgt_pallet_col
     			Input #portNr, tgt_pallet_row
@@ -112,23 +118,23 @@ Function RTS_server
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
+    			Input #portNr, Socket_nr
     			Input #portNr, DoMeasure
-    			Print "Check placement in DAT board: ", DAT_nr, " socket", socket_nr
+    			Print "Check placement in DAT board: ", DAT_nr, " socket", Socket_nr
     			Print "Precise measurement set to ", DoMeasure
     			'DO stuff
-    			status = CheckSocketPlacement(DAT_nr, socket_nr, DoMeasure)
+    			status = CheckSocketPlacement(DAT_nr, Socket_nr, DoMeasure)
     			Print #portNr, Str$(status)
     			
     		Case "ReseatChipInSocket"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
-    			Print "Reseat chip in socket: ", DAT_nr, " socket", socket_nr
+    			Input #portNr, Socket_nr
+    			Print "Reseat chip in socket: ", DAT_nr, " socket", Socket_nr
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = ReseatChipInSocket(DAT_nr, socket_nr)
+    			status = ReseatChipInSocket(DAT_nr, Socket_nr)
     			' SPEL "True" is -1, but integration code treets all negative values as errors	
     			If status = -1 Then
     				status = 0
@@ -156,7 +162,7 @@ Function RTS_server
 				If TrayID$ = "" Then
 					Print #portNr, Str$(-1)
 				Else
-					Print #portNr, TrayID$
+					Print #portNr, "TrayID_", TrayID$
 				EndIf
 				
 			Case "ScanTray"
@@ -174,8 +180,10 @@ Function RTS_server
 					EndIf
 				EndIf
 				If str_status$ = TrayID$ Then
-					status = ScanTray(pallet_nr)
-					Print #portNr, status
+					status = ScanTray(pallet_nr, portNr)
+					If status = 0 Then
+						Print #portNr, "FAIL"
+					EndIf
 					Print #portNr, "DONE"
 				EndIf
 
@@ -189,8 +197,8 @@ Function RTS_server
    
   			Case "CheckSocketOccupancy"
     			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
-    			status = SocketPositionOccupied(DAT_nr, socket_nr)
+    			Input #portNr, Socket_nr
+    			status = SocketPositionOccupied(DAT_nr, Socket_nr)
     			Print #portNr, status
 				
      		Case "PickupFromTray"
