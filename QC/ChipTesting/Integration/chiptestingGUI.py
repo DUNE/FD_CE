@@ -4,6 +4,7 @@ from tkinter import ttk, scrolledtext
 import threading
 import io
 import queue
+import builtins
 import os 
 import re # Regular expression module for matching ANSI escape sequences
 import matplotlib
@@ -29,7 +30,6 @@ ANSI_COLOR_MAP = {
     "92": "ansi_bright_green",
     "93": "ansi_bright_yellow",
 }
-
 # Takes usual console output and puts into a queue that this program will display with GUI
 class InputOutput(io.TextIOBase): # Inherits io.TextIOBase so Python treats worker thread output as an object to insert into queue
     def __init__(self, queue, tag = "info"): # Takes in queue as argument and makes variable tag for coloring text during CLI output 
@@ -64,6 +64,13 @@ class ChipTestingGUI(tk.Tk):
         self.geometry('1500x950')
         self.minsize(900 , 950)
 
+        if sys.platform == "win32":
+            self.state("zoomed") # Maximizes the window on Windows
+        else:
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+            self.geometry(f"{screen_width}x{screen_height}+0+0")
+
         self.output_queue = queue.Queue() # Carries print call from worker thread to a queue for CLI output
         self.input_queue = queue.Queue() # Carries any request for user input from worker thread to a queue for CLI output
         self.reply_queue = queue.Queue() # Carries response to user input request from main thread to a queue to send to worker thread
@@ -96,6 +103,7 @@ class ChipTestingGUI(tk.Tk):
         style.configure("TNotebook.Tab", font = base_font, padding = 4) # Sets the font for all label frames to bold_font and adds padding to make them larger
         style.configure("TStringVar", font = base_font, padding = 4)
         self.option_add("*TCombobox*Listbox*Font", base_font) # Sets the font for all combobox listboxes to base_font
+        self.theme_bg_color = ttk.Style().lookup("TFrame", "background") # Gets the background color of the current theme to use for the canvas background
 
 
         # Details of top hotbar
@@ -111,7 +119,7 @@ class ChipTestingGUI(tk.Tk):
 
         self.status = tk.StringVar(value = "Idle")
         ttk.Label(top_hotbar, textvariable = self.status, relief = "sunken", font = ("Helvetica", 15), width = 20).pack(side = "right", padx = 6, pady = 4)
-        ttk.Label(top_hotbar, text = "Status:").pack(side = "right", padx = 4)
+        ttk.Label(top_hotbar, text = "GOO-E Status:").pack(side = "right", padx = 4)
 
         # Creates tabs under hot bar
         tabs = ttk.Notebook(self)
@@ -222,7 +230,7 @@ class ChipTestingGUI(tk.Tk):
 
         ttk.Label(row0, text="Tester Username:").grid(row = 2, column = 0, sticky = "w", pady = 4)
         self.username_variable = tk.StringVar(value = "")
-        ttk.Entry(row0, textvariable = self.username_variable, width = 15).grid(row = 2, column = 1, columnspan = 2, sticky = "w", padx = 4)
+        ttk.Entry(row0, textvariable = self.username_variable, width = 15, font = ("", 15)).grid(row = 2, column = 1, columnspan = 2, sticky = "w", padx = 4)
 
         ttk.Label(row0, text = "Population Mode:").grid(row = 3, column = 0, sticky = "w")
         self.populate_mode = tk.StringVar(value = "f")
@@ -238,31 +246,89 @@ class ChipTestingGUI(tk.Tk):
         
         ttk.Label(pos_row, text = "Tray:").grid(row = 0, column = 0, sticky = "w", pady = 4)
         self.start_tray = tk.StringVar(value = "1")
-        ttk.Combobox(pos_row, textvariable = self.start_tray, values = ["1", "2"], width = 5, state = "readonly").grid(row = 0, column = 1, padx = 12)
+        ttk.Combobox(pos_row, textvariable = self.start_tray, values = ["1", "2"], width = 5, state = "readonly", font = ("", 15)).grid(row = 0, column = 1, padx = 12)
         
         ttk.Label(pos_row, text = "Column:").grid(row = 0, column = 3, sticky = "w", pady = 4)
         self.start_column = tk.StringVar(value = "1")
-        ttk.Combobox(pos_row, textvariable = self.start_column, values = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], width = 5, state = "readonly").grid(row = 0, column = 4, padx = 12)
+        ttk.Combobox(pos_row, textvariable = self.start_column, values = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], width = 5, state = "readonly", font = ("", 15)).grid(row = 0, column = 4, padx = 12)
 
         ttk.Label(pos_row, text = "Row:").grid(row = 0, column = 5, sticky = "w", pady = 4)
         self.start_row = tk.StringVar(value = "1")
-        ttk.Combobox(pos_row, textvariable = self.start_row, values = ["1", "2", "3"], width = 5, state = "readonly").grid(row = 0, column = 6, padx = 12)
+        ttk.Combobox(pos_row, textvariable = self.start_row, values = ["1", "2", "3"], width = 5, state = "readonly", font = ("", 15)).grid(row = 0, column = 6, padx = 12)
 
         ttk.Label(pos_row, text = "DAT:").grid(row = 0, column = 7, sticky = "w", pady = 4)
         self.start_DAT = tk.StringVar(value = "1")
-        ttk.Combobox(pos_row, textvariable = self.start_DAT, values = ["1", "2"], width = 5, state = "readonly").grid(row = 0, column = 8, padx = 12)
+        ttk.Combobox(pos_row, textvariable = self.start_DAT, values = ["1", "2"], width = 5, state = "readonly", font = ("", 15)).grid(row = 0, column = 8, padx = 12)
 
         self.start_pos_frame.pack_forget()
 
-        self.chip_row_frame = ttk.LabelFrame(intro, text = "Manual Chip Data Entry (Use only when in manual population mode)")
-        self.chip_row_frame.pack(fill = "x", padx = 6, pady = 4)
-        
+        self.chip_entry_container = ttk.LabelFrame(intro, text = "Manual Chip Data Entry (Use only when in manual population mode)")
+        self.chip_entry_container.pack(fill = "x", padx = 6, pady = 4)
+        self.chip_entry_container.configure(height = 260)
+        self.chip_entry_container.pack_propagate(False) # Prevents the chip_entry_container from resizing to fit its contents, allowing for a fixed height and enabling scrolling
+
         data_entry_headers = ["#", "Tray", "Column", "Row", "DAT", "DAT Socket", "Delete"]
-        # Creates tuple for each entry in data_entry_headers to create a column for each 
+        chip_column_widths = [40, 150, 150, 150, 150, 150, 70] # Sets the width of each column in the chip_row_frame to match the headers
+
+        self.chip_header_frame = ttk.Frame(self.chip_entry_container)
+        self.chip_header_frame.pack(fill = "x", side = "top")
         for col, header in enumerate(data_entry_headers):
-            ttk.Label(self.chip_row_frame, text = header, font= ("", 15)).grid(row = 0, column = col, padx = 4, pady = 2, sticky = "w")
+            self.chip_header_frame.columnconfigure(col, minsize = chip_column_widths[col]) # Sets the minimum width of each column in the chip_header_frame to match the corresponding value in chip_column_widths
+            ttk.Label(self.chip_header_frame, text = header, font = ("", 15)).grid(row = 0, column = col, padx = 4, pady = 2, sticky = "w")
+        ttk.Frame(self.chip_header_frame, width = 18).grid(row = 0, column = len(data_entry_headers))
+
+        chip_scroll_area = ttk.Frame(self.chip_entry_container) # Creates a frame to hold the canvas and scrollbar for scrolling through chip rows
+        chip_scroll_area.pack(fill = "both", expand = True, side = "top")
+
+        self.chip_row_canvas = tk.Canvas(chip_scroll_area, height = 240, highlightthickness = 0, background = self.theme_bg_color) # Sets the height of the canvas to 240 pixels and removes the border around the canvas
+        chip_row_scrollbar = ttk.Scrollbar(chip_scroll_area, orient = "vertical", command = self.chip_row_canvas.yview) # Creates a vertical scrollbar for the chip_row_canvas and links it to the canvas's yview method for scrolling
+        self.chip_row_canvas.configure(yscrollcommand = chip_row_scrollbar.set)
+
+        self.chip_row_frame = ttk.Frame(self.chip_row_canvas)
+        for col, width in enumerate(chip_column_widths):
+            self.chip_row_frame.columnconfigure(col, minsize = width) # Sets the minimum width of each column in the chip_row_frame to match the corresponding value in chip_column_widths
+        chip_row_window = self.chip_row_canvas.create_window((0, 0), window = self.chip_row_frame, anchor = "nw") # Creates a window inside the chip_row_canvas to hold the chip_row_frame, allowing it to be scrolled within the canvas
+
+        # Configures the scroll region of the canvas to match the size of the chip_row_frame whenever it is resized
+        def update_scrollregion(event = None):
+            self.chip_row_canvas.configure(scrollregion = self.chip_row_canvas.bbox("all"))
+
+        self.chip_row_frame.bind("<Configure>", update_scrollregion)
+        self.chip_row_canvas.bind("<Configure>", lambda event: self.chip_row_canvas.itemconfig(chip_row_window, width = event.width))
+
+        # Enables scrolling with mouse wheel on Windows and Linux
+        def on_mousewheel(event):
+            if self.chip_row_frame.winfo_reqheight() <= self.chip_row_canvas.winfo_height(): # Checks if the content of the chip_row_frame is smaller than the visible area of the chip_row_canvas, in which case scrolling is not needed
+                return
+            if event.num == 4: # Mouse wheel up event on Linux
+                delta = -1
+            elif event.num == 5: # Mouse wheel down event on Linux
+                delta = 1
+            elif sys.platform == "darwin": # Mouse wheel event on macOS
+                delta = int(-1 * event.delta)
+            else: # Mouse wheel event on Windows and Linux
+                delta = int(-1 * (event.delta / 120)) # Adjusts the scroll speed for Windows and Linux
+            self.chip_row_canvas.yview_scroll(delta, "units") # Scrolls the chip_row_canvas vertically by the specified number of units based on the mouse wheel event
+
+        # Binds mouse wheel events to the on_mousewheel function for scrolling
+        def bind_mousewheel(event):
+            self.chip_row_canvas.bind_all("<MouseWheel>", on_mousewheel) #
+            self.chip_row_canvas.bind_all("<Button-4>", on_mousewheel)
+            self.chip_row_canvas.bind_all("<Button-5>", on_mousewheel)
+
+        # Unbinds mouse wheel events when the mouse leaves the chip_row_canvas to prevent scrolling outside of the intended area
+        def unbind_mousewheel(event):
+            self.chip_row_canvas.unbind_all("<MouseWheel>")
+            self.chip_row_canvas.unbind_all("<Button-4>")
+            self.chip_row_canvas.unbind_all("<Button-5>")
         
-        self.chip_row_frame.pack_forget() # Hides chip_row_frame until user selects manual populate mode
+        self.chip_row_canvas.bind("<Enter>", bind_mousewheel) # Binds mouse wheel events to the on_mousewheel function when the mouse enters the chip_row_canvas
+        self.chip_row_canvas.bind("<Leave>", unbind_mousewheel) #  Unbinds mouse wheel events when the mouse leaves the chip_row_canvas
+
+        self.chip_row_canvas.pack(side = "left", fill = "both", expand = True)
+        chip_row_scrollbar.pack(side = "right", fill = "y")
+        
+        self.chip_entry_container.pack_forget() # Hides chip_row_frame until user selects manual populate mode
 
         self.chip_rows = [] # Creates a dictionary to keep track of each chip rows
         self.chip_row_count = 0 # Keeps track of number of rows 
@@ -270,7 +336,7 @@ class ChipTestingGUI(tk.Tk):
         # Creates button to add chip data rows or remove all
         self.row_buttons = ttk.Frame(intro)
         self.row_buttons.pack(fill = "x", padx = 6, pady = 4)
-        ttk.Button(self.row_buttons, text = "+ Add Chip Data", command = self.add_chip_row).pack(side = "left", pady=2)
+        ttk.Button(self.row_buttons, text = "+ Add Chip Data", command = self.add_chip_row).pack(side = "left", pady = 2)
         ttk.Button(self.row_buttons, text = "- Clear All Chip Data", command = self.remove_all_rows).pack(side = "left", pady = 2)
         self.row_buttons.pack_forget() # Hides row_buttons until user selects manual populate mode
     
@@ -279,22 +345,26 @@ class ChipTestingGUI(tk.Tk):
         mode = self.populate_mode.get()
         if mode in ("p", "rp"):
             self.start_pos_frame.pack(fill = "x", padx = 6, pady = 4)
-            self.chip_row_frame.pack_forget()
+            self.chip_entry_container.pack_forget()
             self.row_buttons.pack_forget()
         elif mode == "m":
             self.start_pos_frame.pack_forget()
-            self.chip_row_frame.pack(fill = "x", padx = 6, pady = 4)
-            self.row_buttons.pack(fill = "x", padx = 6, pady = 4)
+            self.chip_entry_container.pack(fill = "both", padx = 6, pady = 4)
+            self.row_buttons.pack(fill = "x", padx= 6, pady = 4)
         else:
             self.start_pos_frame.pack_forget()
-            self.chip_row_frame.pack_forget()
+            self.chip_entry_container.pack_forget()
             self.row_buttons.pack_forget()
             
+    def chip_canvas_at_bottom(self):
+        top, bottom = self.chip_row_canvas.yview() # Gets the current vertical scroll position of the canvas
+        return bottom >= .99
     # Creates function to add chip rows
     def add_chip_row(self):
+        was_at_bottom = self.chip_canvas_at_bottom() # Checks if the canvas is scrolled to the bottom before adding a new row
         current_row_count = self.chip_row_count + 1 # Turns to next available row number
         row_widgets = {} # Initializes dictionary for that will hold widgets for each row 
-        ttk.Label(self.chip_row_frame, text = str(current_row_count)).grid(row = current_row_count, column = 0, padx = 4) # label for row number
+        ttk.Label(self.chip_row_frame, text = str(current_row_count)).grid(row = current_row_count, column = 0, padx = 4, sticky = "w") # label for row number
 
         # Creates six drop down menus for each header
         for column_counter, (key, vals) in enumerate([
@@ -305,8 +375,8 @@ class ChipTestingGUI(tk.Tk):
             ("DAT Socket", ["21", "22"])
         ]):
             v = tk.StringVar(value = vals[0]) # Creates a variable v to hold onto current vals selection
-            cb = ttk.Combobox(self.chip_row_frame, textvariable = v, values = vals, width = 12, state = "readonly") # Creates combo widget and forbids picking values out of list
-            cb.grid(row = current_row_count, column = column_counter + 1, padx = 4, pady = 2) # places combo box in the right cell
+            cb = ttk.Combobox(self.chip_row_frame, textvariable = v, values = vals, width = 12, state = "readonly" , font = ("", 15)) # Creates combo widget and forbids picking values out of list
+            cb.grid(row = current_row_count, column = column_counter + 1, padx = 4, pady = 2, sticky = "w") # places combo box in the right cell
             row_widgets[key] = v # Saves tk.StringVar under its field name in the dictionary (Useful to read value user picked)
 
         def remove(row_idx = current_row_count - 1):
@@ -322,15 +392,21 @@ class ChipTestingGUI(tk.Tk):
             for rd in tmp:
                 self.add_chip_row_from_dict(rd) 
 
-        ttk.Button(self.chip_row_frame, text = "X", width = 2, command = remove).grid(row = current_row_count, column = 6, padx = 4)
+        ttk.Button(self.chip_row_frame, text = "X", width = 2, command = remove).grid(row = current_row_count, column = 6, padx = 4, sticky = "w")
         self.chip_rows.append(row_widgets) 
         self.chip_row_count += 1
+
+        self.chip_row_canvas.update_idletasks()
+        self.chip_row_canvas.configure(scrollregion = self.chip_row_canvas.bbox("all"))
+
+        if was_at_bottom:
+            self.chip_row_canvas.yview_moveto(1.0) # Scrolls to the bottom of the canvas if it was already at the bottom before adding the new row
 
     # Helper method for remove() so that row below deleted row can be moved up
     def add_chip_row_from_dict(self, d):
         self.add_chip_row()
         last = self.chip_rows[-1]
-        for k, v in d.items(): 
+        for k, v in d.items():  # Loops through each key-value pair in the dictionary d (which represents a chip row's data)
             last[k].set(v.get()) # Extracts StringVar() to set in brand new empty chip row
             
     
@@ -367,7 +443,7 @@ class ChipTestingGUI(tk.Tk):
         ]
         self.state_labels = {}
         cols = 3
-        for i, s in enumerate(self.state_names):
+        for i, s in enumerate(self.state_names): # Loops through each state name and creates a label for it in the states_frame
             r, c = divmod(i, cols) # Calculates row and column for each state label based on index and number of columns
             lbl = ttk.Label(states_frame, relief = "groove", text = s, width = 26, font = ("Courier", 20, "normal"), anchor = "center", padding = (6,8))
             lbl.grid(row = r, column = c, padx = 4, pady = 2, sticky = "ew")
@@ -414,20 +490,18 @@ class ChipTestingGUI(tk.Tk):
     
     # Adds response onto CLI coloring based on color tag
     def append_output(self, text, tag = "info"):
-        if not text:
+        if not text: # If text is empty, don't do anything
             return
-        
         self.output.configure(state = "normal") # Allows for text to be written on CLI
-
         pos = 0 # Keeps track of the current position in the text as we iterate through it
         current_tag = tag # Keeps track of the current tag for coloring, which may change based on ANSI escape sequences
 
         for match in ANSI_ESCAPE.finditer(text): # Iterates through all ANSI escape sequences in the text
-            segment = text[pos:match.start()] # Gets the segment of text before the ANSI escape sequence (hi there \x1b[31m red text \x1b[0m back to normal, segment will be " hi there ")
+            segment = text[pos:match.start()] # Gets the segment of text before the ANSI escape sequence (hi there \x1b[31m red text \x1b[0m back to normal, segment will be "hi there")
 
             if segment: # If there is a segment of text before the ANSI escape sequence, insert it into the output with the current tag for coloring
-                lines = segment.split("\n") # Splits the segment into lines to handle newlines properly
-                for i, line in enumerate(lines):
+                lines = segment.split("\n") # Splits the segment into lines to handle multi-line text properly
+                for i, line in enumerate(lines): 
                     if line: # If the line is not empty, insert it into the output with the current tag for coloring
                         self.output.insert("end", line, current_tag)
                     if i < len(lines) - 1:
@@ -456,9 +530,9 @@ class ChipTestingGUI(tk.Tk):
             self.output.see("end")
 
         MAX_LINES = 2000
-        line_count = int(self.output.index('end-1c').split('.')[0])
+        line_count = int(self.output.index('end-1c').split('.')[0]) # Gets the current number of lines in the output by getting the index of the last character and splitting it to get the line number
         if line_count > MAX_LINES:
-            self.output.delete("1.0", f"{line_count - MAX_LINES}.0")
+            self.output.delete("1.0", f"{line_count - MAX_LINES}.0") # Deletes lines from the top of the output to keep the total number of lines below MAX_LINES
             
         self.output.configure(state = "disabled") # Keep console clean/read-only
 
@@ -485,7 +559,7 @@ class ChipTestingGUI(tk.Tk):
         self.pause_frame.pack(padx = 6, pady = 6)
         self.input_frame.pack_forget()
 
-    def run(self):
+    def run(self): 
         # Checks to see if there is already a session in progress, and refuse to start if there is one
         if self.running:
             return
@@ -518,7 +592,6 @@ class ChipTestingGUI(tk.Tk):
     
     # This thread inserts start up questions into queue preloaded, puts stdout and stderr into output queue
     def worker_thread(self, set_up_answers, chip_list, pause_event):
-        import builtins
 
         startup_queue = queue.Queue()
         startup_queue.put(set_up_answers["simulation_mode_answer"]) 
@@ -548,10 +621,10 @@ class ChipTestingGUI(tk.Tk):
 
         provider = GUIInputProvider(self.input_queue, self.reply_queue) # Creates the live GUI input provider
 
-        startup_phase = {"active": True} # Keeps track of whether we are in the startup phase or not, so that we can disable the input box when we are not in the startup phase
-        prompt_counter = {"n": 0}
+        startup_phase = {"active": True} # Keeps track of whether we are in the startup phase or not, so that we can use the preloaded answers in startup_queue before asking the live GUI for input
+        prompt_counter = {"n": 0} # Keeps track of the number of prompts that have been asked, so that we can assign a unique ID to each prompt and match it with the corresponding answer in the reply_queue
 
-        # Answer start up prompts such as "Run in simulation mode", "Bypass RTS?", "Population mode"
+        # Answer start up prompts such as "Run in simulation mode", "Bypass RTS?", "Population mode". Nested function to override built-in input() function to send prompts to GUI and wait for user input
         def gui_input(prompt = ""):
             if startup_phase["active"] and not startup_queue.empty():
                 answer = startup_queue.get()
@@ -561,8 +634,8 @@ class ChipTestingGUI(tk.Tk):
             # Ask live GUI when startup_queue is empty
             prompt_counter["n"] += 1
             request_id = prompt_counter["n"]
-            self.output_queue.put(("prompt", (request_id, prompt)))
-            answer = provider.ask(prompt, request_id) # Calls GUIInputProvider.ask() to put prompt into input_queue and wait for reply_queue to get answer 
+            self.output_queue.put(("prompt", (request_id, prompt))) # Sends to output queue the prompt and request_id so that GUI can display it in the input frame
+            answer = provider.ask(prompt, request_id) # Waits for the user to input an answer in the GUI and returns it
             return answer
 
 
@@ -571,14 +644,14 @@ class ChipTestingGUI(tk.Tk):
         original_stderr = sys.stderr # Saves the functions of the original sys.stderr
 
         builtins.input = gui_input # Reassigns function of input() to gui_input as to have input requests be sent to CLI
-        sys.stdout = InputOutput(self.output_queue, "info") 
+        sys.stdout = InputOutput(self.output_queue, "info")  #
         sys.stderr = InputOutput(self.output_queue, "error") 
 
         # Here we run the actual functions 
-        try:
+        try: 
 
-            overrides = {
-                "report_state_entry": lambda self_sm: self.output_queue.put(("__state__", self_sm.current_state.id)),
+            overrides = { 
+                "report_state_entry": lambda self_sm: self.output_queue.put(("__state__", self_sm.current_state.id)), # Overrides the report_state_entry method of the RTSStateMachine class to send the current state ID to the output queue for display in the GUI
             }
 
             GUIRTSStateMachine = type("GUIRTSStateMachine", (RTSStateMachine,), overrides) # Creates a new class GUIRTSStateMachine that inherits from RTSStateMachine and overrides the on_enter methods to send state information to the output queue
@@ -600,7 +673,7 @@ class ChipTestingGUI(tk.Tk):
                     while True:
                         if pause_event.is_set():
                             pause_event.clear()
-                            self.after(0, self.show_pause_buttons) # Calls the show_pause_buttons method of the main thread to display the pause buttons in the GUI
+                            self.after(0, self.show_pause_buttons) # Schedules the show_pause_buttons method to be called in the main thread to display the pause buttons in the GUI
                             self.output_queue.put(("__paused__", ""))
 
                             sm.pause_cycle() # Calls the pause_cycle method of the state machine to pause the current cycle and wait for user input
@@ -611,7 +684,7 @@ class ChipTestingGUI(tk.Tk):
                                 aborted_to_ground = True
                                 break
 
-                            if sm.current_state.id == "ground":
+                            if sm.current_state.id == "ground": # If the current state is "ground", we can proceed to the next state
                                 break
                             continue
 
@@ -639,7 +712,7 @@ class ChipTestingGUI(tk.Tk):
             self.output_queue.put(("state", "Program ran successfully"))
             self.status.set("Finished")
 
-        except SystemExit:
+        except SystemExit: # Catches the SystemExit exception that is raised when sys.exit() is called in RTSStateMachine.py and sends a message to the output queue indicating that the program has exited
             self.output_queue.put(("info", "RTSStateMachine.py called sys.exit()"))
             self.status.set("RTS Quit")
 
@@ -655,7 +728,8 @@ class ChipTestingGUI(tk.Tk):
             sys.stdout = original_stdout
             sys.stderr = original_stderr
             self.output_queue.put(("__done__", ""))        
-    # Main thread
+
+    # Polls the output queue for any new messages from the worker thread and displays them in the CLI
     def poll(self):
         # Checks output queue for any new messages from worker thread and displays them in CLI
         try:
@@ -692,7 +766,7 @@ class ChipTestingGUI(tk.Tk):
 
 
 # Starts this program
-if __name__ == "__main__":
+if __name__ == "__main__": 
     app = ChipTestingGUI()
     app.mainloop()
 
