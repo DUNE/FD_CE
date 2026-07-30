@@ -104,6 +104,10 @@ class RTSStateMachine(StateMachine):
         self.user_name = input("Enter Tester Username: ").strip().lower()
         self.WriteUserToConfig(self.user_name, self.config_file)
         self.rts_loc = "FNAL"
+        self.report_basic_info({
+            "tester": self.user_name,
+            "test_site": self.rts_loc
+        })
         
         self.retest = False
         while True:
@@ -125,6 +129,10 @@ class RTSStateMachine(StateMachine):
                 self.populate_partial_retest_tray()
                 self.retest = True
                 break
+
+        self.report_basic_info({
+            "total_chips": len(self.chip_positions['label']), # Total number of chips to be processed
+        })
         
     # State definitions
     ground = State("Ground", initial=True)
@@ -257,8 +265,15 @@ class RTSStateMachine(StateMachine):
         | safe_guard.to(ground)
         | no_server_connection.to(ground)
     )
-
+     
+     # State entry and exit reporting methods
     def report_state_entry(self):
+        pass
+    # Hook that is called when a process is completed and the state machine is ready to move to the next state
+    def report_test_result(self):
+        pass
+    # Hook that is called when a piece of basic testing information is known
+    def report_basic_info(self, info):
         pass
 
     def on_enter_ground(self):
@@ -291,6 +306,16 @@ class RTSStateMachine(StateMachine):
         else: # only move one chip for retesting, keeping good chip in the socket
             chip_data = {key: [self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
+        positions_info = {}
+        for i in range(len(chip_data['col'])):
+            label = chip_data['label'][i]
+            if label in ("CD0", "CD1"):
+                pos_key = "cd0_pos" if label == "CD0" else "cd1_pos"
+                positions_info[pos_key] = f"Tray {chip_data['tray'][i]}, Col {chip_data['col'][i]}, Row {chip_data['row'][i]}"
+        self.report_basic_info(positions_info)
+        self.report_basic_info({
+            "retest": self.retest
+        })
         if not self.BypassRTS:
             try:
                 MoveChipsToSockets(self.rts, chip_data)
@@ -319,7 +344,7 @@ class RTSStateMachine(StateMachine):
                 # Check the RobotLog to see if the chip pictures are ready before running OCR
                 print('Waiting for chip pictures...')
                 if self.retest and self.current_chip_index > 0: # only grab info for chip to be retested
-                    chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
+                    chip_data = {key: [self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
                 else:
                     chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
                                     self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
@@ -329,16 +354,21 @@ class RTSStateMachine(StateMachine):
                     print('Pictures ready! Running OCR...')
                     
                     for i in range(len(pictures)):
-                        success = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir,
-                                        True, chip_data['label'][i])
+                        success, serial_number = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir, True, chip_data['label'][i])
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
+                        if chip_data["label"][i] in ("CD0", "CD1"):
+                            photo_key = "chip0_photo" if chip_data["label"][i] == "CD0" else "chip1_photo"
+                            self.report_basic_info({photo_key: os.path.join(self.image_directory, pictures[i])})
+                            sn_key = "cd0_sn" if chip_data["label"][i] == "CD0" else "cd1_sn"
+                            self.report_basic_info({sn_key: serial_number if serial_number else "Unknown"})
 
                     if self.retest and self.current_chip_index == 0: 
                         self.retest_good_chip_image = pictures[0] # Save good chip info if this is the first test in retest tray
                     elif self.retest and self.current_chip_index > 0:
                         # Rerun OCR for good chip info since no picture was retaken
-                        success = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
+                        success, serial_number = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
+                        self.report_basic_info({"cd0_sn": serial_number if serial_number else "Unknown"})
                    
                     # Kill Ollama used by OCR
                     result_ollama = subprocess.run(
@@ -375,17 +405,32 @@ class RTSStateMachine(StateMachine):
             time.sleep(5)
             print("Would have called RunCOLDATA_QC(duttype='CD', env='RT', rootdir='C:/Users/RTS/Tested/')")
             time.sleep(5)
+            self.report_basic_info({
+                    "duttype": "CD",
+                    "env": "RT",
+                    "test_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "chips_to_test" : len(self.chip_positions['col']) - self.current_chip_index
+
+                })
         else:
             print("Running COLDATA QC tests...")
             try:
                 self.logs, self.cd_qc_ana = RunCOLDATA_QC(
                     duttype="CD", 
                     env="RT", 
-                    rootdir="C:/Users/ppd-cap-WD-137552/Tested/"
+                    rootdir="/Users/ppd-cap-WD-137552/Tested/",
+                    qc_callback = self.report_test_result
                     # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
                 )
-                print("COLDATA QC tests completed successfully")
+                self.report_basic_info({
+                    "duttype": "CD",
+                    "env": "RT",
+                    "test_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "chips_to_test" : len(self.chip_positions['col']) - self.current_chip_index
 
+                })
+                print("COLDATA QC tests completed successfully")
+                
             except Exception as e:
                 print(f"FAIL: COLDATA QC tests failed to complete with error: {e}.")
                 self.current_chip_status = "Bad"
@@ -401,14 +446,18 @@ class RTSStateMachine(StateMachine):
             time.sleep(5)
             print("Would have called BurninSN() with logs and cd_qc_ana from testing phase")
             time.sleep(5)
+            self.report_test_result("Serial Number Burn-in", "fail", None, None)
         elif self.current_chip_status == "Bad":
             print("QC tests failed for unknown reason, skipping burning serial number...")
+            self.report_test_result("Serial Number Burn-in", "fail")
         else:
             if self.sn_ready: #set to false to skip burning serial number while OCR has issues
+                self.report_test_result("Serial Number Burn-in", "running")
                 try:
                     print("Burning serial number into chip...")
-                    BurninSN(self.logs, self.cd_qc_ana)
+                    BurninSN(self.logs, self.cd_qc_ana, qc_callback = self.report_test_result)
                     print("Serial number burn-in completed successfully")
+                    self.report_test_result("Serial Number Burn-in", "pass")
 
                     print("Updating hwdb files with final test results...")
                     test_dir = self.logs['hwdb_dir']
@@ -417,14 +466,17 @@ class RTSStateMachine(StateMachine):
 
                     chip0_pass = PassFailCOLDATA(cd_0_file)
                     WriteChipPassFail(chip0_pass, cd_0_file, "CD0")
-
+                    self.report_test_result("CD0 Pass/Fail (HWDB)", "pass" if chip0_pass else "fail", file_path = cd_0_file, file_type = "text")
                     chip1_pass = PassFailCOLDATA(cd_1_file)
                     WriteChipPassFail(chip1_pass, cd_1_file, "CD1")
+                    self.report_test_result("CD Pass/Fail (HWDB)", "pass" if chip1_pass else "fail", file_path = cd_1_file, file_type = "text")
 
                 except Exception as e:
                     print(f"Error during serial number burn-in: {e}")
+                    self.report_test_result("Serial Number Burn-in", "fail")
             else:
                 print("OCR failed, skipping serial number burn-in")
+                self.report_test_result("Serial Number Burn-in", "fail")
 
     def on_enter_writing_to_hwdb(self):
         print("Writing test results to HWDB")
@@ -437,6 +489,7 @@ class RTSStateMachine(StateMachine):
             time.sleep(5)
 
         if self.upload_to_hwdb: 
+            self.report_test_result("HWDB Upload", "running")
             try:
                 setup_hwdb = subprocess.run(["wsl", "bash", "-l", "-c", "source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh"])
                 print(setup_hwdb.stdout)
@@ -457,9 +510,11 @@ class RTSStateMachine(StateMachine):
                 # Upload to hwdb
                 upload_result = subprocess.run([f"python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py {self.user_name} {test_dir} {self.rts_loc}"], capture_output=True, text=True, check=True)
                 print(upload_result.stdout)
+                self.report_test_result("HWDB Upload", "pass")
 
             except Exception as e:
                 print(f"ERROR: Failed uploading to HWDB: {e}")
+                self.report_test_result("HWDB Upload", "fail")
 
         else:
             print("Skipping upload to HWDB.")
@@ -485,7 +540,6 @@ class RTSStateMachine(StateMachine):
         else:
             for i in range(len(chip_data['label'])):
                 print(f"Would have moved chip: {chip_data['label'][i]} from DAT {chip_data['dat'][i]} socket {chip_data['dat_socket'][i]} to tray {chip_data['tray'][i]}, position ({chip_data['col'][i]}, {chip_data['row'][i]}).")
-
 
     def on_enter_pause(self):
         print("System paused - awaiting resume command")
@@ -738,7 +792,7 @@ class RTSStateMachine(StateMachine):
             "MoveChipFromTrayToSocket": self.moving_chip_to_socket,
             "Jumped to DAT": self.testing,
             "testing": self.testing,
-            # "burning_serial_number": self.burning_serial_number,
+            "burning_serial_number": self.burning_serial_number,
             "writing_to_hwdb": self.writing_to_hwdb,
             "moving_chip_to_tray": self.moving_chip_to_tray,
             "Picked up chip from tray": self.moving_chip_to_socket,

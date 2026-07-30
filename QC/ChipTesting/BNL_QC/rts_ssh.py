@@ -5,6 +5,8 @@ import datetime
 import filecmp
 import pickle
 import os
+import glob2
+import re
 from .DAT_read_cfg import dat_read_cfg
 from .DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
@@ -14,6 +16,12 @@ just_fix_windows_console()
 
 wibip = "192.168.121.123"
 wibhost = "root@{}".format(wibip)
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+# Strips away ANSI color codes and their whitespaces to use for the name in the QC checklist widgets
+def clean_test_name(raw):
+    return ANSI_ESCAPE_RE.sub("", raw).strip()
 
 def subrun(command, timeout = 30, check=True, exitflg = True):
     try:
@@ -89,7 +97,7 @@ def Sinkcover():
         else:
             print ("Please close the covers and continue...")
 
-def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True, config_path = "./asic_info.csv"):
+def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True, config_path = "./asic_info.csv", qc_callback = None):
 
     QC_TST_EN =  True 
     print('Running rts_ssh')
@@ -409,7 +417,15 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                 for test in cd_qc_ana.qc_stats:    
                     cd_qc_ana.WriteToHWDBLog(test, cd_qc_ana.qc_stats[test], fddir, hwdb_file_name="hwdb_CD0.txt")
                     cd_qc_ana.WriteToHWDBLog(test, cd_qc_ana.qc_stats[test], fddir, hwdb_file_name="hwdb_CD1.txt")
-
+                
+                # Reports test items pass/fail to the GUI's QC checklist widget. Attaches whichever plot dat_cd_qc_ana() generated in fddir, if any
+                if qc_callback is not None:
+                    item_stats = cd_qc_ana.qc_stats
+                    item_pass = all("PASS" in str(v) for v in item_stats.values()) if item_stats else True
+                    plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
+                    plot_path = plot_matches[-1] if plot_matches else None
+                    qc_callback(clean_test_name(tms_items[testid]), "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None)
+                
                 keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
                 for onekey in keys:

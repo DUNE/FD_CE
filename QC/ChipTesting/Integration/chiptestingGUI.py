@@ -7,6 +7,8 @@ import queue
 import builtins
 import os 
 import re # Regular expression module for matching ANSI escape sequences
+import subprocess # Module for opening files externally (e.g., with the default system application)
+from PIL import Image, ImageTk
 import matplotlib
 matplotlib.use("Agg") # Use the Agg backend for matplotlib to avoid GUI issues in headless environments
 
@@ -15,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..')) # Makes Chi
 from ChipTesting.Integration.RTSStateMachine import RTSStateMachine
 
 ANSI_ESCAPE = re.compile(r'(?:\x1b|\033)\[([0-9;]*)m') # Regular expression to match ANSI escape sequences for text formatting (like colors) in terminal output
+
 ANSI_COLOR_MAP = {
     "31": "ansi_red",
     "32": "ansi_green",
@@ -29,6 +32,30 @@ ANSI_COLOR_MAP = {
     "91": "ansi_bright_red",
     "92": "ansi_bright_green",
     "93": "ansi_bright_yellow",
+}
+
+QC_STATUS_COLORS = {
+    "running": "#f0ad4e", # Orange
+    "pending": "#999999", # Gray
+    "pass": "#2ecc71", # Green
+    "success": "#2ecc71", # Green same as pass but to differentiate
+    "fail": "#e74c3c" # Red
+}
+
+QC_STATUS_TEXT_COLORS = {
+    "running": "#000000",
+    "pending": "#000000",
+    "pass": "#000000",
+    "success": "#000000",
+    "fail": "#ffffff"
+}
+
+QC_STATUS_LABELS = {
+    "running": "RUNNING",
+    "pending": "PENDING",
+    "pass": "PASS",
+    "success": "PASS",
+    "fail": "FAIL"
 }
 # Takes usual console output and puts into a queue that this program will display with GUI
 class InputOutput(io.TextIOBase): # Inherits io.TextIOBase so Python treats worker thread output as an object to insert into queue
@@ -55,6 +82,7 @@ class GUIInputProvider:
             reply_id, answer = self.reply_prompt.get() # Blocks until user responds with GUI input and returns the answer to the worker thread
             if request_id is None or reply_id == request_id:
                 return answer
+
 # Actual GUI for the program
 class ChipTestingGUI(tk.Tk):
     # Sets initial window parameters
@@ -124,25 +152,201 @@ class ChipTestingGUI(tk.Tk):
         # Creates tabs under hot bar
         tabs = ttk.Notebook(self)
         tabs.pack(fill = "both", expand = True, padx = 6, pady = 4)
-        tabs.bind("<<NotebookTabChanged>>", lambda e: self.update_idletasks()) # Forces GUI to update when switching tabs to prevent lag
+        tabs.bind("<<NotebookTabChanged>>", lambda event: self.update_idletasks()) # Forces GUI to update when switching tabs to prevent lag
 
         self.results_tab = ttk.Frame(tabs)
+        self.live_output_tab = ttk.Frame(tabs)
         self.set_up_tab = ttk.Frame(tabs)
         self.state_tab = ttk.Frame(tabs)
 
         tabs.add(self.results_tab, text = "Results")
+        tabs.add(self.live_output_tab, text = "Live Output")
         tabs.add(self.set_up_tab, text = "Set Up")
         tabs.add(self.state_tab, text = "State")
 
         self.build_results_tab()
+        self.build_live_output_tab()
         self.build_set_up_tab()
         self.build_state_tab()
+    
+    def build_results_tab(self):
+        self.results_tab.columnconfigure(0, weight = 1, uniform = "results_col")
+        self.results_tab.columnconfigure(1, weight = 2, uniform = "results_col")
+        self.results_tab.rowconfigure(0, weight = 1)
+
+        self.basic_test_information = ttk.LabelFrame(self.results_tab, text = "Basic Test Information")
+        self.basic_test_information.grid(column = 0, row = 0, sticky = "nsew", padx = 6, pady = 4)
+
+        self.quality_control_task_list = ttk.LabelFrame(self.results_tab, text = "Quality Control Task List")
+        self.quality_control_task_list.grid(column = 1, row  = 0, sticky = "nsew", padx = 6, pady = 4)
+
+        self.populate_basic_test_information_frame()
+        self.build_quality_control_task_list()
+
+    def build_quality_control_task_list(self):
+        parent = self.quality_control_task_list
+
+        qc_scroll_area = ttk.Frame(parent)
+        qc_scroll_area.pack(fill = "both", expand = True, padx = 4, pady = 4)
+
+        self.qc_canvas = tk.Canvas(qc_scroll_area, highlightthickness = 0, background = self.theme_bg_color)
+        
+        qc_scrollbar = ttk.Scrollbar(qc_scroll_area, orient = "vertical", command = self.qc_canvas.yview)
+        self.qc_canvas.configure(yscrollcommand = qc_scrollbar.set)
+        
+        self.qc_list_frame = ttk.Frame(self.qc_canvas)
+        qc_window = self.qc_canvas.create_window((0, 0), window = self.qc_list_frame, anchor = "nw")
+
+        def update_qc_scroll_region(event = None):
+            self.qc_canvas.configure(scrollregion = self.qc_canvas.bbox("all"))
+        
+        self.qc_list_frame.bind("<Configure>", update_qc_scroll_region)
+        self.qc_canvas.bind("<Configure>", lambda event: self.qc_canvas.itemconfig(qc_window, width = event.width))
+
+        def on_qc_mousewheel(event):
+            if self.qc_list_frame.winfo_reqheight() <= self.qc_canvas.winfo_height():
+                return
+            if event.num == 4:
+                delta = -1
+            elif event.num == 5:
+                delta = 1
+            elif sys.platform == "darwin":
+                delta = int(-1 * event.delta)
+            else:
+                delta = int(-1 * (event.delta / 120))
+            self.qc_canvas.yview_scroll(delta, "units")
+
+        def bind_qc_mousewheel(event):
+            self.qc_canvas.bind_all("<MouseWheel>", on_qc_mousewheel)
+            self.qc_canvas.bind_all("<Button-4>", on_qc_mousewheel)
+            self.qc_canvas.bind_all("<Button-5>", on_qc_mousewheel)
+        def unbind_qc_mousewheel(event):
+            self.qc_canvas.unbind_all("<MouseWheel>")
+            self.qc_canvas.unbind_all("<Button-4>")
+            self.qc_canvas.unbind_all("<Button-5>")
+
+        self.qc_canvas.bind("<Enter>", bind_qc_mousewheel)
+        self.qc_canvas.bind("<Leave>", unbind_qc_mousewheel)
+
+        self.qc_canvas.pack(side = "left", fill = "both", expand = True)
+        qc_scrollbar.pack(side = "right", fill = "y")
+
+        self.qc_widgets = {}
+
+    def show_or_update_qc_result(self, name, status, file_path = None, file_type = None):
+        status_key = str(status).lower().strip()
+        color = QC_STATUS_COLORS.get(status_key, "#999999")
+        text_color = QC_STATUS_TEXT_COLORS.get(status_key, "#000000")
+
+        if name in self.qc_widgets:
+            widgets = self.qc_widgets[name]
+            widgets["indicator"].config(background = color, foreground = text_color)
+        else:
+            row = ttk.Frame(self.qc_list_frame)
+            row.pack(fill = "x", padx = 4, pady = 3)
+
+            indicator = tk.Label(row, text = name, background = color, foreground = text_color, font = ("", 15), anchor = "w", padx = 12, pady = 0, relief = "ridge")
+            indicator.pack(side = "left", fill = "both", expand  = "True")
+
+            more_button = ttk.Button(row, text = "•••", width = 3)
+            more_button.pack(side = "right", padx = 4)
+
+            widgets = {"row_frame": row, "indicator": indicator, "more_button": more_button}
+            self.qc_widgets[name] = widgets
+
+        # Configure the "more" button to open the associated file if a file path is provided
+        more_button = widgets["more_button"]
+        if file_path:
+            more_label = "View Plot" if file_type == "plot" else "View Text File"
+            more = tk.Menu(more_button, tearoff = 0) # Creates a menu for the "more" button with options to view the associated file
+            more.add_command(label = more_label, command = lambda p = file_path, t = file_type: self.open_result_file(p, t))
+            def show_menu(event = None, m = more_button, b = more_button):
+                more.tk_popup(b.winfo_rootx(), b.winfo_rooty() + b.winfo_height())
+            more_button.configure(state = "normal", command = show_menu)
+        else:
+            more_button.configure(state = "disabled", command = lambda: None)
+
+    def open_result_file(self, file_path, file_type = None):
+        if not file_path:
+            self.append_output("No file path provided for viewing.\n", tag = "info")
+            return
+        if not os.path.exists(file_path):
+            self.append_output(f"File not found: {file_path}\n", tag = "error")
+            return
+        if file_type == "plot":
+            self.show_plot_popup(file_path)
+        else:
+            self.open_file_externally(file_path)
+
+    def show_plot_popup(self, file_path):
+        if not file_path:
+            self.append_output("No file path provided for viewing.\n", tag = "info")
+            return
+        if not os.path.exists(file_path):
+            self.append_output(f"File not found: {file_path}\n", tag = "error")
+            return
+        try:
+            image = Image.open(file_path)
+        except Exception as e:
+            self.append_output(f"Failed to open plot: {file_path}. Error: {e}\n", tag = "error")
+
+    def open_file_externally(self, file_path):
+        if not file_path:
+            self.append_output("No file path provided for opening.\n", tag = "info")
+            return
+        if not os.path.exists(file_path):
+            self.append_output(f"File not found: {file_path}\n", tag = "error")
+            return
+        try:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", file_path])
+            else:
+                subprocess.Popen(["xdg-open", file_path])
+        except Exception as e:
+            self.append_output(f"Failed to open file: {file_path}. Error: {e}\n", tag = "error")
+
+    def show_error_popup(self, message):
+        popup = tk.Toplevel(self)
+        popup.title("Error")
+        popup.geometry("560x320")
+        popup.transient(self) # Makes the popup window stay on top of the main window
+
+        text = scrolledtext.ScrolledText(popup, wrap = "word", font = ("Courier", 15), bg = "white", fg = "black")
+        text.pack(fill = "both", expand = True, padx = 8, pady = 8)
+        text.insert("1.0", message)
+        text.configure(state = "disabled") # Makes the text area read-only
+
+        ttk.Button(popup, text = "OK", command = popup.destroy).pack(pady = 8)
+        popup.lift() # Brings the popup window to the front
+        popup.focus_force() # Forces focus to the popup window
+    
+    def clear_qc_results(self):
+        for widgets in self.qc_widgets.values():
+            widgets["row_frame"].destroy()
+        self.qc_widgets = {}
+        for var in self.basic_info_vars.values():
+            var.set("-")
+        for label in self.chip_photo_paths:
+            self.update_chip_photo(label, None)
+
+    PER_CHIP_BASIC_INFO_KEYS = ("test_time","cd0_sn", "cd1_sn", "cd0_pos", "cd1_pos")
+    def clear_per_chip_results(self):
+        for widgets in self.qc_widgets.values():
+            widgets["row_frame"].destroy()
+        self.qc_widgets = {}
+        for key in self.PER_CHIP_BASIC_INFO_KEYS:
+            if key in self.basic_info_vars:
+                self.basic_info_vars[key].set("-")
+        for label in self.chip_photo_paths:
+            self.update_chip_photo(label, None)
 
     # Results tab
-    def build_results_tab(self):
-        intro = self.results_tab
+    def build_live_output_tab(self):
+        intro = self.live_output_tab
         
-        out_frame = ttk.LabelFrame(intro, text = "Live CLI Output")
+        out_frame = ttk.LabelFrame(intro, text = "Line-by-line Output and Responses")
         out_frame.pack(fill = "both", expand = True, padx= 6, pady = 2)
 
         # Creates console on right-hand side of GUI
@@ -312,7 +516,7 @@ class ChipTestingGUI(tk.Tk):
 
         # Binds mouse wheel events to the on_mousewheel function for scrolling
         def bind_mousewheel(event):
-            self.chip_row_canvas.bind_all("<MouseWheel>", on_mousewheel) #
+            self.chip_row_canvas.bind_all("<MouseWheel>", on_mousewheel)
             self.chip_row_canvas.bind_all("<Button-4>", on_mousewheel)
             self.chip_row_canvas.bind_all("<Button-5>", on_mousewheel)
 
@@ -536,6 +740,75 @@ class ChipTestingGUI(tk.Tk):
             
         self.output.configure(state = "disabled") # Keep console clean/read-only
 
+    def populate_basic_test_information_frame(self):
+
+        basic_info_fields = [
+            ("tester", "Tester: "),
+            ("test_site", "Test Site: "),
+            ("test_time", "Test Time: "),
+            ("retest", "Retest: "),
+            ("env", "Enviornment: "),
+            ("dat_sn", "DUNE ASIC Test Board Serial Number: "),
+            ("dat_WIB_slot", "DAT on WIB Slot:"),
+            ("duttype", "DUT: "),
+            ("cd0_sn", "COLDATA 0 Serial Number: "),
+            ("cd1_sn", "COLDATA 1 Serial Number: "),
+            ("cd0_pos", "COLDATA 0 Position: "),
+            ("cd1_pos", "COLDATA 1 Position: "),
+            ("total_chips", "Total Chips to test: "),
+            ("chips_to_test", "Chips left to test: ")
+        ]
+
+        self.basic_info_vars = {}
+        for r, (field_name, label_text) in enumerate(basic_info_fields):
+            ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
+            var = tk.StringVar(value = "-")
+            self.basic_info_vars[field_name] = var
+            ttk.Label(self.basic_test_information, textvariable = var, font = ("", 15)).grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
+        
+        photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
+        photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
+
+        self.chip_photo_paths = {"CD0": None, "CD1": None}
+        self.chip_photo_buttons = {}
+        for label in ("CD0", "CD1"):
+            row = ttk.Frame(photo_frame)
+            row.pack(side = "left", padx = 8, pady = 4)
+            ttk.Label(row, text = f"{label} Photo:", font = ("", 15)).pack(side = "left")
+            photo_button = ttk.Label(row, text = "No photo yet", font = ("", 15))
+            photo_button.pack(side = "left", padx = 4)
+            self.chip_photo_buttons[label] = photo_button
+
+    def update_basic_info(self, info):
+        for key, value in info.items():
+            if key in self.basic_info_vars:
+                self.basic_info_vars[key].set(str(value))
+            elif key in ("chip0_photo","chip1_photo"):
+                cd_name = "CD0" if key == "chip0_photo" else "CD1"
+                self.update_chip_photo(cd_name, value)
+    
+    def update_chip_photo(self, cd_name, photo_path):
+            if cd_name not in self.chip_photo_paths:
+                print(f"Warning: CD name '{cd_name}' not found in chip_photo_paths.")
+                return
+            self.chip_photo_paths[cd_name] = photo_path
+            label_widget = self.chip_photo_buttons[cd_name]
+
+            if not photo_path or not os.path.exists(photo_path):
+                label_widget.configure(text = "No photo yet")
+                label_widget.image = None
+                return
+            try:
+                img = Image.open(photo_path)
+                img.thumbnail((220, 220), Image.LANCZOS) # Resize image to fit within 220x220 while maintaining aspect ratio
+                tk_img = ImageTk.PhotoImage(img)
+                label_widget.image = tk_img
+                label_widget.configure(image = tk_img, text = "")
+            except Exception as e:
+                print(f"Error loading image from {photo_path}: {e}")
+                label_widget.configure(text = "Error loading photo", image = "")
+                label_widget.image = None
+
     # Highlights the current state in the state tab
     def highlight_state(self, state_name):
         for name, lbl in self.state_labels.items():
@@ -569,6 +842,7 @@ class ChipTestingGUI(tk.Tk):
         self.status.set("Running")
         self.run_button.configure(state = "disabled")
         self.pause_button.configure(state = "normal")
+        self.clear_qc_results()
 
         set_up_answers = {
             "simulation_mode_answer": self.simulation_variable.get(),
@@ -652,6 +926,8 @@ class ChipTestingGUI(tk.Tk):
 
             overrides = { 
                 "report_state_entry": lambda self_sm: self.output_queue.put(("__state__", self_sm.current_state.id)), # Overrides the report_state_entry method of the RTSStateMachine class to send the current state ID to the output queue for display in the GUI
+                "report_test_result": lambda self_sm, name, status, file_path = None, file_type = None: self.output_queue.put(("qc_result", (name, status, file_path, file_type))), # Overrides the report_test_result method of the RTSStateMachine class to send the test result information to the output queue for display in the GUI
+                "report_basic_info": lambda self_sm, info: self.output_queue.put(("basic_info", info)) # Overrides the report_basic_info method of the RTSStateMachine class to send the basic test information to the output queue for display in the GUI
             }
 
             GUIRTSStateMachine = type("GUIRTSStateMachine", (RTSStateMachine,), overrides) # Creates a new class GUIRTSStateMachine that inherits from RTSStateMachine and overrides the on_enter methods to send state information to the output queue
@@ -667,6 +943,7 @@ class ChipTestingGUI(tk.Tk):
             else:
                 for i in range(num_full_cycles):
                     print(f"\n--- Processing chip ({i*2+1}&{i*2+2})/{num_chips} ---")
+                    self.output_queue.put(("__clear_qc__", ""))
                     
                     aborted_to_ground = False
 
@@ -717,9 +994,11 @@ class ChipTestingGUI(tk.Tk):
             self.status.set("RTS Quit")
 
         except Exception as exc:
-            self.output_queue.put(("error", f"Exception: {type(exc).__name__}: {exc}")) # Sends to output queue what type of error and name of error recieved
             import traceback
-            self.output_queue.put(("error", traceback.format_exc())) # Sends to output queue where error occured for troubleshooting
+            tb_text = traceback.format_exc()
+            self.output_queue.put(("error", f"Exception: {type(exc).__name__}: {exc}")) # Sends to output queue what type of error and name of error recieved
+            self.output_queue.put(("error", tb_text)) # Sends to output queue the traceback of the error for troubleshooting
+            self.output_queue.put(("__exception__", f"{type(exc).__name__}: {exc}\n\n{tb_text}")) # Sends to output queue where error occured for troubleshooting
             self.status.set("Error")
 
         # Ensures that original input(), sys.stdout, and sys.stderr are restored as to prevent those calls being written to a dead queue
@@ -757,6 +1036,15 @@ class ChipTestingGUI(tk.Tk):
                 self.current_prompt_id = request_id
                 self.append_output(f"{prompt_text}\n", "prompt")
                 self.set_input_active(True, prompt_text)
+            elif tag == "basic_info":
+                self.update_basic_info(text)
+            elif tag == "qc_result":
+                name, status, file_path, file_type = text
+                self.show_or_update_qc_result(name, status, file_path, file_type)
+            elif tag == "__clear_qc__":
+                self.clear_per_chip_results()
+            elif tag == "__exception__":
+                self.show_error_popup(text)
             else:
                 self.append_output(text, tag)
         except queue.Empty:

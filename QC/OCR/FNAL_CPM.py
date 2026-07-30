@@ -382,6 +382,8 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     """
     print("Running OCR...")
     success = False
+    serial_number  = None
+    wafer_id = None
     # Extract image_number from the filename (assuming it's before the first '_')
     image_number = image_file.split('_')[0]
     
@@ -412,7 +414,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     if to_rts_config:
         WriteToRTSConfig(chipinfo_file, config_file, socket_label)
 
-    return success
+    return success, serial_number
 
 def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
     """

@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 import os
 import datetime
+import glob2 # Used to find the plot file a QC test item generates
 from colorama import just_fix_windows_console
 just_fix_windows_console()
 from ChipTesting.BNL_QC.DAT_chk_cfgfile import dat_chk_cfgfile_auto
@@ -36,7 +37,7 @@ from ChipTesting.BNL_QC.rts_ssh import DAT_power_off
 #Black = '\033[90m'
 #Default = '\033[99m'
 
-def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burnin_now=True):
+def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burnin_now=True, qc_callback = None):
     """
     Runs rts_ssh and returns the results successful.
     Inputs:
@@ -51,7 +52,7 @@ def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burn
         logs [dict]: dictionary holding QC test information
     """
     print('Running DAT QC')
-    QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_in_tests, burnin_now=burnin_now, auto=True, config_path="/Users/ppd-cap-WD-137552/FD_CE/QC/ChipTesting/asic_info.csv")
+    QCresult = rts_ssh(dut_skt, root=rootdir, duttype=duttype, env=env, burnin_in_tests=burnin_in_tests, burnin_now=burnin_now, auto=True, config_path="/Users/ppd-cap-WD-137552/FD_CE/QC/ChipTesting/asic_info.csv", qc_callback = qc_callback)
     if QCresult != None:
         QCstatus = QCresult[0]
         badchips = QCresult[1] #badchips range from 0 to7
@@ -63,7 +64,7 @@ def DAT_QC(rootdir, dut_skt, duttype="FE",  env="RT", burnin_in_tests=True, burn
 
     return QCstatus, badchips, logs, cd_qc_ana 
 
-def BurninSN(logs, cd_qc_ana):
+def BurninSN(logs, cd_qc_ana, qc_callback = None):
     """
     Burns in the serial number of a COLDATA chip.
     Input: logs [dict]: dictionary holding QC test information
@@ -133,8 +134,17 @@ def BurninSN(logs, cd_qc_ana):
 
     # Check output from test
     #cd_qc_ana = CD_QC_ANA()
+    cd_qc_ana.qc_stats = {}
     cd_qc_ana.dat_cd_qc_ana(fdir=logs['pc_raw_dir'], tms=[testid])
 
+    if qc_callback is not None:
+        item_stats = cd_qc_ana.qc_stats
+        item_pass = all("PASS" in  str(v) for v in item_stats.values()) if item_stats else True
+        plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
+        plot_path = plot_matches[-1] if plot_matches else None
+        qc_callback("7: COLDATA EFUSE burn-in", "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None)
+
+    
     # Turn the DAT board off
     testid = 9
     command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
@@ -142,7 +152,7 @@ def BurninSN(logs, cd_qc_ana):
 
     return
 
-def RunCOLDATA_QC(duttype, env, rootdir, pc_wrcfg_fn="./asic_info.csv"):
+def RunCOLDATA_QC(duttype, env, rootdir, pc_wrcfg_fn="./asic_info.csv", qc_callback = None):
     """
     Runs the QC tests for COLDATA (without burnin) such that no user
     input is required. The config file must be up to date prior to 
@@ -188,7 +198,7 @@ def RunCOLDATA_QC(duttype, env, rootdir, pc_wrcfg_fn="./asic_info.csv"):
 
     ################STEP1#################################
     dut_skt = {str(dut0):(0,1), str(dut0+1):(0,2), str(dut0+2):(0,3), str(dut0+3):(0,4), str(dut0+4):(0,5), str(dut0+5):(0,6), str(dut0+6):(0,7), str(dut0+7):(0,8) }
-    QCstatus, badchips, logs, cd_qc_ana = DAT_QC(rootdir, dut_skt, duttype, env, burnin_in_tests=True, burnin_now=False) 
+    QCstatus, badchips, logs, cd_qc_ana = DAT_QC(rootdir, dut_skt, duttype, env, burnin_in_tests=True, burnin_now=False, qc_callback = qc_callback) 
 
     if "PASS" in QCstatus :
         print(QCstatus)
