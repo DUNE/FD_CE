@@ -964,7 +964,7 @@ class ChipTestingGUI(tk.Tk):
 
             overrides = { 
                 "report_state_entry": lambda self_sm: self.output_queue.put(("__state__", self_sm.current_state.id)), # Overrides the report_state_entry method of the RTSStateMachine class to send the current state ID to the output queue for display in the GUI
-                "report_test_result": lambda self_sm, name, status, file_path = None, file_type = None, sub_results = None: self.output_queue.put(("qc_result", (name, status, file_path, file_type, sub_results))), # Overrides the report_test_result method of the RTSStateMachine class to send the test result information to the output queue for display in the GUI
+                "report_test_result": lambda self_sm, name, status, file_path = None, file_type = None, sub_results = None, sub_plot_paths = None : self.output_queue.put(("qc_result", (name, status, file_path, file_type, sub_results, sub_plot_paths))), # Overrides the report_test_result method of the RTSStateMachine class to send the test result information to the output queue for display in the GUI
                 "report_basic_info": lambda self_sm, info: self.output_queue.put(("basic_info", info)) # Overrides the report_basic_info method of the RTSStateMachine class to send the basic test information to the output queue for display in the GUI
             }
 
