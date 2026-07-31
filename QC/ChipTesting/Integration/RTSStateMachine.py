@@ -354,12 +354,11 @@ class RTSStateMachine(StateMachine):
                     print('Pictures ready! Running OCR...')
                     
                     for i in range(len(pictures)):
-                        success, serial_number = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir, True, chip_data['label'][i])
+                        success, serial_number, image_path = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir, True, chip_data['label'][i])
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                         if chip_data["label"][i] in ("CD0", "CD1"):
                             photo_key = "chip0_photo" if chip_data["label"][i] == "CD0" else "chip1_photo"
-                            image_number = pictures[i].split('-')[0]
-                            self.report_basic_info({photo_key: os.path.join(self.ocr_results_dir, f"{image_number}.png" + ".bmp")})
+                            self.report_basic_info({photo_key: image_path})
                             sn_key = "cd0_sn" if chip_data["label"][i] == "CD0" else "cd1_sn"
                             self.report_basic_info({sn_key: serial_number if serial_number else "Unknown"})
 
@@ -367,7 +366,7 @@ class RTSStateMachine(StateMachine):
                         self.retest_good_chip_image = pictures[0] # Save good chip info if this is the first test in retest tray
                     elif self.retest and self.current_chip_index > 0:
                         # Rerun OCR for good chip info since no picture was retaken
-                        success, serial_number = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
+                        success, serial_number, image_path = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                         self.report_basic_info({"cd0_sn": serial_number if serial_number else "Unknown"})
                    

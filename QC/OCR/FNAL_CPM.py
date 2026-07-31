@@ -414,7 +414,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     if to_rts_config:
         WriteToRTSConfig(chipinfo_file, config_file, socket_label)
 
-    return success, serial_number
+    return success, serial_number, temp_image_path
 
 def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
     """

@@ -778,7 +778,7 @@ class ChipTestingGUI(tk.Tk):
             ("test_time", "Test Time: "),
             ("retest", "Retest: "),
             ("env", "Enviornment: "),
-            ("dat_sn", "DUNE ASIC Test Board Serial Number: "),
+            ("dat_sn", "DAT Board Serial Number: "),
             ("dat_WIB_slot", "DAT on WIB Slot:"),
             ("duttype", "DUT: "),
             ("cd0_sn", "COLDATA 0 Serial Number: "),
