@@ -276,7 +276,7 @@ class ChipTestingGUI(tk.Tk):
             sub_widgets = widgets["sub_widgets"]
             for sub_name, sub_value in sub_results.items():
                 sub_pass = "PASS" in str(sub_value)
-                sub_color = QC_STATUS_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
+                sub_color = QC_STATUS_TEXT_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
                 sub_text_color = QC_STATUS_TEXT_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
 
                 sub_display = f"{sub_name} : {sub_value}"
@@ -794,7 +794,7 @@ class ChipTestingGUI(tk.Tk):
             ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
             var = tk.StringVar(value = "-")
             self.basic_info_vars[field_name] = var
-            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = self.cget("bg"), foreground = "black").grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
+            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = self.cget("bg"), foreground = "black")
             entry.grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
         photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
         photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
@@ -1069,7 +1069,7 @@ class ChipTestingGUI(tk.Tk):
             elif tag == "basic_info":
                 self.update_basic_info(text)
             elif tag == "qc_result":
-                name, status, file_path, file_type = text, sub_results = text
+                name, status, file_path, file_type, sub_results = text
                 self.show_or_update_qc_result(name, status, file_path, file_type, sub_results)
             elif tag == "__clear_qc__":
                 self.clear_per_chip_results()
