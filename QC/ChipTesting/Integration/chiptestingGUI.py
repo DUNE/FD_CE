@@ -282,11 +282,11 @@ class ChipTestingGUI(tk.Tk):
                 
                 if sub_name in sub_widgets:
                     sub_entry = sub_widgets[sub_name]
-                    sub_entry["label"].config(["more_button"], background = sub_color, foreground = sub_text_color)
+                    sub_entry["label"].config(text = sub_display, background = sub_color, foreground = sub_text_color)
                     configure_more_button(sub_entry["more_button"], sub_file_path, sub_file_type)
                 else:
                     sub_row = ttk.Frame(sub_frame)
-                    sub_row.pack(fille = "x", pady = 1)
+                    sub_row.pack(file = "x", pady = 1)
                     sub_label = tk.Label(sub_row, text = sub_display, background = sub_color, foreground = sub_text_color, font = ("", 15), anchor = "center", padx = 10, pady = 4)
                     sub_label.pack(side = "left", fill = "both", expand = True)
                     sub_more_button = ttk.Button(sub_row, text = "•••", width = 3)

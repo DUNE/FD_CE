@@ -454,8 +454,9 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                         retry_fi = retry_fi  +1
                         break
                 if (retry_fi == 1) and (retry_fi != retry_fi_pre):
-                    retest_name = f"{clean_test_name(tms_items[testid])} (Retest)"
-                    qc_callback(retest_name, "fail", file_path = plot_path, file_type = 'plot' if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
+                    if qc_callback is not None: 
+                        retest_name = f"{clean_test_name(tms_items[testid])} (Retest)"
+                        qc_callback(retest_name, "fail", file_path = plot_path, file_type = 'plot' if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:
