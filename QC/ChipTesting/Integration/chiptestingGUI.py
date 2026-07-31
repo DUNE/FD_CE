@@ -233,7 +233,7 @@ class ChipTestingGUI(tk.Tk):
 
         self.qc_widgets = {}
 
-    def show_or_update_qc_result(self, name, status, file_path = None, file_type = None, sub_results = None):
+    def show_or_update_qc_result(self, name, status, file_path = None, file_type = None, sub_results = None, sub_plot_paths = None):
         status_key = str(status).lower().strip()
         color = QC_STATUS_COLORS.get(status_key, "#999999")
         text_color = QC_STATUS_TEXT_COLORS.get(status_key, "#000000")
@@ -250,42 +250,49 @@ class ChipTestingGUI(tk.Tk):
 
             indicator = tk.Label(header_row, text = name, background = color, foreground = text_color, font = ("", 15), anchor = "w", padx = 12, pady = 0, relief = "ridge")
             indicator.pack(side = "left", fill = "both", expand  = "True")
-
-            more_button = ttk.Button(header_row, text = "•••", width = 3)
-            more_button.pack(side = "right", padx = 4)
             
             sub_frame = ttk.Frame(outer)
             sub_frame.pack(fill = "x", padx = 24)
-            widgets = {"row_frame": outer, "header_row": header_row, "indicator": indicator, "more_button": more_button, "sub_frame": sub_frame, "sub_widgets": {}}
+            widgets = {"row_frame": outer, "header_row": header_row, "indicator": indicator, "sub_frame": sub_frame, "sub_widgets": {}}
             self.qc_widgets[name] = widgets
 
         # Configure the "more" button to open the associated file if a file path is provided
-        more_button = widgets["more_button"]
-        if file_path:
-            more_label = "View Plot" if file_type == "plot" else "View Text File"
-            more = tk.Menu(more_button, tearoff = 0) # Creates a menu for the "more" button with options to view the associated file
-            more.add_command(label = more_label, command = lambda p = file_path, t = file_type: self.open_result_file(p, t))
-            def show_menu(event = None, m = more_button, b = more_button):
-                more.tk_popup(b.winfo_rootx(), b.winfo_rooty() + b.winfo_height())
-            more_button.configure(state = "normal", command = show_menu)
-        else:
-            more_button.configure(state = "disabled", command = lambda: None)
+        def configure_more_button(button, f_path, f_type):
+            if f_path:
+                more_label = "View Plot" if f_type == "plot" else "View Text File"
+                menu = tk.Menu(button, tearoff = 0) # Creates a menu for the "more" button with options to view the associated file
+                menu.add_command(label = more_label, command = lambda p = f_path, t = f_type: self.open_result_file(p, t))
+                def show_menu(event = None, m = menu, b = button):
+                    m.tk_popup(b.winfo_rootx(), b.winfo_rooty() + b.winfo_height())
+                button.configure(state = "normal", command = show_menu)
+            else:
+                button.configure(state = "disabled", command = lambda: None)
 
         if sub_results:
             sub_frame = widgets["sub_frame"]
             sub_widgets = widgets["sub_widgets"]
+            sub_plot_paths = sub_plot_paths or {}
             for sub_name, sub_value in sub_results.items():
                 sub_pass = "PASS" in str(sub_value)
                 sub_color = QC_STATUS_COLORS["pass"] if sub_pass else QC_STATUS_COLORS["fail"]
                 sub_text_color = QC_STATUS_TEXT_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
-
+                sub_file_path = sub_plot_paths.get(sub_name) or (file_path if sub_name not in sub_plot_paths else None)
+                sub_file_type = "plot" if sub_file_path else None
                 sub_display = f"{sub_name} : {sub_value}"
+                
                 if sub_name in sub_widgets:
-                    sub_widgets[sub_name].config(text = sub_display, background = sub_color, foreground = sub_text_color)
+                    sub_entry = sub_widgets[sub_name]
+                    sub_entry["label"].config(["more_button"], background = sub_color, foreground = sub_text_color)
+                    configure_more_button(sub_entry["more_button"], sub_file_path, sub_file_type)
                 else:
-                    sub_label = tk.Label(sub_frame, text = sub_display, background = sub_color, foreground = sub_text_color, font = ("", 15), anchor = "center", padx = 10, pady = 4)
-                    sub_label.pack(fill = "x", pady = 1)
-                    sub_widgets[sub_name] = sub_label
+                    sub_row = ttk.Frame(sub_frame)
+                    sub_row.pack(fille = "x", pady = 1)
+                    sub_label = tk.Label(sub_row, text = sub_display, background = sub_color, foreground = sub_text_color, font = ("", 15), anchor = "center", padx = 10, pady = 4)
+                    sub_label.pack(side = "left", fill = "both", expand = True)
+                    sub_more_button = ttk.Button(sub_row, text = "•••", width = 3)
+                    sub_more_button.pack(side = "right", padx = 4)
+                    configure_more_button(sub_more_button, sub_file_path, sub_file_type)
+                    sub_widgets[sub_name] = {"row": sub_row, "label": sub_label, "more_button": sub_more_button}
 
     def open_result_file(self, file_path, file_type = None):
         if not file_path:
@@ -1071,8 +1078,8 @@ class ChipTestingGUI(tk.Tk):
                 elif tag == "basic_info":
                     self.update_basic_info(text)
                 elif tag == "qc_result":
-                    name, status, file_path, file_type, sub_results = text
-                    self.show_or_update_qc_result(name, status, file_path, file_type, sub_results)
+                    name, status, file_path, file_type, sub_results, sub_plot_paths = text
+                    self.show_or_update_qc_result(name, status, file_path, file_type, sub_results, sub_plot_paths)
                 elif tag == "__clear_qc__":
                     self.clear_per_chip_results()
                 elif tag == "__exception__":
@@ -1081,7 +1088,7 @@ class ChipTestingGUI(tk.Tk):
                     self.append_output(text, tag)
             except Exception as poll_err:
                 import traceback
-                self.show_error_popup(f"Error handling '{tag}' message: {poll_err}\n\n{traceback.formet_exc()}")
+                self.show_error_popup(f"Error handling '{tag}' message: {poll_err}\n\n{traceback.format_exc()}")
         except queue.Empty:
             pass
         self.after(80, self.poll) # Call the poll function every 80 ms so that main thread keeps checking worker thread

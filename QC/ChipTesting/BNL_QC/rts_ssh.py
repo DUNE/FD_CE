@@ -23,6 +23,26 @@ ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 def clean_test_name(raw):
     return ANSI_ESCAPE_RE.sub("", raw).strip()
 
+def find_sub_plot_paths(fddir, item_stats): 
+    sub_plot_paths = {}
+    for onekey in item_stats:
+        search_keys = [onekey]
+        if onekey.endswith("_Power"):
+            search_keys.append(onekey[:-len("_Power")])
+        elif onekey.endswith("_PLS"):
+            search_keys.append(onekey[:-len("_PLS")])
+        if onekey == "PLL_Locked":
+            search_keys.append("PLL_LOCK")
+ 
+        found = None
+        for key in search_keys:
+            matches = sorted(glob2.glob(os.path.join(fddir, f"*_{key}.png")))
+            if matches:
+                found = matches[-1]
+                break
+        sub_plot_paths[onekey] = found
+    return sub_plot_paths
+
 def subrun(command, timeout = 30, check=True, exitflg = True):
     try:
         result = subprocess.run(command,
@@ -424,7 +444,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     item_pass = all("PASS" in str(v) for v in item_stats.values()) if item_stats else True
                     plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
                     plot_path = plot_matches[-1] if plot_matches else None
-                    qc_callback(clean_test_name(tms_items[testid]), "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats))
+                    sub_plot_paths = find_sub_plot_paths(fddir, item_stats)
+                    qc_callback(clean_test_name(tms_items[testid]), "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
                 
                 keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
@@ -434,6 +455,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                         break
                 if (retry_fi == 1) and (retry_fi != retry_fi_pre):
                     retest_name = f"{clean_test_name(tms_items[testid])} (Retest)"
+                    qc_callback(retest_name, "fail", file_path = plot_path, file_type = 'plot' if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:

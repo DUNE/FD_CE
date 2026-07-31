@@ -270,7 +270,7 @@ class RTSStateMachine(StateMachine):
     def report_state_entry(self):
         pass
     # Hook that is called when a process is completed and the state machine is ready to move to the next state
-    def report_test_result(self, name=None, status=None, file_path=None, file_type=None, sub_results=None):
+    def report_test_result(self, name=None, status=None, file_path=None, file_type=None, sub_results=None, sub_plot_paths = None):
         pass
     # Hook that is called when a piece of basic testing information is known
     def report_basic_info(self, info):
@@ -467,10 +467,10 @@ class RTSStateMachine(StateMachine):
 
                     chip0_pass = PassFailCOLDATA(cd_0_file)
                     WriteChipPassFail(chip0_pass, cd_0_file, "CD0")
-                    self.report_test_result("CD0 Pass/Fail (HWDB)", "pass" if chip0_pass else "fail", file_path = cd_0_file, file_type = "text")
+                    self.report_test_result("CD0 Pass/Fail", "pass" if chip0_pass else "fail", file_path = cd_0_file, file_type = "text")
                     chip1_pass = PassFailCOLDATA(cd_1_file)
                     WriteChipPassFail(chip1_pass, cd_1_file, "CD1")
-                    self.report_test_result("CD Pass/Fail (HWDB)", "pass" if chip1_pass else "fail", file_path = cd_1_file, file_type = "text")
+                    self.report_test_result("CD1 Pass/Fail", "pass" if chip1_pass else "fail", file_path = cd_1_file, file_type = "text")
 
                 except Exception as e:
                     print(f"Error during serial number burn-in: {e}")
