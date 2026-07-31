@@ -286,7 +286,7 @@ class ChipTestingGUI(tk.Tk):
                     configure_more_button(sub_entry["more_button"], sub_file_path, sub_file_type)
                 else:
                     sub_row = ttk.Frame(sub_frame)
-                    sub_row.pack(file = "x", pady = 1)
+                    sub_row.pack(fill = "x", pady = 1)
                     sub_label = tk.Label(sub_row, text = sub_display, background = sub_color, foreground = sub_text_color, font = ("", 15), anchor = "center", padx = 10, pady = 4)
                     sub_label.pack(side = "left", fill = "both", expand = True)
                     sub_more_button = ttk.Button(sub_row, text = "•••", width = 3)
