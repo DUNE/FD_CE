@@ -358,7 +358,8 @@ class RTSStateMachine(StateMachine):
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                         if chip_data["label"][i] in ("CD0", "CD1"):
                             photo_key = "chip0_photo" if chip_data["label"][i] == "CD0" else "chip1_photo"
-                            self.report_basic_info({photo_key: os.path.join(self.image_directory, pictures[i] + ".bmp")})
+                            image_number = pictures[i].split('-')[0]
+                            self.report_basic_info({photo_key: os.path.join(self.ocr_results_dir, f"{image_number}.png" + ".bmp")})
                             sn_key = "cd0_sn" if chip_data["label"][i] == "CD0" else "cd1_sn"
                             self.report_basic_info({sn_key: serial_number if serial_number else "Unknown"})
 

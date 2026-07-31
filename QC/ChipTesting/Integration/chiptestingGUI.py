@@ -276,7 +276,7 @@ class ChipTestingGUI(tk.Tk):
             sub_widgets = widgets["sub_widgets"]
             for sub_name, sub_value in sub_results.items():
                 sub_pass = "PASS" in str(sub_value)
-                sub_color = QC_STATUS_TEXT_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
+                sub_color = QC_STATUS_COLORS["pass"] if sub_pass else QC_STATUS_COLORS["fail"]
                 sub_text_color = QC_STATUS_TEXT_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
 
                 sub_display = f"{sub_name} : {sub_value}"
@@ -790,11 +790,12 @@ class ChipTestingGUI(tk.Tk):
         ]
 
         self.basic_info_vars = {}
+        theme_bg = ttk.Style().lookup("TLabelframe", "background") or self.cget("bg")
         for r, (field_name, label_text) in enumerate(basic_info_fields):
             ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
             var = tk.StringVar(value = "-")
             self.basic_info_vars[field_name] = var
-            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = self.cget("bg"), foreground = "black")
+            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = theme_bg, foreground = "black")
             entry.grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
         photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
         photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
@@ -802,11 +803,11 @@ class ChipTestingGUI(tk.Tk):
         self.chip_photo_paths = {"CD0": None, "CD1": None}
         self.chip_photo_buttons = {}
         for label in ("CD0", "CD1"):
-            row = ttk.Frame(photo_frame)
-            row.pack(side = "left", padx = 8, pady = 4)
-            ttk.Label(row, text = f"{label} Photo:", font = ("", 15)).pack(side = "left")
-            photo_button = ttk.Label(row, text = "No photo yet", font = ("", 15))
-            photo_button.pack(side = "left", padx = 4)
+            column = ttk.Frame(photo_frame)
+            column.pack(side = "left", padx = 8, pady = 4)
+            ttk.Label(column, text = f"{label} Photo:", font = ("", 15)).pack(side = "top", anchor = "w")
+            photo_button = ttk.Label(column, text = "No photo yet", font = ("", 15))
+            photo_button.pack(side = "top", pady = 4)
             self.chip_photo_buttons[label] = photo_button
 
     def update_basic_info(self, info):
@@ -1044,39 +1045,43 @@ class ChipTestingGUI(tk.Tk):
         try:
             item  = self.output_queue.get_nowait() # .get_nowait() retrieves an item from the queue without blocking, raising queue.Empty if the queue is empty
             tag, text = item # Unpacks the tuple into tag and text for coloring and printing
-            if tag == "__done__": 
-                self.running = False
-                self.paused = False
-                self.run_button.configure(state = "normal")
-                self.pause_button.configure(state = "disabled")
-            elif tag == "__paused__":
-                self.paused = True
-                self.status.set("Paused")
-                self.set_input_active(True, "")
-            elif tag == "__resumed__":
-                if self.paused:
+            try:    
+                if tag == "__done__": 
+                    self.running = False
                     self.paused = False
-                    self.status.set("Running")
-                self.pause_button.configure(state = "normal")
-            elif tag == "__state__":
-                self.highlight_state(text)
-                self.append_output(f"[STATE] {text}\n", "state")
-            elif tag == "prompt":
-                request_id, prompt_text = text # Unpack the (id, prompt) pair so we know which specific input() call this is for
-                self.current_prompt_id = request_id
-                self.append_output(f"{prompt_text}\n", "prompt")
-                self.set_input_active(True, prompt_text)
-            elif tag == "basic_info":
-                self.update_basic_info(text)
-            elif tag == "qc_result":
-                name, status, file_path, file_type, sub_results = text
-                self.show_or_update_qc_result(name, status, file_path, file_type, sub_results)
-            elif tag == "__clear_qc__":
-                self.clear_per_chip_results()
-            elif tag == "__exception__":
-                self.show_error_popup(text)
-            else:
-                self.append_output(text, tag)
+                    self.run_button.configure(state = "normal")
+                    self.pause_button.configure(state = "disabled")
+                elif tag == "__paused__":
+                    self.paused = True
+                    self.status.set("Paused")
+                    self.set_input_active(True, "")
+                elif tag == "__resumed__":
+                    if self.paused:
+                        self.paused = False
+                        self.status.set("Running")
+                    self.pause_button.configure(state = "normal")
+                elif tag == "__state__":
+                    self.highlight_state(text)
+                    self.append_output(f"[STATE] {text}\n", "state")
+                elif tag == "prompt":
+                    request_id, prompt_text = text # Unpack the (id, prompt) pair so we know which specific input() call this is for
+                    self.current_prompt_id = request_id
+                    self.append_output(f"{prompt_text}\n", "prompt")
+                    self.set_input_active(True, prompt_text)
+                elif tag == "basic_info":
+                    self.update_basic_info(text)
+                elif tag == "qc_result":
+                    name, status, file_path, file_type, sub_results = text
+                    self.show_or_update_qc_result(name, status, file_path, file_type, sub_results)
+                elif tag == "__clear_qc__":
+                    self.clear_per_chip_results()
+                elif tag == "__exception__":
+                    self.show_error_popup(text)
+                else:
+                    self.append_output(text, tag)
+            except Exception as poll_err:
+                import traceback
+                self.show_error_popup(f"Error handling '{tag}' message: {poll_err}\n\n{traceback.formet_exc()}")
         except queue.Empty:
             pass
         self.after(80, self.poll) # Call the poll function every 80 ms so that main thread keeps checking worker thread
