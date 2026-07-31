@@ -794,7 +794,7 @@ class ChipTestingGUI(tk.Tk):
             ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
             var = tk.StringVar(value = "-")
             self.basic_info_vars[field_name] = var
-            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readyonly", relief = "flat", borderwidth = 0, readonlybackground = self.cget("bg"), foreground = "black").grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
+            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = self.cget("bg"), foreground = "black").grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
             entry.grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
         photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
         photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
