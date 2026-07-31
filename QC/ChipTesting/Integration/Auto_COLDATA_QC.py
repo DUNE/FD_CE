@@ -142,7 +142,7 @@ def BurninSN(logs, cd_qc_ana, qc_callback = None):
         item_pass = all("PASS" in  str(v) for v in item_stats.values()) if item_stats else True
         plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
         plot_path = plot_matches[-1] if plot_matches else None
-        qc_callback("7: COLDATA EFUSE burn-in", "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None)
+        qc_callback("7: COLDATA EFUSE burn-in", "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats))
 
     
     # Turn the DAT board off

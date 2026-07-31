@@ -424,7 +424,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     item_pass = all("PASS" in str(v) for v in item_stats.values()) if item_stats else True
                     plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
                     plot_path = plot_matches[-1] if plot_matches else None
-                    qc_callback(clean_test_name(tms_items[testid]), "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None)
+                    qc_callback(clean_test_name(tms_items[testid]), "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats))
                 
                 keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
@@ -433,6 +433,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                         retry_fi = retry_fi  +1
                         break
                 if (retry_fi == 1) and (retry_fi != retry_fi_pre):
+                    retest_name = f"{clean_test_name(tms_items[testid])} (Retest)"
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:

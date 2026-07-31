@@ -270,7 +270,7 @@ class RTSStateMachine(StateMachine):
     def report_state_entry(self):
         pass
     # Hook that is called when a process is completed and the state machine is ready to move to the next state
-    def report_test_result(self):
+    def report_test_result(self, name=None, status=None, file_path=None, file_type=None, sub_results=None):
         pass
     # Hook that is called when a piece of basic testing information is known
     def report_basic_info(self, info):
@@ -358,7 +358,7 @@ class RTSStateMachine(StateMachine):
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                         if chip_data["label"][i] in ("CD0", "CD1"):
                             photo_key = "chip0_photo" if chip_data["label"][i] == "CD0" else "chip1_photo"
-                            self.report_basic_info({photo_key: os.path.join(self.image_directory, pictures[i])})
+                            self.report_basic_info({photo_key: os.path.join(self.image_directory, pictures[i] + ".bmp")})
                             sn_key = "cd0_sn" if chip_data["label"][i] == "CD0" else "cd1_sn"
                             self.report_basic_info({sn_key: serial_number if serial_number else "Unknown"})
 
@@ -415,13 +415,6 @@ class RTSStateMachine(StateMachine):
         else:
             print("Running COLDATA QC tests...")
             try:
-                self.logs, self.cd_qc_ana = RunCOLDATA_QC(
-                    duttype="CD", 
-                    env="RT", 
-                    rootdir="/Users/ppd-cap-WD-137552/Tested/",
-                    qc_callback = self.report_test_result
-                    # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
-                )
                 self.report_basic_info({
                     "duttype": "CD",
                     "env": "RT",
@@ -429,6 +422,14 @@ class RTSStateMachine(StateMachine):
                     "chips_to_test" : len(self.chip_positions['col']) - self.current_chip_index
 
                 })
+                self.logs, self.cd_qc_ana = RunCOLDATA_QC(
+                    duttype="CD", 
+                    env="RT", 
+                    rootdir="/Users/ppd-cap-WD-137552/Tested/",
+                    qc_callback = self.report_test_result
+                    # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
+                )
+
                 print("COLDATA QC tests completed successfully")
                 
             except Exception as e:

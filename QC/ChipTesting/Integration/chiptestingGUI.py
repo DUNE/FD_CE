@@ -233,7 +233,7 @@ class ChipTestingGUI(tk.Tk):
 
         self.qc_widgets = {}
 
-    def show_or_update_qc_result(self, name, status, file_path = None, file_type = None):
+    def show_or_update_qc_result(self, name, status, file_path = None, file_type = None, sub_results = None):
         status_key = str(status).lower().strip()
         color = QC_STATUS_COLORS.get(status_key, "#999999")
         text_color = QC_STATUS_TEXT_COLORS.get(status_key, "#000000")
@@ -242,16 +242,21 @@ class ChipTestingGUI(tk.Tk):
             widgets = self.qc_widgets[name]
             widgets["indicator"].config(background = color, foreground = text_color)
         else:
-            row = ttk.Frame(self.qc_list_frame)
-            row.pack(fill = "x", padx = 4, pady = 3)
+            outer = ttk.Frame(self.qc_list_frame)
+            outer.pack(fill = "x", padx = 4, pady = 3)
 
-            indicator = tk.Label(row, text = name, background = color, foreground = text_color, font = ("", 15), anchor = "w", padx = 12, pady = 0, relief = "ridge")
+            header_row = ttk.Frame(outer)
+            header_row.pack(fill = "x")
+
+            indicator = tk.Label(header_row, text = name, background = color, foreground = text_color, font = ("", 15), anchor = "w", padx = 12, pady = 0, relief = "ridge")
             indicator.pack(side = "left", fill = "both", expand  = "True")
 
-            more_button = ttk.Button(row, text = "•••", width = 3)
+            more_button = ttk.Button(header_row, text = "•••", width = 3)
             more_button.pack(side = "right", padx = 4)
-
-            widgets = {"row_frame": row, "indicator": indicator, "more_button": more_button}
+            
+            sub_frame = ttk.Frame(outer)
+            sub_frame.pack(fill = "x", padx = 24)
+            widgets = {"row_frame": outer, "header_row": header_row, "indicator": indicator, "more_button": more_button, "sub_frame": sub_frame, "sub_widgets": {}}
             self.qc_widgets[name] = widgets
 
         # Configure the "more" button to open the associated file if a file path is provided
@@ -265,6 +270,22 @@ class ChipTestingGUI(tk.Tk):
             more_button.configure(state = "normal", command = show_menu)
         else:
             more_button.configure(state = "disabled", command = lambda: None)
+
+        if sub_results:
+            sub_frame = widgets["sub_frame"]
+            sub_widgets = widgets["sub_widgets"]
+            for sub_name, sub_value in sub_results.items():
+                sub_pass = "PASS" in str(sub_value)
+                sub_color = QC_STATUS_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
+                sub_text_color = QC_STATUS_TEXT_COLORS["pass"] if sub_pass else QC_STATUS_TEXT_COLORS["fail"]
+
+                sub_display = f"{sub_name} : {sub_value}"
+                if sub_name in sub_widgets:
+                    sub_widgets[sub_name].config(text = sub_display, background = sub_color, foreground = sub_text_color)
+                else:
+                    sub_label = tk.Label(sub_frame, text = sub_display, background = sub_color, foreground = sub_text_color, font = ("", 15), anchor = "center", padx = 10, pady = 4)
+                    sub_label.pack(fill = "x", pady = 1)
+                    sub_widgets[sub_name] = sub_label
 
     def open_result_file(self, file_path, file_type = None):
         if not file_path:
@@ -287,6 +308,15 @@ class ChipTestingGUI(tk.Tk):
             return
         try:
             image = Image.open(file_path)
+            image.thumbnail((900,900), Image.LANCZOS)
+            tk_image = ImageTk.PhotoImage(image)
+
+            popup = tk.Toplevel(self)
+            popup.title(os.path.basename(file_path))
+
+            label = tk.Label(popup, image = tk_image)
+            label.image = tk_image
+            label.pack(padx = 8, pady = 8)
         except Exception as e:
             self.append_output(f"Failed to open plot: {file_path}. Error: {e}\n", tag = "error")
 
@@ -764,8 +794,8 @@ class ChipTestingGUI(tk.Tk):
             ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
             var = tk.StringVar(value = "-")
             self.basic_info_vars[field_name] = var
-            ttk.Label(self.basic_test_information, textvariable = var, font = ("", 15)).grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
-        
+            entry = ttk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readyonly", relief = "flat", borderwidth = 0, readonlybackground = self.cget("bg"), foreground = "black").grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
+            entry.grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
         photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
         photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
 
@@ -926,7 +956,7 @@ class ChipTestingGUI(tk.Tk):
 
             overrides = { 
                 "report_state_entry": lambda self_sm: self.output_queue.put(("__state__", self_sm.current_state.id)), # Overrides the report_state_entry method of the RTSStateMachine class to send the current state ID to the output queue for display in the GUI
-                "report_test_result": lambda self_sm, name, status, file_path = None, file_type = None: self.output_queue.put(("qc_result", (name, status, file_path, file_type))), # Overrides the report_test_result method of the RTSStateMachine class to send the test result information to the output queue for display in the GUI
+                "report_test_result": lambda self_sm, name, status, file_path = None, file_type = None, sub_results = None: self.output_queue.put(("qc_result", (name, status, file_path, file_type, sub_results))), # Overrides the report_test_result method of the RTSStateMachine class to send the test result information to the output queue for display in the GUI
                 "report_basic_info": lambda self_sm, info: self.output_queue.put(("basic_info", info)) # Overrides the report_basic_info method of the RTSStateMachine class to send the basic test information to the output queue for display in the GUI
             }
 
@@ -1039,8 +1069,8 @@ class ChipTestingGUI(tk.Tk):
             elif tag == "basic_info":
                 self.update_basic_info(text)
             elif tag == "qc_result":
-                name, status, file_path, file_type = text
-                self.show_or_update_qc_result(name, status, file_path, file_type)
+                name, status, file_path, file_type = text, sub_results = text
+                self.show_or_update_qc_result(name, status, file_path, file_type, sub_results)
             elif tag == "__clear_qc__":
                 self.clear_per_chip_results()
             elif tag == "__exception__":
