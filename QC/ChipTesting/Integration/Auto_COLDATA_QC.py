@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 import os
 import datetime
-import glob2 # Used to find the plot file a QC test item generates
 from colorama import just_fix_windows_console
 just_fix_windows_console()
 from ChipTesting.BNL_QC.DAT_chk_cfgfile import dat_chk_cfgfile_auto
@@ -140,9 +139,7 @@ def BurninSN(logs, cd_qc_ana, qc_callback = None):
     if qc_callback is not None:
         item_stats = cd_qc_ana.qc_stats
         item_pass = all("PASS" in  str(v) for v in item_stats.values()) if item_stats else True
-        plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
-        plot_path = plot_matches[-1] if plot_matches else None
-        qc_callback("7: COLDATA EFUSE burn-in", "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats))
+        qc_callback("7: COLDATA EFUSE burn-in", "pass" if item_pass else "fail", file_path = None, file_type = None, sub_results = dict(item_stats))
 
     
     # Turn the DAT board off
