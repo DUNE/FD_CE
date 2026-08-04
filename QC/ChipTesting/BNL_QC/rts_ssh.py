@@ -23,6 +23,15 @@ ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 def clean_test_name(raw):
     return ANSI_ESCAPE_RE.sub("", raw).strip()
 
+def qc_report_name(raw_name, attempt = 0):
+    base = clean_test_name(raw_name)
+    if attempt <= 0:
+        return base
+    if attempt == 1:
+        return f"{base} (Retest)"
+    return f"{base} (Retest {attempt})"
+
+# Finds the most recent plot file for each test item in the QC analysis and returns a dictionary mapping test item names to their corresponding plot file paths. If no plot file is found for a test item, the value will be None.
 def find_sub_plot_paths(fddir, item_stats): 
     sub_plot_paths = {}
     for onekey in item_stats:
@@ -337,6 +346,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                 break
             
             testid = tms[tmsi]
+            report_name = qc_report_name(tms_items[testid], retry_fi)
             print (datetime.datetime.utcnow(), " : New Test Item Starts, please wait...")
             print (tms_items[testid])
             if "FE" in DUT:
@@ -350,6 +360,9 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     continue
                 else: 
                     command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
+
+                    if qc_callback is not None:
+                        qc_callback(report_name, "running")
 
             result=subrun(command, timeout = None) #rewrite with Popen later
             if result != None:
@@ -445,7 +458,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
                     plot_path = plot_matches[-1] if plot_matches else None
                     sub_plot_paths = find_sub_plot_paths(fddir, item_stats)
-                    qc_callback(clean_test_name(tms_items[testid]), "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
+                    qc_callback(report_name, "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
                 
                 keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
@@ -455,8 +468,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                         break
                 if (retry_fi == 1) and (retry_fi != retry_fi_pre):
                     if qc_callback is not None: 
-                        retest_name = f"{clean_test_name(tms_items[testid])} (Retest)"
-                        qc_callback(retest_name, "fail", file_path = plot_path, file_type = 'plot' if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
+                        qc_callback(qc_report_name(tms_items[testid], retry_fi), "pending")
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:

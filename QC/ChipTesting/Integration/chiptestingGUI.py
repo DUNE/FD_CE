@@ -8,7 +8,7 @@ import builtins
 import os 
 import re # Regular expression module for matching ANSI escape sequences
 import subprocess # Module for opening files externally (e.g., with the default system application)
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk # Pillow library for image handling and displaying images in Tkinter
 import matplotlib
 matplotlib.use("Agg") # Use the Agg backend for matplotlib to avoid GUI issues in headless environments
 
@@ -180,8 +180,48 @@ class ChipTestingGUI(tk.Tk):
         self.quality_control_task_list = ttk.LabelFrame(self.results_tab, text = "Quality Control Task List")
         self.quality_control_task_list.grid(column = 1, row  = 0, sticky = "nsew", padx = 6, pady = 4)
 
-        self.populate_basic_test_information_frame()
+        self.build_basic_test_information_frame()
         self.build_quality_control_task_list()
+
+    def build_basic_test_information_frame(self):
+
+        basic_info_fields = [
+            ("tester", "Tester: "),
+            ("test_site", "Test Site: "),
+            ("test_time", "Test Time: "),
+            ("retest", "Retest: "),
+            ("env", "Enviornment: "),
+            ("dat_sn", "DAT Board Serial Number: "),
+            ("dat_WIB_slot", "DAT on WIB Slot:"),
+            ("duttype", "DUT: "),
+            ("cd0_sn", "COLDATA 0 Serial Number: "),
+            ("cd1_sn", "COLDATA 1 Serial Number: "),
+            ("cd0_pos", "COLDATA 0 Position: "),
+            ("cd1_pos", "COLDATA 1 Position: "),
+            ("total_chips", "Total Chips to test: "),
+            ("chips_to_test", "Chips left to test: ")
+        ]
+
+        self.basic_info_vars = {}
+        theme_bg = ttk.Style().lookup("TLabelframe", "background") or self.cget("bg")
+        for r, (field_name, label_text) in enumerate(basic_info_fields):
+            ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
+            var = tk.StringVar(value = "-")
+            self.basic_info_vars[field_name] = var
+            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = theme_bg, foreground = "black")
+            entry.grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
+        photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
+        photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
+
+        self.chip_photo_paths = {"CD0": None, "CD1": None}
+        self.chip_photo_buttons = {}
+        for label in ("CD0", "CD1"):
+            column = ttk.Frame(photo_frame)
+            column.pack(side = "left", padx = 8, pady = 4)
+            ttk.Label(column, text = f"{label} Photo:", font = ("", 15)).pack(side = "top", anchor = "w")
+            photo_button = ttk.Label(column, text = "No photo yet", font = ("", 15))
+            photo_button.pack(side = "top", pady = 4)
+            self.chip_photo_buttons[label] = photo_button
 
     def build_quality_control_task_list(self):
         parent = self.quality_control_task_list
@@ -198,7 +238,7 @@ class ChipTestingGUI(tk.Tk):
         qc_window = self.qc_canvas.create_window((0, 0), window = self.qc_list_frame, anchor = "nw")
 
         def update_qc_scroll_region(event = None):
-            self.qc_canvas.configure(scrollregion = self.qc_canvas.bbox("all"))
+            self.qc_canvas.configure(scrollregion = self.qc_canvas.bbox("all")) # Updates the scroll region of the canvas to encompass all its contents, allowing for proper scrolling behavior
         
         self.qc_list_frame.bind("<Configure>", update_qc_scroll_region)
         self.qc_canvas.bind("<Configure>", lambda event: self.qc_canvas.itemconfig(qc_window, width = event.width))
@@ -217,13 +257,13 @@ class ChipTestingGUI(tk.Tk):
             self.qc_canvas.yview_scroll(delta, "units")
 
         def bind_qc_mousewheel(event):
-            self.qc_canvas.bind_all("<MouseWheel>", on_qc_mousewheel)
-            self.qc_canvas.bind_all("<Button-4>", on_qc_mousewheel)
-            self.qc_canvas.bind_all("<Button-5>", on_qc_mousewheel)
+            self.qc_canvas.bind_all("<MouseWheel>", on_qc_mousewheel) # Binds the mouse wheel event for scrolling on Windows and macOS systems
+            self.qc_canvas.bind_all("<Button-4>", on_qc_mousewheel) # Binds the mouse wheel event for scrolling up on Linux systems
+            self.qc_canvas.bind_all("<Button-5>", on_qc_mousewheel) # Binds the mouse wheel event for scrolling on Linux systems
         def unbind_qc_mousewheel(event):
-            self.qc_canvas.unbind_all("<MouseWheel>")
-            self.qc_canvas.unbind_all("<Button-4>")
-            self.qc_canvas.unbind_all("<Button-5>")
+            self.qc_canvas.unbind_all("<MouseWheel>") # Unbinds the mouse wheel event for scrolling on Windows and macOS systems
+            self.qc_canvas.unbind_all("<Button-4>") # Unbinds the mouse wheel event for scrolling up on Linux systems
+            self.qc_canvas.unbind_all("<Button-5>") # Unbinds the mouse wheel event for scrolling down on Linux systems
 
         self.qc_canvas.bind("<Enter>", bind_qc_mousewheel)
         self.qc_canvas.bind("<Leave>", unbind_qc_mousewheel)
@@ -231,7 +271,7 @@ class ChipTestingGUI(tk.Tk):
         self.qc_canvas.pack(side = "left", fill = "both", expand = True)
         qc_scrollbar.pack(side = "right", fill = "y")
 
-        self.qc_widgets = {}
+        self.qc_widgets = {} # Dictionary to hold references to the QC widgets for easy updating
 
     def show_or_update_qc_result(self, name, status, file_path = None, file_type = None, sub_results = None, sub_plot_paths = None):
         status_key = str(status).lower().strip()
@@ -261,7 +301,7 @@ class ChipTestingGUI(tk.Tk):
             if f_path:
                 more_label = "View Plot" if f_type == "plot" else "View Text File"
                 menu = tk.Menu(button, tearoff = 0) # Creates a menu for the "more" button with options to view the associated file
-                menu.add_command(label = more_label, command = lambda p = f_path, t = f_type: self.open_result_file(p, t))
+                menu.add_command(label = more_label, command = lambda p = f_path, t = f_type: self.open_result_file(p, t)) # Adds a command to the menu to open the associated file when clicked
                 def show_menu(event = None, m = menu, b = button):
                     m.tk_popup(b.winfo_rootx(), b.winfo_rooty() + b.winfo_height())
                 button.configure(state = "normal", command = show_menu)
@@ -306,7 +346,7 @@ class ChipTestingGUI(tk.Tk):
         else:
             self.open_file_externally(file_path)
 
-    def show_plot_popup(self, file_path):
+    def show_plot_popup(self, file_path): # 
         if not file_path:
             self.append_output("No file path provided for viewing.\n", tag = "info")
             return
@@ -314,11 +354,11 @@ class ChipTestingGUI(tk.Tk):
             self.append_output(f"File not found: {file_path}\n", tag = "error")
             return
         try:
-            image = Image.open(file_path)
-            image.thumbnail((900,900), Image.LANCZOS)
-            tk_image = ImageTk.PhotoImage(image)
+            image = Image.open(file_path) # Opens the image file using the Pillow library
+            image.thumbnail((900,900), Image.LANCZOS) # Resize the image to fit within a 900x900 pixel box while maintaining aspect ratio
+            tk_image = ImageTk.PhotoImage(image) # Converts the PIL image to a Tkinter-compatible image format for display in the GUI
 
-            popup = tk.Toplevel(self)
+            popup = tk.Toplevel(self) # Creates a new top-level window (popup) to display the plot image
             popup.title(os.path.basename(file_path))
 
             label = tk.Label(popup, image = tk_image)
@@ -336,11 +376,11 @@ class ChipTestingGUI(tk.Tk):
             return
         try:
             if sys.platform == "win32":
-                os.startfile(file_path)
+                os.startfile(file_path) # Opens the file with the default application on Windows
             elif sys.platform == "darwin":
-                subprocess.Popen(["open", file_path])
+                subprocess.Popen(["open", file_path]) # Opens the file with the default application on macOS
             else:
-                subprocess.Popen(["xdg-open", file_path])
+                subprocess.Popen(["xdg-open", file_path]) # Opens the file with the default application on Linux
         except Exception as e:
             self.append_output(f"Failed to open file: {file_path}. Error: {e}\n", tag = "error")
 
@@ -350,7 +390,7 @@ class ChipTestingGUI(tk.Tk):
         popup.geometry("560x320")
         popup.transient(self) # Makes the popup window stay on top of the main window
 
-        text = scrolledtext.ScrolledText(popup, wrap = "word", font = ("Courier", 15), bg = "white", fg = "black")
+        text = scrolledtext.ScrolledText(popup, wrap = "word", font = ("Courier", 15), bg = "white", fg = "red")
         text.pack(fill = "both", expand = True, padx = 8, pady = 8)
         text.insert("1.0", message)
         text.configure(state = "disabled") # Makes the text area read-only
@@ -580,7 +620,6 @@ class ChipTestingGUI(tk.Tk):
         ttk.Button(self.row_buttons, text = "+ Add Chip Data", command = self.add_chip_row).pack(side = "left", pady = 2)
         ttk.Button(self.row_buttons, text = "- Clear All Chip Data", command = self.remove_all_rows).pack(side = "left", pady = 2)
         self.row_buttons.pack_forget() # Hides row_buttons until user selects manual populate mode
-    
 
     def show_frames(self):
         mode = self.populate_mode.get()
@@ -600,6 +639,7 @@ class ChipTestingGUI(tk.Tk):
     def chip_canvas_at_bottom(self):
         top, bottom = self.chip_row_canvas.yview() # Gets the current vertical scroll position of the canvas
         return bottom >= .99
+    
     # Creates function to add chip rows
     def add_chip_row(self):
         was_at_bottom = self.chip_canvas_at_bottom() # Checks if the canvas is scrolled to the bottom before adding a new row
@@ -777,46 +817,6 @@ class ChipTestingGUI(tk.Tk):
             
         self.output.configure(state = "disabled") # Keep console clean/read-only
 
-    def populate_basic_test_information_frame(self):
-
-        basic_info_fields = [
-            ("tester", "Tester: "),
-            ("test_site", "Test Site: "),
-            ("test_time", "Test Time: "),
-            ("retest", "Retest: "),
-            ("env", "Enviornment: "),
-            ("dat_sn", "DAT Board Serial Number: "),
-            ("dat_WIB_slot", "DAT on WIB Slot:"),
-            ("duttype", "DUT: "),
-            ("cd0_sn", "COLDATA 0 Serial Number: "),
-            ("cd1_sn", "COLDATA 1 Serial Number: "),
-            ("cd0_pos", "COLDATA 0 Position: "),
-            ("cd1_pos", "COLDATA 1 Position: "),
-            ("total_chips", "Total Chips to test: "),
-            ("chips_to_test", "Chips left to test: ")
-        ]
-
-        self.basic_info_vars = {}
-        theme_bg = ttk.Style().lookup("TLabelframe", "background") or self.cget("bg")
-        for r, (field_name, label_text) in enumerate(basic_info_fields):
-            ttk.Label(self.basic_test_information, text = label_text, font = ("", 15)).grid(row = r, column = 0, sticky = "w", padx = 6, pady = 2)
-            var = tk.StringVar(value = "-")
-            self.basic_info_vars[field_name] = var
-            entry = tk.Entry(self.basic_test_information, textvariable = var, font = ("", 15), state = "readonly", relief = "flat", borderwidth = 0, readonlybackground = theme_bg, foreground = "black")
-            entry.grid(row = r, column = 1, sticky = "w", padx = 6, pady = 2)
-        photo_frame = ttk.LabelFrame(self.basic_test_information, text = "CD0 and CD1 Photos")
-        photo_frame.grid(row = len(basic_info_fields), column = 0, columnspan = 2, sticky = "ew", padx = 4, pady = 4)
-
-        self.chip_photo_paths = {"CD0": None, "CD1": None}
-        self.chip_photo_buttons = {}
-        for label in ("CD0", "CD1"):
-            column = ttk.Frame(photo_frame)
-            column.pack(side = "left", padx = 8, pady = 4)
-            ttk.Label(column, text = f"{label} Photo:", font = ("", 15)).pack(side = "top", anchor = "w")
-            photo_button = ttk.Label(column, text = "No photo yet", font = ("", 15))
-            photo_button.pack(side = "top", pady = 4)
-            self.chip_photo_buttons[label] = photo_button
-
     def update_basic_info(self, info):
         for key, value in info.items():
             if key in self.basic_info_vars:
@@ -839,9 +839,9 @@ class ChipTestingGUI(tk.Tk):
             try:
                 img = Image.open(photo_path)
                 img.thumbnail((220, 220), Image.LANCZOS) # Resize image to fit within 220x220 while maintaining aspect ratio
-                tk_img = ImageTk.PhotoImage(img)
-                label_widget.image = tk_img
-                label_widget.configure(image = tk_img, text = "")
+                tk_img = ImageTk.PhotoImage(img) # Convert the PIL image to a Tkinter-compatible image 
+                label_widget.image = tk_img # Keep a reference to the image to prevent it from being garbage collected
+                label_widget.configure(image = tk_img, text = "") # Update the label to display the image and remove any text
             except Exception as e:
                 print(f"Error loading image from {photo_path}: {e}")
                 label_widget.configure(text = "Error loading photo", image = "")
@@ -1088,7 +1088,7 @@ class ChipTestingGUI(tk.Tk):
                     self.append_output(text, tag)
             except Exception as poll_err:
                 import traceback
-                self.show_error_popup(f"Error handling '{tag}' message: {poll_err}\n\n{traceback.format_exc()}")
+                self.show_error_popup(f"Error handling '{tag}' message: {poll_err}\n\n{traceback.format_exc()}") # Shows error popup with traceback if there is an error while handling a message from the output queue
         except queue.Empty:
             pass
         self.after(80, self.poll) # Call the poll function every 80 ms so that main thread keeps checking worker thread
