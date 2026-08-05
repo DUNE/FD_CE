@@ -240,7 +240,7 @@ class ChipTestingGUI(tk.Tk):
         def update_qc_scroll_region(event = None):
             self.qc_canvas.configure(scrollregion = self.qc_canvas.bbox("all")) # Updates the scroll region of the canvas to encompass all its contents, allowing for proper scrolling behavior
         
-        self.qc_list_frame.bind("<Configure>", update_qc_scroll_region)
+        self.qc_list_frame.bind("<Configure>", lambda event: self.refresh_qc_scroll_region())
         self.qc_canvas.bind("<Configure>", lambda event: self.qc_canvas.itemconfig(qc_window, width = event.width))
 
         def on_qc_mousewheel(event):
@@ -272,11 +272,22 @@ class ChipTestingGUI(tk.Tk):
         qc_scrollbar.pack(side = "right", fill = "y")
 
         self.qc_widgets = {} # Dictionary to hold references to the QC widgets for easy updating
+    def refresh_qc_scroll_region(self, scroll_to = None):
+        self.qc_list_frame.update_idletasks()
+        bbox = self.qc_canvas.bbox("all")
+        self.qc_canvas.configure(scrollregion = bbox if bbox else (0, 0, 0, 0))
+        if scroll_to is not None:
+            self.qc_canvas.yview_moveto(scroll_to)
+
+    def qc_view_is_at_bottom(self):
+        top, bottom = self.qc_canvas.yview()
+        return bottom >= 0.999
 
     def show_or_update_qc_result(self, name, status, file_path = None, file_type = None, sub_results = None, sub_plot_paths = None):
         status_key = str(status).lower().strip()
         color = QC_STATUS_COLORS.get(status_key, "#999999")
         text_color = QC_STATUS_TEXT_COLORS.get(status_key, "#000000")
+        follow_new_entry = self.qc_view_is_at_bottom() # Check if the QC view is currently scrolled to the bottom
 
         if name in self.qc_widgets:
             widgets = self.qc_widgets[name]
@@ -333,6 +344,10 @@ class ChipTestingGUI(tk.Tk):
                     sub_more_button.pack(side = "right", padx = 4)
                     configure_more_button(sub_more_button, sub_file_path, sub_file_type)
                     sub_widgets[sub_name] = {"row": sub_row, "label": sub_label, "more_button": sub_more_button}
+        
+        self.refresh_qc_scroll_region()
+        if follow_new_entry:
+            self.qc_canvas.yview_moveto(1.0)
 
     def open_result_file(self, file_path, file_type = None):
         if not file_path:
@@ -403,6 +418,7 @@ class ChipTestingGUI(tk.Tk):
         for widgets in self.qc_widgets.values():
             widgets["row_frame"].destroy()
         self.qc_widgets = {}
+        self.refresh_qc_scroll_region(scroll_to = 0.0)
         for var in self.basic_info_vars.values():
             var.set("-")
         for label in self.chip_photo_paths:
@@ -413,6 +429,7 @@ class ChipTestingGUI(tk.Tk):
         for widgets in self.qc_widgets.values():
             widgets["row_frame"].destroy()
         self.qc_widgets = {}
+        self.refresh_qc_scroll_region(scroll_to = 0.0)
         for key in self.PER_CHIP_BASIC_INFO_KEYS:
             if key in self.basic_info_vars:
                 self.basic_info_vars[key].set("-")
