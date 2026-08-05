@@ -52,17 +52,39 @@ def find_sub_plot_paths(fddir, item_stats):
         sub_plot_paths[onekey] = found
     return sub_plot_paths
 
-def subrun(command, timeout = 30, check=True, exitflg = True):
+SSH_HARDENING_OPTIONS = ["-n", "-o", "BatchMode = yes", "-o", "ConnectTimeout = 10", "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"]
+SCP_HARDENING_OPTIONS = ["-B", "-o", 'ConnectTimeout = 10', "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"]
+
+# Harden SSH and SCP commands by adding options to prevent interactive prompts and improve reliability. 
+def harden_remote_command(command):
+    if not isinstance(command, (list, tuple)) or len(command) == 0:
+        return command
+    cmd = list(command)
+    prog = os.path.basename(str(cmd[0])).lower()
+    if prog.startswith("ssh"):
+        return [cmd[0]] + SSH_HARDENING_OPTIONS + cmd[1:]
+    if prog.startswith("scp"):
+        return [cmd[0]] + SCP_HARDENING_OPTIONS + cmd[1:]
+    return cmd
+
+# Stand-in class to mimic the return value of subprocess.run() for testing purposes
+class RunResult:
+    def __init__(self, returncode, stdout, stderr):
+        self.returncode = returncode
+        self.stdout = stdout if stdout else ""
+        self.stderr = stderr if stderr else ""
+
+
+def subrun(command, timeout = 30, check=True, exitflg = True, user_shell = False):
+    command = harden_remote_command(command)
     try:
-        result = subprocess.run(command,
-                                capture_output=True,
-                                text=True,
-                                timeout=timeout,
-                                shell=True,
-                                #stdout=subprocess.PIPE,
-                                #stderr=subprocess.PIPE,
-                                check=check
-                                )
+        result = subprocess.run(command, capture_output = True, 
+                      text = True,
+                      timeout = timeout,
+                      check = check,
+                      shell = user_shell,
+                      stdin = subprocess.DEVNULL)
+
     except subprocess.CalledProcessError as e:
         print ("Call Error", e.returncode)
         if exitflg:
@@ -71,7 +93,7 @@ def subrun(command, timeout = 30, check=True, exitflg = True):
             #return None
             #exit()
             
-
+        return RunResult(e.returncode, e.stdout, e.stderr)
         #continue
     except subprocess.TimeoutExpired as e:
         print ("No reponse in %d seconds"%(timeout))
@@ -81,7 +103,7 @@ def subrun(command, timeout = 30, check=True, exitflg = True):
             print ("Exit anyway")
             return None
             #exit()
-
+        return RunResult(None, e.stdout, e.stderr)
         #continue
     return result
 
