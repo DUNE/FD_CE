@@ -50,13 +50,6 @@ QC_STATUS_TEXT_COLORS = {
     "fail": "#ffffff"
 }
 
-QC_STATUS_LABELS = {
-    "running": "RUNNING",
-    "pending": "PENDING",
-    "pass": "PASS",
-    "success": "PASS",
-    "fail": "FAIL"
-}
 # Takes usual console output and puts into a queue that this program will display with GUI
 class InputOutput(io.TextIOBase): # Inherits io.TextIOBase so Python treats worker thread output as an object to insert into queue
     def __init__(self, queue, tag = "info"): # Takes in queue as argument and makes variable tag for coloring text during CLI output 

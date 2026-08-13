@@ -23,11 +23,12 @@ ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 def clean_test_name(raw):
     return ANSI_ESCAPE_RE.sub("", raw).strip()
 
+# 
 def qc_report_name(raw_name, attempt = 0):
     base = clean_test_name(raw_name)
-    if attempt <= 0:
+    if attempt == 0:
         return base
-    if attempt == 1:
+    else:
         return f"{base} (Retest)"
     return f"{base} (Retest {attempt})"
 
@@ -52,7 +53,7 @@ def find_sub_plot_paths(fddir, item_stats):
         sub_plot_paths[onekey] = found
     return sub_plot_paths
 
-SSH_HARDENING_OPTIONS = ["-n", "-o", "BatchMode = yes", "-o", "ConnectTimeout = 10", "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"]
+SSH_HARDENING_OPTIONS = ["-n", "-o", "BatchMode = yes", "-o", "ConnectTimeout = 10", "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"] 
 SCP_HARDENING_OPTIONS = ["-B", "-o", 'ConnectTimeout = 10', "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"]
 
 # Harden SSH and SCP commands by adding options to prevent interactive prompts and improve reliability. 
