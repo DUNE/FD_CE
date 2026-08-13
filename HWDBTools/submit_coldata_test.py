@@ -22,6 +22,48 @@ def GetAllTests(test_dir):
     return filenames
 
 
+# Try for "upload Specific tests" --> s 
+# --> if there is a way to point to which tests we want using a test id no. AND if we can use those to designate limits
+# or "upload tests between specific Dates" --> d (if we can't designate which tests we want to upload from just the associated test ID number)
+# --> This would upload all tests on input date1, all tests between then and another input date2, then all tests from input date2
+# --> In this same vien, it should be from 12:00AM on date1 and then to 23:59PM on date2 (if we want to upload tests from a specific date that is not today)
+# --> Would be just in case they forget to upload tests at EOD --> opens up possiblity for EOW 
+# ->> suggested COA: use GetTodaysTests as a foundation
+#
+
+
+#def GetTodaysTests(test_dir):
+    """
+    Returns a list of directories for tests that were run with todays date.
+
+    Input: [str] test_dir: name of directory where all tests are stored
+    Returns: [list] todays_tests: list of all tests with todays date in the directory name
+    """
+#
+#    today = datetime.date.today().strftime('%Y%m%d')
+#    #       datetime.date.THIS POINTS TO TODAY 
+#    #       will need to ask from input --> os.popen('') VVVV
+
+#    getnames = os.popen(f"ls -d {test_dir}*") 
+#    filenames = getnames.readlines()
+#    filenames = [fname.split('\n')[0] for fname in filenames]
+#    todays_tests = []
+#
+#    for fname in filenames:
+#        file_date = fname.split('/')[-1].split('_')[1][:-6]
+#        print(file_date)
+#        if today == file_date:
+#            todays_tests.append(fname)
+#
+#    print(f'Todays tests: {todays_tests}')
+#
+#    return todays_tests
+#
+# 
+#
+#
+
+
 def GetTodaysTests(test_dir):
     """
     Returns a list of directories for tests that were run with todays date.
@@ -47,6 +89,7 @@ def GetTodaysTests(test_dir):
 
     return todays_tests
 
+
 def GetLastTest(test_dir):
     """
     Gets the directory of the latest test taken.
@@ -59,6 +102,9 @@ def GetLastTest(test_dir):
     filenames.sort()
 
     return filenames[-1]
+ 
+
+
 
 def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
     """

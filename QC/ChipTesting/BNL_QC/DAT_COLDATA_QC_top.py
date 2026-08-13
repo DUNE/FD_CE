@@ -119,14 +119,14 @@ if True:
 
 ####### Init check information #######
 if 10 in tms:
-    print ("Turn DAT on ")
+    print("Turn DAT on ")
     tt.append(time.time())
     pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat(env = logs['env'])
     tt.append(time.time())
     print ("DAT_Power_On, it took %d seconds"%(tt[-1]-tt[-2]))
 
 if 0 in tms:
-    print ("Init check after chips are installed")
+    print("Init check after chips are installed")
     for tryi in range(5):
         datad = {}
         pwr_meas, link_mask, init_ok = dat.wib_pwr_on_dat(env = logs['env'])
@@ -195,12 +195,12 @@ if 0 in tms:
         pickle.dump(datad, fn)
 
     tt.append(time.time())
-    print ("save_fdir_start_%s_end_save_fdir"%fdir)
-    print ("save_file_start_%s_end_save_file"%fp)
-    print ("Done! Pass! It took %d seconds"%(tt[-1]-tt[-2]))
+    print("save_fdir_start_%s_end_save_fdir"%fdir)
+    print("save_file_start_%s_end_save_file"%fp)
+    print("Done! Pass! It took %d seconds"%(tt[-1]-tt[-2]))
 
 if 1 in tms:
-    print ("COLDATA basic functionality checkout...")
+    print("COLDATA basic functionality checkout...")
     datad = {}
     datad['logs'] = logs
     
@@ -208,7 +208,7 @@ if 1 in tms:
     #Write to registers to test reset
     dat.femb_cd_cfg(femb_id = dat.fembs[0])
 
-    print ("COLDATA hard reset check")
+    print("COLDATA hard reset check")
     dat.dat_cd_hard_reset(femb_id = dat.fembs[0])
     time.sleep(1)
     cds_pwr_info = dat.dat_cd_pwr_meas()
@@ -218,7 +218,7 @@ if 1 in tms:
     #Write to registers to test reset
     dat.femb_cd_cfg(femb_id = dat.fembs[0])
     
-    print ("COLDATA soft reset check")
+    print("COLDATA soft reset check")
     #The Soft Reset command has the format of a Write to chip address 0, register page 0, 
     #register address 6: ([00000000][00000110]). The contents of the third byte are unimportant.
     dat.femb_i2c_wr(dat.fembs[0], 0x0, 0x0, 0x6, 0x1) #no need to verify
@@ -230,7 +230,7 @@ if 1 in tms:
     #Write to registers to test reset
     dat.femb_cd_cfg(femb_id = dat.fembs[0])    
     
-    print ("COLDATA fast reset check") 
+    print("COLDATA fast reset check") 
     dat.femb_cd_rst()
     time.sleep(1)
     cds_pwr_info = dat.dat_cd_pwr_meas()
@@ -238,11 +238,11 @@ if 1 in tms:
     datad["FAST_CMD_Reset"] = [dat.fembs, regerrflg, cds_pwr_info ]
     
 
-    print ("COLDATA GPIO check")
+    print("COLDATA GPIO check")
     cntrl_chk = dat.dat_cd_gpio_chk(femb_id = dat.fembs[0])
     datad.update(cntrl_chk)
     
-    print ("COLDATA SPI functionality check") 
+    print("COLDATA SPI functionality check") 
     spi_config = dat.femb_fe_cfg(femb_id = dat.fembs[0])
     datad["SPI_config"] = spi_config    
 
@@ -477,16 +477,35 @@ if 7 in tms:
         dat.femb_cd_rst()       
 
         cd0_sn = int(datad['logs']['CD0'])&0xffffffff 
-        cd1_sn = int(datad['logs']['CD1'])&0xffffffff   
+        cd1_sn = int(datad['logs']['CD1'])&0xffffffff 
+
+        #print ("cd0_sn : " , cd0_sn) 
+        #print ("should be 45052506")
+          
         if cd0_sn >= 0x80000000:
             datad["U1_CD1_SN_Error"] = False 
         elif cd1_sn >= 0x80000000:
             datad["U1_CD2_SN_Error"] = False
         else:
             if 'RT' in logs['env']:
-                efuse_readout_u1 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
+                efuse_readout_u1 = dat.dat_coldata_efuse_rd(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
+
+                print ("efuse_readout_u1: ", efuse_readout_u1) ####
+                #print ("cd0_sn : " , cd0_sn, " should be 45052506")                   ####
+
+                if (efuse_readout_u1 == cd0_sn) or (efuse_readout_u1 != 0): #efuse is programmed previously
+                    print("CD0 efuse already programmed, skipping burn-in.")
+                    pass
+                else:
+                    efuse_readout_u1 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
                 datad["U1_CD1"] = (cd0_sn, efuse_readout_u1)
-                efuse_readout_u2 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD2", efuseid=cd1_sn)
+                
+                efuse_readout_u2 = dat.dat_coldata_efuse_rd(femb_id=dat.fembs[0], cd_id="CD2", efuseid=cd1_sn)
+                if (efuse_readout_u2 == cd1_sn) or (efuse_readout_u2 != 0): # efuse is programmed previously
+                    print("CD1 efuse already programmed, skipping burn-in.")
+                    pass
+                else:
+                    efuse_readout_u2 = dat.dat_coldata_efuse_prm(femb_id=dat.fembs[0], cd_id="CD2", efuseid=cd1_sn)
                 datad["U2_CD2"] = (cd1_sn, efuse_readout_u2)
             else:
                 efuse_readout_u1 = dat.dat_coldata_efuse_rd(femb_id=dat.fembs[0], cd_id="CD1", efuseid=cd0_sn)
