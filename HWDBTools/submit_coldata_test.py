@@ -290,8 +290,17 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
             #print(testtype, testname)
             if(datasheet0[1][len(tests)-1] != None):
                 
+                u1_pass = False
+                u2_pass = False
                 for test, result in zip(datasheet1[0],datasheet1[1]):
                     print(test, result)
+
+                    if "U1_CD1" in test:
+                        if "PASS" in result:
+                            u1_pass = True
+                    if "U2_CD2" in test:
+                        if "PASS" in result:
+                            u2_pass = True
                     
                 print('About to enter item...')
 
@@ -319,7 +328,22 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
                 print('Finished uploading...')
 
                 # Call patch here (if pass or retesting, or if warm and cold testing)
-                # TO DO
+                if u1_pass:
+                    pass_status_u1 = 120 # QA/QC Tests - Passed All
+                else:
+                    pass_status_u1 = 130 # QA/QC Tests - Non-conforming
+
+                if u2_pass:
+                    pass_status_u2 = 120 # QA/QC Tests - Passed All
+                else:
+                    pass_status_u2 = 130 # QA/QC Tests - Non-conforming
+
+                print(f'Updating status for {serial0} to {pass_status_u1}')
+                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial0)
+                dune_ce_hwdb.PatchItem(itemID, pass_status_u1, True, False, True)
+                print(f'Updating status for {serial1} to {pass_status_u2}')
+                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial1)
+                dune_ce_hwdb.PatchItem(itemID, pass_status_u2, True, False, True)
 
             else:
                 print("ERROR: Failed to load all tests", datasheet0)
@@ -366,5 +390,5 @@ if __name__ == '__main__':
         print(f'ERROR: testtype {args.TestType} not recognized.')
         exit()
 
-    test_dirs = GetTestsAfterdate(test_dir, '20260330')
+    #test_dirs = GetTestsAfterdate(test_dir, '20260330')
     SubmitCOLDATAtest(args.Username, test_dirs, test_loc)
