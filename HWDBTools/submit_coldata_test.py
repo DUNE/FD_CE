@@ -47,6 +47,26 @@ def GetTodaysTests(test_dir):
 
     return todays_tests
 
+def GetTestsAfterdate(test_dir, test_date):
+    """
+    Get all tests after given date.
+    """
+
+    getnames = os.popen(f"ls -d {test_dir}*") 
+    filenames = getnames.readlines()
+    filenames = [fname.split('\n')[0] for fname in filenames]
+    these_tests = []
+
+    for fname in filenames:
+        file_date = fname.split('/')[-1].split('_')[1][:-6]
+        print(file_date)
+        if int(test_date) < int(file_date):
+            these_tests.append(fname)
+
+    print(f'Todays tests: {these_tests}')
+
+    return these_tests
+
 def GetLastTest(test_dir):
     """
     Gets the directory of the latest test taken.
@@ -282,16 +302,21 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
                     manufacturer = 15
 
                 box_arrival_date = "2023-08-10 12:00:00" # when the chips arrived at current site
-                dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial0, test_loc, "US", "", manufacturer, "", box_arrival_date) 
-                print('About to enter test...')
-                print(serial0, testname, datasheet0)
-                dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial0, testname, "No comment", datasheet0)
-                print('About to enter file to test...')
-                dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial0, testname, datasheet0, filelist)
-                
-                dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial1,test_loc, "US", "", manufacturer, "", box_arrival_date)
-                dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial1, testname, "No comment", datasheet1)
-                dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial1, testname, datasheet1, filelist)
+
+                try:
+                    print('items to upload:',serial0, testname, datasheet0)
+                    dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial0, test_loc, "US", "", manufacturer, "", box_arrival_date) 
+                    print('About to enter test...')
+                    print('items to upload:',serial0, testname, datasheet0)
+                    dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial0, testname, "No comment", datasheet0)
+                    print('About to enter file to test...')
+                    dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial0, testname, datasheet0, filelist)
+                    
+                    dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial1,test_loc, "US", "", manufacturer, "", box_arrival_date)
+                    dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial1, testname, "No comment", datasheet1)
+                    dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial1, testname, datasheet1, filelist)
+                except Exception as e:
+                    print(f"ERROR: Upload failed. {e}")
                 print('Finished uploading...')
 
                 # Call patch here (if pass or retesting, or if warm and cold testing)
@@ -331,7 +356,7 @@ if __name__ == '__main__':
    
     print('Testtype', args.TestType)
     if args.TestType == None or args.TestType == "l":
-        test_dirs = [GetLastTest(args.Directory)]
+        test_dirs = [GetLastTest(test_dir)]
     elif args.TestType == "t":
         test_dirs = GetTodaysTests(test_dir)
     elif args.TestType == "a":
@@ -342,4 +367,5 @@ if __name__ == '__main__':
         print(f'ERROR: testtype {args.TestType} not recognized.')
         exit()
 
+    test_dirs = GetTestsAfterdate(test_dir, '20260330')
     SubmitCOLDATAtest(args.Username, test_dirs, test_loc)
