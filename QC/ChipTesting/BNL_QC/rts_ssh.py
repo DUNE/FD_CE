@@ -5,6 +5,8 @@ import datetime
 import filecmp
 import pickle
 import os
+import glob2
+import re
 from .DAT_read_cfg import dat_read_cfg
 from .DAT_InitChk import dat_initchk
 from colorama import just_fix_windows_console
@@ -15,17 +17,75 @@ just_fix_windows_console()
 wibip = "192.168.121.123"
 wibhost = "root@{}".format(wibip)
 
-def subrun(command, timeout = 30, check=True, exitflg = True):
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+# Strips away ANSI color codes and their whitespaces to use for the name in the QC checklist widgets
+def clean_test_name(raw):
+    return ANSI_ESCAPE_RE.sub("", raw).strip()
+
+# 
+def qc_report_name(raw_name, attempt = 0):
+    base = clean_test_name(raw_name)
+    if attempt == 0:
+        return base
+    else:
+        return f"{base} (Retest)"
+    return f"{base} (Retest {attempt})"
+
+# Finds the most recent plot file for each test item in the QC analysis and returns a dictionary mapping test item names to their corresponding plot file paths. If no plot file is found for a test item, the value will be None.
+def find_sub_plot_paths(fddir, item_stats): 
+    sub_plot_paths = {}
+    for onekey in item_stats:
+        search_keys = [onekey]
+        if onekey.endswith("_Power"):
+            search_keys.append(onekey[:-len("_Power")])
+        elif onekey.endswith("_PLS"):
+            search_keys.append(onekey[:-len("_PLS")])
+        if onekey == "PLL_Locked":
+            search_keys.append("PLL_LOCK")
+ 
+        found = None
+        for key in search_keys:
+            matches = sorted(glob2.glob(os.path.join(fddir, f"*_{key}.png")))
+            if matches:
+                found = matches[-1]
+                break
+        sub_plot_paths[onekey] = found
+    return sub_plot_paths
+
+SSH_HARDENING_OPTIONS = ["-n", "-o", "BatchMode = yes", "-o", "ConnectTimeout = 10", "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"] 
+SCP_HARDENING_OPTIONS = ["-B", "-o", 'ConnectTimeout = 10', "-o", "ServerAliveInterval = 5", "-o", "ServerAliveCountMax = 3"]
+
+# Harden SSH and SCP commands by adding options to prevent interactive prompts and improve reliability. 
+def harden_remote_command(command):
+    if not isinstance(command, (list, tuple)) or len(command) == 0:
+        return command
+    cmd = list(command)
+    prog = os.path.basename(str(cmd[0])).lower()
+    if prog.startswith("ssh"):
+        return [cmd[0]] + SSH_HARDENING_OPTIONS + cmd[1:]
+    if prog.startswith("scp"):
+        return [cmd[0]] + SCP_HARDENING_OPTIONS + cmd[1:]
+    return cmd
+
+# Stand-in class to mimic the return value of subprocess.run() for testing purposes
+class RunResult:
+    def __init__(self, returncode, stdout, stderr):
+        self.returncode = returncode
+        self.stdout = stdout if stdout else ""
+        self.stderr = stderr if stderr else ""
+
+
+def subrun(command, timeout = 30, check=True, exitflg = True, user_shell = False):
+    command = harden_remote_command(command)
     try:
-        result = subprocess.run(command,
-                                capture_output=True,
-                                text=True,
-                                timeout=timeout,
-                                shell=True,
-                                #stdout=subprocess.PIPE,
-                                #stderr=subprocess.PIPE,
-                                check=check
-                                )
+        result = subprocess.run(command, capture_output = True, 
+                      text = True,
+                      timeout = timeout,
+                      check = check,
+                      shell = user_shell,
+                      stdin = subprocess.DEVNULL)
+
     except subprocess.CalledProcessError as e:
         print ("Call Error", e.returncode)
         if exitflg:
@@ -34,7 +94,7 @@ def subrun(command, timeout = 30, check=True, exitflg = True):
             #return None
             #exit()
             
-
+        return RunResult(e.returncode, e.stdout, e.stderr)
         #continue
     except subprocess.TimeoutExpired as e:
         print ("No reponse in %d seconds"%(timeout))
@@ -44,7 +104,7 @@ def subrun(command, timeout = 30, check=True, exitflg = True):
             print ("Exit anyway")
             return None
             #exit()
-
+        return RunResult(None, e.stdout, e.stderr)
         #continue
     return result
 
@@ -89,7 +149,7 @@ def Sinkcover():
         else:
             print ("Please close the covers and continue...")
 
-def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True, config_path = "./asic_info.csv"):
+def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT", burnin_in_tests=False, burnin_now=False, auto=True, config_path = "./asic_info.csv", qc_callback = None):
 
     QC_TST_EN =  True 
     print('Running rts_ssh')
@@ -309,6 +369,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                 break
             
             testid = tms[tmsi]
+            report_name = qc_report_name(tms_items[testid], retry_fi)
             print (datetime.datetime.utcnow(), " : New Test Item Starts, please wait...")
             print (tms_items[testid])
             if "FE" in DUT:
@@ -322,6 +383,9 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     continue
                 else: 
                     command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
+
+                    if qc_callback is not None:
+                        qc_callback(report_name, "running")
 
             result=subrun(command, timeout = None) #rewrite with Popen later
             if result != None:
@@ -409,7 +473,16 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                 for test in cd_qc_ana.qc_stats:    
                     cd_qc_ana.WriteToHWDBLog(test, cd_qc_ana.qc_stats[test], fddir, hwdb_file_name="hwdb_CD0.txt")
                     cd_qc_ana.WriteToHWDBLog(test, cd_qc_ana.qc_stats[test], fddir, hwdb_file_name="hwdb_CD1.txt")
-
+                
+                # Reports test items pass/fail to the GUI's QC checklist widget. Attaches whichever plot dat_cd_qc_ana() generated in fddir, if any
+                if qc_callback is not None:
+                    item_stats = cd_qc_ana.qc_stats
+                    item_pass = all("PASS" in str(v) for v in item_stats.values()) if item_stats else True
+                    plot_matches = sorted(glob2.glob(os.path.join(fddir, "*.png")))
+                    plot_path = plot_matches[-1] if plot_matches else None
+                    sub_plot_paths = find_sub_plot_paths(fddir, item_stats)
+                    qc_callback(report_name, "pass" if item_pass else "fail", file_path = plot_path, file_type = "plot" if plot_path else None, sub_results = dict(item_stats), sub_plot_paths = sub_plot_paths)
+                
                 keys = list(cd_qc_ana.qc_stats.keys())
                 retry_fi_pre = retry_fi
                 for onekey in keys:
@@ -417,6 +490,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                         retry_fi = retry_fi  +1
                         break
                 if (retry_fi == 1) and (retry_fi != retry_fi_pre):
+                    if qc_callback is not None: 
+                        qc_callback(qc_report_name(tms_items[testid], retry_fi), "pending")
                     tmsi = tmsi
                     continue
                 elif retry_fi >=2:

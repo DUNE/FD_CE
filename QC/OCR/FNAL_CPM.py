@@ -194,7 +194,7 @@ def GetUserHelp():
 
     return wafer_id, serial_number
 
-def validate_COLDATA_OCR(ocr_result, process_id):
+def validate_COLDATA_OCR(ocr_result, process_id, allow_input=True):
     """
     Validates the OCR result, assuming it processed a COLDATA chip
     which, upon perfect success, should look like:
@@ -208,6 +208,8 @@ def validate_COLDATA_OCR(ocr_result, process_id):
         ocr_result [str]: string of OCR result
         process_id [int]: process id used to keep track of different
                           OCR tests.
+        allow_input [bool]: If true, then if the OCR fails, the user will
+                            be prompted to input the serial number. 
     Returns:
         serial_number [str]: Returns a string of the serial number in
                              the format XXXXXYYYY, or None if failed
@@ -250,11 +252,35 @@ def validate_COLDATA_OCR(ocr_result, process_id):
         passed = False
     elif sn.isnumeric():
         serial_number = sn
-
     if not passed:
         warnings.append(f"ERROR: serial number could not be found. OCR found '{sn}'")
-        print(f"Warnings: {warnings}")
-        raise Exception(f"OCR Warnings: {warnings}")
+
+        if allow_input:
+            print(f"Warnings: {warnings}")
+            warnings = [] # clear warnings since we now are using user input
+
+            print("User must not input the chip information manually. The chips are labeled with four lines:")
+            print("        COLDATA")  
+            print("        WAFER NUMBER (somehting like NBMY62.00)")
+            print("        XXXXX (part of serial number)") 
+            print("        YYYY  (part of serial number)")
+
+            wafer_id = input("Enter the WAFER NUMBER (line 2):")
+            
+            
+            while True:
+                serial_number = input("Enter the serial number (lines 3 and 4, no spaces):")
+                try:
+                    if len(serial_number) != 9:
+                        raise ValueError("Incorrect number of characters. The serial number must have 9 characters.")
+                    elif not serial_number.isnumeric():
+                        raise ValueError("Serial number must be an integer.")
+                    else:
+                        break
+                except Exception as error:
+                    print(f"ERROR: {error}. Please try again.")
+        else:
+            return None, wafer_id, warnings
     
 
     if serial_number or wafer_id:
@@ -356,6 +382,8 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     """
     print("Running OCR...")
     success = False
+    serial_number  = None
+    wafer_id = None
     # Extract image_number from the filename (assuming it's before the first '_')
     image_number = image_file.split('_')[0]
     
@@ -386,7 +414,7 @@ def RunOCR(image_directory, image_file, ocr_results_dir, to_rts_config=False, so
     if to_rts_config:
         WriteToRTSConfig(chipinfo_file, config_file, socket_label)
 
-    return success
+    return success, serial_number, temp_image_path
 
 def WriteToRTSConfig(chipinfo_file, config_file, socket_label):
     """

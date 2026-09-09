@@ -21,6 +21,7 @@ def GetAllTests(test_dir):
 
     return filenames
 
+
 def GetTodaysTests(test_dir):
     """
     Returns a list of directories for tests that were run with todays date.
