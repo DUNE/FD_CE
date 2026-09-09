@@ -10,7 +10,7 @@ Classes:
 """
 from statemachine import StateMachine, State
 from ChipTesting.Integration.FNAL_RTS_integration import MoveChipsToSockets, MoveChipsToTray, MoveBadChipsToTray, RTS_Cycle
-from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN
+from ChipTesting.Integration.Auto_COLDATA_QC import RunCOLDATA_QC, BurninSN, PassFailCOLDATA, WriteChipPassFail
 from ChipTesting.Integration.RTS_CFG import RTS_CFG
 from ChipTesting.BNL_QC.LogInfo import WaitForPictures
 import sys
@@ -18,6 +18,7 @@ import os
 from datetime import datetime
 import time
 import subprocess
+import pandas as pd
 
 import OCR.FNAL_CPM as cpm
 
@@ -44,6 +45,8 @@ class RTSStateMachine(StateMachine):
         self.simulation_mode = False
         self.BypassRTS = False
         self.last_normal_state = None
+        self.upload_to_hwdb = False # Choose to skip uploading to hwdb
+        self.current_chip_status = "Good"
 
         self.chip_positions = {
             'tray': [],
@@ -62,6 +65,7 @@ class RTSStateMachine(StateMachine):
         self.image_directory = "/Users/ppd-cap-WD-137552/RTS_data/images/"
         self.ocr_results_dir = "/Users/ppd-cap-WD-137552/RTS_data/ocr_images/"
         self.config_file = "/Users/ppd-cap-WD-137552/FD_CE/QC/ChipTesting/BNL_QC/asic_info.csv"
+        self.test_result_dir = "/Users/ppd-cap-WD-137552/Tested/"
         self.sn_ready = True  # Track if OCR was successful
 
         # Ask user if they want to run in simulation mode
@@ -92,17 +96,32 @@ class RTSStateMachine(StateMachine):
         if not self.BypassRTS:
             self.rts = RTS_CFG()
             self.rts.rts_init(port=201, host_ip='192.168.121.1')
+
+        # Ask tester for their username and update config file
+        self.user_name = input("Enter Tester Username: ").strip().lower()
+        self.WriteUserToConfig(self.user_name, self.config_file)
+        self.rts_loc = "FNAL"
         
+        self.retest = False
         while True:
-            choice = input("Populate chip positions manually (m) or use full tray (f)? ").strip().lower()
+            choice = input("Populate chip positions manually (m) or use partial (p), full tray (f), retest tray (r), or retest partial tray (rp)? ").strip().lower()
             if choice in ['m', 'manual']:
                 self.populate_manually()
                 break
             elif choice in ['f', 'full']:
                 self.populate_full_tray()
                 break
-            else:
-                print("Please enter 'm' for manual or 'f' for full tray.")
+            elif choice in ['p', 'partial']:
+                self.populate_partial_tray()
+                break
+            elif choice in ['r', 'retest']:
+                self.populate_retest_tray()
+                self.retest = True
+                break
+            elif choice in ['rp', 'retest partial']:
+                self.populate_partial_retest_tray()
+                self.retest = True
+                break
         
     # State definitions
     ground = State("Ground", initial=True)
@@ -248,13 +267,17 @@ class RTSStateMachine(StateMachine):
     def on_enter_moving_chip_to_socket(self):
         print("Moving chips to test socket")
         self.last_normal_state = self.current_state
+        self.current_chip_status = "Good"
 
         if self.current_chip_index >= len(self.chip_positions['col']):
             print("Error: No more chips to process")
             return
 
-        chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
-                           self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+        if not self.retest or self.current_chip_index==0:
+            chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                            self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+        else: # only move one chip for retesting, keeping good chip in the socket
+            chip_data = {key: [self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
         if not self.BypassRTS:
             try:
@@ -263,7 +286,8 @@ class RTSStateMachine(StateMachine):
                 print(f"Error calling MoveChipsToSockets: {e}")
                 return
         else:
-            print(f"Would have moved chips to sockets: {chip_data['label'][0]} and {chip_data['label'][1]} from tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]}) to DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]}")
+            for i in range(len(chip_data['label'])):
+                print(f"Would have moved chip: {chip_data['label'][i]} from tray {chip_data['tray'][i]}, position ({chip_data['col'][i]}, {chip_data['row'][i]}) to DAT {chip_data['dat'][i]} socket {chip_data['dat_socket'][i]}.")
 
     def on_enter_running_ocr(self):
         print("Starting OCR processing to read serial numbers")
@@ -277,8 +301,11 @@ class RTSStateMachine(StateMachine):
             try:
                 # Check the RobotLog to see if the chip pictures are ready before running OCR
                 print('Waiting for chip pictures...')
-                chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
-                                  self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+                if self.retest and self.current_chip_index > 0: # only grab info for chip to be retested
+                    chip_data = {key: [self.chip_positions[key][self.current_chip_index]] for key in self.chip_positions}
+                else:
+                    chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                                    self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
                 pictures_ready, pictures = WaitForPictures(chip_data, threading=False)
                 
                 if pictures_ready:
@@ -286,11 +313,19 @@ class RTSStateMachine(StateMachine):
                     
                     for i in range(len(pictures)):
                         success = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir,
-                                           True, chip_data['label'][i])
+                                        True, chip_data['label'][i])
+                        self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
+
+                    if self.retest and self.current_chip_index == 0: 
+                        self.retest_good_chip_image = pictures[0] # Save good chip info if this is the first test in retest tray
+                    elif self.retest and self.current_chip_index > 0:
+                        # Rerun OCR for good chip info since no picture was retaken
+                        success = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                     
                     # Kill Ollama used by OCR
                     subprocess.run("taskkill /F /IM ollama.exe", shell=True)
+                    subprocess.run("taskkill /F /IM llama-server.exe", shell=True)#########
                     print("OCR processing completed successfully")
                 else:
                     print("Pictures not ready, OCR processing failed")
@@ -309,13 +344,18 @@ class RTSStateMachine(StateMachine):
             print("Would have called RunCOLDATA_QC(duttype='CD', env='RT', rootdir='C:/Users/RTS/Tested/')")
         else:
             print("Running COLDATA QC tests...")
-            self.logs, self.cd_qc_ana = RunCOLDATA_QC(
-                duttype="CD", 
-                env="RT", 
-                rootdir="C:/Users/ppd-cap-WD-137552/Tested/"
-                # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
-            )
-            print("COLDATA QC tests completed successfully")
+            try:
+                self.logs, self.cd_qc_ana = RunCOLDATA_QC(
+                    duttype="CD", 
+                    env="RT", 
+                    rootdir="C:/Users/ppd-cap-WD-137552/Tested/"
+                    # pc_wrcfg_fn="/Users/RTS/FD_CE/QC/ChipTesting/asic_info.csv"
+                )
+                print("COLDATA QC tests completed successfully")
+
+            except Exception as e:
+                print(f"FAIL: COLDATA QC tests failed to complete with error: {e}.")
+                self.current_chip_status = "Bad"
 
     def on_enter_burning_serial_number(self):
         print("Starting serial number burn-in process")
@@ -324,12 +364,26 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Burning serial number into chip")
             print("Would have called BurninSN() with logs and cd_qc_ana from testing phase")
+        elif self.current_chip_status == "Bad":
+            print("QC tests failed for unknown reason, skipping burning serial number...")
         else:
-            if self.sn_ready:
+            if self.sn_ready: #set to false to skip burning serial number while OCR has issues
                 try:
                     print("Burning serial number into chip...")
                     BurninSN(self.logs, self.cd_qc_ana)
                     print("Serial number burn-in completed successfully")
+
+                    print("Updating hwdb files with final test results...")
+                    test_dir = self.logs['hwdb_dir']
+                    cd_0_file = test_dir + "hwdb_CD0.txt"
+                    cd_1_file = test_dir + "hwdb_CD1.txt"
+
+                    chip0_pass = PassFailCOLDATA(cd_0_file)
+                    WriteChipPassFail(chip0_pass, cd_0_file, "CD0")
+
+                    chip1_pass = PassFailCOLDATA(cd_1_file)
+                    WriteChipPassFail(chip1_pass, cd_1_file, "CD1")
+
                 except Exception as e:
                     print(f"Error during serial number burn-in: {e}")
             else:
@@ -342,16 +396,44 @@ class RTSStateMachine(StateMachine):
         if self.simulation_mode:
             print("[SIMULATION] Uploading to HWDB")
 
-        else: 
-            upload_result = subprocess.run(["wsl","bash","-l","-c", """source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh && python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py"""], capture_output=True, text=True, check=True)
-            print(upload_result.stdout)
+        if self.upload_to_hwdb: 
+            try:
+                setup_hwdb = subprocess.run(["wsl", "bash", "-l", "-c", "source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh"])
+                print(setup_hwdb.stdout)
+
+                # Get token for uploading
+                #get_token = subprocess.run(["wsl","bash","-l","-c", "htgettoken --vaultserver=htvaultprod.fnal.gov --issuer=fermilab"], capture_output=True, text=True, check=True)
+                #print(get_token.stdout)
+
+                # Setup exports
+                #setup_hwdb = subprocess.run(["wsl","bash","-l","-c", f"""export TOKENLOC='/run/user/1000/bt_u1000' && export HWDBSELECT='DEV' && export COMMANDVERB='VERB0' && export SITELOC='{self.rts_loc}'"""], capture_output=True, text=True, check=True) # TODO: fix site loc as a variable
+                #print(setup_hwdb.stdout)
+                
+                # Get the latest created folder (should be this current test)
+                test_dirs = [x[0] for x in os.walk(self.test_result_dir)]
+                test_dirs.sort()
+                test_dir = test_dirs[-2] # second to last for one dir up
+
+                # Upload to hwdb
+                upload_result = subprocess.run([f"python3 /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/submit_coldata_test.py {self.user_name} {test_dir} {self.rts_loc}"], capture_output=True, text=True, check=True)
+                print(upload_result.stdout)
+
+            except Exception as e:
+                print(f"ERROR: Failed uploading to HWDB: {e}")
+
+        else:
+            print("Skipping upload to HWDB.")
 
     def on_enter_moving_chip_to_tray(self):
         print("Moving chips to tray")
         self.last_normal_state = self.current_state
 
-        chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
-                          self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+
+        if not self.retest or ((self.current_chip_index+2) >= len(self.chip_positions['label'])):
+            chip_data = {key: [self.chip_positions[key][self.current_chip_index], 
+                            self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
+        else: # only move one chip for retesting, keeping good chip in the socket
+            chip_data = {key: [self.chip_positions[key][self.current_chip_index + 1]] for key in self.chip_positions}
         
         if not self.BypassRTS:
             try:
@@ -359,7 +441,9 @@ class RTSStateMachine(StateMachine):
             except Exception as e:
                 print(f"Error calling MoveChipsToTray: {e}")
         else:
-            print(f"Would have moved chips to tray: {chip_data['label'][0]} and {chip_data['label'][1]} from DAT {chip_data['dat'][0]} sockets {chip_data['dat_socket'][0]} and {chip_data['dat_socket'][1]} to tray {chip_data['tray'][0]}, positions ({chip_data['col'][0]}, {chip_data['row'][0]}) and ({chip_data['col'][1]}, {chip_data['row'][1]})")
+            for i in range(len(chip_data['label'])):
+                print(f"Would have moved chip: {chip_data['label'][i]} from DAT {chip_data['dat'][i]} socket {chip_data['dat_socket'][i]} to tray {chip_data['tray'][i]}, position ({chip_data['col'][i]}, {chip_data['row'][i]}).")
+
 
     def on_enter_pause(self):
         print("System paused - awaiting resume command")
@@ -532,8 +616,12 @@ class RTSStateMachine(StateMachine):
     def handle_tray(self):
         """Process all chips on the tray with full test cycles."""
         num_chips = len(self.chip_positions['col'])
-        for i in range(num_chips):
-            print(f"\n--- Processing chip {i+1}/{num_chips} ---")
+        num_full_cycles = num_chips // 2
+        if num_chips %2 != 0:
+            print("ERROR: Odd number of chips. Two chips must be tested at once.")
+            return
+        for i in range(num_full_cycles):
+            print(f"\n--- Processing chips ({i*2+1}&{i*2+2})/{num_chips} ---")
             self.run_full_cycle()
         print(f"\nTray processing complete! Processed {num_chips} chips.")
 
@@ -634,6 +722,62 @@ class RTSStateMachine(StateMachine):
                 print(f"Error reading log file: {e}")
                 time.sleep(1)
     
+    def populate_partial_tray(self):
+        """Populate chip_positions from a starting point (must be column 1 or 3)."""
+        print("\nPartial tray mode.")
+        print("Enter the tray and the starting column (1-10) and row (1 or 3).")
+        
+        while True:         
+            try:
+                tray = int(input("Tray number (1 or 2): ").strip())
+                if tray in [1, 2]:
+                   break
+                else:
+                    print("Tray number must be 1 or 2.")
+            except ValueError:
+                print("Please enter 1 or 2.")
+            
+        while True:
+            try:
+                col_s = int(input("Column (1-10): ").strip())
+                if 1 <= col_s <= 10:
+                    break
+                else:
+                    print("Column must be between 1 and 10.")
+            except ValueError:
+                print("Please enter a valid number.")
+            
+        while True:
+            try:
+                row_s = int(input("Row (1 or 3): ").strip())
+                if row_s in [1, 3]:
+                    break
+                else:
+                    print("Row must be either 1 or 3.")
+            except ValueError:
+                print("Please enter a valid number.")
+                
+        for key in self.chip_positions:
+            self.chip_positions[key] = []
+        chip_counter = 0
+
+        for col in range(col_s, self.max_col + 1):
+            for row in range(1, self.max_row + 1):                
+                if (col == col_s):
+                    if (row < row_s):
+                        continue
+                self.chip_positions['col'].append(col)
+                self.chip_positions['row'].append(row)
+                self.chip_positions['tray'].append(2)
+                self.chip_positions['dat'].append(2)
+                if chip_counter % 2 == 0:
+                    self.chip_positions['dat_socket'].append(21)
+                    self.chip_positions['label'].append('CD0')
+                else:
+                    self.chip_positions['dat_socket'].append(22)
+                    self.chip_positions['label'].append('CD1')
+                chip_counter += 1
+        
     def populate_full_tray(self):
         """Populate chip_positions with a complete 10x4 tray configuration."""
         for key in self.chip_positions:
@@ -653,6 +797,93 @@ class RTSStateMachine(StateMachine):
                     self.chip_positions['label'].append('CD1')
                 chip_counter += 1
 
+    def populate_retest_tray(self):
+        """Populate chip_positions with a complete 10x4 tray configuration, keeping
+           one 'good' chip in place for each test."""
+        for key in self.chip_positions:
+            self.chip_positions[key] = []
+
+        good_chip = (10,4) # position of good chip
+        for col in range(1, self.max_col + 1):
+            for row in range(1, self.max_row + 1):
+                if (col,row)!=good_chip:
+                    self.chip_positions['col'].append(good_chip[0])
+                    self.chip_positions['row'].append(good_chip[1])
+                    self.chip_positions['tray'].append(2)
+                    self.chip_positions['dat'].append(2)
+                    self.chip_positions['dat_socket'].append(21)
+                    self.chip_positions['label'].append('CD0')
+
+                    self.chip_positions['col'].append(col)
+                    self.chip_positions['row'].append(row)
+                    self.chip_positions['tray'].append(2)
+                    self.chip_positions['dat'].append(2)
+                    self.chip_positions['dat_socket'].append(22)
+                    self.chip_positions['label'].append('CD1')
+
+                    print(col, row)
+
+        print('Size of chip positions: ', len(self.chip_positions['label']))
+
+    def populate_partial_retest_tray(self):
+        """Populate chip_positions from a starting point (must be column 1 or 3)."""
+        print("\nPartial tray mode.")
+        print("Enter the tray and the starting column (1-10) and row (1 or 3).")
+        
+        while True:         
+            try:
+                tray = int(input("Tray number (1 or 2): ").strip())
+                if tray in [1, 2]:
+                   break
+                else:
+                    print("Tray number must be 1 or 2.")
+            except ValueError:
+                print("Please enter 1 or 2.")
+            
+        while True:
+            try:
+                col_s = int(input("Column (1-10): ").strip())
+                if 1 <= col_s <= 10:
+                    break
+                else:
+                    print("Column must be between 1 and 10.")
+            except ValueError:
+                print("Please enter a valid number.")
+            
+        while True:
+            try:
+                row_s = int(input("Row (1-4): ").strip())
+                if 1 <= row_s <= 5:
+                    break
+                else:
+                    print("Row must be between 1 and 4.")
+            except ValueError:
+                print("Please enter a valid number.")
+                
+        for key in self.chip_positions:
+            self.chip_positions[key] = []
+
+        good_chip = (10,4) # position of good chip
+        for col in range(col_s, self.max_col + 1):
+            for row in range(1, self.max_row + 1):
+                if (col,row)!=good_chip:
+                    if (col == col_s):
+                        if (row < row_s):
+                            continue
+                    self.chip_positions['col'].append(good_chip[0])
+                    self.chip_positions['row'].append(good_chip[1])
+                    self.chip_positions['tray'].append(2)
+                    self.chip_positions['dat'].append(2)
+                    self.chip_positions['dat_socket'].append(21)
+                    self.chip_positions['label'].append('CD0')
+
+                    self.chip_positions['col'].append(col)
+                    self.chip_positions['row'].append(row)
+                    self.chip_positions['tray'].append(2)
+                    self.chip_positions['dat'].append(2)
+                    self.chip_positions['dat_socket'].append(22)
+                    self.chip_positions['label'].append('CD1')
+
     def populate_from_dicts(self, chip_list):
         """
         Populate chip_positions from a list of chip dictionaries.
@@ -670,7 +901,7 @@ class RTSStateMachine(StateMachine):
         """Interactively populate chip_positions with user input."""
         print("\nManual chip population mode.")
         print("Enter chip details one by one. Allowed values:")
-        print("Tray: 1 or 2 • Column: 1-10 • Row: 1-4 • DAT: 1 or 2 • DAT socket: 21 or 22 • Label: CD0 or CD1")
+        print("Tray: 1 or 2 • Column: 1-10 • Row: 1-4 • DAT: 1 or 2 • DAT socket: 21 or 22")
         
         while True:
             print(f"\n--- Chip {len(self.chip_positions['tray']) + 1} ---")
@@ -719,18 +950,13 @@ class RTSStateMachine(StateMachine):
                 try:
                     dat_socket = int(input("DAT socket number (21 or 22): ").strip())
                     if dat_socket in [21, 22]:
+                        if dat_socket == 21: label = "CD0"
+                        else: label = "CD1"
                         break
                     else:
                         print("DAT socket number must be 21 or 22.")
                 except ValueError:
                     print("Please enter 21 or 22.")
-            
-            while True:
-                label = input("COLDATA label (CD0 or CD1): ").strip().upper()
-                if label in ["CD0", "CD1"]:
-                    break
-                else:
-                    print("Label must be CD0 or CD1.")
             
             # Check for duplicate chip (same position, label, and socket)
             for i in range(len(self.chip_positions['tray'])):
@@ -762,3 +988,27 @@ class RTSStateMachine(StateMachine):
         
         if self.simulation_mode:
             print("[SIMULATION] Disconnecting from robot")
+
+
+    def WriteUserToConfig(self, user_name, config_file):
+        """
+        Write the tester username to the RTS config file.
+        Inputs:
+            user_name [str]: Testers username
+            config_file [str]: RTS config file
+        """
+
+        config_df = pd.read_csv(config_file)
+
+        # Find username row and rewrite
+        row_num = 0
+        for i in config_df['Item']:
+            if i == "tester": 
+                config_df.loc[row_num, 'Value'] = user_name
+                break
+            row_num += 1
+
+        # Overwrite existing csv
+        config_df.to_csv(config_file, index=False)
+
+        return
