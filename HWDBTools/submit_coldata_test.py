@@ -80,7 +80,7 @@ def GetLastTest(test_dir):
 
     return filenames[-1]
 
-def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
+def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL", box_arrival_date="2023-08-10 12:00:00"):
     """
     Submits COLDATA tests to the hardware database (production or development).
 
@@ -301,8 +301,6 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
                 elif db_type == "PROD":
                     manufacturer = 15
 
-                box_arrival_date = "2023-08-10 12:00:00" # when the chips arrived at current site
-
                 try:
                     print('items to upload:',serial0, testname, datasheet0)
                     dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial0, test_loc, "US", "", manufacturer, "", box_arrival_date) 
@@ -336,7 +334,7 @@ if __name__ == '__main__':
     parser.add_argument("-u", "--Username", help="Username of tester")
     parser.add_argument("-d", "--Directory", help="Name of results directory")
     parser.add_argument("-l", "--Location", help="Location of RTS")
-    parser.add_argument("-t", "--TestType", help="Test type to submit. Options are latest (l), todays tests (t) or all in the directory (a)")
+    parser.add_argument("-t", "--TestType", help="Test type to submit. Options are latest (l), todays tests (t), given date (g), or all in the directory (a)")
     args = parser.parse_args()
 
     if args.Username == None:
@@ -363,9 +361,17 @@ if __name__ == '__main__':
         print('subbmitting all tests')
         test_dirs = GetAllTests(test_dir)
         print(test_dirs)
+    elif args.TestType == "g":
+        test_date = input("Enter date in YYYYMMDD format: ")
+        test_dirs = GetTestsAfterdate(test_dir, test_date)
     else:
         print(f'ERROR: testtype {args.TestType} not recognized.')
         exit()
 
-    test_dirs = GetTestsAfterdate(test_dir, '20260330')
-    SubmitCOLDATAtest(args.Username, test_dirs, test_loc)
+    if test_loc == "FNAL":
+        box_arrival_date = "2023-08-10 12:00:00" # when the chips arrived at current site
+    else:
+        box_arrival_date = input("Enter box arrival date in YYYY-MM-DD HH:MM:SS format: ")
+                
+    #print(f'Submitting tests: {test_dirs}')
+    SubmitCOLDATAtest(args.Username, test_dirs, test_loc, box_arrival_date)
