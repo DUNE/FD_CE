@@ -288,64 +288,63 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL", box_arrival_date="20
                 else:
                     print(f"ERROR: db_type '{db_type}' not recognized")
                 
-            #print(testtype, testname)
-            if(datasheet0[1][len(tests)-1] != None):
+
                 
-                u1_pass = False
-                u2_pass = False
+            u1_pass = False
+            u2_pass = False
+            if(datasheet0[1][len(tests)-1] != None):
                 for test, result in zip(datasheet1[0],datasheet1[1]):
-                    print(test, result)
-
-                    if "U1_CD1" in test:
-                        if "PASS" in result:
-                            u1_pass = True
-                    if "U2_CD2" in test:
-                        if "PASS" in result:
-                            u2_pass = True
+                    if test != None and result != None:
+                        if "U1_CD1" in test:
+                            if "PASS" in result:
+                                u1_pass = True
+                        if "U2_CD2" in test:
+                            if "PASS" in result:
+                                u2_pass = True
                     
-                print('About to enter item...')
+            print('About to enter item...')
 
-                if db_type == "DEV":
-                    manufacturer = 59
-                elif db_type == "PROD":
-                    manufacturer = 15
+            if db_type == "DEV":
+                manufacturer = 59
+            elif db_type == "PROD":
+                manufacturer = 15
 
-                try:
-                    print('items to upload:',serial0, testname, datasheet0)
-                    dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial0, test_loc, "US", "", manufacturer, "", box_arrival_date) 
-                    print('About to enter test...')
-                    print('items to upload:',serial0, testname, datasheet0)
-                    dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial0, testname, "No comment", datasheet0)
-                    print('About to enter file to test...')
-                    dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial0, testname, datasheet0, filelist)
-                    
-                    dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial1,test_loc, "US", "", manufacturer, "", box_arrival_date)
-                    dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial1, testname, "No comment", datasheet1)
-                    dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial1, testname, datasheet1, filelist)
-                except Exception as e:
-                    print(f"ERROR: Upload failed. {e}")
-                print('Finished uploading...')
+            try:
+                print('items to upload:',serial0, testname, datasheet0)
+                dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial0, test_loc, "US", "", manufacturer, "", box_arrival_date) 
+                print('About to enter test...')
+                print('items to upload:',serial0, testname, datasheet0)
+                dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial0, testname, "No comment", datasheet0)
+                print('About to enter file to test...')
+                dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial0, testname, datasheet0, filelist)
+                
+                dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial1,test_loc, "US", "", manufacturer, "", box_arrival_date)
+                dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial1, testname, "No comment", datasheet1)
+                dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial1, testname, datasheet1, filelist)
+            except Exception as e:
+                print(f"ERROR: Upload failed. {e}")
 
-                # Call patch here (if pass or retesting, or if warm and cold testing)
-                if u1_pass:
-                    pass_status_u1 = 120 # QA/QC Tests - Passed All
-                else:
-                    pass_status_u1 = 130 # QA/QC Tests - Non-conforming
+            print('Finished uploading...')
 
-                if u2_pass:
-                    pass_status_u2 = 120 # QA/QC Tests - Passed All
-                else:
-                    pass_status_u2 = 130 # QA/QC Tests - Non-conforming
-
-                print(f'Updating status for {serial0} to {pass_status_u1}')
-                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial0)
-                dune_ce_hwdb.PatchItem(itemID, pass_status_u1, True, False, True)
-                print(f'Updating status for {serial1} to {pass_status_u2}')
-                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial1)
-                dune_ce_hwdb.PatchItem(itemID, pass_status_u2, True, False, True)
-
+            # Call patch here (if pass or retesting, or if warm and cold testing)
+            if u1_pass:
+                pass_status_u1 = 120 # QA/QC Tests - Passed All
             else:
-                print("ERROR: Failed to load all tests", datasheet0)
+                pass_status_u1 = 130 # QA/QC Tests - Non-conforming
+
+            if u2_pass:
+                pass_status_u2 = 120 # QA/QC Tests - Passed All
+            else:
+                pass_status_u2 = 130 # QA/QC Tests - Non-conforming
+
+            print(f'Updating status for {serial0} to {pass_status_u1}')
+            itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial0)
+            dune_ce_hwdb.PatchItem(itemID, pass_status_u1, True, False, True)
+            print(f'Updating status for {serial1} to {pass_status_u2}')
+            itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial1)
+            dune_ce_hwdb.PatchItem(itemID, pass_status_u2, True, False, True)
+
+
 
     print('Finished!')
 
@@ -379,7 +378,7 @@ if __name__ == '__main__':
     print('Testtype', args.TestType)
     if args.TestType == None or args.TestType == "l":
         test_dirs = [GetLastTest(test_dir)]
-    elif args.TestType == "t":
+    elif args.TestType == "t": 
         test_dirs = GetTodaysTests(test_dir)
     elif args.TestType == "a":
         print('subbmitting all tests')
