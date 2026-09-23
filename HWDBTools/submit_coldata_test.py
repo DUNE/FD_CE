@@ -60,7 +60,7 @@ def GetTestsAfterdate(test_dir, test_date):
     for fname in filenames:
         file_date = fname.split('/')[-1].split('_')[1][:-6]
         print(file_date)
-        if int(test_date) < int(file_date):
+        if int(test_date) < int(file_date): 
             these_tests.append(fname)
 
     print(f'Todays tests: {these_tests}')
@@ -179,6 +179,9 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL", box_arrival_date="20
     # Grab the database type (PROD or DEV)
     db_type = os.environ.get('HWDBSELECT')
     print(f'Submitting to {db_type} database')
+
+    failed_uploads = []
+    failed_patches = []
     
     # Loop through all tests to be submitted
     for fname in test_dirs:
@@ -323,6 +326,7 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL", box_arrival_date="20
                 dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial1, testname, datasheet1, filelist)
             except Exception as e:
                 print(f"ERROR: Upload failed. {e}")
+                failed_upload.append(filename)
 
             print('Finished uploading...')
 
@@ -337,16 +341,25 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL", box_arrival_date="20
             else:
                 pass_status_u2 = 130 # QA/QC Tests - Non-conforming
 
-            print(f'Updating status for {serial0} to {pass_status_u1}')
-            itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial0)
-            dune_ce_hwdb.PatchItem(itemID, pass_status_u1, True, False, True)
-            print(f'Updating status for {serial1} to {pass_status_u2}')
-            itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial1)
-            dune_ce_hwdb.PatchItem(itemID, pass_status_u2, True, False, True)
+
+            try:
+                print(f'Updating status for {serial0} to {pass_status_u1}')
+                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial0)
+                dune_ce_hwdb.PatchItem(itemID, pass_status_u1, u1_pass, False, True)
+                print(f'Updating status for {serial1} to {pass_status_u2}')
+                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial1)
+                dune_ce_hwdb.PatchItem(itemID, pass_status_u2, u2_pass, False, True)
+            except Exception as e:
+                print(f"ERROR: Patch failed. {e}")
+                failed_patches.append(filename)
 
 
+    if len(failed_uploads) != 0:
+        print(f"Following files failed to upload: {failed_uploads}")
+    if len(failed_patches) != 0:
+        print(f"Following files failed to be patches: {failed_patches}")
 
-    print('Finished!')
+    print('Finished!') #2026/02/23
 
 if __name__ == '__main__':
 
@@ -357,7 +370,7 @@ if __name__ == '__main__':
     parser.add_argument("-u", "--Username", help="Username of tester")
     parser.add_argument("-d", "--Directory", help="Name of results directory")
     parser.add_argument("-l", "--Location", help="Location of RTS")
-    parser.add_argument("-t", "--TestType", help="Test type to submit. Options are latest (l), todays tests (t), given date (g), or all in the directory (a)")
+    parser.add_argument("-t", "--TestType", help="Test type to submit. Options are latest (l), todays tests (t), after given date (g), or all in the directory (a)")
     args = parser.parse_args()
 
     if args.Username == None:
