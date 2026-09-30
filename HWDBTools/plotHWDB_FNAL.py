@@ -279,14 +279,16 @@ def PassCDVDDIO(test_name, test_result):
                   "CUR_7":(58.9,76.9)}
 
     cut_range = (None, None)
+    this_key = None
     for key in cur_ranges.keys():
         if key in test_name:
             cut_range = cur_ranges[key]
+            this_key = key
 
     if test_result > cut_range[0] and test_result < cut_range[1]:
         chip_pass = True
     else:
-        print(f"---Failed CD VDDIO range ({cur_ranges[key]}): {test_result}")
+        print(f"Failed CD VDDIO range for {this_key} ({cur_ranges[this_key]}): {test_result}")
 
     return chip_pass
 
@@ -320,11 +322,11 @@ def CountFailedCDVDDIO(filenames):
             n_curs = 0 # checks that total tests are 0 or 8
             new_fail = False # keeps track of failures for printing purposes
             og_fail = False # keeps track of original CD VDDIO failuires (before 3sigma cuts)
-
+            print("\n--------- New Chip -------------")
             for key in data_dict.keys():
                 if "Power Consumption" in key:
                     if 'fail' in data_dict[key].lower():
-                        print("Failure: ", key, data_dict[key]) 
+                        #print("Failure: ", key, data_dict[key]) 
                         if not og_fail:
                             cur_fails["prev_fails"] += 1
                         og_fail = True
@@ -338,20 +340,20 @@ def CountFailedCDVDDIO(filenames):
                         if cur_key in key:
                             if not this_pass:
                                 cur_fails[cur_key] += 1
-                                print(f"Failed {cur_key}: {file}")
+                                #print(f"Failed {cur_key}: {file}")
                                 new_fail = True
 
             cur_fails["n_curs"].append(n_curs)
 
             if og_fail and not new_fail:
-                print("----> Previous Fail is now a Pass")
+                #print("----> Previous Fail is now a Pass")
                 cur_fails["new_pass"] += 1
-                for key in data_dict.keys():
-                    if "CD VDDIO" in key:
-                        print(f"-------{key}:{data_dict[key]}")
+                #for key in data_dict.keys():
+                #    if "CD VDDIO" in key:
+                #        print(f"-------{key}:{data_dict[key]}")
 
-            if new_fail or og_fail:
-                print("") # skip line for clearer terminal printing
+            #if new_fail or og_fail:
+            #    print("") # skip line for clearer terminal printing
 
     print(cur_fails)
     print("Total chips tested:", len(cur_fails["n_curs"]))

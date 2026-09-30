@@ -354,7 +354,15 @@ class RTSStateMachine(StateMachine):
                     print('Pictures ready! Running OCR...')
                     
                     for i in range(len(pictures)):
-                        success, serial_number, image_path = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir, True, chip_data['label'][i])
+                        success = cpm.RunOCR(self.image_directory, pictures[i], self.ocr_results_dir,
+                                        True, chip_data['label'][i])
+                        self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
+
+                    if self.retest and self.current_chip_index == 0: 
+                        self.retest_good_chip_image = pictures[0] # Save good chip info if this is the first test in retest tray
+                    elif self.retest and self.current_chip_index > 0:
+                        # Rerun OCR for good chip info since no picture was retaken
+                        success = cpm.RunOCR(self.image_directory, self.retest_good_chip_image, self.ocr_results_dir, True, "CD0")
                         self.sn_ready = self.sn_ready and success  # only True if all RunOCR's are successful
                         if chip_data["label"][i] in ("CD0", "CD1"):
                             photo_key = "chip0_photo" if chip_data["label"][i] == "CD0" else "chip1_photo"
@@ -499,6 +507,15 @@ class RTSStateMachine(StateMachine):
                 #get_token = subprocess.run(["wsl","bash","-l","-c", "htgettoken --vaultserver=htvaultprod.fnal.gov --issuer=fermilab"], capture_output=True, text=True, check=True)
                 #print(get_token.stdout)
 
+        if self.upload_to_hwdb: 
+            try:
+                setup_hwdb = subprocess.run(["wsl", "bash", "-l", "-c", "source /mnt/c/Users/ppd-cap-WD-137552/FD_CE/HWDBTools/setup_hwdb.sh"])
+                print(setup_hwdb.stdout)
+
+                # Get token for uploading
+                #get_token = subprocess.run(["wsl","bash","-l","-c", "htgettoken --vaultserver=htvaultprod.fnal.gov --issuer=fermilab"], capture_output=True, text=True, check=True)
+                #print(get_token.stdout)
+
                 # Setup exports
                 #setup_hwdb = subprocess.run(["wsl","bash","-l","-c", f"""export TOKENLOC='/run/user/1000/bt_u1000' && export HWDBSELECT='DEV' && export COMMANDVERB='VERB0' && export SITELOC='{self.rts_loc}'"""], capture_output=True, text=True, check=True) # TODO: fix site loc as a variable
                 #print(setup_hwdb.stdout)
@@ -541,6 +558,7 @@ class RTSStateMachine(StateMachine):
         else:
             for i in range(len(chip_data['label'])):
                 print(f"Would have moved chip: {chip_data['label'][i]} from DAT {chip_data['dat'][i]} socket {chip_data['dat_socket'][i]} to tray {chip_data['tray'][i]}, position ({chip_data['col'][i]}, {chip_data['row'][i]}).")
+
 
     def on_enter_pause(self):
         print("System paused - awaiting resume command")

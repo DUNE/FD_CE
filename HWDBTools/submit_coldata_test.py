@@ -89,6 +89,26 @@ def GetTodaysTests(test_dir):
 
     return todays_tests
 
+def GetTestsAfterdate(test_dir, test_date):
+    """
+    Get all tests after given date.
+    """
+
+    getnames = os.popen(f"ls -d {test_dir}*") 
+    filenames = getnames.readlines()
+    filenames = [fname.split('\n')[0] for fname in filenames]
+    these_tests = []
+
+    for fname in filenames:
+        file_date = fname.split('/')[-1].split('_')[1][:-6]
+        print(file_date)
+        if int(test_date) < int(file_date): 
+            these_tests.append(fname)
+
+    print(f'Todays tests: {these_tests}')
+
+    return these_tests
+
 
 def GetLastTest(test_dir):
     """
@@ -102,11 +122,8 @@ def GetLastTest(test_dir):
     filenames.sort()
 
     return filenames[-1]
- 
 
-
-
-def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
+def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL", box_arrival_date="2023-08-10 12:00:00"):
     """
     Submits COLDATA tests to the hardware database (production or development).
 
@@ -205,6 +222,9 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
     # Grab the database type (PROD or DEV)
     db_type = os.environ.get('HWDBSELECT')
     print(f'Submitting to {db_type} database')
+
+    failed_uploads = []
+    failed_patches = []
     
     # Loop through all tests to be submitted
     for fname in test_dirs:
@@ -314,23 +334,32 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
                 else:
                     print(f"ERROR: db_type '{db_type}' not recognized")
                 
-            #print(testtype, testname)
-            if(datasheet0[1][len(tests)-1] != None):
+
                 
+            u1_pass = False
+            u2_pass = False
+            if(datasheet0[1][len(tests)-1] != None):
                 for test, result in zip(datasheet1[0],datasheet1[1]):
-                    print(test, result)
+                    if test != None and result != None:
+                        if "U1_CD1" in test:
+                            if "PASS" in result:
+                                u1_pass = True
+                        if "U2_CD2" in test:
+                            if "PASS" in result:
+                                u2_pass = True
                     
-                print('About to enter item...')
+            print('About to enter item...')
 
-                if db_type == "DEV":
-                    manufacturer = 59
-                elif db_type == "PROD":
-                    manufacturer = 15
+            if db_type == "DEV":
+                manufacturer = 59
+            elif db_type == "PROD":
+                manufacturer = 15
 
-                box_arrival_date = "2023-08-10 12:00:00" # when the chips arrived at current site
+            try:
+                print('items to upload:',serial0, testname, datasheet0)
                 dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial0, test_loc, "US", "", manufacturer, "", box_arrival_date) 
                 print('About to enter test...')
-                print(serial0, testname, datasheet0)
+                print('items to upload:',serial0, testname, datasheet0)
                 dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial0, testname, "No comment", datasheet0)
                 print('About to enter file to test...')
                 dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial0, testname, datasheet0, filelist)
@@ -338,15 +367,42 @@ def SubmitCOLDATAtest(username, test_dirs, test_loc="FNAL"):
                 dune_ce_hwdb.EnterItemToHWDB("coldata_e4prb2", serial1,test_loc, "US", "", manufacturer, "", box_arrival_date)
                 dune_ce_hwdb.EnterTestToHWDB("coldata_e4prb2", serial1, testname, "No comment", datasheet1)
                 dune_ce_hwdb.EnterFileToTest("coldata_e4prb2", serial1, testname, datasheet1, filelist)
-                print('Finished uploading...')
+            except Exception as e:
+                print(f"ERROR: Upload failed. {e}")
+                failed_upload.append(filename)
 
-                # Call patch here (if pass or retesting, or if warm and cold testing)
-                # TO DO
+            print('Finished uploading...')
 
+            # Call patch here (if pass or retesting, or if warm and cold testing)
+            if u1_pass:
+                pass_status_u1 = 120 # QA/QC Tests - Passed All
             else:
-                print("ERROR: Failed to load all tests", datasheet0)
+                pass_status_u1 = 130 # QA/QC Tests - Non-conforming
 
-    print('Finished!')
+            if u2_pass:
+                pass_status_u2 = 120 # QA/QC Tests - Passed All
+            else:
+                pass_status_u2 = 130 # QA/QC Tests - Non-conforming
+
+
+            try:
+                print(f'Updating status for {serial0} to {pass_status_u1}')
+                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial0)
+                dune_ce_hwdb.PatchItem(itemID, pass_status_u1, u1_pass, False, True)
+                print(f'Updating status for {serial1} to {pass_status_u2}')
+                itemID = dune_ce_hwdb.isPartInHWDB("coldata_e4prb2", serial1)
+                dune_ce_hwdb.PatchItem(itemID, pass_status_u2, u2_pass, False, True)
+            except Exception as e:
+                print(f"ERROR: Patch failed. {e}")
+                failed_patches.append(filename)
+
+
+    if len(failed_uploads) != 0:
+        print(f"Following files failed to upload: {failed_uploads}")
+    if len(failed_patches) != 0:
+        print(f"Following files failed to be patches: {failed_patches}")
+
+    print('Finished!') #2026/02/23
 
 if __name__ == '__main__':
 
@@ -357,7 +413,7 @@ if __name__ == '__main__':
     parser.add_argument("-u", "--Username", help="Username of tester")
     parser.add_argument("-d", "--Directory", help="Name of results directory")
     parser.add_argument("-l", "--Location", help="Location of RTS")
-    parser.add_argument("-t", "--TestType", help="Test type to submit. Options are latest (l), todays tests (t) or all in the directory (a)")
+    parser.add_argument("-t", "--TestType", help="Test type to submit. Options are latest (l), todays tests (t), after given date (g), or all in the directory (a)")
     args = parser.parse_args()
 
     if args.Username == None:
@@ -378,14 +434,23 @@ if __name__ == '__main__':
     print('Testtype', args.TestType)
     if args.TestType == None or args.TestType == "l":
         test_dirs = [GetLastTest(test_dir)]
-    elif args.TestType == "t":
+    elif args.TestType == "t": 
         test_dirs = GetTodaysTests(test_dir)
     elif args.TestType == "a":
         print('subbmitting all tests')
         test_dirs = GetAllTests(test_dir)
         print(test_dirs)
+    elif args.TestType == "g":
+        test_date = input("Enter date in YYYYMMDD format: ")
+        test_dirs = GetTestsAfterdate(test_dir, test_date)
     else:
         print(f'ERROR: testtype {args.TestType} not recognized.')
         exit()
 
-    SubmitCOLDATAtest(args.Username, test_dirs, test_loc)
+    if test_loc == "FNAL":
+        box_arrival_date = "2023-08-10 12:00:00" # when the chips arrived at current site
+    else:
+        box_arrival_date = input("Enter box arrival date in YYYY-MM-DD HH:MM:SS format: ")
+                
+    #print(f'Submitting tests: {test_dirs}')
+    SubmitCOLDATAtest(args.Username, test_dirs, test_loc, box_arrival_date)
