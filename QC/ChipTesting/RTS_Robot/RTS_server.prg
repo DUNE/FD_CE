@@ -1,4 +1,4 @@
-
+#include "ErrorDictionary.inc"
 Function RTS_server
 	NotStandalone = True
 	
@@ -45,6 +45,7 @@ Function RTS_server
     Integer src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row
 
     Integer DoMeasure
+    Integer AutoReseat
     Integer RunSelectSite
     op_ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
     
@@ -114,17 +115,36 @@ Function RTS_server
     			status = CheckTrayPlacement(pallet_nr, pallet_col, pallet_row)
     			Print #portNr, Str$(status)
     			
-    		Case "CheckSocketPlacement"
+            Case "CheckSocketPlacement"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
     			Input #portNr, Socket_nr
     			Input #portNr, DoMeasure
+    			Input #portNr, AutoReseat
     			Print "Check placement in DAT board: ", DAT_nr, " socket", Socket_nr
     			Print "Precise measurement set to ", DoMeasure
     			'DO stuff
-    			status = CheckSocketPlacement(DAT_nr, Socket_nr, DoMeasure)
+    			status = CheckSocketPlacement(DAT_nr, Socket_nr, DoMeasure, AutoReseat)
     			Print #portNr, Str$(status)
+    			
+    		Case "SetTargetAlignment"
+    			Input #portNr, DAT_nr
+    			Input #portNr, Socket_nr
+    			If Socket_nr = 0 Then
+    				Print "Will measure and set target chip-socket alignment for all sockets on DAT board ", DAT_nr
+    			Else
+    				Print "Will measure and set target chip-socket alignment for DAT ", DAT_nr, " socket ", Socket_nr
+    			EndIf
+    			
+				If SetTargetAlignment(DAT_nr, Socket_nr, False, False) Then
+					status = 0
+				Else
+					status = -ERR_V_CHIPSOCKALIGN
+				EndIf
+				Print #portNr, Str$(status)
+
+    			
     			
     		Case "ReseatChipInSocket"
     			PumpOn
@@ -134,7 +154,7 @@ Function RTS_server
     			Print "Reseat chip in socket: ", DAT_nr, " socket", Socket_nr
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = ReseatChipInSocket(DAT_nr, Socket_nr)
+    			status = ReseatChipInSocket(DAT_nr, socket_nr, False) ' False ensures new measurement of alignment
     			' SPEL "True" is -1, but integration code treets all negative values as errors	
     			If status = -1 Then
     				status = 0
@@ -197,8 +217,8 @@ Function RTS_server
    
   			Case "CheckSocketOccupancy"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
-    			status = SocketPositionOccupied(DAT_nr, Socket_nr)
+    			Input #portNr, socket_nr
+    			status = SocketPositionOccupied(DAT_nr, socket_nr)
     			Print #portNr, status
 				
      		Case "PickupFromTray"
@@ -269,6 +289,11 @@ Function RTS_server
     		Case "JumpToCamera"
     			JumpToCamera
     			Print #portNr, "JumpToCamera"
+    			
+    		Case "CoverStatus"
+    			Input #portNr, DAT_nr
+    			status = CoverStatus(DAT_nr)
+    			Print #portNr, status
     			
     		Case "MotorOn"
     			Motor On

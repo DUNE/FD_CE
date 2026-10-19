@@ -49,6 +49,11 @@ Global Double DAT_X(2, NSOCKETS)
 Global Double DAT_Y(2, NSOCKETS)
 Global Double DAT_U(2, NSOCKETS)
 
+' Target chip-socket alignment for sockets
+Global Double TCSAlign_X(2, NSOCKETS)
+Global Double TCSAlign_Y(2, NSOCKETS)
+Global Double TCSAlign_U(2, NSOCKETS)
+
 ' Store the offset between U and agl4 at each position
 Global Double tray_Agl4Off(NTRAYS, TRAY_NCOLS, TRAY_NROWS)
 Global Double socket_Agl4Off(NTRAYS, TRAY_NCOLS, TRAY_NROWS)
@@ -60,11 +65,15 @@ Global Double ChipPos(3)
 Global Double UFChipPos(3)
 Global Double SockPos(3)
 Global Double PlacePositions(24)
+Global Double FMPos(3)
+Global Double MMPos(3)
+'Global Double COPos(3)
 
 ''' For simplified pick and place
 Global Double CurrentChipOffset(3)
 Global Double CorrectedChipOffset(3)
 Global Double SocketOffset(3)
+Global Double ChipOffset(3)
 Global Double CSAlign(5)
 
 Global Double ChipToChipCorrection(3)
@@ -72,7 +81,7 @@ Global Double ChipToChipCorrection(3)
 '' To be set in set site values, the offset between vision sequence U and world coordinates
 Global Double ChipTextOrientation
 '' Need to correct for overshoot in position vision, check with alignment
-Global Double ChipVisionOffset(3)
+Global Double ChipVisionOffset(3, 3)
 Global Double SocketVisionOffset(3)
 '
 '' In increments of 90 degrees from X axis, U0 offsets and socket find should
@@ -95,6 +104,9 @@ Global Boolean MSUTESTBOARD
 ' Can be set in config file and turned off or on through server
 Global Boolean DefaultPinAnalysis
 Global Boolean DoPinAnalysis ' Keep default to not do pin analysis for now
+
+' Measure chip/socket positions with DF camera where possible
+Global Boolean MeasurePlacement
 
 ' Do occupancy checks or not
 Global Boolean DefaultSkipOcc
@@ -127,6 +139,14 @@ Global Int32 UF_Exposure
 Global Int32 Min_DF_Exposure ' Not set directly but location dependent
 Global Int32 Max_DF_Exposure
 
+Global Int32 DF_Brightness
+Global Int32 Min_DF_Brightness ' Not set directly but location dependent
+Global Int32 Max_DF_Brightness
+
+Global Int32 DF_Contrast
+Global Int32 Min_DF_Contrast ' Not set directly but location dependent
+Global Int32 Max_DF_Contrast
+
 ' Values from site file for chip sequence
 Global Int32 Default_DF_Exposure_Chip
 Global Int32 NAttempts_Chip_Tray
@@ -135,6 +155,18 @@ Global Int32 Max_DF_Exposure_Chip_Tray
 Global Int32 NAttempts_Chip_DAT
 Global Int32 Min_DF_Exposure_Chip_DAT
 Global Int32 Max_DF_Exposure_Chip_DAT
+
+Global Int32 Default_DF_Brightness_Chip
+Global Int32 Min_DF_Brightness_Chip_Tray
+Global Int32 Max_DF_Brightness_Chip_Tray
+Global Int32 Min_DF_Brightness_Chip_DAT
+Global Int32 Max_DF_Brightness_Chip_DAT
+
+Global Int32 Default_DF_Contrast_Chip
+Global Int32 Min_DF_Contrast_Chip_Tray
+Global Int32 Max_DF_Contrast_Chip_Tray
+Global Int32 Min_DF_Contrast_Chip_DAT
+Global Int32 Max_DF_Contrast_Chip_DAT
 
 ' Values from site file for socket sequence
 Global Int32 Default_DF_Exposure_Soc

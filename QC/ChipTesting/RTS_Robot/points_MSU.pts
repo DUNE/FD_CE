@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/07/15 17:41:25:432,DS:0000009458,CS:08273,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/10/15 14:03:10:709,DS:0000009458,CS:14658,MA:6C-2B-59-DC-C5-38,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
@@ -270,8 +270,8 @@ Point11 {
 	sLabel="PScrewDFLeft"
 	sDescription=""
 	nUndefined=0
-	rX=57.739
-	rY=494.839
+	rX=57.839
+	rY=495.139
 	rZ=-20.06
 	rU=-0.889
 	rV=0
@@ -296,8 +296,8 @@ Point12 {
 	sLabel="PScrewDFRight"
 	sDescription=""
 	nUndefined=0
-	rX=-56.986
-	rY=494.179
+	rX=-57.086
+	rY=493.979
 	rZ=-20.06
 	rU=179.11
 	rV=0
@@ -582,10 +582,10 @@ Point23 {
 	sLabel="Socket_R_01"
 	sDescription=""
 	nUndefined=0
-	rX=330.373
-	rY=219.97
-	rZ=-136.161
-	rU=-0.689
+	rX=329.782
+	rY=218.922
+	rZ=-136.034
+	rU=-0.789
 	rV=0
 	rW=0
 	rR=0
@@ -608,9 +608,9 @@ Point24 {
 	sLabel="Socket_R_02"
 	sDescription=""
 	nUndefined=0
-	rX=330.371
-	rY=143.87
-	rZ=-136.325
+	rX=329.971
+	rY=142.935
+	rZ=-136.194
 	rU=-0.889
 	rV=0
 	rW=0
@@ -634,9 +634,9 @@ Point25 {
 	sLabel="Socket_R_03"
 	sDescription=""
 	nUndefined=0
-	rX=330.371
-	rY=67.57
-	rZ=-136.49
+	rX=330.171
+	rY=66.67
+	rZ=-136.295
 	rU=-0.889
 	rV=0
 	rW=0
@@ -660,9 +660,9 @@ Point26 {
 	sLabel="Socket_R_04"
 	sDescription=""
 	nUndefined=0
-	rX=330.371
-	rY=-8.73
-	rZ=-136.464
+	rX=330.271
+	rY=-9.53
+	rZ=-136.266
 	rU=-0.889
 	rV=0
 	rW=0
@@ -686,9 +686,9 @@ Point27 {
 	sLabel="Socket_R_05"
 	sDescription=""
 	nUndefined=0
-	rX=330.472
-	rY=-97.53
-	rZ=-136.437
+	rX=330.272
+	rY=-98.53
+	rZ=-136.311
 	rU=-0.789
 	rV=0
 	rW=0
@@ -712,9 +712,9 @@ Point28 {
 	sLabel="Socket_R_06"
 	sDescription=""
 	nUndefined=0
-	rX=330.572
-	rY=-173.831
-	rZ=-136.506
+	rX=330.372
+	rY=-174.831
+	rZ=-136.22
 	rU=-0.79
 	rV=0
 	rW=0
@@ -738,9 +738,9 @@ Point29 {
 	sLabel="Socket_R_07"
 	sDescription=""
 	nUndefined=0
-	rX=330.263
-	rY=-250.231
-	rZ=-136.363
+	rX=330.463
+	rY=-250.831
+	rZ=-136.225
 	rU=-0.654
 	rV=0
 	rW=0
@@ -764,9 +764,9 @@ Point30 {
 	sLabel="Socket_R_08"
 	sDescription=""
 	nUndefined=0
-	rX=330.461
-	rY=-326.431
-	rZ=-136.247
+	rX=330.561
+	rY=-327.031
+	rZ=-136.2
 	rU=-0.754
 	rV=0
 	rW=0

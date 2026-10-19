@@ -154,16 +154,16 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 		Default
 			Print "Need to set up pin analysis for your site"
 			PinsAnaly = -100
-			Close #fileNum
+			Close #FileNum
 	Send
 
 	Integer status
-	status = PinsRowAnaly("BlobTop", fileNum)
+	status = PinsRowAnaly("BlobTop", FileNum)
 	If status <> 0 Then
 		PinsAnaly = status
 	EndIf
 	
-	status = PinsRowAnaly("BlobBottom", fileNum)
+	status = PinsRowAnaly("BlobBottom", FileNum)
 	If status <> 0 Then
 		PinsAnaly = status
 	EndIf
@@ -188,7 +188,7 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 '	Send	
 '	EndIf
 
-	status = PinsRowAnaly("BlobLeft", fileNum)
+	status = PinsRowAnaly("BlobLeft", FileNum)
 	If status <> 0 Then
 		PinsAnaly = status
 	EndIf
@@ -209,12 +209,12 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 '	Send	
 '	EndIf
 
-	status = PinsRowAnaly("BlobRight", fileNum)
+	status = PinsRowAnaly("BlobRight", FileNum)
 	If status <> 0 Then
 		PinsAnaly = status
 	EndIf
 
-	Close #fileNum
+	Close #FileNum
 	
 Fend
 
@@ -467,7 +467,7 @@ Function FindChipPositionWithDF As Boolean
 	Print "Max exposure = ", Max_DF_Exposure
 	
 
-	Integer Attempt 's, Attempt
+	Integer Attempt
 	Attempt = NAttempts
 	
 	Do While (Attempt > 0) 'Or Success
@@ -631,7 +631,890 @@ Function DFFindLArASIC As Boolean
 	ChipPos(3) = GetBoundAnglePM180(Angle - 45.)
 	
 	DFFindLArASIC = True
+		
 	' Print "Got here, should be returning TRUE"
+Fend
+
+'
+Function FindChipPositionWithDFAdvanced As Boolean
+	FindChipPositionWithDFAdvanced = False
+	
+	ChipPos(1) = 0
+	ChipPos(2) = 0
+	ChipPos(3) = 0
+	
+	FMPos(1) = 0
+	FMPos(2) = 0
+	FMPos(3) = 0
+	
+	MMPos(1) = 0
+	MMPos(2) = 0
+	MMPos(3) = 0
+	
+	SelectSite("InFunctionDefinePallets")
+	
+	' First find chip direction
+	Double ChipDirection, CameraDirection, DiffDirection
+	ChipDirection = FindChipDirectionWithDF
+	CameraDirection = DiffAnglePM180(180, CU(Here)) ' Does this need an 180 offset?
+	Print "HAND U ", CU(Here)
+	
+	Print "Cam direction :", CameraDirection
+	
+	Print "Chip direction :", ChipDirection
+
+	' Determine chip orientation in image
+	DiffDirection = DiffAnglePM180(CameraDirection, ChipDirection)
+	Double Orientation
+	Orientation = RoundAngleTo90(DiffDirection)
+	
+	Print "Chip orientation in image :", Orientation
+	
+	' Force more attenpts for position finding
+	If CY(Here) < (CY(P_Camera) - 20) Then
+		NAttempts = NAttempts_Chip_DAT * 5
+		Min_DF_Exposure = Min_DF_Exposure_Chip_DAT
+		Max_DF_Exposure = Max_DF_Exposure_Chip_DAT
+		
+		Min_DF_Brightness = Min_DF_Brightness_Chip_DAT
+		Max_DF_Brightness = Max_DF_Brightness_Chip_DAT
+		
+		Min_DF_Contrast = Min_DF_Contrast_Chip_DAT
+		Max_DF_Contrast = Max_DF_Contrast_Chip_DAT
+	Else
+		NAttempts = NAttempts_Chip_Tray * 5
+		Min_DF_Exposure = Min_DF_Exposure_Chip_Tray
+		Max_DF_Exposure = Max_DF_Exposure_Chip_Tray
+		
+		Min_DF_Brightness = Min_DF_Brightness_Chip_Tray
+		Max_DF_Brightness = Max_DF_Brightness_Chip_Tray
+		
+		Min_DF_Contrast = Min_DF_Contrast_Chip_Tray
+		Max_DF_Contrast = Max_DF_Contrast_Chip_Tray
+	EndIf
+	
+	Print "Running find chip position with NAttempts (exposure scan) = ", Str$(NAttempts / 4)
+	Print "Min exposure = ", Min_DF_Exposure
+	Print "Max exposure = ", Max_DF_Exposure
+	
+	Print "Running find chip position with NAttempts (brightness scan) = ", Str$(NAttempts / 4)
+	Print "Min brightness = ", Min_DF_Brightness
+	Print "Max brightness = ", Max_DF_Brightness
+	
+	Print "Running find chip position with NAttempts (contrast scan) = ", Str$(NAttempts / 4)
+	Print "Min contrast = ", Min_DF_Contrast
+	Print "Max contrast = ", Max_DF_Contrast
+
+'	Integer VisionAttempt
+'	VisionAttempt = NAttempts
+	
+	Integer VisionAttempt_E, VisionAttempt_B, VisionAttempt_C, VNAttempts_E, VNAttempts_B, VNAttempts_C
+	VNAttempts_E = NAttempts /8
+	VNAttempts_B = NAttempts /8
+	VNAttempts_C = NAttempts /8
+	VisionAttempt_E = VNAttempts_E ' Exposure
+	VisionAttempt_B = VNAttempts_B ' Brightness
+	VisionAttempt_C = VNAttempts_C ' Contrast
+
+	Integer VAttempt, VNAttempts
+	VNAttempts = (VNAttempts_E * VNAttempts_B * VNAttempts_C)
+	VAttempt = VNAttempts
+	
+	Integer CalcAttempt
+	CalcAttempt = NAttempts ' Might want to reduce this a little
+	
+	Integer Light
+'	For Light = 0 To 1
+'		
+'		If Light = 1 Then
+'			UF_camera_light_OFF
+'		EndIf
+		
+	Do While (CalcAttempt > 0)
+		
+		' First find fiducial marker (small circle near pin 1)
+		Print "Will attempt to find fiducial marker (S Circle) for chip oriented at ", ChipDirection, " (", Orientation, " wrt image)"
+	
+		For Light = 0 To 1
+			
+			If Light = 1 Then
+				UF_camera_light_OFF
+			EndIf
+	
+			Do While (VisionAttempt_B > 0) 'Or Success
+				DF_Brightness = Min_DF_Brightness + VisionAttempt_B * Int((Max_DF_Brightness - Min_DF_Brightness) / (VNAttempts_E))
+				'Print "Attempt ", Str$(NAttempts - VisionAttempt_B), " with Brightness = ", Str$(DF_Brightness)
+				
+				Do While (VisionAttempt_C > 0) 'Or Success
+					DF_Contrast = Min_DF_Contrast + VisionAttempt_C * Int((Max_DF_Contrast - Min_DF_Contrast) / (VNAttempts_B))
+					'Print "Attempt ", Str$(NAttempts - VisionAttempt_C), " with Contrast = ", Str$(DF_Contrast)
+		
+					Do While (VisionAttempt_E > 0) 'Or Success
+						DF_Exposure = Min_DF_Exposure + VisionAttempt_E * Int((Max_DF_Exposure - Min_DF_Exposure) / (VNAttempts_C))
+					
+						'Print "Attempt ", Str$(NAttempts - VisionAttempt_E), " with ExposureTime = ", Str$(DF_Exposure)
+						Print "Attempt ", Str$(VNAttempts - VAttempt), " with B:", DF_Brightness, ", C:", DF_Contrast, ", E:", DF_Exposure
+				
+						' Vision sequences simple enough to use for different sites/chips.
+						' Just need different vision sequence for larger chip size of COLDATA 
+						' Handled in DFFindFiducialMark and DFFindManufacturingMark
+						FindChipPositionWithDFAdvanced = DFFindFiducialMark(Orientation)
+						
+						If FindChipPositionWithDFAdvanced Then
+							Print "Found fiducial mark"
+							Exit Do
+						EndIf
+						VisionAttempt_E = VisionAttempt_E - 1
+						
+						VAttempt = VAttempt - 1 ' Overall attempt counter
+						
+					Loop
+					VisionAttempt_E = VNAttempts_E
+				
+					If FindChipPositionWithDFAdvanced Then
+						Exit Do
+					EndIf
+					VisionAttempt_C = VisionAttempt_C - 1
+				
+				Loop
+				VisionAttempt_C = VNAttempts_C
+	
+				If FindChipPositionWithDFAdvanced Then
+					Exit Do
+				EndIf
+				VisionAttempt_B = VisionAttempt_B - 1
+	
+			Loop
+			VisionAttempt_B = VNAttempts_B
+			VAttempt = VNAttempts
+		
+		Next
+
+		If FindChipPositionWithDFAdvanced Then
+			Print "Fiducial marker found on ", Str$(VNAttempts - VAttempt + 1), "th attempt with B:", DF_Brightness, ", C:", DF_Contrast, ", E:", DF_Exposure
+			Print "At XYU = (", FMPos(1), ",", FMPos(2), ",", FMPos(3), ")"
+		Else
+			Print "Could not find fiducial mark after ", NAttempts, " attempts"
+			Exit Do
+		EndIf
+		DF_Exposure = Default_DF_Exposure_Chip
+		
+		' Next find manufacturing marker (large circle opposite pin 1) 
+		FindChipPositionWithDFAdvanced = False
+
+		' First find fiducial marker (small circle near pin 1)
+		Print "Will attempt to find manufacturing marker (L Circle) for chip oriented at ", ChipDirection, " (", Orientation, " wrt image)"
+	
+		For Light = 0 To 1
+			
+			If Light = 1 Then
+				UF_camera_light_OFF
+			Else
+				UF_camera_light_ON
+			EndIf
+	
+			Do While (VisionAttempt_B > 0) 'Or Success
+				DF_Brightness = Min_DF_Brightness + VisionAttempt_B * Int((Max_DF_Brightness - Min_DF_Brightness) / (VNAttempts_E))
+				'Print "Attempt ", Str$(NAttempts - VisionAttempt_B), " with Brightness = ", Str$(DF_Brightness)
+				
+				Do While (VisionAttempt_C > 0) 'Or Success
+					DF_Contrast = Min_DF_Contrast + VisionAttempt_C * Int((Max_DF_Contrast - Min_DF_Contrast) / (VNAttempts_B))
+					'Print "Attempt ", Str$(NAttempts - VisionAttempt_C), " with Contrast = ", Str$(DF_Contrast)
+		
+					Do While (VisionAttempt_E > 0) 'Or Success
+						DF_Exposure = Min_DF_Exposure + VisionAttempt_E * Int((Max_DF_Exposure - Min_DF_Exposure) / (VNAttempts_C))
+					
+						'Print "Attempt ", Str$(NAttempts - VisionAttempt_E), " with ExposureTime = ", Str$(DF_Exposure)
+						Print "Attempt ", Str$(VNAttempts - VAttempt), " with B:", DF_Brightness, ", C:", DF_Contrast, ", E:", DF_Exposure
+				
+						' Vision sequences simple enough to use for different sites/chips.
+						' Just need different vision sequence for larger chip size of COLDATA 
+						' Handled in DFFindFiducialMark and DFFindManufacturingMark
+						FindChipPositionWithDFAdvanced = DFFindManufacturingMark(Orientation)
+						
+						If FindChipPositionWithDFAdvanced Then
+							Print "Found fiducial mark"
+							Exit Do
+						EndIf
+						VisionAttempt_E = VisionAttempt_E - 1
+						
+						VAttempt = VAttempt - 1 ' Overall attempt counter
+						
+					Loop
+					VisionAttempt_E = VNAttempts_E
+				
+					If FindChipPositionWithDFAdvanced Then
+						Exit Do
+					EndIf
+					VisionAttempt_C = VisionAttempt_C - 1
+				
+				Loop
+				VisionAttempt_C = VNAttempts_C
+	
+				If FindChipPositionWithDFAdvanced Then
+					Exit Do
+				EndIf
+				VisionAttempt_B = VisionAttempt_B - 1
+	
+			Loop
+			
+		Next
+		UF_camera_light_ON
+		
+		VisionAttempt_B = VNAttempts_B
+		VAttempt = VNAttempts
+		
+		If FindChipPositionWithDFAdvanced Then
+			Print "Manufacturing marker found on ", Str$(VNAttempts - VAttempt + 1), "th attempt with B:", DF_Brightness, ", C:", DF_Contrast, ", E:", DF_Exposure
+			Print "At XYU = (", MMPos(1), ",", MMPos(2), ",", MMPos(3), ")"
+		Else
+			Print "Could not find manufacturing mark after ", NAttempts, " attempts"
+			Exit Do
+		EndIf
+		DF_Exposure = Default_DF_Exposure_Chip
+		
+		FindChipPositionWithDFAdvanced = True
+	
+		' should have marker position values in FMPos and MMPos
+	
+		''''''''
+		Double AvX, AvY
+		AvX = (MMPos(1) + FMPos(1)) /2 '(xL + xS) /2
+		AvY = (MMPos(2) + FMPos(2)) /2 '(yL + yS) /2
+	
+		' Get polar vector from Large marker to Small marker
+		Double DelX, DelY, Norm, Angle
+		DelX = FMPos(1) - MMPos(1) 'xS - xL
+		DelY = FMPos(2) - MMPos(2) 'yS - yL
+		
+		Norm = Sqr(DelX * DelX + DelY * DelY)
+		
+		If DelY >= 0 Then
+			Angle = RadToDeg(Acos(DelX / Norm))
+		Else
+			Angle = -RadToDeg(Acos(DelX / Norm))
+		EndIf
+		
+		Double ChipDim
+		Select CHIPTYPE$
+			Case "LArASIC"
+				ChipDim = LArASICDimension
+			Case "ColdADC"
+				ChipDim = LArASICDimension
+			Case "COLDATA"
+				' ChipDim = COLDATADimension ' NOT YET IMPLEMENTED
+				Print "PLEASE MEASURE AND DEFINE DISTANCE BETWEEN FIDUCIAL AND MANUFACTURING MARKER ON COLDATA IN RTS_tools.inc"
+				Exit Function
+			Default
+				Print "Incorrect chip type ", CHIPTYPE$
+				FindChipPositionWithDFAdvanced = False
+				Exit Function
+		Send
+		
+		If Abs(Norm - ChipDim) > TolXY Then
+			Print "Large-to-small marker distance not within tolerance: " + Str$(Norm)
+			FindChipPositionWithDFAdvanced = False
+		EndIf
+		
+		' Check text orientation is consistent with the direction of the chip
+		If Abs(DiffAnglePM180(ChipDirection, (GetBoundAnglePM180(Angle - 45.)))) > 3. Then
+			FindChipPositionWithDFAdvanced = False
+
+			Print "Inconsistent orientation from text and markers"
+			Print "Text based = ", GetBoundAnglePM180(ChipDirection)
+			Print "Marker angle = ", Str$(GetBoundAnglePM180(Angle - 45.))
+		EndIf
+		
+		If FindChipPositionWithDFAdvanced Then
+			Print "Found position"
+			Exit Do
+		EndIf
+		
+		CalcAttempt = CalcAttempt - 1
+		Print ""
+	Loop
+'
+'	If FindChipPositionWithDFAdvanced Then
+'		Exit For
+'	EndIf
+	
+	' Next
+	
+	If Not FindChipPositionWithDFAdvanced Then
+		Exit Function
+		
+		' TODO: Instead of exiting, have an option to use Fiducial Mark + Chip package outline to estimate position?	
+		' Actually unsure as the pins can throw off the square/rectangle finding by a few degrees.
+		' Would simply be best to get better lighting!
+		
+	EndIf
+		
+	ChipPos(1) = AvX
+	ChipPos(2) = AvY
+	ChipPos(3) = GetBoundAnglePM180(Angle - 45.)
+	
+	If FindChipPositionWithDFAdvanced Then
+		Print "Chip found on ", Str$(NAttempts - CalcAttempt + 1), "th attempt"
+		Print "At XYU = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	Else
+		Print "Could not find chip after ", NAttempts, " attempts"
+	EndIf
+	DF_Exposure = Default_DF_Exposure_Chip
+	
+	FindChipPositionWithDFAdvanced = True
+	' Print "Got here, should be returning TRUE"
+Fend
+	
+
+Function DFFindFiducialMark(Orientation As Double) As Boolean
+''' Function to get the position of fiducial marker only on small chip
+' Allows for vision sequence settings to be ran independently for
+' fiducial marker, chip text, and manufacturing marker
+' In case of bad lighting conditions
+'' Stores results in global array FMPos()	
+
+	DFFindFiducialMark = False
+	
+	Boolean isFoundTL
+	Double xTL, yTL, uTL
+	
+	Boolean isFoundTR
+	Double xTR, yTR, uTR
+	
+	Boolean isFoundBL
+	Double xBL, yBL, uBL
+
+	Boolean isFoundBR
+	Double xBR, yBR, uBR
+	
+	Select CHIPTYPE$
+		Case "LArASIC"
+			VSet DF_ChipFMark.ExposureTime, DF_Exposure
+			VSet DF_ChipFMark.CameraBrightness, DF_Brightness
+			VSet DF_ChipFMark.CameraContrast, DF_Contrast
+			VRun DF_ChipFMark
+			VGet DF_ChipFMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+			VGet DF_ChipFMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+			VGet DF_ChipFMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+			VGet DF_ChipFMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Case "ColdADC"
+			VSet DF_ChipFMark.ExposureTime, DF_Exposure
+			VSet DF_ChipFMark.CameraBrightness, DF_Brightness
+			VSet DF_ChipFMark.CameraContrast, DF_Contrast
+			VRun DF_ChipFMark
+			VGet DF_ChipFMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+			VGet DF_ChipFMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+			VGet DF_ChipFMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+			VGet DF_ChipFMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Case "COLDATA"
+			Print "Not currently implemented: See LArASIC/ColdADC DF_ChipFMark for example"
+			Exit Function
+'			VSet DF_CDChipFMark.ExposureTime, DF_Exposure
+'			VRun DF_CDChipFMark
+'			VGet DF_CDChipFMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+'			VGet DF_CDChipFMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+'			VGet DF_CDChipFMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+'			VGet DF_CDChipFMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Default
+			Print "Invalid chiptype", CHIPTYPE$
+			Exit Function
+	Send
+	
+		
+	Select Orientation
+		Case 0
+			'FM is in TL
+			If Not isFoundTL Then
+				Print "Could not find fiducial marker in TL position"
+				Exit Function
+			EndIf
+			DFFindFiducialMark = isFoundTL
+			FMPos(1) = xTL
+			FMPos(2) = yTL
+			FMPos(3) = uTL
+			
+			
+		Case 90
+			'FM is in BL
+			If Not isFoundBL Then
+				Print "Could not find fiducial marker in BL position"
+				Exit Function
+			EndIf
+			DFFindFiducialMark = isFoundBL
+			FMPos(1) = xBL
+			FMPos(2) = yBL
+			FMPos(3) = uBL
+			
+		Case 180
+			'FM is in BR
+			If Not isFoundBR Then
+				Print "Could not find fiducial marker in BR position"
+				Exit Function
+			EndIf
+			DFFindFiducialMark = isFoundBR
+			FMPos(1) = xBR
+			FMPos(2) = yBR
+			FMPos(3) = uBR
+			
+			
+		Case -90
+			'FM is in TR
+			If Not isFoundTR Then
+				Print "Could not find fiducial marker in TR position"
+				Exit Function
+			EndIf
+			DFFindFiducialMark = isFoundTR
+			FMPos(1) = xTR
+			FMPos(2) = yTR
+			FMPos(3) = uTR
+		Default
+			Print "ERROR: non valid orientation value passed! Should be 0, 90, 180 or -90"
+			Print "Please round value in call of DFFindFiducialMark"
+			Exit Function
+	Send
+Fend
+	
+Function DFFindManufacturingMark(Orientation As Double) As Boolean
+''' Function to get the position of fiducial marker only on small chip
+' Allows for vision sequence settings to be ran independently for
+' fiducial marker, chip text, and manufacturing marker
+' In case of bad lighting conditions
+'' Stores results in global array MMPos()	
+
+	DFFindManufacturingMark = False
+	
+	Boolean isFoundTL
+	Double xTL, yTL, uTL
+	
+	Boolean isFoundTR
+	Double xTR, yTR, uTR
+	
+	Boolean isFoundBL
+	Double xBL, yBL, uBL
+
+	Boolean isFoundBR
+	Double xBR, yBR, uBR
+	
+	Select CHIPTYPE$
+		Case "LArASIC"
+			VSet DF_ChipMMark.ExposureTime, DF_Exposure
+			VSet DF_ChipMMark.CameraBrightness, DF_Brightness
+			VSet DF_ChipMMark.CameraContrast, DF_Contrast
+			VRun DF_ChipMMark
+			VGet DF_ChipMMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+			VGet DF_ChipMMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+			VGet DF_ChipMMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+			VGet DF_ChipMMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Case "ColdADC"
+			VSet DF_ChipMMark.ExposureTime, DF_Exposure
+			VSet DF_ChipMMark.CameraBrightness, DF_Brightness
+			VSet DF_ChipMMark.CameraContrast, DF_Contrast
+			VRun DF_ChipMMark
+			VGet DF_ChipMMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+			VGet DF_ChipMMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+			VGet DF_ChipMMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+			VGet DF_ChipMMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Case "COLDATA"
+			Print "Not currently implemented: See LArASIC/ColdADC DF_ChipMMark for example"
+			Exit Function
+'			VSet DF_CDChipMMark.ExposureTime, DF_Exposure
+'			VRun DF_CDChipMMark
+'			VGet DF_CDChipMMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+'			VGet DF_CDChipMMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+'			VGet DF_CDChipMMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+'			VGet DF_CDChipMMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Default
+			Print "Invalid chiptype", CHIPTYPE$
+			Exit Function
+	Send
+	
+		
+	Select Orientation
+		Case 0
+			'MM is in BR
+			If Not isFoundBR Then
+				Print "Could not find manufacturing marker in BL position"
+				Exit Function
+			EndIf
+			DFFindManufacturingMark = isFoundBR
+			MMPos(1) = xBR
+			MMPos(2) = yBR
+			MMPos(3) = uBR
+			
+		Case 90
+			'MM is in TR
+			If Not isFoundTR Then
+				Print "Could not find manufacturing marker in TL position"
+				Exit Function
+			EndIf
+			DFFindManufacturingMark = isFoundTR
+			MMPos(1) = xTR
+			MMPos(2) = yTR
+			MMPos(3) = uTR
+		Case 180
+			'MM is in TL
+			If Not isFoundTL Then
+				Print "Could not find manufacturing marker in TL position"
+				Exit Function
+			EndIf
+			DFFindManufacturingMark = isFoundTL
+			MMPos(1) = xTL
+			MMPos(2) = yTL
+			MMPos(3) = uTL
+		Case -90
+			'MM is in BL
+			If Not isFoundBL Then
+				Print "Could not find manufacturing marker in BL position"
+				Exit Function
+			EndIf
+			DFFindManufacturingMark = isFoundBL
+			MMPos(1) = xBL
+			MMPos(2) = yBL
+			MMPos(3) = uBL
+		Default
+			Print "ERROR: non valid orientation value passed! Should be 0, 90, 180 or -90"
+			Print "Please round value in call of DFFindManufacturingMark"
+			Exit Function
+	Send
+			
+Fend
+
+
+Function FindChipPositionWithDFFromOutline As Boolean
+	
+	
+	' First find chip direction
+	Double ChipDirection, CameraDirection, DiffDirection
+	ChipDirection = FindChipDirectionWithDF
+	CameraDirection = DiffAnglePM180(180, CU(Here)) ' Does this need an 180 offset?
+	Print "HAND U ", CU(Here)
+	
+	Print "Cam direction :", CameraDirection
+	
+	Print "Chip direction :", ChipDirection
+
+	' Unlike Find Chip advance here we care about orientation to determine direction along with any minor U misplacement 
+	' NOT to find chip feature position in the image
+	Double Orientation
+	Orientation = RoundAngleTo90(ChipDirection)
+	
+	Print "Chip orientation (in world coordinates) :", Orientation
+	
+	
+	If CY(Here) < (CY(P_Camera) - 20) Then
+		NAttempts = NAttempts_Chip_DAT * 5
+		Min_DF_Exposure = Min_DF_Exposure_Chip_DAT
+		Max_DF_Exposure = Max_DF_Exposure_Chip_DAT
+		
+		Min_DF_Brightness = Min_DF_Brightness_Chip_DAT
+		Max_DF_Brightness = Max_DF_Brightness_Chip_DAT
+		
+		Min_DF_Contrast = Min_DF_Contrast_Chip_DAT
+		Max_DF_Contrast = Max_DF_Contrast_Chip_DAT
+	Else
+		NAttempts = NAttempts_Chip_Tray * 5
+		Min_DF_Exposure = Min_DF_Exposure_Chip_Tray
+		Max_DF_Exposure = Max_DF_Exposure_Chip_Tray
+		
+		Min_DF_Brightness = Min_DF_Brightness_Chip_Tray
+		Max_DF_Brightness = Max_DF_Brightness_Chip_Tray
+		
+		Min_DF_Contrast = Min_DF_Contrast_Chip_Tray
+		Max_DF_Contrast = Max_DF_Contrast_Chip_Tray
+	EndIf
+	
+	
+	Print "Running find chip position with NAttempts (exposure scan) = ", Str$(NAttempts / 4)
+	Print "Min exposure = ", Min_DF_Exposure
+	Print "Max exposure = ", Max_DF_Exposure
+	
+	Print "Running find chip position with NAttempts (brightness scan) = ", Str$(NAttempts / 4)
+	Print "Min brightness = ", Min_DF_Brightness
+	Print "Max brightness = ", Max_DF_Brightness
+	
+	Print "Running find chip position with NAttempts (contrast scan) = ", Str$(NAttempts / 4)
+	Print "Min contrast = ", Min_DF_Contrast
+	Print "Max contrast = ", Max_DF_Contrast
+
+'	Integer VisionAttempt
+'	VisionAttempt = NAttempts
+	
+	Integer VisionAttempt_E, VisionAttempt_B, VisionAttempt_C, VNAttempts_E, VNAttempts_B, VNAttempts_C
+	VNAttempts_E = NAttempts /8
+	VNAttempts_B = NAttempts /8
+	VNAttempts_C = NAttempts /8
+	VisionAttempt_E = VNAttempts_E ' Exposure
+	VisionAttempt_B = VNAttempts_B ' Brightness
+	VisionAttempt_C = VNAttempts_C ' Contrast	
+	
+	Integer VAttempt, VNAttempts
+	VNAttempts = (VNAttempts_E * VNAttempts_B * VNAttempts_C)
+	VAttempt = VNAttempts
+	
+	Integer Light
+	' Toggle light on and off
+	For Light = 0 To 1
+		If Light = 1 Then
+			UF_camera_light_OFF
+		Else
+			UF_camera_light_ON
+		EndIf
+
+		Do While (VisionAttempt_B > 0) 'Or Success
+			DF_Brightness = Min_DF_Brightness + VisionAttempt_B * Int((Max_DF_Brightness - Min_DF_Brightness) / (VNAttempts_E))
+			'Print "Attempt ", Str$(NAttempts - VisionAttempt_B), " with Brightness = ", Str$(DF_Brightness)
+			
+			Do While (VisionAttempt_C > 0) 'Or Success
+				DF_Contrast = Min_DF_Contrast + VisionAttempt_C * Int((Max_DF_Contrast - Min_DF_Contrast) / (VNAttempts_B))
+				'Print "Attempt ", Str$(NAttempts - VisionAttempt_C), " with Contrast = ", Str$(DF_Contrast)
+	
+				Do While (VisionAttempt_E > 0) 'Or Success
+					DF_Exposure = Min_DF_Exposure + VisionAttempt_E * Int((Max_DF_Exposure - Min_DF_Exposure) / (VNAttempts_C))
+				
+					'Print "Attempt ", Str$(NAttempts - VisionAttempt_E), " with ExposureTime = ", Str$(DF_Exposure)
+					Print "Attempt ", Str$(VNAttempts - VAttempt), " with B:", DF_Brightness, ", C:", DF_Contrast, ", E:", DF_Exposure
+			
+					FindChipPositionWithDFFromOutline = DFFindChipOutline
+
+					If FindChipPositionWithDFFromOutline Then
+						Print "Found outline"
+						Exit Do
+					EndIf
+					VisionAttempt_E = VisionAttempt_E - 1
+					
+					VAttempt = VAttempt - 1 ' Overall attempt counter
+					
+				Loop
+				VisionAttempt_E = VNAttempts_E
+			
+				If FindChipPositionWithDFFromOutline Then
+					Exit Do
+				EndIf
+				VisionAttempt_C = VisionAttempt_C - 1
+			
+			Loop
+			VisionAttempt_C = VNAttempts_C
+
+			If FindChipPositionWithDFFromOutline Then
+				Exit Do
+			EndIf
+			VisionAttempt_B = VisionAttempt_B - 1
+
+		Loop
+		
+		If FindChipPositionWithDFFromOutline Then
+			Exit For
+		EndIf
+		
+	Next
+	UF_camera_light_ON
+	
+	If FindChipPositionWithDFFromOutline Then
+		ChipPos(3) = GetBoundAnglePM180(ChipPos(3) + Orientation)
+		Print "Chip position = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	EndIf
+
+	
+Fend
+
+Function DFFindChipOutline As Boolean
+
+	DFFindChipOutline = False
+	
+	'''''
+	Boolean isFound1, isFound2, isFound3
+	Double xO1, yO1, uO1, xO2, yO2, uO2, xO3, yO3, uO3, Scale
+	Int32 i, NOutlineAttempts
+	NOutlineAttempts = 2
+	Select CHIPTYPE$
+		Case "LArASIC"
+			Print "Running DF_Chip_Outline with B:", DF_Brightness, ", C:", DF_Contrast, ", E:", DF_Exposure
+
+			VSet DF_Chip_Outline.ExposureTime, DF_Exposure
+			VSet DF_Chip_Outline.CameraBrightness, DF_Brightness
+			VSet DF_Chip_Outline.CameraContrast, DF_Contrast
+			' Take three measurements and check for consistency 
+			For i = 1 To NOutlineAttempts
+				VRun DF_Chip_Outline
+				VGet DF_Chip_Outline.Geom01.RobotXYU, isFound1, xO1, yO1, uO1
+				VGet DF_Chip_Outline.Geom01.Scale, Scale
+				If Abs(Scale - 1) > 0.05 Then
+					isFound1 = False
+				EndIf
+				If isFound1 Then
+					Print "Found 1: ", xO1, ",", yO1, ",", uO1
+					Exit For
+				EndIf
+			Next
+			For i = 1 To NOutlineAttempts
+				VRun DF_Chip_Outline
+				VGet DF_Chip_Outline.Geom01.RobotXYU, isFound2, xO2, yO2, uO2
+				If Abs(Scale - 1) > 0.05 Then
+					isFound2 = False
+				EndIf
+				If isFound2 Then
+					Print "Found 2: ", xO2, ",", yO2, ",", uO2
+					Exit For
+				EndIf
+			Next
+			For i = 1 To NOutlineAttempts
+				VRun DF_Chip_Outline
+				VGet DF_Chip_Outline.Geom01.RobotXYU, isFound3, xO3, yO3, uO3
+				If Abs(Scale - 1) > 0.05 Then
+					isFound3 = False
+				EndIf
+				If isFound3 Then
+					Print "Found 3: ", xO3, ",", yO3, ",", uO3
+					Exit For
+				EndIf
+			Next
+			
+		Case "ColdADC"
+			VSet DF_Chip_Outline.ExposureTime, DF_Exposure
+			VSet DF_Chip_Outline.CameraBrightness, DF_Brightness
+			VSet DF_Chip_Outline.CameraContrast, DF_Contrast
+			' Take three measurements and check for consistency 
+			For i = 1 To NOutlineAttempts
+				VRun DF_Chip_Outline
+				VGet DF_Chip_Outline.Geom01.RobotXYU, isFound1, xO1, yO1, uO1
+				If isFound1 Then
+					Print "Found 1: ", xO1, ",", yO1, ",", uO1
+					Exit For
+				EndIf
+			Next
+			For i = 1 To NOutlineAttempts
+				VRun DF_Chip_Outline
+				VGet DF_Chip_Outline.Geom01.RobotXYU, isFound2, xO2, yO2, uO2
+				If isFound2 Then
+					Print "Found 2: ", xO2, ",", yO2, ",", uO2
+					Exit For
+				EndIf
+			Next
+			For i = 1 To NOutlineAttempts
+				VRun DF_Chip_Outline
+				VGet DF_Chip_Outline.Geom01.RobotXYU, isFound3, xO3, yO3, uO3
+				If isFound3 Then
+					Print "Found 3: ", xO3, ",", yO3, ",", uO3
+					Exit For
+				EndIf
+			Next
+		Case "COLDATA"
+			Print "Not currently implemented: See LArASIC/ColdADC DF_ChipFMark for example"
+			Exit Function
+'			VSet DF_CDChipFMark.ExposureTime, DF_Exposure
+'			VRun DF_CDChipFMark
+'			VGet DF_CDChipFMark.TL.RobotXYU, isFoundTL, xTL, yTL, uTL
+'			VGet DF_CDChipFMark.TR.RobotXYU, isFoundTR, xTR, yTR, uTR
+'			VGet DF_CDChipFMark.BL.RobotXYU, isFoundBL, xBL, yBL, uBL
+'			VGet DF_CDChipFMark.BR.RobotXYU, isFoundBR, xBR, yBR, uBR
+		Default
+			Print "Invalid chiptype", CHIPTYPE$
+			Exit Function
+	Send
+	
+	If (Not isFound1) And (Not isFound2) And (Not isFound3) Then
+		Print "Outline not found at all"
+		ChipPos(1) = 0.
+		ChipPos(2) = 0.
+		ChipPos(3) = 0.
+		DFFindChipOutline = False
+		Print "Return FALSE and position = (0,0,0)"
+		Exit Function
+	EndIf
+	
+	
+	uO1 = GetBoundAnglePM45(uO1)
+	uO2 = GetBoundAnglePM45(uO2)
+	uO3 = GetBoundAnglePM45(uO3)
+	
+	Double AvX, AvY, AvU
+	AvX = 0.
+	AvY = 0.
+	AvU = 0.
+	Double SpreadX, SpreadY, SpreadU
+	SpreadX = 0.
+	SpreadY = 0.
+	SpreadU = 0.
+	If (isFound1 And isFound2 And isFound3) Then
+		AvX = (xO1 + xO2 + xO3) /3
+		AvY = (yO1 + yO2 + yO3) /3
+		AvU = (uO1 + uO2 + uO3) /3
+		
+		'SpreadX = Sqr((xO1 - AvX) * (xO1 - AvX) + (xO2 - AvX) * (xO2 - AvX) + (xO3 - AvX) * (xO3 - AvX)) / 2 ' n - 1
+		'SpreadY = Sqr((yO1 - AvY) * (yO1 - AvY) + (yO2 - AvY) * (yO2 - AvY) + (yO3 - AvY) * (yO3 - AvY)) / 2
+		'SpreadU = Sqr((uO1 - AvU) * (uO1 - AvU) + (uO2 - AvU) * (uO2 - AvU) + (uO3 - AvU) * (uO3 - AvU)) / 2
+		' Don't need to calc var/std just look at distance for each measurement, easier to reject measurements
+		If Sqr((xO1 - AvX) * (xO1 - AvX)) > 0.1 Or Sqr((yO1 - AvY) * (yO1 - AvY)) > 0.1 Or Sqr((uO1 - AvU) * (uO1 - AvU)) > 0.5 Then
+			Print "Measurement 1: bad tolerance"
+			isFound1 = False
+		EndIf
+		
+		If Sqr((xO2 - AvX) * (xO2 - AvX)) > 0.1 Or Sqr((yO2 - AvY) * (yO2 - AvY)) > 0.1 Or Sqr((uO2 - AvU) * (uO2 - AvU)) > 0.5 Then
+			Print "Measurement 2: bad tolerance"
+			isFound2 = False
+		EndIf
+		
+		If Sqr((xO3 - AvX) * (xO3 - AvX)) > 0.1 Or Sqr((yO3 - AvY) * (yO3 - AvY)) > 0.1 Or Sqr((uO3 - AvU) * (uO3 - AvU)) > 0.5 Then
+			Print "Measurement 3: bad tolerance"
+			isFound3 = False
+		EndIf
+		
+	EndIf
+		
+	If (isFound1 And isFound2 And isFound3) Then
+		Print "Found three consistent values"
+		DFFindChipOutline = True
+	ElseIf (isFound1 And isFound2) Then
+		Print "WARNING: Cannot consistently find chip"
+		AvX = (xO1 + xO2) /2
+		AvY = (yO1 + yO2) /2
+		AvU = (uO1 + uO2) /2
+		
+		If Sqr((xO1 - xO2) * (xO1 - xO2)) > 0.1 Or Sqr((yO1 - yO2) * (yO1 - yO2)) > 0.1 Or Sqr((uO1 - uO2) * (uO1 - uO2)) > 0.5 Then
+			Print "Measurement: inconsistent"
+		 	DFFindChipOutline = False
+		EndIf
+		
+	ElseIf (isFound1 And isFound3) Then
+		Print "WARNING: Cannot consistently find chip"
+		AvX = (xO1 + xO3) /2
+		AvY = (yO1 + yO3) /2
+		AvU = (uO1 + uO3) /2
+		
+		If Sqr((xO1 - xO3) * (xO1 - xO3)) > 0.1 Or Sqr((yO1 - yO3) * (yO1 - yO3)) > 0.1 Or Sqr((uO1 - uO3) * (uO1 - uO3)) > 0.5 Then
+			Print "Measurement: inconsistent"
+			DFFindChipOutline = False
+		EndIf
+	ElseIf (isFound2 And isFound3) Then
+		Print "WARNING: Cannot consistently find chip"
+		AvX = (xO2 + xO3) /2
+		AvY = (yO2 + yO3) /2
+		AvU = (uO2 + uO3) /2
+		If Sqr((xO2 - xO3) * (xO2 - xO3)) > 0.1 Or Sqr((yO2 - yO3) * (yO2 - yO3)) > 0.1 Or Sqr((uO2 - uO3) * (uO2 - uO3)) > 0.5 Then
+			Print "Measurement: inconsistent"
+			DFFindChipOutline = False
+		EndIf
+	Else
+		Print "Cannot find chip"
+		Print "isFound1 = ", isFound1
+		Print "isFound2 = ", isFound2
+		Print "isFound3 = ", isFound3
+		DFFindChipOutline = False
+	EndIf
+	
+	If Not DFFindChipOutline Then
+		ChipPos(1) = 0.
+		ChipPos(2) = 0.
+		ChipPos(3) = 0.
+		Print "Return FALSE and position = (0,0,0)"
+		Exit Function
+	EndIf
+
+	ChipPos(1) = AvX
+	ChipPos(2) = AvY
+	ChipPos(3) = AvU
+	Print "Return TRUE and Position = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	
 Fend
 
 
@@ -1165,14 +2048,15 @@ Function FindSocketPositionWithDF As Boolean
 	NAttempts = NAttempts_Soc
 	Min_DF_Exposure = Min_DF_Exposure_Soc
 	Max_DF_Exposure = Max_DF_Exposure_Soc
-	
+	Print "Min exposure ", Min_DF_Exposure_Soc
+	Print "Max exposure ", Max_DF_Exposure_Soc
 	Integer Attempt 's, Attempt
 	Attempt = NAttempts
 	
 	Do While (Attempt > 0) 'Or Success
 		
 		DF_Exposure = Min_DF_Exposure + Attempt * Int((Max_DF_Exposure - Min_DF_Exposure) / (NAttempts))
-'		Print "Attempt ", Str$(10 - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
+		Print "Attempt ", Str$(NAttempts - Attempt), " with ExposureTime = ", Str$(DF_Exposure)
 		
 		Select CHIPTYPE$
 			Case "LArASIC"
@@ -1209,10 +2093,9 @@ Function DFFindLArASICSocket As Boolean
 '
 	Double USocket
 	SelectSite("InFunction")
-	
+	Print "DFFindLArASICSocket: Exposure = ", DF_Exposure
 	Select SITE$
 			Case "MSU"
-				
 				If MSUTESTBOARD Then
 					VSet MSU_SocketFind2.ExposureTime, DF_Exposure
 					VRun MSU_SocketFind2
@@ -1623,7 +2506,7 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 '	' Remeasure the socket position after recentering?
 '	'''
 	Print "Measuring socket position (after recentering)"
-	If Not GetSocketPositionWithDF(DAT_nr, socket_nr) Then ', ByRef SockCorr()) Then
+	If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
 		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
 		GetChipInSocketAlignment = -ERR_V_SOCKETALIGN
 		Exit Function
@@ -1640,19 +2523,34 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	'''
 	Print "Measuring chip position"
 	' Measure the chip position
-	If Not FindChipPositionWithDF Then
+'	If Not FindChipPositionWithDF Then
+'		Print "Could not find with standard vision sequence, will use component sequences separately"
+'		If Not FindChipPositionWithDFAdvanced Then
+'			'RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
+'			GetChipInSocketAlignment = -ERR_V_DF_ALIGN ' Set an error code
+'			Exit Function
+'		EndIf
+'	EndIf
+
+	If Not GetChipPositionWithDF(0) Then
 		'RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
 		GetChipInSocketAlignment = -ERR_V_DF_ALIGN ' Set an error code
+		Exit Function
+	EndIf
+	
+	' More movement in chips than sockets so wider tolerance 
+	If Abs(ChipOffset(1)) > 2. Or Abs(ChipOffset(2)) > 2. Or Abs(ChipOffset(3)) > 5. Then
+		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
+		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
 		Exit Function
 	EndIf
 	
 	' Chip positions are stored in ChipPos(3)
 	Print "Chip position XYU = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
 	' Store for logging
-	' Remember, chip vision needs to have fine tuning corrction applied, socket already should have correction applied.
-	CSAlign(1) = (ChipPos(1) - ChipVisionOffset(1)) - SockPos(1)
-	CSAlign(2) = (ChipPos(2) - ChipVisionOffset(2)) - SockPos(2)
-	CSAlign(3) = DiffAnglePM180(SockPos(3), DiffAnglePM180(ChipVisionOffset(3), ChipPos(3)))
+	CSAlign(1) = ChipPos(1) - SockPos(1)
+	CSAlign(2) = ChipPos(2) - SockPos(2)
+	CSAlign(3) = DiffAnglePM180(SockPos(3), ChipPos(3))
 	' Calculate x and y offset after removing socket rotation
 	' Rotate by (- socket offset U)?
 	CSAlign(4) = CSAlign(1) * Cos(DegToRad(-SocketOffset(3))) - CSAlign(2) * Sin(DegToRad(-SocketOffset(3)))
@@ -1666,8 +2564,13 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	Print "Delta Y (U corrected) : ", CSAlign(5)
 	Print "Delta U             : ", CSAlign(3)
 	
+	' Need to think about where these get set back to zero 	
+	
 	SetSpeedSetting("MoveWithoutChip")
 	GetChipInSocketAlignment = -1
+	
+	LogChipSocketAlignment(DAT_nr, socket_nr)
+	
 Fend
 
 Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int64
@@ -1719,6 +2622,74 @@ Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int
 	
 Fend
 
+Function GetChipPositionWithDF(sequence As Int32) As Int64
+	
+	GetChipPositionWithDF = 0
+	
+	SelectSite("InFuntionDefinePallets")
+	
+	ChipOffset(1) = 0.
+	ChipOffset(2) = 0.
+	ChipOffset(3) = 0.
+
+	Boolean measured
+	measured = False
+	Int32 seq
+	seq = 0
+	If (Not measured) And (sequence = 0 Or 1) Then
+		measured = FindChipPositionWithDF
+		seq = 1
+	EndIf
+	
+	If (Not measured) And (sequence = 0 Or 2) Then
+		measured = FindChipPositionWithDFAdvanced
+		seq = 2
+	EndIf
+	
+	If (Not measured) And (sequence = 0 Or 3) Then
+		measured = FindChipPositionWithDFFromOutline
+		seq = 3
+	EndIf
+	
+	If Not measured Then
+		Print "ERROR: Cannot find chip position"
+		GetChipPositionWithDF = -ERR_VISION
+		Exit Function
+	EndIf
+		
+	Double PointX, PointY, PointZ, DelX, DelY, DelU
+	PointX = CX(Here) - XOffset(CU(Here))
+	PointY = CY(Here) - YOffset(CU(Here))
+	PointZ = CZ(Here) - DF_CAM_Z_OFF
+	DelX = ChipPos(1) - PointX
+	DelY = ChipPos(2) - PointY
+	DelU = GetBoundAnglePM45(DiffAnglePM180(CU(Here), ChipPos(3)))
+	
+	Print "Expected chip position (rounded U PM45) (", PointX, ",", PointY, ",", GetBoundAnglePM45(CU(Here)), ")"
+	Print "Measured chip position  (rounded U PM45) (", ChipPos(1), ",", ChipPos(2), ",", GetBoundAnglePM45(ChipPos(3)), ")"
+	Print "Subtracting vision offsets of (", ChipVisionOffset(seq, 1), ",", ChipVisionOffset(seq, 2), ",", ChipVisionOffset(seq, 3), ")"
+
+	' Apply fine tuning offset correction for vision sequence function
+	ChipPos(1) = ChipPos(1) - ChipVisionOffset(seq, 1)
+	ChipPos(2) = ChipPos(2) - ChipVisionOffset(seq, 2)
+	ChipPos(3) = DiffAnglePM180(ChipVisionOffset(seq, 3), ChipPos(3))
+	Print "Corrected measured chip position (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
+	
+	ChipOffset(1) = ChipPos(1) - PointX
+	ChipOffset(2) = ChipPos(2) - PointY
+	ChipOffset(3) = DiffAnglePM180(GetBoundAnglePM45(CU(Here)), GetBoundAnglePM45(ChipPos(3))) ' Should this be a socket vision offset? Depends  how vision is taught
+	
+	' Check offsets are small
+	If Abs(ChipOffset(1)) > 1.2 Or Abs(ChipOffset(2)) > 1.2 Or Abs(ChipOffset(3)) > 3. Then
+		Print "ERROR chip offsets too large"
+		GetChipPositionWithDF = -ERR_V_DF_ALIGN
+		Exit Function
+	EndIf
+	
+	GetChipPositionWithDF = -1
+	
+Fend
+
 Function FindChipAxisOffsetWithUF As Boolean
 ''' Finds the offset of the chip center and direction	
 ' from the axis of the robot EOAT.
@@ -1753,7 +2724,10 @@ Function FindChipAxisOffsetWithUF As Boolean
 	Go Here +U(Rotation1)
 	
 	MeasU1 = CU(Here)
-	
+
+	If CurrentOperation$ <> "" Then
+		LogTestMeasurements(CurrentOperation$, "UFC1", 0, 0, 0, "DEFINED_POINT", CX(Here), CY(Here), CU(Here))
+	EndIf
 	
 	'' TAKE PICTURE
 	UF_camera_light_ON
@@ -1778,6 +2752,11 @@ Function FindChipAxisOffsetWithUF As Boolean
 	ChipY1 = UFChipPos(2)
 	ChipU1 = UFChipPos(3)
 
+	If CurrentOperation$ <> "" Then
+		LogTestMeasurements(CurrentOperation$, "UFC1", 0, 0, 0, "CHIP_MEASURED", ChipX1, ChipY1, ChipU1)
+	EndIf
+
+
 	''' NOTE: BNL robot code assumes U is fixed and then later checks at the orientation to 
 	'' be inserted into the sockets, so I will add in CU(here) as U at camera for this measurement 
 	'String mmsg$
@@ -1799,6 +2778,10 @@ Function FindChipAxisOffsetWithUF As Boolean
 	Go Here +U(Rotation2)
 	
 	MeasU2 = CU(Here)
+	
+	If CurrentOperation$ <> "" Then
+		LogTestMeasurements(CurrentOperation$, "UFC2", 0, 0, 0, "DEFINED_POINT", CX(Here), CY(Here), CU(Here))
+	EndIf
 	
 	' Take another picture
 	UF_camera_light_ON
@@ -1823,6 +2806,10 @@ Function FindChipAxisOffsetWithUF As Boolean
 	ChipY2 = UFChipPos(2)
 	ChipU2 = UFChipPos(3)
 	
+	If CurrentOperation$ <> "" Then
+		LogTestMeasurements(CurrentOperation$, "UFC2", 0, 0, 0, "CHIP_MEASURED", ChipX2, ChipY2, ChipU2)
+	EndIf
+
 	''' Here we assume camera is at same x and Y and +/- 180 from measurement 1  
 	'mmsg$ = Str$(True) + "," + Str$(ChipX2) + "," + Str$(ChipY2) + "," + Str$(ChipU2)
 	WriteMLog(Str$(True) + "," + Str$(ChipX2) + "," + Str$(ChipY2) + "," + Str$(ChipU2))
@@ -1907,7 +2894,7 @@ Fend
 
 Function GetChipToChipCorrections(C1X As Double, C1Y As Double, C1U As Double, C2X As Double, C2Y As Double, C2U As Double, TargetHandU As Double)
 ' Takes measured alignments to U = 0 (Old wrt HAND_U0) and a target U and calculates corrections
-' which move first chip into same offet position as second chip.
+' which move first chip into same offset position as second chip.
 ' Used to place currently held chip at same precise offset as previous chip picked from target position
 ' C1 -> C2
 	
@@ -2069,4 +3056,14 @@ Function UFRecenterAt180 As Int32
 	' Or Go Here  -X(CorX1) -Y(CorY1) :U(DiffAnglePM180(CurrentChipOffset(3), CU(Here)))
 	UFRecenterAt180 = -1
 Fend
+
+'
+'Function PrecisionSocketMeasurement(DAT As Integer, socket_nr As Integer)
+'	
+'	JumpToSocket_camera(DAT, socket_nr)
+'	
+'	
+'	
+'	
+'Fend
 

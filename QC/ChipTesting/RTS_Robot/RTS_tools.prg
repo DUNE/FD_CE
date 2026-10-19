@@ -56,8 +56,36 @@ Fend
 Function UF_take_picture$(basename$ As String) As String
 	''' Takes a picture with the fixed Up Facing (UF) camera	
 	' and stores it in the RTS_DATA$\images directory as a bmp file
+ 	
+	SelectSite("InFunction")
+ 	
+ 	If TrayDirectory$ = "" Then
+		TrayDirectory$ = RTS_DATA$
+	EndIf
+ 	
+	String dir_images$
+	dir_images$ = TrayDirectory$ + "\images"
+
+	If Not FolderExists(dir_images$) Then
+		Print "No images directory in ", TrayDirectory$, ", will create one ..."
+  		MkDir dir_images$
+	EndIf
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
 	
- 	'UF_take_picture$ = RTS_DATA$ + "\images\UF_" + basename$ + ".bmp"
+	dir_images$ = TrayDirectory$ + "\images\UF"
+	If Not FolderExists(dir_images$) Then
+		Print "No UF images directory in ", TrayDirectory$, "\images, will create one ..."
+  		MkDir dir_images$
+	EndIf
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+ 	
+  	'UF_take_picture$ = RTS_DATA$ + "\images\UF_" + basename$ + ".bmp"
  	UF_take_picture$ = TrayDirectory$ + "\images\UF\" + basename$ + ".bmp"
  	
  	Print UF_take_picture$
@@ -70,6 +98,34 @@ Function DF_take_picture$(basename$ As String) As String
 	''' Takes a picture with the Down Facing (UF) camera on the EOAT	
 	' and stores it in the RTS_DATA$\images directory as a bmp file
 	
+	SelectSite("InFunction")
+	
+	If TrayDirectory$ = "" Then
+		TrayDirectory$ = RTS_DATA$
+	EndIf
+	
+	String dir_images$
+	dir_images$ = TrayDirectory$ + "\images"
+
+	If Not FolderExists(dir_images$) Then
+		Print "No images directory in ", TrayDirectory$, ", will create one ..."
+  		MkDir dir_images$
+	EndIf
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+	
+	dir_images$ = TrayDirectory$ + "\images\DF"
+	If Not FolderExists(dir_images$) Then
+		Print "No DF images directory in ", TrayDirectory$, "\images, will create one ..."
+  		MkDir dir_images$
+	EndIf
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+	
 	' DF_take_picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
 	DF_take_picture$ = TrayDirectory$ + "\images\DF\" + basename$ + ".bmp"
  	
@@ -79,7 +135,7 @@ Function DF_take_picture$(basename$ As String) As String
 	VSaveImage DF, DF_take_picture$
 Fend
 
-Function SN_take_Picture$(ocr_dir$ As String, basename$ As String) As String
+Function SN_take_Picture$(SN_dir$ As String, basename$ As String) As String
 	''' Takes a picture of a chip for serial number recognition
 	' Uses FindChipDirectionWithDF to preprocess the image so
 	' the text is right way up to help with OCR
@@ -88,7 +144,21 @@ Function SN_take_Picture$(ocr_dir$ As String, basename$ As String) As String
 	SelectSite("InFunction")
 	' SN_take_Picture$ = RTS_DATA$ + "\images\" + basename$ + ".bmp"
 	'SN_take_Picture$ = TrayDirectory$ + "\images\" + basename$ + ".bmp"
-	SN_take_Picture$ = ocr_dir$ + "\" + basename$ + ".bmp"
+			
+	If TrayDirectory$ = "" Then
+		TrayDirectory$ = RTS_DATA$
+	EndIf
+
+	If Not FolderExists(SN_dir$) Then
+		Print "No SN directory at ", SN_dir$, ", will create one ..."
+  		MkDir SN_dir$
+	EndIf
+	If Not FolderExists(SN_dir$) Then
+  		Print "***ERROR Can't create directory [" + SN_dir$ + "]"
+  		Exit Function
+	EndIf
+	
+	SN_take_Picture$ = SN_dir$ + "\" + basename$ + ".bmp"
 	
 	Print SN_take_Picture$
 	
@@ -116,6 +186,73 @@ Function SN_take_Picture$(ocr_dir$ As String, basename$ As String) As String
 	Send
  	
 Fend
+
+Function Socket_take_picture$(subdir$ As String, basename$ As String) As String
+	''' Takes a picture with the Down Facing (UF) camera on the EOAT	
+	' and stores it in the RTS_DATA$\images\DF\Socket\subdir$ directory as a bmp file
+	
+	SelectSite("InFunction")
+	
+	If TrayDirectory$ = "" Then
+		TrayDirectory$ = RTS_DATA$
+	EndIf
+	
+	String dir_images$
+	dir_images$ = TrayDirectory$ + "\images"
+
+	If Not FolderExists(dir_images$) Then
+		Print "No images directory in ", TrayDirectory$, ", will create one ..."
+  		MkDir dir_images$
+	EndIf
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+	
+	dir_images$ = TrayDirectory$ + "\images\DF"
+	If Not FolderExists(dir_images$) Then
+		Print "No DF images directory in ", TrayDirectory$, "\images, will create one ..."
+  		MkDir dir_images$
+	EndIf
+	If Not FolderExists(dir_images$) Then
+  		Print "***ERROR Can't create directory [" + dir_images$ + "]"
+  		Exit Function
+	EndIf
+	
+	String sock_images$
+	sock_images$ = TrayDirectory$ + "\images\DF\Socket"
+	If Not FolderExists(sock_images$) Then
+		Print "No DF images directory in ", TrayDirectory$, "\images\DF, will create one ..."
+  		MkDir sock_images$
+	EndIf
+	If Not FolderExists(sock_images$) Then
+  		Print "***ERROR Can't create directory [" + sock_images$ + "]"
+  		Exit Function
+	EndIf
+	
+	String full_path$
+	If subdir$ <> "" Then
+		full_path$ = TrayDirectory$ + "\images\DF\Socket\" + subdir$
+		If Not FolderExists(full_path$) Then
+			Print "No DF images directory in ", full_path$, " will create one ..."
+	  		MkDir full_path$
+		EndIf
+		If Not FolderExists(full_path$) Then
+	  		Print "***ERROR Can't create directory [" + full_path$ + "]"
+	  		Exit Function
+		EndIf
+	Else
+		full_path$ = TrayDirectory$ + "\images\DF\Socket"
+ 	EndIf
+ 	
+	Socket_take_picture$ = full_path$ + "\" + basename$ + ".bmp"
+	
+	Print Socket_take_picture$
+ 	VRun DF
+    Wait 0.3
+	VSaveImage DF, Socket_take_picture$
+Fend
+
 
 Function RTS_error(err_msg$ As String, Error_Code As Int32, close_mlog As Boolean) As Integer
 
@@ -164,10 +301,38 @@ Function RTS_error(err_msg$ As String, Error_Code As Int32, close_mlog As Boolea
 		
 Fend
 
+Function LogTestMeasurements(op$ As String, optype$ As String, Pos0 As Integer, Pos1 As Integer, Pos2 As Integer, label$ As String, XVal As Double, YVal As Double, UVal As Double)
+	''' More simple way to save measurements for later checks
+	String Measurements$
+	Int32 FileNum
+	FileNum = FreeFile
+	Measurements$ = RTS_DATA$ + "\TestMeasurements.csv"
+	
+	Boolean PrintFirstLine
+	PrintFirstLine = False
+	
+	If Not FileExists(Measurements$) Then
+		PrintFirstLine = True
+	EndIf
+	
+	AOpen Measurements$ As #FileNum
+	
+	If PrintFirstLine Then
+		Print "Creating new test measurements file!"
+		Print #FileNum, "Operation,Type,Pos0,Pos1,Pos2,Label,X,Y,U"
+	EndIf
+	
+	Print "[TEST MEASUREMENT]", op$, ",", optype$, ",", Str$(Pos0), ",", Str$(Pos1), ",", Str$(Pos2), ",", label$, ",", Str$(XVal), ",", Str$(YVal), ",", Str$(UVal)
+	Print #FileNum, op$, ",", optype$, ",", Str$(Pos0), ",", Str$(Pos1), ",", Str$(Pos2), ",", label$, ",", Str$(XVal), ",", Str$(YVal), ",", Str$(UVal)
+	
+	Close #FileNum
+Fend
+
 Function LogSocketPlacements(DAT As Integer, Socket As Integer, OpID$ As String)
 	''' Logs detailed information about the positioning of the hand during placement for
 	' troubleshooting position drift
 	' For each socket log
+
 	String DefPos$, MeasPos$, SCor$, SCorPos$, LastChip$, CurrChip$, ChipCor$, PlacePos$
 
 	DefPos$ = ""
@@ -175,7 +340,9 @@ Function LogSocketPlacements(DAT As Integer, Socket As Integer, OpID$ As String)
 	Int32 FileNum
 	FileNum = FreeFile
 	String SocketFile$
-	SocketFile$ = RTS_DATA$ + "\SocketPlacement\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Placements.txt"
+	SocketFile$ = RTS_DATA$ + "\SocketPlacement\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Placements.csv"
+
+	Print "Saving socket place information to ", SocketFile$
 
 	' Check if file exists, if not, create it with headers
 	If Not FileExists(SocketFile$) Then
@@ -196,25 +363,51 @@ Function LogSocketPlacements(DAT As Integer, Socket As Integer, OpID$ As String)
 		Print #FileNum, "Operation,", DefPos$, ",", MeasPos$, ",", SCor$, ",", SCorPos$, ",", LastChip$, ",", CurrChip$, ",", ChipCor$, ",", PlacePos$
 	EndIf
 	
+	Print #FileNum, OpID$,
 	' - Defined position (1, 2, 3)
 	DefPos$ = Str$(PlacePositions(1)) + "," + Str$(PlacePositions(2)) + "," + Str$(PlacePositions(3))
+	Print "Defined position                       (", DefPos$, ")"
+	Print #FileNum, ",", DefPos$,
+	
 	' - Measured position (4, 5, 6)
 	MeasPos$ = Str$(PlacePositions(4)) + "," + Str$(PlacePositions(5)) + "," + Str$(PlacePositions(6))
+	Print "Measured position                      (", MeasPos$, ")"
+	Print #FileNum, ",", MeasPos$,
+	
 	' - Socket corrections (7, 8, 9)
 	SCor$ = Str$(PlacePositions(7)) + "," + Str$(PlacePositions(8)) + "," + Str$(PlacePositions(9))
+	Print "Socket Corrections                     (", SCor$, ")"
+	Print #FileNum, ",", SCor$,
+	
 	' - Position After Socket correction (10, 11, 12)
 	SCorPos$ = Str$(PlacePositions(10)) + "," + Str$(PlacePositions(11)) + "," + Str$(PlacePositions(12))
+	Print "Position after socket correction       (", SCorPos$, ")"
+	Print #FileNum, ",", SCorPos$,
+
 	' -	Last Chip offsets (13, 14, 15)
 	LastChip$ = Str$(PlacePositions(13)) + "," + Str$(PlacePositions(14)) + "," + Str$(PlacePositions(15))
+	Print "Last chip offset                       (", LastChip$, ")"
+	Print #FileNum, ",", LastChip$,
+	
 	' - Current Chip offsets (16, 17, 18)
 	CurrChip$ = Str$(PlacePositions(16)) + "," + Str$(PlacePositions(17)) + "," + Str$(PlacePositions(18))
+	Print "Current chip offset                    (", CurrChip$, ")"
+	Print #FileNum, ",", CurrChip$,
+
 	' - Corrections (19, 20, 21)
 	ChipCor$ = Str$(PlacePositions(19)) + "," + Str$(PlacePositions(20)) + "," + Str$(PlacePositions(21))
+	Print "Chip correctin                         (", ChipCor$, ")"
+	Print #FileNum, ",", ChipCor$,
+	
 	' - Position after chip correction (22, 23, 24)
 	PlacePos$ = Str$(PlacePositions(22)) + "," + Str$(PlacePositions(23)) + "," + Str$(PlacePositions(24))
+	Print "Final place position after correction  (", PlacePos$, ")"
+	Print #FileNum, ",", PlacePos$
+		
 	
-	Print #FileNum, OpID$, ",", DefPos$, ",", MeasPos$, ",", SCor$, ",", SCorPos$, ",", LastChip$, ",", CurrChip$, ",", ChipCor$, ",", PlacePos$
+	'Print #FileNum, OpID$, ",", DefPos$, ",", MeasPos$, ",", SCor$, ",", SCorPos$, ",", LastChip$, ",", CurrChip$, ",", ChipCor$, ",", PlacePos$
 	Close #FileNum
+	Print "Socket placement logged"
 	
 Fend
 
@@ -229,48 +422,272 @@ Function LogDFSocketMeasurements(DAT As Integer, Socket As Integer, OpID$ As Str
 	' Next three entries are difference (chip position - socket position) (DF Cam)
 	' Last two entries rotate chip-socket alignment in X and Y to take out U variation	
 	
+	
 	Int32 FileNum
 	FileNum = FreeFile
 	String SocketFile$
-	SocketFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_DF_Measurements.txt"
+	SocketFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_DF_Measurements.csv"
 	
-	AOpen SocketFile$ As #FileNum
-		Print #FileNum, OpID$, ", DF_SocketPosition:", SockPos(1), ",", SockPos(2), ",", SockPos(3), "; DF_ChipPosition:", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), "; DF_ChipOffset:", CSAlign(1), ",", CSAlign(2), ",", CSAlign(3), ",", CSAlign(4), ",", CSAlign(5)
-	Close #FileNum
+	String SockPos$, ChipPos$, ChipOff$, ChipOffU$
+	
+	If Not FileExists(SocketFile$) Then
+		SockPos$ = "SocX,SockY,SockU"
+		ChipPos$ = "ChipX,ChipY,ChipU"
+		ChipOff$ = "OffX,OffY,OffU"
+		ChipOffU$ = "UCorOffX,UCorOffY,OffU"
+	EndIf
+	
+	AOpen SocketFile$ As #fileNum
+	
+	If SockPos$ <> "" Then
+		' Write headers to file
+		Print ""
+		Print #fileNum, "Operation,", SockPos$, ",", ChipPos$, ",", ChipOff$, ",", ChipOffU$
+	EndIf
+		
+	Print "Operation is ", OpID$
+	Print #fileNum, OpID$,
+
+	
+	SockPos$ = Str$(SockPos(1)) + "," + Str$(SockPos(2)) + "," + Str$(SockPos(3))
+	Print "Socket position after placing (", SockPos$, ")"
+	Print #fileNum, ",", SockPos$,
+	
+	ChipPos$ = Str$(ChipPos(1)) + "," + Str$(ChipPos(2)) + "," + Str$(ChipPos(3))
+	Print "Chip position after placing (", ChipPos$, ")"
+	Print #fileNum, ",", ChipPos$,
+	
+	ChipOff$ = Str$(CSAlign(1)) + "," + Str$(CSAlign(2)) + "," + Str$(CSAlign(3))
+	Print "Chip socket alignment after placing (", ChipOff$, ")"
+	Print #fileNum, ",", ChipOff$,
+	
+	ChipOffU$ = Str$(CSAlign(4)) + "," + Str$(CSAlign(5)) + "," + Str$(CSAlign(3))
+	Print "Chip socket alignment after placing (U corrected) (", ChipOff$, ")"
+	Print #fileNum, ",", ChipOffU$
+	
+	Close #fileNum
 	
 Fend
 
 
-Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, DAT As Integer, Socket As Integer) As Int32
+Function SetTargetAlignment(DAT As Integer, Socket As Integer, Fresh As Boolean, ForceDefault As Boolean) As Boolean
+	''' If tests are working, measure the socket chip alignemtn and set it in file
+	' Setting socket to 0 will measure all chips on board
+	SetTargetAlignment = False
+	
+	Double DefX, DefY, DefU
+	
+	DefX = 0.1
+	DefY = -0.1
+	DefU = 0.2
+	
+	If Fresh Then
+		Print "Will zero out any measurements not taken now (CAREFUL IF TWO DAT BOARDS OR JUST ONE CHIP)"
+	Else
+		GetTargetAlignments
+	EndIf
+	
+	SelectSite("InFunctionDefinePallets")
+	Motor On
+
+	If DAT < 0 Or DAT > 2 Then
+		Print "INVALID DAT BOARD: DAT board must be specified as 1 or 2"
+		Exit Function
+	EndIf
+	
+
+	If Socket < 0 Or Socket > nSoc Then
+		Print "INVALID SOCKET: Socket must be in range or be 0 (set all sockets)"
+		Exit Function
+	EndIf
+	
+	Int32 dtb, drange_l, drange_u
+	Int32 soc, srange_l, srange_u
+	
+	If DAT = 0 Then
+		drange_l = 1
+		drange_u = 2
+	Else
+		drange_l = DAT
+		drange_u = DAT
+	EndIf
+	
+	If Socket = 0 Then
+		srange_l = 1
+		srange_u = nSoc
+	Else
+		srange_l = Socket
+		srange_u = Socket
+	EndIf
+	
+	For dtb = drange_l To drange_u
+		For soc = srange_l To srange_u
+			If ForceDefault Then
+				TCSAlign_X(dtb, soc) = DefX
+				TCSAlign_Y(dtb, soc) = DefY
+				TCSAlign_U(dtb, soc) = DefU
+			ElseIf GetChipInSocketAlignment(dtb, soc) = -1 Then
+				TCSAlign_X(dtb, soc) = CSAlign(4) ' Use socket U corrected value
+				TCSAlign_Y(dtb, soc) = CSAlign(5)
+				TCSAlign_U(dtb, soc) = CSAlign(3)
+			Else
+				Print "WARNING Could not determine offset!!!"
+				TCSAlign_X(dtb, soc) = DefX
+				TCSAlign_Y(dtb, soc) = DefY
+				TCSAlign_U(dtb, soc) = DefU
+			EndIf
+		Next
+	Next
+	
+	String AlignmentFile$
+	AlignmentFile$ = RTS_DATA$ + "\VisionMeasurements\TargetAlignments.csv"
+	Integer FileNum
+	FileNum = FreeFile
+
+	WOpen AlignmentFile$ As #FileNum
+	Print "Setting target alignments:"
+	Integer i, j
+	For i = 1 To 2
+		For j = 1 To nSoc
+			Print i, ",", j, ",", TCSAlign_X(i, j), ",", TCSAlign_Y(i, j), ",", TCSAlign_U(i, j)
+			Print #FileNum, i, ",", j, ",", TCSAlign_X(i, j), ",", TCSAlign_Y(i, j), ",", TCSAlign_U(i, j)
+		Next j
+	Next i
+
+	Close #FileNum
+	
+	JumpToCamera
+	
+	SetTargetAlignment = True
+	
+Fend
+	
+
+Function GetTargetAlignments As Boolean
+	''' Loads the desired chip-socket alignment values from the file
+	' Must be measured by command through server.
+	' Measure with SetTargetAlignments(DAT, Socket) when chip tests pass
+	
+	GetTargetAlignments = False
+	
+	String AlignmentFile$
+	AlignmentFile$ = RTS_DATA$ + "\VisionMeasurements\TargetAlignments.csv"
+	Integer FileNum
+	FileNum = FreeFile
+	If Not FileExists(AlignmentFile$) Then
+		Print "Target alignment file could not be found at ", AlignmentFile$
+		Exit Function
+	EndIf
+	
+	ROpen AlignmentFile$ As #FileNum
+	Integer i, j, ii, jj
+	Double x, y, u
+	'	nSoc = 8 Global var from site file , need to set for testing 
+	For i = 1 To 2
+		For j = 1 To nSoc
+			Input #FileNum, ii, jj, x, y, u
+			' Print ii, ",", jj, ",", x, ",", y, ",", u
+			If ii = i And jj = j Then
+				TCSAlign_X(i, j) = x
+				TCSAlign_Y(i, j) = y
+				TCSAlign_U(i, j) = u
+				' Print "DAT ", i, " socket", j, ", DelXYU = (", x, ",", y, ",", u, ")"
+			Else
+				Print "GetTargetAlignment: Error reading file ", AlignmentFile$, " i,j=", i, ",", j
+				Exit Function
+			EndIf
+		Next j
+	Next i
+
+	Close #FileNum
+
+	GetTargetAlignments = True
+	
+Fend
+	
+Function LogChipSocketAlignment(DAT As Integer, Socket As Integer)
+	''' Logs the measured CS alignment at a given time, not operation!
+	' Want to associate last measurement to log, may be multiple measurements per op.
+	
+	Int32 FileNum
+	fileNum = FreeFile
+	String SocketFile$
+	SocketFile$ = RTS_DATA$ + "\SocketPlacement\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Alignment.csv"
+
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+
+	Print "Saving alignment information to ", SocketFile$
+	String LineInfo$
+	' Check if file exists, if not, create it with headers
+	If Not FileExists(SocketFile$) Then
+		LineInfo$ = "Time,DeltaX,DeltaY,DeltaU,InitCheckOK,WarmTestOK,ColdTestOK"
+	EndIf
+	
+	AOpen SocketFile$ As #fileNum
+	
+	If LineInfo$ = "Time,DeltaX,DeltaY,DeltaU,InitCheckOK,WarmTestOK,ColdTestOK" Then
+		' Write headers if new file
+		Print #fileNum, LineInfo$
+	EndIf
+	LineInfo$ = ts$ + "," + Str$(CSAlign(4)) + "," + Str$(CSAlign(5)) + "," + Str$(CSAlign(3)) + ",Untested,Untested,Untested"
+	
+	Print #fileNum, LineInfo$
+
+	Close #fileNum
+	Print "Socket alignmenr logged"
+	
+Fend
+	
+
+Function LogUFOffsets(Tray As Integer, TrayCol As Integer, TrayRow As Integer, DAT As Integer, Socket As Integer, OpID$ As String)
 ''' In one file store the current offset along with the tray/socket position and the timestamp
 
-	LogUFOffsets = 0
-	If (tray <> 0 Or TrayCol <> 0 Or TrayRow <> 0) And (DAT <> 0 Or Socket <> 0) Then
+	If (Tray <> 0 Or TrayCol <> 0 Or TrayRow <> 0) And (DAT <> 0 Or Socket <> 0) Then
 		Print "Invalid indices"
 		Exit Function
 	EndIf
 	
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	
-	Int32 FileNum
+	Int32 fileNum
 	fileNum = FreeFile
 	String OffsetFile$
-	If tray <> 0 Then
-		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.txt"
+	
+	If Tray <> 0 Then
+		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Tray_" + Str$(Tray) + "_" + Str$(TrayCol) + "_" + Str$(TrayRow) + "_UF_Measurements.csv"
 	Else
-		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.txt"
+		OffsetFile$ = RTS_DATA$ + "\VisionMeasurements\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_UF_Measurements.csv"
+	EndIf
+	
+	String headers$
+	
+	If Not FileExists(OffsetFile$) Then
+		headers$ = "Operation,OffX,OffY,OffU"
+	EndIf
+	
+	AOpen OffsetFile$ As #fileNum
+	
+	If headers$ <> "" Then
+		' Write headers to file
+		Print #fileNum, headers$
 	EndIf
 		
-	AOpen OffsetFile$ As #fileNum
-	Print #fileNum, ts$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+	Print "Operation is ", OpID$
+	Print "OffX = ", CorrectedChipOffset(1)
+	Print "OffY = ", CorrectedChipOffset(2)
+	Print "OffU = ", CorrectedChipOffset(3)
+	Print #fileNum, OpID$, ",", CorrectedChipOffset(1), ",", CorrectedChipOffset(2), ",", CorrectedChipOffset(3)
+			
+
 	Close #fileNum
-	LogUFOffsets = -1
+
 Fend
+	
+	
+
 
 ''' Returns the global point of the socket from its DAT and position numbers
 Function PSocket(DAT_nr As Int32, Socket_nr As Int32) As Int32
-	PSocket = DAT_nr * 100 + socket_nr
+	PSocket = DAT_nr * 100 + Socket_nr
 Fend
 
 'Function FindTrayAgl4Offsets(TrayNumber As Int32) As Int32
@@ -300,7 +717,7 @@ Fend
 Function CheckValidTrayIndex(tray As Integer, tray_col As Integer, tray_row As Integer) As Boolean
 	''' Checks tray indices are within bounds
          CheckValidTrayIndex = False
-         If (0 < Tray And Tray <= 2) And (0 < tray_col And tray_col <= trayNCols) And (0 < tray_row And tray_row <= trayNRows) Then
+         If (0 < tray And tray <= 2) And (0 < tray_col And tray_col <= trayNCols) And (0 < tray_row And tray_row <= trayNRows) Then
                 CheckValidTrayIndex = True
          EndIf
 Fend
@@ -837,7 +1254,7 @@ Function RoundAngleTo90(angle As Double) As Double
 	''' Returns an angle rounded to the nearest 90 degrees
 	
 	RoundAngleTo90 = -999.
-	RoundAngleTo90 = GetBoundAnglePM180(Angle)
+	RoundAngleTo90 = GetBoundAnglePM180(angle)
 	
 	If RoundAngleTo90 < -135. Then
 		RoundAngleTo90 = 180.
@@ -913,10 +1330,10 @@ Function ScanTray(pallet_nr As Integer, port_nr As Integer) As Int64
 		For row_nr = 1 To trayNRows
 			
 			idx = idx + 1
-			' For testing
-			If idx > 16 Then
-				Exit For
-			EndIf
+'			' For testing
+'			If idx > 16 Then
+'				Exit For
+'			EndIf
 			
 			Move Pallet(pallet_nr, col_nr, row_nr) +X(XOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Y(YOffset(CU(Pallet(pallet_nr, col_nr, row_nr)))) +Z(DF_CAM_Z_OFF)
 				
@@ -997,8 +1414,6 @@ Function CloseMLog(close_msg$ As String)
 		Print "ERROR: THE MLOG IS ALREADY CLOSED"
 		Exit Function
 	EndIf
-
-	Close #mlog_nr
 	If Not close_msg$ = "" Then
 		Print "[MLOG]:", close_msg$
 		Print #mlog_nr, ",", close_msg$
@@ -1006,6 +1421,7 @@ Function CloseMLog(close_msg$ As String)
 		Print #mlog_nr, " " ' Still need to close the file by adding a space and end line character 
 		' not actually sure if it needs to be a space, might do as "" is an empty string
 	EndIf
+	Close #mlog_nr
 	Print "[CLOSED MLOG]"
 	mlogopen = False
 Fend
@@ -1053,7 +1469,7 @@ Function MLogIdx
 	idx_msg$ = Str$(bnl_idx(2))
 	Integer i
 	For i = 3 To 11
-		idx_msg$ = idx_msg$ + "," + Str$(bnl_idx(2))
+		idx_msg$ = idx_msg$ + "," + Str$(bnl_idx(i))
 	Next
 	WriteMLog(idx_msg$)
 Fend

@@ -47,6 +47,7 @@
 #define ERR_TRAY_PLACE 200
 #define ERR_SOCKET_PICK 300
 #define ERR_SOCKET_PLACE 400
+#define ERR_RESEAT 500
 
 ' For error code handling
 Global Int32 ErrorCode

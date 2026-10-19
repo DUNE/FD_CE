@@ -65,3 +65,40 @@ Fend
 Function UF_camera_light_OFF
 	Off 12
 Fend
+
+' Technichally this isn't th ehand so could be moved to RTS_tools
+' but it is IO for the cover sink
+Function CoverStatus(DAT_nr As Integer) As Int64
+	CoverStatus = 0
+	'JW:  Values here had to be determined from BNL automation
+	' Could be other values for specific states which are unknown to me 
+	' e.g. one specific sink open other closed
+	If DAT_nr = 0 Then
+		' Check both sinks open for robot operation
+		If Sw(14) And Sw(13) Then
+			' Both sinks are open
+			CoverStatus = 197
+		Else
+			' At least one sink is closed
+			CoverStatus = -198
+		EndIf
+	ElseIf DAT_nr = 1 Then
+		If Sw(14) Then
+			' Sink 1 (left from robot right from front -ve X) OPEN
+			CoverStatus = 197
+		Else
+			' Sink 1 CLOSED
+			CoverStatus = -198
+		EndIf
+	ElseIf DAT_nr = 2 Then
+		If Sw(13) Then
+			' Sink 2 (right from robot left from front +ve X) OPEN
+			CoverStatus = 197
+		Else
+			' Sink 2 CLOSED
+			CoverStatus = -198
+		EndIf
+	EndIf
+
+Fend
+

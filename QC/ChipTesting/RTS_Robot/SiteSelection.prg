@@ -175,7 +175,7 @@ Function SetSiteValues
 	DeltaX = (CX(PScrewDFLeft) - CX(PScrewDFRight)) / 2
 	DeltaY = (CY(PScrewDFLeft) - CY(PScrewDFRight)) / 2
 	U0 = CU(PScrewDFLeft)
-	Print "Go to your site case in SiteSelection.prg"
+	Print "Will set values in in SiteSelection.prg"
 	Print "Set HAND_U0 to ", U0
 	
 	Print "Set DF_CAM_X_OFF_U0 to ", DeltaX
@@ -196,7 +196,12 @@ Function SetSiteValues
 	Print "Set DF_CAM_FOCUS to ", DeltaZ
  	Print "Set DF_CAM_Z_OFF to ", DeltaZ - CONTACT_DIST
 	SetSpeed
-		
+	
+	DF_CAM_X_OFF_U0 = DeltaX
+	DF_CAM_Y_OFF_U0 = DeltaY
+	DF_CAM_FOCUS = DeltaZ
+	DF_CAM_Z_OFF = DeltaZ - CONTACT_DIST
+	
 	If Not WriteSiteFile Then
 		Print "Could not write to file"
 		Exit Function
@@ -286,50 +291,38 @@ Function MeasureChipVisionOffset As Int32
 '	Align a chip so it is as square on in the center of the camera image as possible
 '	Remember, the chips may be slightly out of position from a tray. Line this up manually
 '	We will set these offsets for fine tuning the vision sequence functions
-	ChipVisionOffset(1) = 0.
-	ChipVisionOffset(2) = 0.
-	ChipVisionOffset(3) = 0.
-'	
-'	' Now run the chip vision sequence and see how far off the point is from the
-'   ' value calculated from the camera point offsets
-'	' Remember, if you have taught the point correctly, and the camera vision offsets are measured
-'	' the vision sequence should be fairly close to the actual point
-'	
-
-'	NAttempts = 5
-	If Not FindChipPositionWithDF Then
-		Print "Could not find/measure chip position"
-		MeasureChipVisionOffset = -ERR_V_DF_ALIGN
-		Exit Function
-	EndIf
-'	
-	Double PointX, PointY, PointZ, DelX, DelY, DelU
-	PointX = CX(Here) - XOffset(CU(Here))
-	PointY = CY(Here) - YOffset(CU(Here))
-	PointZ = CZ(Here) - DF_CAM_Z_OFF
-	DelX = ChipPos(1) - PointX
-	DelY = ChipPos(2) - PointY
-	DelU = GetBoundAnglePM45(DiffAnglePM180(CU(Here), ChipPos(3)))
-
-	Print "Current position of hand "
-	Print Here
-	Print " Implies point relative to current image at "
-	Print "XYZU: (", PointX, ",", PointY, ",", PointZ, ",", CU(Here), ")"
-	Print "Chip position measured to be (without correction) "
-	Print "XYU(", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
-	Print " With difference of "
-	Print "XYU(", DelX, ",", DelY, ",", DelU, ")"
+	String sequence$(3)
+	sequence$(1) = "Standard"
+	sequence$(2) = "Advanced"
+	sequence$(3) = "Outline"
+	Integer seq
+	For seq = 1 To 3
+		Print "Measuring ", sequence$(seq), " offset"
 		
-	If Abs(DelX) > 1. Or Abs(DelY) > 1. Or Abs(DelU) > 3. Then
-		Print "Offsets too large, try again or increase tolerance"
-		MeasureChipVisionOffset = -ERR_BAD_TOLERANCE
-		Exit Function
-	EndIf
+		ChipVisionOffset(seq, 1) = 0.
+		ChipVisionOffset(seq, 2) = 0.
+		ChipVisionOffset(seq, 3) = 0.
 	
-	ChipVisionOffset(1) = DelX
-	ChipVisionOffset(2) = DelY
-	ChipVisionOffset(3) = DelU
-	
+		If Not GetChipPositionWithDF(seq) Then
+			Print "Could not find/measure chip position"
+			MeasureChipVisionOffset = -ERR_V_DF_ALIGN
+			Exit Function
+		EndIf
+		
+		' Check measured point is not far from robot point (calculated with camera offset)
+		If Abs(ChipOffset(1)) > 1. Or Abs(ChipOffset(2)) > 1. Or Abs(ChipOffset(3)) > 3. Then
+			Print "Offsets too large, try again or increase tolerance for ", sequence$(seq), " vision sequence"
+			MeasureChipVisionOffset = -ERR_BAD_TOLERANCE
+			Exit Function
+		EndIf
+		
+		' As chip is properly aligned in camera, any offset measured is the offset in the vision.	
+		' Assuming camera image-position offsets are set correctly!
+		ChipVisionOffset(seq, 1) = ChipOffset(1)
+		ChipVisionOffset(seq, 2) = ChipOffset(2)
+		ChipVisionOffset(seq, 3) = ChipOffset(3)
+
+	Next
 	Print "Saving new offsets to file"
 	
 	If Not WriteSiteFile Then
@@ -344,8 +337,8 @@ Function ReadSiteFileOld
 	ReadSiteFileOld = 0
 	' First make sure you have all the other site specific values loaded	
 	If Not FileExists(SITE_FILE) Then
-		Print "Need to provide full path to site.csv location"
-		ReadSiteFileOld = -999
+        Print "Need to provide full path to site.csv location"
+        ReadSiteFileOld = -999
 	EndIf
 
 	Integer fileNum
@@ -358,7 +351,10 @@ Function ReadSiteFileOld
 	Input #fileNum, mlog$
 	Input #fileNum, HAND_U0, DF_CAM_X_OFF_U0, DF_CAM_Y_OFF_U0, DF_CAM_FOCUS
 	Input #fileNum, TrayOrientation, HandChipOrientation(1), HandChipOrientation(2), HandChipOrientation(3)
-	Input #fileNum, ChipTextOrientation, ChipVisionOffset(1), ChipVisionOffset(2), ChipVisionOffset(3)
+	Input #fileNum, ChipTextOrientation
+	Input #fileNum, ChipVisionOffset(1, 1), ChipVisionOffset(1, 2), ChipVisionOffset(1, 3)
+	Input #fileNum, ChipVisionOffset(2, 1), ChipVisionOffset(2, 2), ChipVisionOffset(2, 3)
+	Input #fileNum, ChipVisionOffset(3, 1), ChipVisionOffset(3, 2), ChipVisionOffset(3, 3)
 	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
 	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
 	Input #fileNum, Default_DF_Exposure_Chip
@@ -371,6 +367,9 @@ Function ReadSiteFileOld
 	Input #fileNum, DefaultPinAnalysis, DefaultSkipOcc, DefaultSkipSocCor, DefaultSkipChipCor
 	Input #fileNum, DefaultPlaceNotDrop, DefaultClampFirst, DefaultFastClamp
 	Close #fileNum
+	
+	DF_CAM_Z_OFF = DF_CAM_FOCUS - CONTACT_DIST
+	
 	ReadSiteFileOld = -9
 Fend
 
@@ -392,7 +391,10 @@ Function WriteSiteFileOld
 	Print #fileNum, mlog$
 	Print #fileNum, Str$(HAND_U0), ",", Str$(DF_CAM_X_OFF_U0), ",", Str$(DF_CAM_Y_OFF_U0), ",", Str$(DF_CAM_FOCUS)
 	Print #fileNum, Str$(TrayOrientation), ",", Str$(HandChipOrientation(1)), ",", Str$(HandChipOrientation(2)), ",", Str$(HandChipOrientation(3))
-	Print #fileNum, Str$(ChipTextOrientation), ",", Str$(ChipVisionOffset(1)), ",", Str$(ChipVisionOffset(2)), ",", Str$(ChipVisionOffset(3))
+	Print #fileNum, Str$(ChipTextOrientation),
+	Print #fileNum, Str$(ChipVisionOffset(1, 1)), ",", Str$(ChipVisionOffset(1, 2)), ",", Str$(ChipVisionOffset(1, 3))
+	Print #fileNum, Str$(ChipVisionOffset(2, 1)), ",", Str$(ChipVisionOffset(2, 2)), ",", Str$(ChipVisionOffset(2, 3))
+	Print #fileNum, Str$(ChipVisionOffset(3, 1)), ",", Str$(ChipVisionOffset(3, 2)), ",", Str$(ChipVisionOffset(3, 3))
 	Print #fileNum, Str$(SocketVisionOffset(1)), ",", Str$(SocketVisionOffset(2)), ",", Str$(SocketVisionOffset(3))
 	Print #fileNum, Str$(NAttempts_Chip_Tray), ",", Str$(NAttempts_Chip_DAT), ",", Str$(NAttempts_Soc), ",", Str$(NAttempts_UF)
 	Print #fileNum, Str$(Default_DF_Exposure_Chip)
@@ -423,12 +425,13 @@ Function ReadSiteFile As Int32
 	fileNum = FreeFile
 	ROpen SITE_FILE As #fileNum
 	Int32 file_line, NfileLines
-	NfileLines = 42
+	NfileLines = 53 ' 42
 	String VariableName$, VariableValue$
 
 	' First five values are strings
 	For file_line = 1 To NfileLines
 		Input #fileNum, VariableName$, VariableValue$
+		'Print "Input var: ", VariableName$, " value:", VariableValue$
 		Select VariableName$
 			Case "Site"
 				SITE$ = VariableValue$
@@ -461,12 +464,29 @@ Function ReadSiteFile As Int32
 				HandChipOrientation(3) = Val(VariableValue$)
 			Case "ChipTextOrientation"
 				ChipTextOrientation = Val(VariableValue$)
+				
 			Case "ChipVisionOffsetX"
-				ChipVisionOffset(1) = Val(VariableValue$)
+				ChipVisionOffset(1, 1) = Val(VariableValue$)
 			Case "ChipVisionOffsetY"
-				ChipVisionOffset(2) = Val(VariableValue$)
+				ChipVisionOffset(1, 2) = Val(VariableValue$)
 			Case "ChipVisionOffsetU"
-				ChipVisionOffset(3) = Val(VariableValue$)
+				ChipVisionOffset(1, 3) = Val(VariableValue$)
+				
+			Case "ChipVisionOffsetAdvancedX"
+				ChipVisionOffset(2, 1) = Val(VariableValue$)
+			Case "ChipVisionOffsetAdvancedY"
+				ChipVisionOffset(2, 2) = Val(VariableValue$)
+			Case "ChipVisionOffsetAdvancedU"
+				ChipVisionOffset(2, 3) = Val(VariableValue$)
+				
+			Case "ChipVisionOffsetOutlineX"
+				ChipVisionOffset(3, 1) = Val(VariableValue$)
+			Case "ChipVisionOffsetOutlineY"
+				ChipVisionOffset(3, 2) = Val(VariableValue$)
+			Case "ChipVisionOffsetOutlineU"
+				ChipVisionOffset(3, 3) = Val(VariableValue$)
+				
+				
 			Case "SocketVisionOffsetX"
 				SocketVisionOffset(1) = Val(VariableValue$)
 			Case "SocketVisionOffsetY"
@@ -482,6 +502,7 @@ Function ReadSiteFile As Int32
 				NAttempts_Soc = Val(VariableValue$)
 			Case "NAttempts_UF"
 				NAttempts_UF = Val(VariableValue$)
+				
 			Case "Default_DF_Exposure_Chip"
 				Default_DF_Exposure_Chip = Val(VariableValue$)
 			Case "Min_DF_Exposure_Chip_Tray"
@@ -492,13 +513,36 @@ Function ReadSiteFile As Int32
 				Min_DF_Exposure_Chip_DAT = Val(VariableValue$)
 			Case "Max_DF_Exposure_Chip_DAT"
 				Max_DF_Exposure_Chip_DAT = Val(VariableValue$)
+				
+			Case "Default_DF_Brightness_Chip"
+				Default_DF_Brightness_Chip = Val(VariableValue$)
+			Case "Min_DF_Brightness_Chip_Tray"
+				Min_DF_Brightness_Chip_Tray = Val(VariableValue$)
+			Case "Max_DF_Brightness_Chip_Tray"
+				Max_DF_Brightness_Chip_Tray = Val(VariableValue$)
+			Case "Min_DF_Brightness_Chip_DAT"
+				Min_DF_Brightness_Chip_DAT = Val(VariableValue$)
+			Case "Max_DF_Brightness_Chip_DAT"
+				Max_DF_Brightness_Chip_DAT = Val(VariableValue$)
+				
+			Case "Default_DF_Contrast_Chip"
+				Default_DF_Contrast_Chip = Val(VariableValue$)
+			Case "Min_DF_Contrast_Chip_Tray"
+				Min_DF_Contrast_Chip_Tray = Val(VariableValue$)
+			Case "Max_DF_Contrast_Chip_Tray"
+				Max_DF_Contrast_Chip_Tray = Val(VariableValue$)
+			Case "Min_DF_Contrast_Chip_DAT"
+				Min_DF_Contrast_Chip_DAT = Val(VariableValue$)
+			Case "Max_DF_Contrast_Chip_DAT"
+				Max_DF_Contrast_Chip_DAT = Val(VariableValue$)
+		
 			Case "Default_DF_Exposure_Soc"
 				Default_DF_Exposure_Soc = Val(VariableValue$)
-				
 			Case "Min_DF_Exposure_Soc"
 				Min_DF_Exposure_Soc = Val(VariableValue$)
 			Case "Max_DF_Exposure_Soc"
 				Max_DF_Exposure_Soc = Val(VariableValue$)
+				'Print "*****Max exposure socket", Max_DF_Exposure_Soc
 			Case "Default_UF_Exposure"
 				Default_UF_Exposure = Val(VariableValue$)
 			Case "Min_UF_Exposure"
@@ -524,6 +568,8 @@ Function ReadSiteFile As Int32
 				Print "NO KNOWN VARIABLE TO SET FOR SITE FILE VARIABLE ", VariableName$
 		Send
 	Next
+
+	DF_CAM_Z_OFF = DF_CAM_FOCUS - CONTACT_DIST
 
 	Close #fileNum
 	ReadSiteFile = -1
@@ -555,9 +601,15 @@ Function WriteSiteFile As Int32
 	Print #fileNum, "HandChipOrientation_ColdADC,", Str$(HandChipOrientation(2))
 	Print #fileNum, "HandChipOrientation_COLDATA,", Str$(HandChipOrientation(3))
 	Print #fileNum, "ChipTextOrientation,", Str$(ChipTextOrientation)
-	Print #fileNum, "ChipVisionOffsetX,", Str$(ChipVisionOffset(1))
-	Print #fileNum, "ChipVisionOffsetY,", Str$(ChipVisionOffset(2))
-	Print #fileNum, "ChipVisionOffsetU,", Str$(ChipVisionOffset(3))
+	Print #fileNum, "ChipVisionOffsetX,", Str$(ChipVisionOffset(1, 1))
+	Print #fileNum, "ChipVisionOffsetY,", Str$(ChipVisionOffset(1, 2))
+	Print #fileNum, "ChipVisionOffsetU,", Str$(ChipVisionOffset(1, 3))
+	Print #fileNum, "ChipVisionOffsetAdvancedX,", Str$(ChipVisionOffset(2, 1))
+	Print #fileNum, "ChipVisionOffsetAdvancedY,", Str$(ChipVisionOffset(2, 2))
+	Print #fileNum, "ChipVisionOffsetAdvancedU,", Str$(ChipVisionOffset(2, 3))
+	Print #fileNum, "ChipVisionOffsetOutlineX,", Str$(ChipVisionOffset(3, 1))
+	Print #fileNum, "ChipVisionOffsetOutlineY,", Str$(ChipVisionOffset(3, 2))
+	Print #fileNum, "ChipVisionOffsetOutlineU,", Str$(ChipVisionOffset(3, 3))
 	Print #fileNum, "SocketVisionOffsetX,", Str$(SocketVisionOffset(1))
 	Print #fileNum, "SocketVisionOffsetY,", Str$(SocketVisionOffset(2))
 	Print #fileNum, "SocketVisionOffsetU,", Str$(SocketVisionOffset(3))
@@ -570,7 +622,17 @@ Function WriteSiteFile As Int32
 	Print #fileNum, "Max_DF_Exposure_Chip_Tray,", Str$(Max_DF_Exposure_Chip_Tray)
 	Print #fileNum, "Min_DF_Exposure_Chip_DAT,", Str$(Min_DF_Exposure_Chip_DAT)
     Print #fileNum, "Max_DF_Exposure_Chip_DAT,", Str$(Max_DF_Exposure_Chip_DAT)
-    Print #fileNum, "Default_DF_Exposure_Soc,", Str$(Default_DF_Exposure_Soc)
+   	Print #fileNum, "Default_DF_Exposure_Soc,", Str$(Default_DF_Exposure_Soc)
+	Print #fileNum, "Default_DF_Brightness_Chip,", Str$(Default_DF_Brightness_Chip)
+	Print #fileNum, "Min_DF_Brightness_Chip_Tray,", Str$(Min_DF_Brightness_Chip_Tray)
+	Print #fileNum, "Max_DF_Brightness_Chip_Tray,", Str$(Max_DF_Brightness_Chip_Tray)
+	Print #fileNum, "Min_DF_Brightness_Chip_DAT,", Str$(Min_DF_Brightness_Chip_DAT)
+    Print #fileNum, "Max_DF_Brightness_Chip_DAT,", Str$(Max_DF_Brightness_Chip_DAT)
+	Print #fileNum, "Default_DF_Contrast_Chip,", Str$(Default_DF_Contrast_Chip)
+	Print #fileNum, "Min_DF_Contrast_Chip_Tray,", Str$(Min_DF_Contrast_Chip_Tray)
+	Print #fileNum, "Max_DF_Contrast_Chip_Tray,", Str$(Max_DF_Contrast_Chip_Tray)
+	Print #fileNum, "Min_DF_Contrast_Chip_DAT,", Str$(Min_DF_Contrast_Chip_DAT)
+    Print #fileNum, "Max_DF_Contrast_Chip_DAT,", Str$(Max_DF_Contrast_Chip_DAT)
     Print #fileNum, "Min_DF_Exposure_Soc,", Str$(Min_DF_Exposure_Soc)
 	Print #fileNum, "Max_DF_Exposure_Soc,", Str$(Max_DF_Exposure_Soc)
 	Print #fileNum, "Default_UF_Exposure,", Str$(Default_UF_Exposure)
@@ -605,9 +667,17 @@ Function PrintLoadedSiteFileValues
 	Print "HandChipOrientation_ColdADC,", Str$(HandChipOrientation(2))
 	Print "HandChipOrientation_COLDATA,", Str$(HandChipOrientation(3))
 	Print "ChipTextOrientation,", Str$(ChipTextOrientation)
-	Print "ChipVisionOffsetX,", Str$(ChipVisionOffset(1))
-	Print "ChipVisionOffsetY,", Str$(ChipVisionOffset(2))
-	Print "ChipVisionOffsetU,", Str$(ChipVisionOffset(3))
+	
+	Print "ChipVisionOffsetX,", Str$(ChipVisionOffset(1, 1))
+	Print "ChipVisionOffsetY,", Str$(ChipVisionOffset(1, 2))
+	Print "ChipVisionOffsetU,", Str$(ChipVisionOffset(1, 3))
+	Print "ChipVisionOffsetAdvancedX,", Str$(ChipVisionOffset(2, 1))
+	Print "ChipVisionOffsetAdvancedY,", Str$(ChipVisionOffset(2, 2))
+	Print "ChipVisionOffsetAdvancedU,", Str$(ChipVisionOffset(2, 3))
+	Print "ChipVisionOffsetOutlineX,", Str$(ChipVisionOffset(3, 1))
+	Print "ChipVisionOffsetOutlineY,", Str$(ChipVisionOffset(3, 2))
+	Print "ChipVisionOffsetOutlineU,", Str$(ChipVisionOffset(3, 3))
+	
 	Print "SocketVisionOffsetX,", Str$(SocketVisionOffset(1))
 	Print "SocketVisionOffsetY,", Str$(SocketVisionOffset(2))
 	Print "SocketVisionOffsetU,", Str$(SocketVisionOffset(3))
@@ -620,6 +690,16 @@ Function PrintLoadedSiteFileValues
 	Print "Max_DF_Exposure_Chip_Tray,", Str$(Max_DF_Exposure_Chip_Tray)
 	Print "Min_DF_Exposure_Chip_DAT,", Str$(Min_DF_Exposure_Chip_DAT)
     Print "Max_DF_Exposure_Chip_DAT,", Str$(Max_DF_Exposure_Chip_DAT)
+    Print "Default_DF_Brightness_Chip,", Str$(Default_DF_Brightness_Chip)
+	Print "Min_DF_Brightness_Chip_Tray,", Str$(Min_DF_Brightness_Chip_Tray)
+	Print "Max_DF_Brightness_Chip_Tray,", Str$(Max_DF_Brightness_Chip_Tray)
+	Print "Min_DF_Brightness_Chip_DAT,", Str$(Min_DF_Brightness_Chip_DAT)
+    Print "Max_DF_Brightness_Chip_DAT,", Str$(Max_DF_Brightness_Chip_DAT)
+    Print "Default_DF_Contrast_Chip,", Str$(Default_DF_Contrast_Chip)
+	Print "Min_DF_Contrast_Chip_Tray,", Str$(Min_DF_Contrast_Chip_Tray)
+	Print "Max_DF_Contrast_Chip_Tray,", Str$(Max_DF_Contrast_Chip_Tray)
+	Print "Min_DF_Contrast_Chip_DAT,", Str$(Min_DF_Contrast_Chip_DAT)
+    Print "Max_DF_Contrast_Chip_DAT,", Str$(Max_DF_Contrast_Chip_DAT)
     Print "Default_DF_Exposure_Soc,", Str$(Default_DF_Exposure_Soc)
     Print "Min_DF_Exposure_Soc,", Str$(Min_DF_Exposure_Soc)
 	Print "Max_DF_Exposure_Soc,", Str$(Max_DF_Exposure_Soc)

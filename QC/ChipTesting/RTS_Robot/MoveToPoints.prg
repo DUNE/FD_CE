@@ -21,6 +21,19 @@ Function MoveFromImageToPoint
 	Move Here -Z(DF_CAM_Z_OFF)
 Fend
 
+Function MoveToFlippedImage
+	''' Moves the robot so the object in at the point of the image is flipped in the camera
+	' Please ensure you are nowhere there could be collisions!
+	SelectSite("InFunctionDefinePallets")
+	Move Here -X(2 * XOffset(CU(Here))) -Y(2 * YOffset(CU(Here)))
+	If Agl(4) < 0 Then
+		Go Here +U(180.)
+	Else
+		Go Here -U(180.)
+	EndIf
+	
+Fend
+
 ' Jump to camera
 ' Preserves U rotation
 Function JumpToCamera
@@ -80,7 +93,7 @@ Function JumpToSocket(DAT_nr As Integer, socket_nr As Integer)
 	''' Jumps to defined point at CONTACT_DIST above point of contact (sensor activated) with chip	
 	
 	SelectSite("InFunctionDefinePallets")
-	If Dist(Here, P(100 * DAT_nr + socket_nr)) < 0.1 Then
+	If Dist(Here, P(100 * DAT_nr + Socket_nr)) < 0.1 Then
 		Exit Function
 	EndIf
 	' Note, should teach points at 20mm above contact
