@@ -25,6 +25,9 @@ ChipVisionOffsetOutlineU,-0.12648865786401
 SocketVisionOffsetX,0.28157164939085
 SocketVisionOffsetY,0.4617544801535
 SocketVisionOffsetU,0.87937844520211
+DefaultTargetCSAlignX,0.1
+DefaultTargetCSAlignY,-0.1
+DefaultTargetCSAlignU,0.3
 NAttempts_Chip_Tray,6
 NAttempts_Chip_DAT,6
 NAttempts_Soc,6
@@ -50,7 +53,7 @@ Max_DF_Exposure_Soc,100000
 Default_UF_Exposure,0
 Min_UF_Exposure,4000
 Max_UF_Exposure,5000
-DoPinAnalysis,0
+DoPinAnalysis,1
 SkipOccupancyCheck,0
 SkipSocketCorrection,0
 SkipChiptoChipCorrection,0

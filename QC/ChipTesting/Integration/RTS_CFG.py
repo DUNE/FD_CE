@@ -2,6 +2,43 @@ import socket # for socket
 import sys 
 import time 
 
+ERRORS={
+    "ERR_SERVER":-2,
+    "ERR_BAD_COMMAND":-3,
+    "ERR_FILESYSTEM":-4,
+    "ERR_MOTOR":-5,
+    "ERR_COLLISION":-6,
+    "ERR_SPEL":-7,
+    "ERR_EOAT_IO":-10,
+    "ERR_PUMP":-11,
+    "ERR_PRESSURE":-12,
+    "ERR_VACUUM":-13,
+    "ERR_NO_CONTACT":-15,
+    "ERR_OBSTRUCTION":-16,
+    "ERR_VISION":-20,
+    "ERR_V_NOCHIP":-21,
+    "ERR_V_OCCUPIED":-22,
+    "ERR_V_DF_ALIGN":-23,
+    "ERR_V_UF_ALIGN":-24,
+    "ERR_V_NOSOCKET":-25,
+    "ERR_V_SOCKETALIGN":-26,
+    "ERR_V_CHIPSOCKALIGN":-27,
+    "ERR_V_FAILALIGN":-28,
+    "ERR_BAD_TOLERANCE":-29,
+    "ERR_BAD_ORIENTATION":-30,
+    "ERR_CALCULATION":-51,
+    "ERR_ANALYSIS":-52,
+    "ERR_PINS":-53,
+    "ERR_TRAY_PICK":-100,
+    "ERR_TRAY_PLACE":-200,
+    "ERR_SOCKET_PICK":-300,
+    "ERR_SOCKET_PLACE":-400,
+    "ERR_ROTATE":-500,
+    "ERR_RESEAT":-600
+}
+
+
+
 class RTS_CFG():
     def __init__(self): # , port, host_ip): # TODO joe think if this is better, get rid of init args?
         self.s = None
@@ -418,6 +455,34 @@ class RTS_CFG():
                     origpos = True
         return status
 
+    def MeasureAllAlignments(self, DAT_nr,):
+        print(f'MeasureAllAlignments({DAT_nr})')
+        
+        while True:
+            try:
+                self.msg = "MeasureAllAlignments"
+                self.s.send(self.msg.encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(DAT_nr).encode())
+                self.s.send(b"\r\n")
+
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print("msg: ", self.msg)
+                status = int(self.msg)
+                if status == 0 or status == -27:
+                    print("Measurements complete")
+                    break
+                if status < 0:
+                    print("Could not complete measurements")
+                    status = -28
+                    break
+                else:
+                    time.sleep(1)
+            except:
+                time.sleep(1)
+        return status
 
     def ReseatChipInSocket(self, DAT_nr, socket_nr, duttype="FE"):
         if "FE" in duttype:
@@ -448,15 +513,94 @@ class RTS_CFG():
                 print("msg: ", self.msg)
                 try:
                     status = int(self.msg)
-                    if (status < 0) and (status != -200) :
-                        tryi = tryi + 1
-                        print ("Reseat chip in socket")
-                        self.JumpToSocket(DAT_nr, socket_nr)    
-                        self.InsertIntoSocket()    
-                        self.JumpToCamera()
-                        self.rts_idle() 
-                        time.sleep (1)
-                        self.MotorOn() 
+                    if status == ERRORS['ERR_V_CHIPSOCKALIGN']:
+                        print('Reseat resulted in bad alignment')
+                        self.ReseatChipInSocket(DAT_nr, socket_nr, duttype)
+                        if status > 0: return status
+
+                    if (status < 0):
+                        print('Reseat failed, check if chip is still held by robot')
+                        while True:
+                            inyn = input('Has the chip been seated properly (Y/N)?')
+                            if inyn in ['y','Y','yes','Yes','YES']:
+                                return 1
+                            if inyn in ['n','N','no','No', 'NO']:
+                                return status
+                    else:
+                        break
+
+                    if tryi > 2:
+                        break
+                    else: 
+                        print ("Try again")
+                        continue
+                except:
+                    time.sleep(1)
+
+                try:
+                    status = int(self.msg)
+                    break
+                except:
+                    time.sleep(1)
+
+                status = int(self.msg)
+                break
+            except ConnectionAbortedError:
+                print ("ConnectionAbortedError")
+                self.rts_init(port=self.robot_port, host_ip=self.robot_ip)
+        return status
+
+    def ReseatChipInSocketWithOffset(self, DAT_nr, socket_nr, DelX, DelY, DelU, duttype="FE"):
+        if "FE" in duttype:
+            sktn = socket_nr
+        elif "ADC" in duttype:
+            sktn = socket_nr + 10
+        elif "CD" in duttype:
+            sktn = (socket_nr&0x03)+20
+        else:
+            sktn = socket_nr
+
+        tryi = 0
+        while True:
+            try:
+                print ("Reseat chip in socket DAT#{},Socket{}".format(DAT_nr, socket_nr))
+                print ("With user provided offsets DelX {}, DelY{}, DelU{}".format(DelX, DelY, DelU))
+                self.msg = "ReseatChipInSocketWithOffset"
+                self.s.send(self.msg.encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(DAT_nr).encode())
+                self.s.send(b"\r\n")
+    
+                self.s.send(str(socket_nr).encode())
+                self.s.send(b"\r\n")
+
+                self.s.send(str(DelX).encode())
+                self.s.send(b"\r\n")
+
+                self.s.send(str(DelY).encode())
+                self.s.send(b"\r\n")
+
+                self.s.send(str(DelU).encode())
+                self.s.send(b"\r\n")
+                
+                self.msg = self.s.recv(1024).decode()
+                self.msg = self.msg.strip()
+                print("msg: ", self.msg)
+                try:
+                    status = int(self.msg)
+                    if status == ERRORS['ERR_V_CHIPSOCKALIGN']:
+                        print('Reseat resulted in bad alignment')
+                        tryi+=1
+
+                    elif (status < 0):
+                        print('Reseat failed, check if chip is still held by robot')
+                        while True:
+                            inyn = input('Has the chip been seated properly (Y/N)?')
+                            if inyn in ['y','Y','yes','Yes','YES']:
+                                return 1
+                            if inyn in ['n','N','no','No', 'NO']:
+                                return status
                     else:
                         break
 

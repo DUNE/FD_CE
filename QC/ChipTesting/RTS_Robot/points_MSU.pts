@@ -1,4 +1,4 @@
-ENVT0100,LM:2026/10/15 14:03:10:709,DS:0000009458,CS:14658,MA:6C-2B-59-DC-C5-38,EI:           
+ENVT0100,LM:2026/11/04 20:06:12:337,DS:0000009460,CS:19515,MA:6C-2B-59-DC-C5-38,EI:           
 sVersion="2.0.0"
 bDisplayR=False
 bDisplayS=False
@@ -64,7 +64,7 @@ Point3 {
 	nUndefined=0
 	rX=-311.449
 	rY=442.597
-	rZ=-54.481
+	rZ=-54.502
 	rU=-0.889
 	rV=0
 	rW=0
@@ -90,7 +90,7 @@ Point4 {
 	nUndefined=0
 	rX=-26.914
 	rY=441.898
-	rZ=-54.428
+	rZ=-56.125
 	rU=-0.889
 	rV=0
 	rW=0
@@ -116,7 +116,7 @@ Point5 {
 	nUndefined=0
 	rX=-311.138
 	rY=547.67
-	rZ=-53.914
+	rZ=-54.079
 	rU=-0.889
 	rV=0
 	rW=0
@@ -142,7 +142,7 @@ Point6 {
 	nUndefined=0
 	rX=-26.703
 	rY=546.97
-	rZ=-54.17
+	rZ=-56.275
 	rU=-0.889
 	rV=0
 	rW=0
@@ -166,9 +166,9 @@ Point7 {
 	sLabel="Tray_Right_P1"
 	sDescription=""
 	nUndefined=0
-	rX=27.92
-	rY=441.297
-	rZ=-54.39
+	rX=28.22
+	rY=441.797
+	rZ=-53.822
 	rU=179.111
 	rV=0
 	rW=0
@@ -192,10 +192,10 @@ Point8 {
 	sLabel="Tray_Right_P2"
 	sDescription=""
 	nUndefined=0
-	rX=312.037
-	rY=441.04
-	rZ=-54.143
-	rU=179.058
+	rX=312.337
+	rY=441.34
+	rZ=-53.575
+	rU=179.111
 	rV=0
 	rW=0
 	rR=0
@@ -218,10 +218,10 @@ Point9 {
 	sLabel="Tray_Right_P3"
 	sDescription=""
 	nUndefined=0
-	rX=27.92
-	rY=546.319
-	rZ=-54.124
-	rU=179.058
+	rX=28.12
+	rY=546.719
+	rZ=-53.336
+	rU=179.111
 	rV=0
 	rW=0
 	rR=0
@@ -244,10 +244,10 @@ Point10 {
 	sLabel="Tray_Right_P4"
 	sDescription=""
 	nUndefined=0
-	rX=312.039
-	rY=546.019
-	rZ=-54.012
-	rU=179.058
+	rX=312.339
+	rY=546.319
+	rZ=-53.424
+	rU=179.111
 	rV=0
 	rW=0
 	rR=0

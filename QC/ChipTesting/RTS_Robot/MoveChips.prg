@@ -2,18 +2,40 @@
 #include "ErrorDictionary.inc"
 
 Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	'''
+	' Top level command to move chips from one (source) tray position 
+	' to another (target) tray position
+	' Uses intermediate wrapper functions to handle pick and place such
+	' that offsets and corrections are consistently handled
+	' Does not currently run pin analysis
+	'' Args
+	' SrcTray, SrcTrayCol, SrcTrayRow - pallet index, column and row of source tray position
+	' TgtTray, TgtTrayCol, TgtTrayRow - pallet index, column and row of target tray position
+	'' Returns
+	' Success: +ve Integer encoding of time stamp Val(ts$)
+	' Failure: -ve Error code, see ErrorDictionary.inc
+	'''
+	Print "==================================================="
 	MoveChipFromTrayToTray = 0
 	ErrorCode = 0
 	SubError = 0
 	
-	SelectSite("InFunctionDefinePallets")
-	ResetCurrentChipOffsets
-	
 	String ts$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	op_ts$ = ts$
 	
-	CurrentOperation$ = "MoveT2T_" + ts$
+	Boolean TopLevel
+	TopLevel = False
+	
+	If CurrentOperation$ = "" Then
+		Print "TOP LEVEL"
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "MoveT2T_" + ts$
+    EndIf
+    
+    ResetCurrentChipOffsets
+
 	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromTrayToTray(" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + "," + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ") " + ts$)
 
 	bnl_idx(1) = mlog_nr
@@ -32,18 +54,19 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	MLogIdx
 	' Check valid operation
 	If Not CheckValidTrayIndex(SrcTray, SrcTrayCol, SrcTrayRow) Then
-		RTS_error("Invalid source tray (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")", ERR_BAD_COMMAND, True)
+		RTS_error("Invalid source tray (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")", ERR_BAD_COMMAND, TopLevel)
 		MoveChipFromTrayToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 
 	If Not CheckValidTrayIndex(TgtTray, TgtTrayCol, TgtTrayRow) Then
-		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND, True)
+		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND, TopLevel)
 		MoveChipFromTrayToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
+	
 	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
 
 	SetSpeedSetting("MoveWithoutChip")
@@ -62,12 +85,12 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 		If Occupancy <> 0 Then
 			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
 			If Occupancy = -2 Then
-				RTS_error(("Target tray position occupancy check value = " + Str$(Occupancy)), ERR_OBSTRUCTION, True)
+				RTS_error(("Target tray position occupancy check value = " + Str$(Occupancy)), ERR_OBSTRUCTION, TopLevel)
 			Else
-				RTS_error(("Target tray position occupied, occupancy check value = " + Str$(Occupancy)), ERR_V_OCCUPIED, True)
+				RTS_error(("Target tray position occupied, occupancy check value = " + Str$(Occupancy)), ERR_V_OCCUPIED, TopLevel)
 			EndIf
 			MoveChipFromTrayToTray = -ErrorCode
-			ResetOperation
+			Print "==================================================="
 			Exit Function
 		EndIf
 			
@@ -76,12 +99,12 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 		If Occupancy <> 1 Then
 			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
 			If Occupancy = -2 Then
-				RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, True)
+				RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, TopLevel)
 			Else
-				RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP, True)
+				RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP, TopLevel)
 			EndIf
 			MoveChipFromTrayToTray = -ErrorCode
-			ResetOperation
+			Print "==================================================="
 			Exit Function
 		EndIf
 		UpdateRobotLog$(CurrentOperation$ + ": Valid occupancies")
@@ -96,9 +119,9 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	' Need to get result from subprocess?
 	SubError = GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow)
 	If Not SubError Then
-		RTS_error("Could not get chip from tray - GetChipFromTray=" + Str$(SubError), ERR_TRAY_PICK, True)
+		RTS_error("Could not get chip from tray - GetChipFromTray=" + Str$(SubError), ERR_TRAY_PICK, TopLevel)
 		MoveChipFromTrayToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
@@ -108,37 +131,37 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	' While at the UF camera, do any pin analysis	
 	' First need to recenter	
 
-	String PinImages$(3)
-	If DoPinAnalysis Then
-		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
-		UFRecenter ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
-		
-	 	' Create input array of three strings for images. Need 3 for COLDATA, only 1 for LArASIC and ColdADC
-	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
 
-	 	Print "UFPinAnalyisOutput = ", SubError
-	 	Int32 i
-	 	Print "Pin analysis images:"
-	 	For i = 1 To 3
-	 		Print "Pin analysis image ", i, " : ", PinImages$(i)
-	 	Next
-		If SubError Then
-			RTS_error("Pin analysis failure", ERR_PINS, True)
-			MoveChipFromTrayToTray = -ErrorCode
-			ResetOperation
-			Exit Function
-		EndIf
-		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
-	EndIf
+	' TODO need to think about whether we want to run pin analysis in tray-to-tray, and if it fails what then?
+'	String PinImages$(3)
+'	If DoPinAnalysis Then
+'		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
+'		
+'	 	' Create input array of three strings for images. Need 3 for COLDATA, only 1 for LArASIC and ColdADC
+'	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
+'
+'	 	Print "UFPinAnalyisOutput = ", SubError
+'	 	Int32 i
+'	 	Print "Pin analysis images:"
+'	 	For i = 1 To 3
+'	 		Print "Pin analysis image ", i, " : ", PinImages$(i)
+'	 	Next
+'		If SubError < -1 Then
+'			RTS_error("Pin analysis failure", ERR_PINS, TopLevel)
+'			MoveChipFromTrayToTray = -ErrorCode
+'			Exit Function
+'		EndIf
+'		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
+'	EndIf
 	Wait 1
 	
 	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target tray position")
 
 	SubError = PlaceChipInTray(TgtTray, TgtTrayCol, TgtTrayRow)
 	If Not SubError Then
-		RTS_error("Could not place chip in tray", ERR_TRAY_PLACE, True)
+		RTS_error("Could not place chip in tray", ERR_TRAY_PLACE, TopLevel)
 		MoveChipFromTrayToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
@@ -152,23 +175,47 @@ Function MoveChipFromTrayToTray(SrcTray As Integer, SrcTrayCol As Integer, SrcTr
 	SetSpeedSetting("MoveWithoutChip")
 
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2T) command complete:")
-	ResetOperation
+	ResetOperation(TopLevel)
 	MoveChipFromTrayToTray = Val(ts$)	' -1
 	CloseMLog("DONE")
+	Print "==================================================="
 Fend
 
 Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, SrcTrayRow As Integer, TgtDAT As Integer, TgtSocket As Integer) As Int64
+	'''
+	' Top level command to move chips from a (source) tray position 
+	' to a (target) DAT board socket position
+	' Uses intermediate wrapper functions to handle pick and place such
+	' that offsets and corrections are consistently handled
+	' Will run pin analysis if enabled in site config file
+	'' Args
+	' SrcTray, SrcTrayCol, SrcTrayRow - pallet index, column and row of source tray position
+	' TgtDAT, TgtSocket - target DAT board and socket indices
+	'' Returns
+	' Success: +ve Integer encoding of time stamp Val(ts$)
+	' Failure: -ve Error code, see ErrorDictionary.inc
+	'''
+	Print "==================================================="
 	MoveChipFromTrayToSocket = 0
 	ErrorCode = 0
 	SubError = 0
 	
-	SelectSite("InFunctionDefinePallets")
-	ResetCurrentChipOffsets
-	
-	String ts$ ', opName$
+	String ts$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	op_ts$ = ts$
-	CurrentOperation$ = "MoveT2S_" + ts$
+	
+	Boolean TopLevel
+	TopLevel = False
+	
+	If CurrentOperation$ = "" Then
+		Print "TOP LEVEL"
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "MoveT2S_" + ts$
+    EndIf
+    
+    ResetCurrentChipOffsets
+	
 	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromTrayToSocket(" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + "," + Str$(TgtDAT) + "," + Str$(TgtSocket) + ") " + ts$)
 	
 	bnl_idx(1) = mlog_nr
@@ -187,16 +234,16 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	MLogIdx
 	' Check valid operation
 	If Not CheckValidTrayIndex(SrcTray, SrcTrayCol, SrcTrayRow) Then
-		RTS_error("Invalid source tray (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")", ERR_BAD_COMMAND, True)
+		RTS_error("Invalid source tray (" + Str$(SrcTray) + "," + Str$(SrcTrayCol) + "," + Str$(SrcTrayRow) + ")", ERR_BAD_COMMAND, TopLevel)
 		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
 	If Not CheckValidSocketIndex(TgtDAT, TgtSocket) Then
-		RTS_error("Invalid target socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")", ERR_BAD_COMMAND, True)
+		RTS_error("Invalid target socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")", ERR_BAD_COMMAND, TopLevel)
 		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
@@ -217,12 +264,12 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 		If Occupancy <> 0 Then
 			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
 			If Occupancy = -2 Then
-				RTS_error("Target socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, True)
+				RTS_error("Target socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, TopLevel)
 			Else
-				RTS_error("Target socket position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED, True)
+				RTS_error("Target socket position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED, TopLevel)
 			EndIf
 			MoveChipFromTrayToSocket = -ErrorCode
-			ResetOperation
+			Print "==================================================="
 			Exit Function
 		EndIf
 	
@@ -231,12 +278,12 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 		If Occupancy <> 1 Then
 			Print "Did not get occupancy value of 1, Occupancy = ", Occupancy
 			If Occupancy = -2 Then
-				RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, True)
+				RTS_error("Source tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, TopLevel)
 			Else
-				RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP, True)
+				RTS_error("Source tray position empty, occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP, TopLevel)
 			EndIf
 			MoveChipFromTrayToSocket = -ErrorCode
-			ResetOperation
+			Print "==================================================="
 			Exit Function
 		EndIf
 		
@@ -249,12 +296,13 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	' Get chip from tray	
 		
 	UpdateRobotLog$(CurrentOperation$ + ": Getting chip from source tray position")
+	
 	' Need to get result from subprocess?
 	SubError = GetChipFromTray(SrcTray, SrcTrayCol, SrcTrayRow)
 	If Not SubError Then
-		RTS_error("Could not get chip from tray - GetChipFromTray=" + Str$(SubError), ERR_TRAY_PICK, True)
+		RTS_error("Could not get chip from tray - GetChipFromTray=" + Str$(SubError), ERR_TRAY_PICK, TopLevel)
 		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
@@ -264,7 +312,6 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	String PinImages$(3)
 	If DoPinAnalysis Then
 		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
-		UFRecenter ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
 		
 	 	' Create input array of three strings for images. Need 3 for COLDATA, only 1 for LArASIC and ColdADC
 	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
@@ -275,11 +322,11 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	 	For i = 1 To 3
 	 		Print "Pin analysis image ", i, " : ", PinImages$(i)
 	 	Next
-		If SubError Then
-			RTS_error("Pin analysis failure", ERR_PINS, True)
+		If SubError < -1 Then
+			RTS_error("Pin analysis failure", ERR_PINS, TopLevel)
 			MoveChipFromTrayToSocket = -ErrorCode
-			ResetOperation
 			Exit Function
+			Print "==================================================="
 		EndIf
 		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
 	EndIf
@@ -291,9 +338,9 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 
 	SubError = PlaceChipInSocket(TgtDAT, TgtSocket)
 	If Not SubError Then
-		RTS_error("Could not place chip in socket", ERR_SOCKET_PLACE, True)
+		RTS_error("Could not place chip in socket", ERR_SOCKET_PLACE, TopLevel)
 		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 '	UpdateRobotLog$(CurrentOperation$ + ": DefaultSkipChipCor = " + Str$(DefaultSkipChipCor) + ", SkipChipToChipCorrection = " + Str$(SkipChipToChipCorrection))
@@ -304,43 +351,47 @@ Function MoveChipFromTrayToSocket(SrcTray As Integer, SrcTrayCol As Integer, Src
 	UpdateRobotLog$(CurrentOperation$ + ": Chip placed in target socket position")
 	
 	SetSpeedSetting("MoveWithoutChip")
-	
-	
-	
-	Int64 Result
-	
-	Result = CheckSocketPlacement(TgtDAT, TgtSocket, 0, 0) ' Comment out for auto reseat
-	'Result = CheckSocketPlacement(TgtDAT, TgtSocket, 1, 1) ' ' Uncomment for auto reseat
-	If Result = -ERR_V_CHIPSOCKALIGN Then
-		RTS_error("Post placement alignment check is bad, may need manually reseat", ERR_V_CHIPSOCKALIGN, True)
-		JumpToCamera
-		ResetOperation
-		Exit Function
-	ElseIf Result < 0 Then
-		RTS_error("Post placement alignment check (and potential reseat) is bad", ERR_SOCKET_PLACE, True)
-		MoveChipFromTrayToSocket = -ErrorCode
-		ResetOperation
-		Exit Function
-	EndIf
 
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (T2S) command complete:")
-	ResetOperation
+	ResetOperation(TopLevel)
 	MoveChipFromTrayToSocket = Val(ts$)
 	CloseMLog("DONE")
+	Print "==================================================="
 Fend
 
 Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	'''
+	' Top level command to move chips from a (source) DAT board socket
+	' to a (target) tray position
+	' Uses intermediate wrapper functions to handle pick and place such
+	' that offsets and corrections are consistently handled
+	'' Args
+	' SrcDAT, SrcSocket - Source DAT board and socket indices
+	' TgtTray, TgtTrayCol, TgtTrayRow - pallet index, column and row of target tray position
+	'' Returns
+	' Success: +ve Integer encoding of time stamp Val(ts$)
+	' Failure: -ve Error code, see ErrorDictionary.inc
+	'''
+	Print "==================================================="
 	MoveChipFromSocketToTray = 0
-	ErrorCode = 0 ' Might be better to set these to 1 (-1 is TRUE in BASIC) for initialization 
+	ErrorCode = 0
 	SubError = 0
 	
-	SelectSite("InFunctionDefinePallets")
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	
+	Boolean TopLevel
+	TopLevel = False
+		
+	If CurrentOperation$ = "" Then
+		Print "TOP LEVEL"
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "MoveS2T_" + ts$
+	EndIf
 	ResetCurrentChipOffsets
 	
-	String ts$ ' , opName$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	op_ts$ = ts$
-	CurrentOperation$ = "MoveS2T_" + ts$
 	UpdateRobotLog$(CurrentOperation$ + ": MoveChipFromSocketToTray(" + Str$(SrcDAT) + "," + Str$(SrcSocket) + "," + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ") " + ts$)
 	
 	bnl_idx(1) = mlog_nr
@@ -354,21 +405,22 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	bnl_idx(9) = SrcSocket
 	bnl_idx(10) = 0
 	bnl_idx(11) = 0
-		
+	
 	OpenMLog(ts$)
+	
 	MLogIdx
 	' Check valid operation
 	If Not CheckValidSocketIndex(SrcDAT, SrcSocket) Then
-		RTS_error("Invalid source socket (" + Str$(SrcDAT) + "," + Str$(SrcSocket) + ")", ERR_BAD_COMMAND, True)
+		RTS_error("Invalid source socket (" + Str$(SrcDAT) + "," + Str$(SrcSocket) + ")", ERR_BAD_COMMAND, TopLevel)
 		MoveChipFromSocketToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 
 	If Not CheckValidTrayIndex(TgtTray, TgtTrayCol, TgtTrayRow) Then
-		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND, True)
+		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND, TopLevel)
 		MoveChipFromSocketToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
@@ -387,12 +439,12 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 		If Occupancy <> 0 Then
 			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
 			If Occupancy = -2 Then
-				RTS_error("Target tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, True)
+				RTS_error("Target tray position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, TopLevel)
 			Else
-				RTS_error("Target tray position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED, True)
+				RTS_error("Target tray position occupied, occupancy check value = " + Str$(Occupancy), ERR_V_OCCUPIED, TopLevel)
 			EndIf
 			MoveChipFromSocketToTray = -ErrorCode
-			ResetOperation
+			Print "==================================================="
 			Exit Function
 		EndIf
 		
@@ -401,12 +453,12 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 		If Occupancy <> 1 Then
 			Print "Did not get occupancy value of 0, Occupancy = ", Occupancy
 			If Occupancy = -2 Then
-				RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, True)
+				RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_OBSTRUCTION, TopLevel)
 			Else
-				RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP, True)
+				RTS_error("Source socket position occupancy check value = " + Str$(Occupancy), ERR_V_NOCHIP, TopLevel)
 			EndIf
 			MoveChipFromSocketToTray = -ErrorCode
-			ResetOperation
+			Print "==================================================="
 			Exit Function
 		EndIf
 		
@@ -423,9 +475,9 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	' Need to get result from subprocess?
 	SubError = GetChipFromSocket(SrcDAT, SrcSocket)
 	If Not SubError Then
-		RTS_error("Could not get chip from socket - GetChipFromSocket=" + Str$(SubError), ERR_SOCKET_PICK, True)
+		RTS_error("Could not get chip from socket - GetChipFromSocket=" + Str$(SubError), ERR_SOCKET_PICK, TopLevel)
 		MoveChipFromSocketToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
@@ -433,36 +485,37 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	' While at the UF camera, do any pin analysis	
 	' First need to recenter	
 
-	String PinImages$(3)
-	If DoPinAnalysis Then
-		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
-		UFRecenter ' TODOJOE check correction direction in old functions, is it + or -ve of the stored offset here and in C2C correction
-		
-	 	' Create input array of three strings for images. Need 3 for COLDATA, only 1 for LArASIC and ColdADC
-	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
-
-	 	Print "UFPinAnalyisOutput = ", SubError
-	 	Int32 i
-	 	Print "Pin analysis images:"
-	 	For i = 1 To 3
-	 		Print "Pin analysis image ", i, " : ", PinImages$(i)
-	 	Next
-		If SubError Then
-			RTS_error("Pin analysis failure", ERR_PINS, True)
-			MoveChipFromSocketToTray = -ErrorCode
-			ResetOperation
-			Exit Function
-		EndIf
-		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
-	EndIf
+	' TODO think about whether we want to run pin analysis on way out? If so, what do we do with the chip
+	' needs coordination with RTS_CFG updates based on return code if chip still held
+	' We need to be able to move chips with bad pins between trays
+'	String PinImages$(3)
+'	If DoPinAnalysis Then
+'		UpdateRobotLog$(CurrentOperation$ + ": Running pin analysis...")
+'		
+'	 	' Create input array of three strings for images. Need 3 for COLDATA, only 1 for LArASIC and ColdADC
+'	 	SubError = UFPinAnalysis(CurrentOperation$, ByRef PinImages$())
+'
+'	 	Print "UFPinAnalyisOutput = ", SubError
+'	 	Int32 i
+'	 	Print "Pin analysis images:"
+'	 	For i = 1 To 3
+'	 		Print "Pin analysis image ", i, " : ", PinImages$(i)
+'	 	Next
+'		If SubError < -1 Then
+'			RTS_error("Pin analysis failure", ERR_PINS, TopLevel)
+'			MoveChipFromSocketToTray = -ErrorCode
+'			Exit Function
+'		EndIf
+'		UpdateRobotLog$(CurrentOperation$ + ": Pin analysis complete")
+'	EndIf
 	
 	' Place chip in tray
 	UpdateRobotLog$(CurrentOperation$ + ":	Placing chip in target tray position")
 	SubError = PlaceChipInTray(TgtTray, TgtTrayCol, TgtTrayRow)
 	If Not SubError Then
-		RTS_error("Could not place chip in tray", ERR_TRAY_PLACE, True)
+		RTS_error("Could not place chip in tray", ERR_TRAY_PLACE, TopLevel)
 		MoveChipFromSocketToTray = -ErrorCode
-		ResetOperation
+		Print "==================================================="
 		Exit Function
 	EndIf
 	
@@ -478,276 +531,127 @@ Function MoveChipFromSocketToTray(SrcDAT As Integer, SrcSocket As Integer, TgtTr
 	SetSpeedSetting("MoveWithoutChip")
 
 	UpdateRobotLog$(CurrentOperation$ + ": Chip move (S2T) command complete:")
-	ResetOperation
+	ResetOperation(TopLevel)
 	MoveChipFromSocketToTray = Val(ts$) ' -1
+
 	CloseMLog("DONE")
+
+	Print "==================================================="
 Fend
 
-''' When outside of a move function, reset so that the subfunctions can be tested
-Function ResetOperation
-	CurrentOperation$ = "NA_" + FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-Fend
-
-
-''' Diagnostic checks for end of Move commands - might place this in the lower level
-' wanted separate to Move command for better error handling in integration code.
-Function CheckTrayPlacement(TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
-
-	CheckTrayPlacement = 0
-	ErrorCode = 0 ' Might be better to set these to 1 (-1 is TRUE in BASIC) for initialization 
-	SubError = 0
-	
-	
-	'ResetCurrentChipOffsets
+Function ReseatIfMisaligned(DAT As Integer, Socket As Integer) As Int64
+	Print "==================================================="
+	ReseatIfMisaligned = 0
+    SubError = 0
+			
+	Boolean TopLevel
+	TopLevel = False
 	
 	String ts$
 	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
 	
+	bnl_idx(1) = mlog_nr
+	bnl_idx(2) = 0
+	bnl_idx(3) = 0
+	bnl_idx(4) = 0
+	bnl_idx(5) = 0
+	bnl_idx(6) = 0
+	bnl_idx(7) = 0
+	bnl_idx(8) = DAT
+	bnl_idx(9) = Socket
+	bnl_idx(10) = 0
+	bnl_idx(11) = 0
+	
 	If CurrentOperation$ = "" Then
-		SelectSite("InFunctionDefinePallets")
-		op_ts$ = ts$
-		CurrentOperation$ = "CheckAtT_" + ts$
-	EndIf
-
-	UpdateRobotLog$(CurrentOperation$ + ": CheckTrayPlacement(" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")")
-
-	' Check valid operation
-	If Not CheckValidTrayIndex(TgtTray, TgtTrayCol, TgtTrayRow) Then
-		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND, False)
-		CheckTrayPlacement = -ErrorCode
-		If CurrentOperation$ = "CheckAtT_" + ts$ Then
-			ResetOperation
-        EndIf
-		Exit Function
-	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
-
-	Motor On
-	On 12
-		
-	UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
-	
-	JumpToTray_camera(TgtTray, TgtTrayCol, TgtTrayRow)
-	' First just check chip orientation
-	Double MeasuredDirection, MeasuredOrientation ' , OrientationOffset
-	MeasuredDirection = FindChipDirectionWithDF
-	If MeasuredDirection < -900. Then
-		RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN, False) ' Or should this be error tray palce
-		CheckTrayPlacement = -ErrorCode
-		If CurrentOperation$ = "CheckAtT_" + ts$ Then
-			ResetOperation
-		EndIf
-		Exit Function
-	EndIf
-	
-	' Get any offset from 0,90,180 etc
-	Double dTU
-	dTU = DiffAnglePM180(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow)), RoundAngleTo90(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow))))
-	MeasuredOrientation = RoundAngleTo90(DiffAnglePM180(MeasuredDirection, dTU))
-
-	If Abs(DiffAnglePM180(TrayOrientation, MeasuredOrientation)) > 5. Then
-		RTS_error("Chip not put back in tray in expected orientation", ERR_TRAY_PLACE, False)
-		CheckTrayPlacement = -ErrorCode
-		If CurrentOperation$ = "CheckAtT_" + ts$ Then
-			ResetOperation
-		EndIf
-		Exit Function
-	EndIf
-	UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
-
-	SetSpeedSetting("MoveWithoutChip")
-
-	UpdateRobotLog$(CurrentOperation$ + ": Chip placement check at tray complete")
-	ResetOperation
-	CheckTrayPlacement = Val(ts$)
-
-Fend
-
-Function CheckSocketPlacement(TgtDAT As Integer, TgtSocket As Integer, DoMeasurePlace As Integer, AutoReseat As Integer) As Int64
- 	CheckSocketPlacement = 0
-	ErrorCode = 0
-	SubError = 0
-	
-	'ResetCurrentChipOffsets 'Don't think this is needed, only DF measurements not UF measurements
-	
-	String ts$
-	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
-	If CurrentOperation$ = "" Then
+		Print "TOP LEVEL"
+		TopLevel = True
     '	If no current operation ID is assigned (from high level move function) need to load last offsets and positions)
 		SelectSite("InFunctionDefinePallets")
 		op_ts$ = ts$
-		CurrentOperation$ = "CheckAtS_" + ts$
-    EndIf
-	
-	UpdateRobotLog$(CurrentOperation$ + " : CheckSocketPlacement(" + Str$(TgtDAT) + "," + Str$(TgtSocket) + "," + Str$(DoMeasurePlace) + ")")
-
-	' Check valid operation
-	If Not CheckValidSocketIndex(TgtDAT, TgtSocket) Then
-		RTS_error("Invalid target socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")", ERR_BAD_COMMAND, False)
-		CheckSocketPlacement = -ErrorCode
-		
-		If CurrentOperation$ = "CheckAtS_" + ts$ Then
-			ResetOperation
-		EndIf
-		Exit Function
-	EndIf
-	
-	Motor On
-	On 12
-	
-'	 Do any chip placement diagnostics here
-	UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
-	
-	JumpToSocket_camera(TgtDAT, TgtSocket)
-	
-	' May not be necessary  if just called in T2S command
-	If Not GetSocketPositionWithDF(TgtDAT, TgtSocket) Then ', ByRef SockCorr()) Then
-		RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN, False)
-		CheckSocketPlacement = -ERR_V_CHIPSOCKALIGN
-		If CurrentOperation$ = "CheckAtS_" + ts$ Then
-			ResetOperation
-		EndIf
-		Exit Function
-	EndIf
-	
-	' Do we have socket offsets stored? need to get these?
-	Go Here +X(SocketOffset(1)) +Y(SocketOffset(2)) +U(SocketOffset(3))
-	
-	' First just check chip orientation
-	Double MeasuredDirection ' , OrientationOffset
-	MeasuredDirection = FindChipDirectionWithDF
-	If MeasuredDirection < -900. Then
-		RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN, False) ' Or should this be error tray palce
-		CheckSocketPlacement = -ERR_V_DF_ALIGN
-		If CurrentOperation$ = "CheckAtS_" + ts$ Then
-			ResetOperation
-		EndIf
-		Exit Function
-	EndIf
-	
-	' While accounting for U offset of socket from drift in defined position, and chip orientation as expected at socket
-	' What is the difference to the measured direction?
-	If Abs(DiffAnglePM180(MeasuredDirection, (CU(P(PSocket(TgtDAT, TgtSocket))) + HandChipOrientation(CHIPTYPE_NR) + SocketOffset(3))) > 5) Then
-		RTS_error("Chip not put back in tray in expected orientation", ERR_SOCKET_PLACE, False)
-		CheckSocketPlacement = -ERR_SOCKET_PLACE
-		If CurrentOperation$ = "CheckAtS_" + ts$ Then
-			ResetOperation
-		EndIf
-		Exit Function
-	EndIf
-
-	UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
-	
-	' Below is heavily lighting dependent
-	Int32 Ntries, try
-	If AutoReseat = 1 Then
-		Ntries = 2
+		UpdateRobotLog$(op_ts$ + " : ReseatIfMisaligned(" + Str$(DAT) + "," + Str$(Socket) + ")")
 	Else
-		Ntries = 1
+		UpdateRobotLog$(CurrentOperation$ + " : ReseatIfMisaligned(" + Str$(DAT) + "," + Str$(Socket) + ")")
+    EndIf
+	ResetCurrentChipOffsets ' probaly not necessary but shouldn't do any harm?
+		
+	OpenMLog(ts$)
+	MLogIdx
+		
+	CSAlign_X(DAT, Socket) = 0
+	CSAlign_Y(DAT, Socket) = 0
+	CSAlign_U(DAT, Socket) = 0
+	CSAlign_Img$(DAT, Socket) = ""
+	CSAlign_ts$(DAT, Socket) = ""
+	
+	Integer status
+	status = CheckSocketPlacement(DAT, Socket)
+	
+	SetSpeedSetting("MoveWithChip")
+		
+	If status > -1 Then ' General error or unknown status
+		RTS_error("ReseatIfMisaligned: Cannot place chip in socket", -ERR_SOCKET_PLACE, TopLevel)
+		
+		ReseatIfMisaligned = -ERR_SOCKET_PLACE
+		Print "==================================================="
+		Exit Function
+	ElseIf status < -1 And status > -5 Then ' Needs rotation
+		RTS_error("ReseatIfMisaligned: Bad orientation", -ERR_SOCKET_PLACE, False)
+		If RotateChipInSocket(DAT, Socket, (-(status + 1) * 90.), False) < 0 Then
+			RTS_error("ReseatIfMisaligned: Cannot place chip in socket after rotation", -ERR_SOCKET_PLACE, TopLevel)
+			
+			ReseatIfMisaligned = -ERR_SOCKET_PLACE
+			Exit Function
+		EndIf
+		LogTestMeasurements(CurrentOperation$, "ToSocket", 0, DAT, Socket, "ROBOT_AT_IMAGE_ROTATE", CX(Here), CY(Here), CU(Here))
+		LogTestMeasurements(CurrentOperation$, "ToSocket", 0, DAT, Socket, "SOCKET_MEASURED_ROTATE", SockPos(1), SockPos(2), SockPos(3))
+		LogTestMeasurements(CurrentOperation$, "ToSocket", 0, DAT, Socket, "CHIP_MEASURED_ROTATE", ChipPos(1), ChipPos(2), ChipPos(3))
+	ElseIf status = -5 Then ' Needs reseat
+		RTS_error("ReseatIfMisaligned: Bad alignment", -ERR_SOCKET_PLACE, False)
+		If ReseatChipInSocket(DAT, Socket, False) < 0 Then
+			RTS_error("ReseatIfMisaligned: Cannot place chip in socket after reseat", -ERR_SOCKET_PLACE, TopLevel)
+			ReseatIfMisaligned = -ERR_SOCKET_PLACE
+			Print "==================================================="
+			Exit Function
+		EndIf
+		LogTestMeasurements(CurrentOperation$, "ToSocket", 0, DAT, Socket, "ROBOT_AT_IMAGE_RESEAT", CX(Here), CY(Here), CU(Here))
+		LogTestMeasurements(CurrentOperation$, "ToSocket", 0, DAT, Socket, "SOCKET_MEASURED_RESEAT", SockPos(1), SockPos(2), SockPos(3))
+		LogTestMeasurements(CurrentOperation$, "ToSocket", 0, DAT, Socket, "CHIP_MEASURED_RESEAT", ChipPos(1), ChipPos(2), ChipPos(3))
+	ElseIf status < -5 Then ' Undefined status
+		RTS_error("ReseatIfMisaligned: Cannot place chip in socket", -ERR_SOCKET_PLACE, TopLevel)
+		Print "ERROR ***SHOULD NOT BE GETTING HERE ***"
+		ReseatIfMisaligned = -ERR_SOCKET_PLACE
+		Print "==================================================="
+		Exit Function
 	EndIf
 	
-	
-	If DoMeasurePlace = 1 Then
-		Boolean CompareWithTarget
-		CompareWithTarget = True
-		
-		For try = 1 To Ntries
-
-		UpdateRobotLog$(CurrentOperation$ + ":WARNING precise placement measurement for diagnostics is experimental and may not work in all lighting conditions")
-		
-		CSAlign(1) = 0
-		CSAlign(2) = 0
-		CSAlign(3) = 0
-		CSAlign(4) = 0
-		CSAlign(5) = 0
-	
-		' Get the alignment target values
-		If Abs(TCSAlign_X(TgtDAT, TgtSocket)) + Abs(TCSAlign_Y(TgtDAT, TgtSocket)) + Abs(TCSAlign_U(TgtDAT, TgtSocket)) = 0 Then
-		
-			If Not GetTargetAlignments Then
-				RTS_error("ReseatChipInSocket: Cannot get target alignment from file ", -ERR_FILESYSTEM, False)
-				CheckSocketPlacement = -ERR_FILESYSTEM
-				Exit Function
-			EndIf
-		
-			If Abs(TCSAlign_X(TgtDAT, TgtSocket)) + Abs(TCSAlign_Y(TgtDAT, TgtSocket)) + Abs(TCSAlign_U(TgtDAT, TgtSocket)) = 0 Then
-				UpdateRobotLog$(CurrentOperation$ + ":WARNING No target alignment stored for socket (" + Str$(TgtDAT) + "," + Str$(TgtSocket) + ")")
-				CompareWithTarget = False
-			EndIf
-		
-		EndIf
-			
-			
-
-		
-
-		If Not GetChipInSocketAlignment(TgtDAT, TgtSocket) Then
-			UpdateRobotLog$(CurrentOperation$ + ": WARNING - cannot get chip position in socket accurately")
-			Exit For
-		Else
-			If Abs(CSAlign(4)) > 2. Or Abs(CSAlign(5)) > 2. Or Abs(CSAlign(3)) > 3. Then
-				RTS_error("Large alignment offset between chip and socket", ERR_SOCKET_PLACE, False)
-				CheckSocketPlacement = -ERR_SOCKET_PLACE
-				
-				If CurrentOperation$ = "CheckAtS_" + ts$ Then
-					ResetOperation
-				EndIf
-				Exit Function
-			EndIf
-			LogDFSocketMeasurements(TgtDAT, TgtSocket, CurrentOperation$)
-			Print "DF_SocketPosition:", SockPos(1), ",", SockPos(2), ",", SockPos(3)
-			Print "DF_ChipPosition:", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3)
-			Print "DF_ChipOffset:", CSAlign(1), ",", CSAlign(2), ",", CSAlign(3)
-			Print "(U corrected): ", CSAlign(4), ", ", CSAlign(5), ", ", CSAlign(3)
-			UpdateRobotLog$(CurrentOperation$ + ": Chip Socket alignment measured:")
-			UpdateRobotLog$(CurrentOperation$ + ":  DF_SocketPosition:" + Str$(SockPos(1)) + "," + Str$(SockPos(2)) + "," + Str$(SockPos(3)))
-			UpdateRobotLog$(CurrentOperation$ + ":  DF_ChipPosition:" + Str$(ChipPos(1)) + "," + Str$(ChipPos(2)) + "," + Str$(ChipPos(3)))
-			UpdateRobotLog$(CurrentOperation$ + ":  DF_ChipOffset:" + Str$(CSAlign(1)) + "," + Str$(CSAlign(2)) + "," + Str$(CSAlign(3)))
-			UpdateRobotLog$(CurrentOperation$ + ":  DF_ChipOffset (U corrected):" + Str$(CSAlign(4)) + ", " + Str$(CSAlign(5)) + "," + Str$(CSAlign(3)))
-					
-			If CompareWithTarget Then
-				UpdateRobotLog$(CurrentOperation$ + ": Target offsets " + Str$(TCSAlign_X(TgtDAT, TgtSocket)) + ", " + Str$(TCSAlign_Y(TgtDAT, TgtSocket)) + ", " + Str$(TCSAlign_U(TgtDAT, TgtSocket)))
-				If Abs(CSAlign(4) - TCSAlign_X(TgtDAT, TgtSocket)) < 0.15 And Abs(CSAlign(5) - TCSAlign_Y(TgtDAT, TgtSocket)) < 0.15 And Abs(CSAlign(3) - TCSAlign_U(TgtDAT, TgtSocket)) < 0.5 Then
-					Print "Within target tolerance"
-					CheckSocketPlacement = Val(ts$)
-					Exit For
-				Else
-					Print "Not in target tolerance"
-					CheckSocketPlacement = -ERR_SOCKET_PLACE
-					If AutoReseat = 1 Then
-						If try < Ntries Then
-							Print "=================== ATTEMPTING RESEAT ==================="
-							If ReseatChipInSocket(TgtDAT, TgtSocket, True) < 0 Then
-								RTS_error("CheckSocketPlacement: Auto reseat failed!", ERR_SOCKET_PLACE, False)
-								If CurrentOperation$ = "CheckAtS_" + ts$ Then
-									ResetOperation
-								EndIf
-								Print "=================== RESEAT FAILED DUE TO ERROR ==================="
-								Exit Function
-							EndIf
-							Print "=================== RESEAT FINISHED ==================="
-						Else
-							RTS_error("CheckSocketPlacement: Chip position outside of target tolerance even after reseat!", ERR_SOCKET_PLACE, False)
-							If CurrentOperation$ = "CheckAtS_" + ts$ Then
-								ResetOperation
-							EndIf
-							Print "=================== RESEAT UNSUCCESSFUL ==================="
-							Exit Function
-						EndIf
-					EndIf
-				EndIf
-			EndIf
-		EndIf
-		Next
+ 	SetSpeedSetting("MoveWithoutChip")
+ 			
+	If Not TopLevel Then
+		String Socket_Picture$
+		Socket_Picture$ = Socket_take_picture$("Insert", op_ts$ + "_DAT" + Str$(DAT) + "_Skt" + Str$(Socket) + "_insert")
+		WriteMLog(Socket_Picture$)
+		UpdateRobotLog$("Picture of chip in socket after insert: " + Socket_Picture$)
 	EndIf
-
-	SetSpeedSetting("MoveWithoutChip")
-
 	
-
-	UpdateRobotLog$(CurrentOperation$ + ": Chip placement check at socket complete")
-	ResetOperation
-	CheckSocketPlacement = Val(ts$)
-
+	Print "Chip placed"
+	PumpOff
+	ResetCurrentChipOffsets
+	ReseatIfMisaligned = -1
+	ResetOperation(TopLevel)
+	Print "==================================================="
 Fend
+
+''' When outside of a move function, reset so that the subfunctions can be tested
+Function ResetOperation(DoReset As Boolean)
+	' Boolean allows functions to be called as high or lower level,
+	' cleans up the operation string handling 
+	If DoReset Then
+		' Have it set to just "", require all Top Level allowable (server callable) functions to have defined operation label
+		CurrentOperation$ = "" ' "NA_" + FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	EndIf
+Fend
+
+
+
+
 

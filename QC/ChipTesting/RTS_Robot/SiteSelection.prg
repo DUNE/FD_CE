@@ -356,6 +356,7 @@ Function ReadSiteFileOld
 	Input #fileNum, ChipVisionOffset(2, 1), ChipVisionOffset(2, 2), ChipVisionOffset(2, 3)
 	Input #fileNum, ChipVisionOffset(3, 1), ChipVisionOffset(3, 2), ChipVisionOffset(3, 3)
 	Input #fileNum, SocketVisionOffset(1), SocketVisionOffset(2), SocketVisionOffset(3)
+	Input #fileNum, DefTCSAlignX, DefTCSAlignY, DefTCSAlignU
 	Input #fileNum, NAttempts_Chip_Tray, NAttempts_Chip_DAT, NAttempts_Soc, NAttempts_UF
 	Input #fileNum, Default_DF_Exposure_Chip
 	Input #fileNum, Min_DF_Exposure_Chip_Tray, Max_DF_Exposure_Chip_Tray
@@ -396,6 +397,7 @@ Function WriteSiteFileOld
 	Print #fileNum, Str$(ChipVisionOffset(2, 1)), ",", Str$(ChipVisionOffset(2, 2)), ",", Str$(ChipVisionOffset(2, 3))
 	Print #fileNum, Str$(ChipVisionOffset(3, 1)), ",", Str$(ChipVisionOffset(3, 2)), ",", Str$(ChipVisionOffset(3, 3))
 	Print #fileNum, Str$(SocketVisionOffset(1)), ",", Str$(SocketVisionOffset(2)), ",", Str$(SocketVisionOffset(3))
+	Print #fileNum, Str$(DefTCSAlignX), ",", Str$(DefTCSAlignY), ",", Str$(DefTCSAlignU)
 	Print #fileNum, Str$(NAttempts_Chip_Tray), ",", Str$(NAttempts_Chip_DAT), ",", Str$(NAttempts_Soc), ",", Str$(NAttempts_UF)
 	Print #fileNum, Str$(Default_DF_Exposure_Chip)
 	Print #fileNum, Str$(Min_DF_Exposure_Chip_Tray), ",", Str$(Max_DF_Exposure_Chip_Tray)
@@ -486,13 +488,19 @@ Function ReadSiteFile As Int32
 			Case "ChipVisionOffsetOutlineU"
 				ChipVisionOffset(3, 3) = Val(VariableValue$)
 				
-				
 			Case "SocketVisionOffsetX"
 				SocketVisionOffset(1) = Val(VariableValue$)
 			Case "SocketVisionOffsetY"
 				SocketVisionOffset(2) = Val(VariableValue$)
 			Case "SocketVisionOffsetU"
 				SocketVisionOffset(3) = Val(VariableValue$)
+				
+			Case "DefaultTargetCSAlignX"
+				DefTCSAlignX = Val(VariableValue$)
+			Case "DefaultTargetCSAlignY"
+				DefTCSAlignY = Val(VariableValue$)
+			Case "DefaultTargetCSAlignU"
+				DefTCSAlignU = Val(VariableValue$)
 				
 			Case "NAttempts_Chip_Tray"
 				NAttempts_Chip_Tray = Val(VariableValue$)
@@ -613,6 +621,9 @@ Function WriteSiteFile As Int32
 	Print #fileNum, "SocketVisionOffsetX,", Str$(SocketVisionOffset(1))
 	Print #fileNum, "SocketVisionOffsetY,", Str$(SocketVisionOffset(2))
 	Print #fileNum, "SocketVisionOffsetU,", Str$(SocketVisionOffset(3))
+	Print #fileNum, "DefaultTargetCSAlignX", Str$(DefTCSAlignX)
+	Print #fileNum, "DefaultTargetCSAlignY", Str$(DefTCSAlignY)
+	Print #fileNum, "DefaultTargetCSAlignU", Str$(DefTCSAlignU)
 	Print #fileNum, "NAttempts_Chip_Tray,", Str$(NAttempts_Chip_Tray)
 	Print #fileNum, "NAttempts_Chip_DAT,", Str$(NAttempts_Chip_DAT)
 	Print #fileNum, "NAttempts_Soc,", Str$(NAttempts_Soc)
@@ -681,6 +692,11 @@ Function PrintLoadedSiteFileValues
 	Print "SocketVisionOffsetX,", Str$(SocketVisionOffset(1))
 	Print "SocketVisionOffsetY,", Str$(SocketVisionOffset(2))
 	Print "SocketVisionOffsetU,", Str$(SocketVisionOffset(3))
+	
+	Print "DefaultTargetCSAlignX", Str$(DefTCSAlignX)
+	Print "DefaultTargetCSAlignY", Str$(DefTCSAlignY)
+	Print "DefaultTargetCSAlignU", Str$(DefTCSAlignU)
+
 	Print "NAttempts_Chip_Tray,", Str$(NAttempts_Chip_Tray)
 	Print "NAttempts_Chip_DAT,", Str$(NAttempts_Chip_DAT)
 	Print "NAttempts_Soc,", Str$(NAttempts_Soc)

@@ -49,10 +49,7 @@ Global Double DAT_X(2, NSOCKETS)
 Global Double DAT_Y(2, NSOCKETS)
 Global Double DAT_U(2, NSOCKETS)
 
-' Target chip-socket alignment for sockets
-Global Double TCSAlign_X(2, NSOCKETS)
-Global Double TCSAlign_Y(2, NSOCKETS)
-Global Double TCSAlign_U(2, NSOCKETS)
+'Global Double ReseatCorrection(3)
 
 ' Store the offset between U and agl4 at each position
 Global Double tray_Agl4Off(NTRAYS, TRAY_NCOLS, TRAY_NROWS)
@@ -74,7 +71,20 @@ Global Double CurrentChipOffset(3)
 Global Double CorrectedChipOffset(3)
 Global Double SocketOffset(3)
 Global Double ChipOffset(3)
-Global Double CSAlign(5)
+
+'' chip-socket alignment for sockets
+Global Double CSAlignXUnc, CSAlignYUnc
+Global Double CSAlign_X(2, NSOCKETS)
+Global Double CSAlign_Y(2, NSOCKETS)
+Global Double CSAlign_U(2, NSOCKETS)
+Global String CSAlign_ts$(2, NSOCKETS)
+Global String CSAlign_Img$(2, NSOCKETS)
+Global Double TCSAlign_X(2, NSOCKETS)
+Global Double TCSAlign_Y(2, NSOCKETS)
+Global Double TCSAlign_U(2, NSOCKETS)
+Global Double DefTCSAlignX
+Global Double DefTCSAlignY
+Global Double DefTCSAlignU
 
 Global Double ChipToChipCorrection(3)
 
@@ -104,6 +114,7 @@ Global Boolean MSUTESTBOARD
 ' Can be set in config file and turned off or on through server
 Global Boolean DefaultPinAnalysis
 Global Boolean DoPinAnalysis ' Keep default to not do pin analysis for now
+#define PinTol 0.1 ' 10% tolerance in interpin distance
 
 ' Measure chip/socket positions with DF camera where possible
 Global Boolean MeasurePlacement

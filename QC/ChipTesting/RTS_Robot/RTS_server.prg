@@ -44,6 +44,12 @@ Function RTS_server
     Integer pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr
     Integer src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row
 
+	' For user provided correction to reseat command
+	Double DelX, DelY, DelU
+	DelX = 0.
+	DelY = 0
+	DelU = 0.
+	
     Integer DoMeasure
     Integer AutoReseat
     Integer RunSelectSite
@@ -69,6 +75,7 @@ Function RTS_server
     			Print " to DAT board: ", DAT_nr, " socket", socket_nr
     			'DO stuff
     			status = MoveChipFromTrayToSocket(pallet_nr, pallet_col, pallet_row, DAT_nr, socket_nr)
+    			ResetOperation(True)
     			Print #portNr, Str$(status)
     		
     		Case "MoveChipFromSocketToTray"
@@ -86,6 +93,7 @@ Function RTS_server
     			Print " to tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			'DO stuff
     			status = MoveChipFromSocketToTray(DAT_nr, socket_nr, pallet_nr, pallet_col, pallet_row)
+    			ResetOperation(True)
     			Print #portNr, Str$(status)
 
     		Case "MoveChipFromTrayToTray"
@@ -102,6 +110,7 @@ Function RTS_server
     			Print "Move chip from pallet(", src_pallet_nr, ",", src_pallet_col, ",", src_pallet_row, ")",
     			Print " to tray(", tgt_pallet_nr, ",", tgt_pallet_col, ",", tgt_pallet_row, ")"
     			status = MoveChipFromTrayToTray(src_pallet_nr, src_pallet_col, src_pallet_row, tgt_pallet_nr, tgt_pallet_col, tgt_pallet_row) ', 0)
+    			ResetOperation(True)
     			Print #portNr, Str$(status)
     		
     		Case "CheckTrayPlacement"
@@ -113,54 +122,84 @@ Function RTS_server
     			Print "Check placement in tray(", pallet_nr, ",", pallet_col, ",", pallet_row, ")",
     			'DO stuff
     			status = CheckTrayPlacement(pallet_nr, pallet_col, pallet_row)
+    			ResetOperation(True)
     			Print #portNr, Str$(status)
     			
             Case "CheckSocketPlacement"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
-    			Input #portNr, DoMeasure
-    			Input #portNr, AutoReseat
-    			Print "Check placement in DAT board: ", DAT_nr, " socket", Socket_nr
-    			Print "Precise measurement set to ", DoMeasure
-    			'DO stuff
-    			status = CheckSocketPlacement(DAT_nr, Socket_nr, DoMeasure, AutoReseat)
+    			Input #portNr, socket_nr
+    			Print "Check placement in DAT board: ", DAT_nr, " socket", socket_nr
+    			status = CheckSocketPlacement(DAT_nr, socket_nr)
+    			ResetOperation(True)
     			Print #portNr, Str$(status)
     			
     		Case "SetTargetAlignment"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
-    			If Socket_nr = 0 Then
+    			Input #portNr, socket_nr
+    			If socket_nr = 0 Then
     				Print "Will measure and set target chip-socket alignment for all sockets on DAT board ", DAT_nr
     			Else
-    				Print "Will measure and set target chip-socket alignment for DAT ", DAT_nr, " socket ", Socket_nr
+    				Print "Will measure and set target chip-socket alignment for DAT ", DAT_nr, " socket ", socket_nr
     			EndIf
     			
-				If SetTargetAlignment(DAT_nr, Socket_nr, False, False) Then
+				If SetTargetAlignment(DAT_nr, socket_nr, False, False) Then
 					status = 0
 				Else
 					status = -ERR_V_CHIPSOCKALIGN
 				EndIf
 				Print #portNr, Str$(status)
 
-    			
-    			
+    		Case "MeasureAllAlignments"
+    			' This will output alinments to a file which can be read in 
+    			' with information about images for automation processing
+    			Input #portNr, DAT_nr
+    			Print "MeasureAllAlignments(", Str$(DAT_nr), ")"
+    			If MeasureAllAlignments(DAT_nr) Then
+    				Print "Chip alignments measured for DAT_nr ", Str$(DAT_nr)
+    				status = 0
+    			Else
+    				Print "Error measuring alignments"
+    				status = -ERR_V_FAILALIGN
+    			EndIf
+    			ResetOperation(True)
+    			Print #portNr, Str$(status)
+       			str_status$ = ""
+
     		Case "ReseatChipInSocket"
     			PumpOn
     			' Receive source and destination parameters"
     			Input #portNr, DAT_nr
-    			Input #portNr, Socket_nr
-    			Print "Reseat chip in socket: ", DAT_nr, " socket", Socket_nr
+    			Input #portNr, socket_nr
+    			Print "Reseat chip in socket: ", DAT_nr, " socket", socket_nr
     			'Jump Pallet(1, 15, 6) :Z(-10)
     			'DO stuff
-    			status = ReseatChipInSocket(DAT_nr, socket_nr, False) ' False ensures new measurement of alignment
-    			' SPEL "True" is -1, but integration code treets all negative values as errors	
-    			If status = -1 Then
-    				status = 0
-    			EndIf
-    			
+    			status = ReseatChipInSocket(DAT_nr, socket_nr, True)
+    			ResetOperation(True)
+    			' SPEL "True" is -1, but integration code treets all negative values as errors	    			
     			Print #portNr, Str$(status)
+    			
+       		Case "ReseatChipInSocketWithOffset"
+    			PumpOn
+    			' Receive source and destination parameters"
+    			
+    			Input #portNr, DAT_nr
+    			Input #portNr, socket_nr
+    			Input #portNr, DelX
+    			Input #portNr, DelY
+    			Input #portNr, DelU
+    			
+    			Print "Reseat chip in socket: ", DAT_nr, " socket", socket_nr
+    			Print "With offsets provied: DelX=", DelX, ", DelY=", DelY, ", DelU=", DelU
+    			
+    			'Jump Pallet(1, 15, 6) :Z(-10)
+    			'DO stuff
+    			status = ReseatChipInSocketWithOffset(DAT_nr, socket_nr, DelX, DelY, DelU)
+    			ResetOperation(True)
+    			' SPEL "True" is -1, but integration code treets all negative values as errors	    			
+    			Print #portNr, Str$(status)
+    			
     			
      		Case "JumpToTray"
     			' Receive source and destination parameters"
@@ -217,8 +256,8 @@ Function RTS_server
    
   			Case "CheckSocketOccupancy"
     			Input #portNr, DAT_nr
-    			Input #portNr, socket_nr
-    			status = SocketPositionOccupied(DAT_nr, socket_nr)
+    			Input #portNr, Socket_nr
+    			status = SocketPositionOccupied(DAT_nr, Socket_nr)
     			Print #portNr, status
 				
      		Case "PickupFromTray"
@@ -329,9 +368,6 @@ Function RTS_server
     		Case "SelectSite"
     			SelectSite("")
     			Print #portNr, "SelectSite"
-    			
-    		Case "SetTrayDir"
-    			
     			
     		Case "LoadPositionFiles"
     			LoadPositionFiles

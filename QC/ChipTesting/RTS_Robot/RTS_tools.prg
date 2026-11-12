@@ -254,7 +254,7 @@ Function Socket_take_picture$(subdir$ As String, basename$ As String) As String
 Fend
 
 
-Function RTS_error(err_msg$ As String, Error_Code As Int32, close_mlog As Boolean) As Integer
+Function RTS_error(err_msg$ As String, Error_Code As Int32, TopLevelTerminate As Boolean) As Integer
 
 '	''' Sets error code and updates robot log file and
 '	' operation log file
@@ -278,26 +278,20 @@ Function RTS_error(err_msg$ As String, Error_Code As Int32, close_mlog As Boolea
 	Print #RTS_Data, "***ERROR ", ErrorCode, "/", SubError, " in ", CurrentOperation$, " : ", err_msg$
 	Close #RTS_Data
 	
-	' TODO JOE, Maybe can't close mlog here as rts_error will return to highr level functions
-	' as Mlog is not opened in each subfunction but at top level only to ensure
-	' print is to single line per move.
-	' Could add an option to RTS_error to close MLog and then only set to true
-	' in Top level, otherwise just write error to mlog file?
-	
 	String mmsg$
 	mmsg$ = "***ERROR " + Str$(ErrorCode) + "/" + Str$(SubError) + " " + err_msg$
 
 	If mlogopen Then
-		If close_mlog Then
+		If TopLevelTerminate Then
 			CloseMLog(mmsg$)
 		Else
 			WriteMLog(mmsg$)
 		EndIf
-	ElseIf close_mlog Then
+	ElseIf TopLevelTerminate Then
 		Print "WARNING: Mlog is not open but instructed to close"
-		
 	EndIf
 	
+	ResetOperation(TopLevelTerminate) ' Will only reset if TopLevel == True
 		
 Fend
 
@@ -323,9 +317,9 @@ Function LogTestMeasurements(op$ As String, optype$ As String, Pos0 As Integer, 
 	EndIf
 	
 	Print "[TEST MEASUREMENT]", op$, ",", optype$, ",", Str$(Pos0), ",", Str$(Pos1), ",", Str$(Pos2), ",", label$, ",", Str$(XVal), ",", Str$(YVal), ",", Str$(UVal)
-	Print #FileNum, op$, ",", optype$, ",", Str$(Pos0), ",", Str$(Pos1), ",", Str$(Pos2), ",", label$, ",", Str$(XVal), ",", Str$(YVal), ",", Str$(UVal)
+	Print #fileNum, op$, ",", optype$, ",", Str$(Pos0), ",", Str$(Pos1), ",", Str$(Pos2), ",", label$, ",", Str$(XVal), ",", Str$(YVal), ",", Str$(UVal)
 	
-	Close #FileNum
+	Close #fileNum
 Fend
 
 Function LogSocketPlacements(DAT As Integer, Socket As Integer, OpID$ As String)
@@ -457,15 +451,15 @@ Function LogDFSocketMeasurements(DAT As Integer, Socket As Integer, OpID$ As Str
 	Print "Chip position after placing (", ChipPos$, ")"
 	Print #fileNum, ",", ChipPos$,
 	
-	ChipOff$ = Str$(CSAlign(1)) + "," + Str$(CSAlign(2)) + "," + Str$(CSAlign(3))
+	ChipOff$ = Str$(CSAlignXUnc) + "," + Str$(CSAlignYUnc) + "," + Str$(CSAlign_U(DAT, Socket))
 	Print "Chip socket alignment after placing (", ChipOff$, ")"
 	Print #fileNum, ",", ChipOff$,
 	
-	ChipOffU$ = Str$(CSAlign(4)) + "," + Str$(CSAlign(5)) + "," + Str$(CSAlign(3))
+	ChipOffU$ = Str$(CSAlign_X(DAT, Socket)) + "," + Str$(CSAlign_Y(DAT, Socket)) + "," + Str$(CSAlign_U(DAT, Socket))
 	Print "Chip socket alignment after placing (U corrected) (", ChipOff$, ")"
 	Print #fileNum, ",", ChipOffU$
 	
-	Close #fileNum
+	Close #FileNum
 	
 Fend
 
@@ -477,9 +471,9 @@ Function SetTargetAlignment(DAT As Integer, Socket As Integer, Fresh As Boolean,
 	
 	Double DefX, DefY, DefU
 	
-	DefX = 0.1
-	DefY = -0.1
-	DefU = 0.2
+	DefX = DefTCSAlignX
+	DefY = DefTCSAlignY
+	DefU = DefTCSAlignU
 	
 	If Fresh Then
 		Print "Will zero out any measurements not taken now (CAREFUL IF TWO DAT BOARDS OR JUST ONE CHIP)"
@@ -526,10 +520,10 @@ Function SetTargetAlignment(DAT As Integer, Socket As Integer, Fresh As Boolean,
 				TCSAlign_X(dtb, soc) = DefX
 				TCSAlign_Y(dtb, soc) = DefY
 				TCSAlign_U(dtb, soc) = DefU
-			ElseIf GetChipInSocketAlignment(dtb, soc) = -1 Then
-				TCSAlign_X(dtb, soc) = CSAlign(4) ' Use socket U corrected value
-				TCSAlign_Y(dtb, soc) = CSAlign(5)
-				TCSAlign_U(dtb, soc) = CSAlign(3)
+			ElseIf MeasureAlignment(dtb, soc) = -1 Then
+				TCSAlign_X(dtb, soc) = CSAlign_X(DAT, Socket) ' Use socket U corrected value
+				TCSAlign_Y(dtb, soc) = CSAlign_Y(DAT, Socket)
+				TCSAlign_U(dtb, soc) = CSAlign_U(DAT, Socket)
 			Else
 				Print "WARNING Could not determine offset!!!"
 				TCSAlign_X(dtb, soc) = DefX
@@ -567,7 +561,7 @@ Function GetTargetAlignments As Boolean
 	''' Loads the desired chip-socket alignment values from the file
 	' Must be measured by command through server.
 	' Measure with SetTargetAlignments(DAT, Socket) when chip tests pass
-	
+	Print "GetTargetAlignments ..."
 	GetTargetAlignments = False
 	
 	String AlignmentFile$
@@ -591,7 +585,7 @@ Function GetTargetAlignments As Boolean
 				TCSAlign_X(i, j) = x
 				TCSAlign_Y(i, j) = y
 				TCSAlign_U(i, j) = u
-				' Print "DAT ", i, " socket", j, ", DelXYU = (", x, ",", y, ",", u, ")"
+				'Print "DAT ", i, " socket", j, ", DelXYU = (", x, ",", y, ",", u, ")"
 			Else
 				Print "GetTargetAlignment: Error reading file ", AlignmentFile$, " i,j=", i, ",", j
 				Exit Function
@@ -605,12 +599,64 @@ Function GetTargetAlignments As Boolean
 	
 Fend
 	
+Function StoreChipSocketAlignments As Boolean
+	''' Store the measured alignments in a file for automation code reading
+	StoreChipSocketAlignments = False
+	
+	String AlignmentFile$
+	AlignmentFile$ = RTS_DATA$ + "\SocketAlign_xyu.csv"
+	Integer FileNum
+	FileNum = FreeFile
+
+	WOpen AlignmentFile$ As #FileNum
+	Print "Storing most recent alignment measurements:"
+	Print #FileNum, "DAT,Socket,timestamp,DelX,DelY,DelU,Image,ProcImage,Warm,Cold"
+	Integer i, j
+	For i = 1 To 2
+		For j = 1 To nSoc
+			'Print i, ",", j, ",", CSAlign_X(i, j), ",", CSAlign_Y(i, j), ",", CSAlign_U(i, j)
+			Print #FileNum, i, ",", j, ",", CSAlign_ts$(i, j), ",", CSAlign_X(i, j), ",", CSAlign_Y(i, j), ",", CSAlign_U(i, j), ",", CSAlign_Img$(i, j), ",,0,0"
+		Next j
+	Next i
+
+	Close #FileNum
+	
+	StoreChipSocketAlignments = True
+	
+Fend
+
+Function StoreTargetChipSocketAlignments As Boolean
+	''' Store the target chip socket alignment for retrieval
+	StoreTargetChipSocketAlignments = False
+	
+	String AlignmentFile$
+	AlignmentFile$ = RTS_DATA$ + "\SocketTargetAlign_xyu.csv"
+	Integer FileNum
+	FileNum = FreeFile
+
+	WOpen AlignmentFile$ As #FileNum
+	Print "Storing most recent alignment measurements:"
+	Print #FileNum, "DAT,Socket,DelX,DelY,DelU"
+	Integer i, j
+	For i = 1 To 2
+		For j = 1 To nSoc
+			'Print i, ",", j, ",", TCSAlign_X(i, j), ",", TCSAlign_Y(i, j), ",", TCSAlign_U(i, j)
+			Print #FileNum, i, ",", j, ",", TCSAlign_X(i, j), ",", TCSAlign_Y(i, j), ",", TCSAlign_U(i, j)
+		Next j
+	Next i
+
+	Close #FileNum
+	
+	StoreTargetChipSocketAlignments = True
+	
+Fend
+
 Function LogChipSocketAlignment(DAT As Integer, Socket As Integer)
 	''' Logs the measured CS alignment at a given time, not operation!
 	' Want to associate last measurement to log, may be multiple measurements per op.
 	
 	Int32 FileNum
-	fileNum = FreeFile
+	FileNum = FreeFile
 	String SocketFile$
 	SocketFile$ = RTS_DATA$ + "\SocketPlacement\Socket_" + Str$(DAT) + "_" + Str$(Socket) + "_Alignment.csv"
 
@@ -624,17 +670,17 @@ Function LogChipSocketAlignment(DAT As Integer, Socket As Integer)
 		LineInfo$ = "Time,DeltaX,DeltaY,DeltaU,InitCheckOK,WarmTestOK,ColdTestOK"
 	EndIf
 	
-	AOpen SocketFile$ As #fileNum
+	AOpen SocketFile$ As #FileNum
 	
 	If LineInfo$ = "Time,DeltaX,DeltaY,DeltaU,InitCheckOK,WarmTestOK,ColdTestOK" Then
 		' Write headers if new file
-		Print #fileNum, LineInfo$
+		Print #FileNum, LineInfo$
 	EndIf
-	LineInfo$ = ts$ + "," + Str$(CSAlign(4)) + "," + Str$(CSAlign(5)) + "," + Str$(CSAlign(3)) + ",Untested,Untested,Untested"
+	LineInfo$ = ts$ + "," + Str$(CSAlign_X(DAT, Socket)) + "," + Str$(CSAlign_Y(DAT, Socket)) + "," + Str$(CSAlign_U(DAT, Socket)) + ",Untested,Untested,Untested"
 	
-	Print #fileNum, LineInfo$
+	Print #FileNum, LineInfo$
 
-	Close #fileNum
+	Close #FileNum
 	Print "Socket alignmenr logged"
 	
 Fend
@@ -1391,11 +1437,17 @@ Function OpenMLog(init_msg$ As String) As Boolean
 		Print "[MLOG]:", init_msg$
 		Print #mlog_nr, init_msg$,
 	EndIf
-	OpenMLog = True
+	Print "printed to mlog"
+	
 	' Set global bool for proper closing
 	mlogopen = True
+	
+	
+	OpenMLog = True
+	Print "mlogopen written to succesfully. mlogopen=", mlogopen
+	Exit Function
 errHandler:
-	Print "Could not open or write to mlog file (manip.csv)"
+	Print "OpenMLog:Could not open or write to mlog file (manip.csv). mlogopen = ", mlogopen
 	' Will return false
 	Exit Function
 Fend
@@ -1406,7 +1458,13 @@ Function WriteMLog(mlog_message$ As String)
 		Exit Function
 	EndIf
 	Print "[MLOG]:", mlog_message$
+	OnErr GoTo errHandler
 	Print #mlog_nr, ",", mlog_message$,
+	
+	Print "mlog written to successfuly. mlogopen = ", mlogopen
+	Exit Function
+errHandler:
+	Print "WriteMLog: Could not open or write to mlog file (manip.csv). mlogopen = ", mlogopen
 Fend
 
 Function CloseMLog(close_msg$ As String)
@@ -1414,6 +1472,7 @@ Function CloseMLog(close_msg$ As String)
 		Print "ERROR: THE MLOG IS ALREADY CLOSED"
 		Exit Function
 	EndIf
+	OnErr GoTo errHandler
 	If Not close_msg$ = "" Then
 		Print "[MLOG]:", close_msg$
 		Print #mlog_nr, ",", close_msg$
@@ -1424,6 +1483,11 @@ Function CloseMLog(close_msg$ As String)
 	Close #mlog_nr
 	Print "[CLOSED MLOG]"
 	mlogopen = False
+	
+	Print "mlog closed successfuly. mlogopen = ", mlogopen
+	Exit Function
+errHandler:
+	Print "Could not write to or close to mlog file (manip.csv). mlogopen = ", mlogopen
 Fend
 
 ''' For handling information in bnl style - might not be needed

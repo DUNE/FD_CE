@@ -9,16 +9,23 @@ Function UFPinAnalysis(id$ As String, ByRef Images$() As String) As Int32
 	UFPinAnalysis = 0
 
 	Images$(1) = UF_take_picture$(id$ + "_pins")
-	WriteMLog(Images$(1)) ' TODO joe check if this needs to be inside a check of CurrentOpertaion$
+	If CurrentOperation$ <> "" Then
+		WriteMLog(Images$(1)) ' TODO joe check if this needs to be inside a check of CurrentOpertaion$
+	EndIf
 	Integer status
 	status = PinsAnaly(id$, ByRef Images$())
-	' Print #fileNum, ",", status,
-	WriteMLog(Str$(status)) ' TODO joe check if this needs to be inside a check of CurrentOpertaion$
-	If status <> 0 Then
-		UFPinAnalysis = status
+	
+	If CurrentOperation$ <> "" Then
+		WriteMLog(Str$(status)) ' TODO joe check if this needs to be inside a check of CurrentOpertaion$
 	EndIf
 	
-	UFPinAnalysis = -1
+	If status <> 0 Then
+		UFPinAnalysis = status
+	Else
+		UFPinAnalysis = -1
+	EndIf
+	
+	
 	
 Fend
 
@@ -30,7 +37,9 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	Int32 NPins
 	Select CHIPTYPE$
 		Case "LArASIC"
+			NPins = 32
 		Case "ColdADC"
+			NPins = 32
 		Case "COLDATA"
 		Print "Invalid chiptype"
 		PinsRowAnaly = ERR_PINS
@@ -40,22 +49,23 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 	Boolean passed
 	Integer nFound, i
 	Double x, y, area, xold, yold
+	Print #fileNum, name$,
 	Select SITE$
 		Case "BNL"
 			VGet pins_analy.name$.Passed, passed
 			If Not passed Then
 				Print "PinsAnaly " + name$ + " failed!"
-				Print #fileNum, " failed"
+				Print #fileNum, " failed",
 				PinsRowAnaly = 301
 				Exit Function
 			EndIf
 		
 			VGet pins_analy.name$.NumberFound, nFound
-			Print #fileNum, name$, ",", nFound,
+			Print #fileNum, ",Found=", nFound,
 			If nFound <> 32 Then
 				PinsRowAnaly = 302
 			EndIf
-		
+			
 			For i = 1 To nFound
 				VSet pins_analy.name$.CurrentResult, i
 				VGet pins_analy.name$.CameraX, x
@@ -70,33 +80,82 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 				EndIf
 			Next i
 		Case "MSU"
+			Print "RUNNING MSU PINS ROW ANALYSIS"
+			
+			
 			VGet MSU_ChipAnal.name$.Passed, passed
 			If Not passed Then
 				Print "PinsAnaly " + name$ + " failed!"
-				Print #fileNum, " failed",
+				Print #fileNum, ",failed!"
 				PinsRowAnaly = 301
 				Exit Function
 			EndIf
 			
 			VGet MSU_ChipAnal.name$.NumberFound, nFound
-			'Print #fileNum, name$, ",", nFound,
-			If nFound <> 32 Then
+			Print #fileNum, ",", nFound,
+			If nFound <> NPins Then
 				PinsRowAnaly = 302
 			EndIf
+			
+			
+			
+			Double FX, FY, LX, LY, dX, dY
+			
+			VSet MSU_ChipAnal.name$.CurrentResult, 1
+			VGet MSU_ChipAnal.name$.PixelX, FX
+			VGet MSU_ChipAnal.name$.PixelY, FY
 		
+			VSet MSU_ChipAnal.name$.CurrentResult, nFound
+			VGet MSU_ChipAnal.name$.PixelX, LX
+			VGet MSU_ChipAnal.name$.PixelY, LY
+			Print "nFound = ", nFound
+			dX = Abs(LX - FX) / (nFound - 1)
+			dY = Abs(LY - FY) / (nFound - 1)
+			'Print "dX = ", dX, ", dY = ", dY
+			Print #fileNum, ",bent:{",
+			Boolean no_bent
+			no_bent = True
 			For i = 1 To nFound
+				If i > 1 Then
+					xold = x
+					yold = y
+				EndIf
+				
 				VSet MSU_ChipAnal.name$.CurrentResult, i
-				VGet MSU_ChipAnal.name$.CameraX, x
-				VGet MSU_ChipAnal.name$.CameraY, y
+				VGet MSU_ChipAnal.name$.PixelX, x
+				VGet MSU_ChipAnal.name$.PixelY, y
 				VGet MSU_ChipAnal.name$.Area, area
 				'Print #fileNum, ",", x, ",", y, ",", area,
-				xold = x
-				yold = y
-				If i > 1 And Abs(x - xold) > 0.05 Then
-					Print "*ERROR! Bent pin found in " + name$,
-					PinsRowAnaly = 400 + i
+
+				If dX > dY Then
+					'Print "x = ", x, ",y = ", y, ", oldx = ", xold, ", |diff| = ", Str$(Abs(x - xold))
+					' JW TODO think about tolerance and also if this should be pixel count not distance
+					If i > 1 And (Abs(x - xold) > (1. + PinTol) * dX Or Abs(x - xold) < (1. - PinTol) * dX) Then
+						Print "***ERROR! Bent pin found in " + name$
+						If no_bent Then
+							Print #fileNum, i,
+						Else
+							Print #fileNum, ",", i,
+						EndIf
+						no_bent = False
+						PinsRowAnaly = 400 + i
+					EndIf
+				Else
+					'Print "x = ", x, ",y = ", y, ", oldy = ", yold, ", |diff| = ", Str$(Abs(y - yold))
+					If i > 1 And (Abs(y - yold) > (1. + PinTol) * dY Or Abs(y - yold) < (1. - PinTol) * dY) Then
+						Print "***ERROR! Bent pin found in " + name$
+						If no_bent Then
+							Print #fileNum, i,
+						Else
+							Print #fileNum, ",", i,
+						EndIf
+						no_bent = False
+						PinsRowAnaly = 400 + i
+					EndIf
 				EndIf
+				
 			Next i
+			Print #fileNum, "}",
 		Case "TUT"
 			VGet TUT_ChipAnal.name$.Passed, passed
 			If Not passed Then
@@ -127,12 +186,12 @@ Function PinsRowAnaly(name$ As String, fileNum As Integer) As Integer
 			Next i
 	Send
 	
-	'Print #fileNum, " "' Should use RTS_error in movement function which will end the line
+	Print #fileNum ' End the line
 	
 Fend
 
 ''' For each side of a chip runs PinsRowAnaly to check pin spacing/dust occlusion
-Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
+Function PinsAnaly(id$ As String, ByRef Images$() As String) As Int64
 	
 	PinsAnaly = 0
 	
@@ -140,33 +199,38 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 	fileNum = FreeFile
 	' AOpen RTS_DATA$ + "\pins\" + id$ + "_pins.csv" As #fileNum
 	AOpen TrayDirectory$ + "\pins\" + id$ + "_pins.csv" As #fileNum
-	
+	' Print #fileNum, id$,
 	Select SITE$
 		Case "BNL"
 			VSet pins_analy.ImageFile, Images$(1)
 			VRun pins_analy
 		Case "MSU"
+			VSet MSU_ChipAnal.BlobTop.Sort, 1 ' Sort by pixelX
+			VSet MSU_ChipAnal.BlobBottom.Sort, 1
+			VSet MSU_ChipAnal.BlobLeft.Sort, 2 ' sort by pixelY 
+			VSet MSU_ChipAnal.BlobRight.Sort, 2
 			VSet MSU_ChipAnal.ImageFile, Images$(1)
 			VRun MSU_ChipAnal
 		Case "TUT"
+			VSet TUT_ChipAnal.BlobTop.Sort, 1 ' Sort by pixelX
+			VSet TUT_ChipAnal.BlobBottom.Sort, 1
+			VSet TUT_ChipAnal.BlobLeft.Sort, 2 ' sort by pixelY 
+			VSet TUT_ChipAnal.BlobRight.Sort, 2
 			VSet TUT_ChipAnal.ImageFile, Images$(1)
 			VRun TUT_ChipAnal
 		Default
 			Print "Need to set up pin analysis for your site"
 			PinsAnaly = -100
-			Close #FileNum
+			Close #fileNum
 	Send
 
-	Integer status
-	status = PinsRowAnaly("BlobTop", FileNum)
-	If status <> 0 Then
-		PinsAnaly = status
-	EndIf
+	Integer statusT, statusB, statusL, statusR
+	statusT = PinsRowAnaly("BlobTop", fileNum)
+	Print "TOP PINS ANALYSIS = ", statusT
 	
-	status = PinsRowAnaly("BlobBottom", FileNum)
-	If status <> 0 Then
-		PinsAnaly = status
-	EndIf
+	statusB = PinsRowAnaly("BlobBottom", fileNum)
+	Print "BOTTOM PINS ANALYSIS = ", statusB
+
 
 
 	' For COLDATA will want to change image here after moving each way?
@@ -187,11 +251,10 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 '			Close #fileNum
 '	Send	
 '	EndIf
+	
+	statusL = PinsRowAnaly("BlobLeft", fileNum)
+	Print "LEFT PINS ANALYSIS = ", statusL
 
-	status = PinsRowAnaly("BlobLeft", FileNum)
-	If status <> 0 Then
-		PinsAnaly = status
-	EndIf
 
 '' And then again for the other side
 '	If CHIPTYPE$ = "COLDATA" Then
@@ -208,13 +271,17 @@ Function PinsAnaly(id$ As String, ByRef Images$() As String) As Integer
 '			Close #fileNum
 '	Send	
 '	EndIf
-
-	status = PinsRowAnaly("BlobRight", FileNum)
-	If status <> 0 Then
-		PinsAnaly = status
+	
+	statusR = PinsRowAnaly("BlobRight", fileNum)
+	Print "TOP PINS ANALYSIS = ", statusR
+	
+	If statusT <> 0 Or statusB <> 0 Or statusL <> 0 Or statusR <> 0 Then
+		PinsAnaly = -ERR_PINS
 	EndIf
 
-	Close #FileNum
+	Print #fileNum
+	
+	Close #fileNum
 	
 Fend
 
@@ -2470,15 +2537,37 @@ Function DFFindCOLDATASocket As Boolean
 	
 Fend
 
-Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As Int32
+Function MeasureAlignment(DAT_nr As Integer, socket_nr As Integer) As Int32
 ''' For diagnostic check of chip placement, requires finer position measurement functions
 ' Note, relies on consistent lighting which may not be currently achievable without
 ' addition EOAT lighting
 
-	GetChipInSocketAlignment = 0
-	SubError = -1
-	SelectSite("InFunctionDefinePallets")
-	Print "GetChipInSocketAlignment(", DAT_nr, ",", socket_nr, ")"
+	MeasureAlignment = 0
+	ErrorCode = 0
+	SubError = 0
+
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	
+	Boolean TopLevel
+	TopLevel = False
+	
+	If CurrentOperation$ = "" Then
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "Alignment_" + ts$
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + " MeasureAlignment(" + Str$(DAT_nr) + "," + Str$(socket_nr) + ")")
+	
+	CSAlignXUnc = 0
+	CSAlignYUnc = 0
+
+	CSAlign_X(DAT_nr, socket_nr) = 0
+	CSAlign_Y(DAT_nr, socket_nr) = 0
+	CSAlign_U(DAT_nr, socket_nr) = 0
+	CSAlign_ts$(DAT_nr, socket_nr) = ""
+	CSAlign_Img$(DAT_nr, socket_nr) = ""
 	
 	SetSpeedSetting("PickAndPlace")
 	Print "Making initial socket position measurement"
@@ -2486,14 +2575,16 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 	
 	' Measure the socket position	
 	If Not GetSocketPositionWithDF(DAT_nr, socket_nr) Then ', ByRef SockCorr()) Then
-		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
-		GetChipInSocketAlignment = -ERR_V_SOCKETALIGN
+		RTS_error("MeasureAlignment: Could not get socket position ", -ERR_V_SOCKETALIGN, TopLevel)
+		MeasureAlignment = -ERR_V_SOCKETALIGN
+		ResetOperation(TopLevel)
 		Exit Function
 	EndIf
 	' Check corrections are small		
 	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
+		RTS_error("MeasureAlignment: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE, TopLevel)
+		MeasureAlignment = -ERR_BAD_TOLERANCE
+		ResetOperation(TopLevel)
 		Exit Function
 	EndIf
 	
@@ -2506,71 +2597,117 @@ Function GetChipInSocketAlignment(DAT_nr As Integer, socket_nr As Integer) As In
 '	' Remeasure the socket position after recentering?
 '	'''
 	Print "Measuring socket position (after recentering)"
-	If Not GetSocketPositionWithDF(DAT_nr, Socket_nr) Then ', ByRef SockCorr()) Then
-		'RTS_error("GetChipFromSocket: Could not get socket position ", -ERR_V_SOCKETALIGN)
-		GetChipInSocketAlignment = -ERR_V_SOCKETALIGN
+	If Not GetSocketPositionWithDF(DAT_nr, socket_nr) Then ', ByRef SockCorr()) Then
+		RTS_error("MeasureAlignment: Could not get socket position ", -ERR_V_SOCKETALIGN, TopLevel)
+		MeasureAlignment = -ERR_V_SOCKETALIGN
+		ResetOperation(TopLevel)
 		Exit Function
 	EndIf
 '	' Check corrections are small	
 '	
 	If Abs(SocketOffset(1)) > 1. Or Abs(SocketOffset(2)) > 1. Or Abs(SocketOffset(3)) > 3. Then
-		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
+		RTS_error("MeasureAlignment: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE, TopLevel)
+		MeasureAlignment = -ERR_BAD_TOLERANCE
+		ResetOperation(TopLevel)
 		Exit Function
 	EndIf
 	Print "Socket position XYU = (", SockPos(1), ", ", SockPos(2), ",", SockPos(3), ")"
 '	' Don't correct this time, just want to have more centered measurement 
 	'''
 	Print "Measuring chip position"
-	' Measure the chip position
-'	If Not FindChipPositionWithDF Then
-'		Print "Could not find with standard vision sequence, will use component sequences separately"
-'		If Not FindChipPositionWithDFAdvanced Then
-'			'RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
-'			GetChipInSocketAlignment = -ERR_V_DF_ALIGN ' Set an error code
-'			Exit Function
-'		EndIf
-'	EndIf
 
 	If Not GetChipPositionWithDF(0) Then
-		'RTS_error("GetChipFromTray: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN)
-		GetChipInSocketAlignment = -ERR_V_DF_ALIGN ' Set an error code
+		RTS_error("MeasureAlignment: Cannot find chip direction with DF ", -ERR_V_DF_ALIGN, TopLevel)
+		MeasureAlignment = -ERR_V_DF_ALIGN ' Set an error code
+		ResetOperation(TopLevel)
 		Exit Function
 	EndIf
 	
 	' More movement in chips than sockets so wider tolerance 
 	If Abs(ChipOffset(1)) > 2. Or Abs(ChipOffset(2)) > 2. Or Abs(ChipOffset(3)) > 5. Then
-		'RTS_error("GetChipFromSocket: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE)
-		GetChipInSocketAlignment = -ERR_BAD_TOLERANCE
+		RTS_error("MeasureAlignment: Socket corrections outside of tolerance ", -ERR_BAD_TOLERANCE, TopLevel)
+		MeasureAlignment = -ERR_BAD_TOLERANCE
+		ResetOperation(TopLevel)
 		Exit Function
 	EndIf
 	
 	' Chip positions are stored in ChipPos(3)
 	Print "Chip position XYU = (", ChipPos(1), ",", ChipPos(2), ",", ChipPos(3), ")"
 	' Store for logging
-	CSAlign(1) = ChipPos(1) - SockPos(1)
-	CSAlign(2) = ChipPos(2) - SockPos(2)
-	CSAlign(3) = DiffAnglePM180(SockPos(3), ChipPos(3))
+	CSAlignXUnc = ChipPos(1) - SockPos(1)
+	CSAlignYUnc = ChipPos(2) - SockPos(2)
+	CSAlign_U(DAT_nr, socket_nr) = DiffAnglePM180(SockPos(3), ChipPos(3))
 	' Calculate x and y offset after removing socket rotation
 	' Rotate by (- socket offset U)?
-	CSAlign(4) = CSAlign(1) * Cos(DegToRad(-SocketOffset(3))) - CSAlign(2) * Sin(DegToRad(-SocketOffset(3)))
-	CSAlign(5) = CSAlign(1) * Sin(DegToRad(-SocketOffset(3))) + CSAlign(2) * Cos(DegToRad(-SocketOffset(3)))
+	CSAlign_X(DAT_nr, socket_nr) = CSAlignXUnc * Cos(DegToRad(-SocketOffset(3))) - CSAlignYUnc * Sin(DegToRad(-SocketOffset(3)))
+	CSAlign_Y(DAT_nr, socket_nr) = CSAlignXUnc * Sin(DegToRad(-SocketOffset(3))) + CSAlignYUnc * Cos(DegToRad(-SocketOffset(3)))
+	
+	CSAlign_Img$(DAT_nr, socket_nr) = Socket_take_picture$("Alignment",("Align_DAT" + Str$(DAT_nr) + "_s" + Str$(socket_nr) + "_" + ts$))
+	CSAlign_ts$(DAT_nr, socket_nr) = ts$
 	
 	Print "Chip in socket alignment check results"
 	Print "Chip-Socket delta calculated at "
-	Print "Delta X (uncorrected) : ", CSAlign(1)
-	Print "Delta Y (uncorrected) : ", CSAlign(2)
-	Print "Delta X (U corrected) : ", CSAlign(4)
-	Print "Delta Y (U corrected) : ", CSAlign(5)
-	Print "Delta U             : ", CSAlign(3)
+	Print "Delta X (uncorrected) : ", CSAlignXUnc
+	Print "Delta Y (uncorrected) : ", CSAlignYUnc
+	Print "Delta X (U corrected) : ", CSAlign_X(DAT_nr, socket_nr)
+	Print "Delta Y (U corrected) : ", CSAlign_Y(DAT_nr, socket_nr)
+	Print "Delta U             : ", CSAlign_U(DAT_nr, socket_nr)
+	Print "Alignment image: ", CSAlign_Img$(DAT_nr, socket_nr)
 	
 	' Need to think about where these get set back to zero 	
 	
 	SetSpeedSetting("MoveWithoutChip")
-	GetChipInSocketAlignment = -1
+	
 	
 	LogChipSocketAlignment(DAT_nr, socket_nr)
+	StoreChipSocketAlignments
 	
+	ResetOperation(TopLevel)
+	MeasureAlignment = -1
+Fend
+
+Function MeasureAllAlignments(DAT_nr As Integer) As Boolean
+	
+	MeasureAllAlignments = 0
+	ErrorCode = 0
+	SubError = 0
+
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	
+	Boolean TopLevel
+	TopLevel = False
+	
+	If CurrentOperation$ = "" Then
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "AllAlignments_" + ts$
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + " MeasureALlAlignment(" + Str$(DAT_nr) + ")")
+
+	SetSpeedSetting("MoveWithoutChip")
+	
+	Integer Socket_Nr, status
+	For Socket_nr = 1 To 8
+		If Not MeasureAlignment(DAT_nr, Socket_nr) Then
+			RTS_error("MeasureAllAlignments: Unable to check alignment ", -ERR_V_FAILALIGN, TopLevel)
+			MeasureAllAlignments = -ERR_V_FAILALIGN
+			ResetOperation(TopLevel)
+			Exit Function
+		EndIf
+		SetSpeedSetting("MoveWithoutChip")
+		status = AlignmentWithinTolerance(DAT_nr, Socket_nr)
+		Print "Status DAT ", Str$(DAT_nr), " socket ", Str$(Socket_nr), " :", Str$(status)
+	Next
+
+	Wait 1
+	JumpToCamera
+	
+	UpdatePositionFiles
+	StoreCurrentChipOffset
+	MeasureAllAlignments = -1
+	ResetOperation(TopLevel)
 Fend
 
 Function GetSocketPositionWithDF(DAT_nr As Integer, Socket_nr As Integer) As Int64
@@ -2856,7 +2993,6 @@ Function FindChipAxisOffsetWithUF As Boolean
 
 	Double UF_DEL_U1, UF_DEL_U2
 
-	
 	' DIff angle (a, b) is b - a
 	UF_DEL_U1 = DiffAnglePM180(MeasU1, ChipU1)
 	UF_DEL_U2 = DiffAnglePM180(MeasU2, ChipU2)
@@ -3057,13 +3193,162 @@ Function UFRecenterAt180 As Int32
 	UFRecenterAt180 = -1
 Fend
 
-'
-'Function PrecisionSocketMeasurement(DAT As Integer, socket_nr As Integer)
-'	
-'	JumpToSocket_camera(DAT, socket_nr)
-'	
-'	
-'	
-'	
-'Fend
+Function CheckSocketPlacement(DAT As Integer, Socket As Integer) As Integer
+	''
+	' Wrapper function for placement checks to be called in high level MoveChip commands
+	'' Args
+	' TgtTray, TgtTrayCol, TgtTrayRow - Indices of target tray position to check
+	'' Returns
+	' Good placement: -1, True in SPEL
+	' Poor placement: Specific codes for rotation or reseat requirement
+	' 					-2: Rotate +90
+	' 					-3: Rotate 180
+	' 					-4: Rotate -90
+	' 					-5: Reseat
+	' Error: 0, for failures requiring human intervention
+	'			- incorrect touch distance
+	' 			- Unable to detect chip with vision
+	''	
+	
+	' Define specific return codes for different checks
+	CheckSocketPlacement = 0
+	ErrorCode = 0
+	SubError = 0
+
+	Boolean TopLevel
+	TopLevel = False
+	
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+	
+	If CurrentOperation$ = "" Then
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "CheckAtS_" + ts$
+	EndIf
+
+	UpdateRobotLog$(CurrentOperation$ + ": CheckSocketPlacement(" + Str$(DAT) + "," + Str$(Socket) + ")")
+
+
+	''' What to do if called directly, not though higher level function?
+	
+	If Not isChipInSocketTouch(DAT, Socket) Then
+		RTS_error("CheckSocketPlacement: Chip not placed correctly (touch check)", -ERR_SOCKET_PLACE, TopLevel)
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+
+	Integer isChipInSocket
+	isChipInSocket = isChipInSocketCamera(DAT, Socket) ' Will jump to socket camera point
+	If isChipInSocket > -1 Then ' -1 is true, also correctly oriented
+		RTS_error("CheckSocketPlacement: Chip not placed correctly (vision check)", -ERR_SOCKET_PLACE, TopLevel)
+		ResetOperation(TopLevel)
+		Exit Function
+	ElseIf isChipInSocket < -1 Then
+		RTS_error("CheckSocketPlacement: Chip not placed in correct orientation (vision check)", -ERR_BAD_ORIENTATION, TopLevel)
+		CheckSocketPlacement = -ERR_BAD_ORIENTATION ''' Maybe return bad orientation value?
+		CheckSocketPlacement = isChipInSocket ' return status of camer cehck to HL function, -2,-3,-4:rotate +90,180,-90 respectively
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+		
+'	If MeasurePlacement Then
+	' #### Robot position at image ###
+	If Not MeasureAlignment(DAT, Socket) Then
+		RTS_error("CheckSocketPlacement: Failed to measure chip alignment", -ERR_V_CHIPSOCKALIGN, TopLevel)
+		CheckSocketPlacement = 0
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+	
+	If Not AlignmentWithinTolerance(DAT, Socket) Then
+		RTS_error("CheckSocketPlacement: Chip not placed correctly (alignment)", -ERR_V_CHIPSOCKALIGN, TopLevel)
+		CheckSocketPlacement = -5
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+	
+	UpdateRobotLog$(CurrentOperation$ + ": Tray placement OK")
+	CheckSocketPlacement = -1
+	ResetOperation(TopLevel)
+	
+Fend
+
+Function CheckTrayPlacement(TgtTray As Integer, TgtTrayCol As Integer, TgtTrayRow As Integer) As Int64
+	''
+	' Wrapper function for placement checks to be called in high level MoveChip commands
+	'' Args
+	' TgtTray, TgtTrayCol, TgtTrayRow - Indices of target tray position to check
+	'' Returns
+	' Success: +ve integer value of timestamp
+	' Error: -ve error codes
+	''
+
+	CheckTrayPlacement = 0
+	ErrorCode = 0 ' Might be better to set these to 1 (-1 is TRUE in BASIC) for initialization 
+	SubError = 0
+	
+	'ResetCurrentChipOffsets	
+	
+	String ts$
+	ts$ = FmtStr$(Date$ + " " + Time$, "yyyymmddhhnnss")
+		
+	Boolean TopLevel
+	TopLevel = False
+	
+	If CurrentOperation$ = "" Then
+		TopLevel = True
+		SelectSite("InFunctionDefinePallets")
+		op_ts$ = ts$
+		CurrentOperation$ = "CheckAtT_" + ts$
+	EndIf
+
+	UpdateRobotLog$(CurrentOperation$ + ": CheckTrayPlacement(" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")")
+
+	' Check valid operation
+	If Not CheckValidTrayIndex(TgtTray, TgtTrayCol, TgtTrayRow) Then
+		RTS_error("Invalid target tray (" + Str$(TgtTray) + "," + Str$(TgtTrayCol) + "," + Str$(TgtTrayRow) + ")", ERR_BAD_COMMAND, TopLevel)
+		CheckTrayPlacement = -ErrorCode
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Valid operation indices")
+
+	Motor On
+	On 12
+		
+	UpdateRobotLog$(CurrentOperation$ + ": Checking chip placed correctly")
+	
+	JumpToTray_camera(TgtTray, TgtTrayCol, TgtTrayRow)
+	' First just check chip orientation
+	Double MeasuredDirection, MeasuredOrientation ' , OrientationOffset
+	MeasuredDirection = FindChipDirectionWithDF
+	If MeasuredDirection < -900. Then
+		RTS_error("Cannot find chip direction", ERR_V_DF_ALIGN, TopLevel)
+		CheckTrayPlacement = -ErrorCode
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+	
+	' Get any offset from 0,90,180 etc
+	Double dTU
+	dTU = DiffAnglePM180(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow)), RoundAngleTo90(CU(Pallet(TgtTray, TgtTrayCol, TgtTrayRow))))
+	MeasuredOrientation = RoundAngleTo90(DiffAnglePM180(MeasuredDirection, dTU))
+
+	If Abs(DiffAnglePM180(TrayOrientation, MeasuredOrientation)) > 5. Then
+		RTS_error("Chip not put back in tray in expected orientation", ERR_TRAY_PLACE, TopLevel)
+		CheckTrayPlacement = -ErrorCode
+		ResetOperation(TopLevel)
+		Exit Function
+	EndIf
+	UpdateRobotLog$(CurrentOperation$ + ": Chip orientation O.K.!")
+
+	SetSpeedSetting("MoveWithoutChip")
+
+	UpdateRobotLog$(CurrentOperation$ + ": Chip placement check at tray complete")
+	ResetOperation(TopLevel)
+	CheckTrayPlacement = Val(ts$)
+
+Fend
 

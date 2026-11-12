@@ -31,10 +31,11 @@
 #define ERR_V_NOSOCKET 25
 #define ERR_V_SOCKETALIGN 26
 #define ERR_V_CHIPSOCKALIGN 27 ' Chip and socket
+#define ERR_V_FAILALIGN 28
 
-#define ERR_BAD_TOLERANCE 28
+#define ERR_BAD_TOLERANCE 29
 
-#define ERR_BAD_ORIENTATION 29
+#define ERR_BAD_ORIENTATION 30
 
 ' Position and pin analysis errors
 #define ERR_CALCULATION 51
@@ -46,8 +47,9 @@
 #define ERR_TRAY_PICK 100
 #define ERR_TRAY_PLACE 200
 #define ERR_SOCKET_PICK 300
-#define ERR_SOCKET_PLACE 400
-#define ERR_RESEAT 500
+#define ERR_SOCKET_PLACE 400 ' TODO need to distinguish between "Still carying chip" or not
+#define ERR_ROTATE 500
+#define ERR_RESEAT 600
 
 ' For error code handling
 Global Int32 ErrorCode
