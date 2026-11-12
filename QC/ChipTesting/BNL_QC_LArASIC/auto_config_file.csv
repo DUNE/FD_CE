@@ -1,0 +1,21 @@
+Name,Joseph Walsh
+Email,walshj29@msu.edu
+TrayID,B005T0020
+DUTtype,LArASIC
+SourceTray,2
+BadTray,1
+SinkNo,2
+TopDir,C:/Users/neutrino/LArASIC_Testing/
+LN2_flg,True
+DoScan,True
+RunTests,True
+DryRun,False
+MoveOCR,False
+MoveInitCheck,True
+UserSafeties,True
+EmailOn,False
+SlackOn,False
+RobotIP,192.168.121.1
+RobotPort,201
+TransferData,False
+TransferDir,C:/Users/neutrino/LArASIC_Testing/Complete/

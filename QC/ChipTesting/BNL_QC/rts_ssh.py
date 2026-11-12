@@ -26,13 +26,13 @@ def subrun(command, timeout = 30, check=True, exitflg = True):
                                 #stderr=subprocess.PIPE,
                                 check=check
                                 )
-    except subprocess.CalledProcessError as e:
-        print ("Call Error", e.returncode)
-        if exitflg:
-            print ("Call Error FAIL!")
-            #print ("Exit anyway")
-            #return None
-            #exit()
+    # except subprocess.CalledProcessError as e:
+    #     print ("Call Error", e.returncode)
+    #     if exitflg:
+    #         print ("Call Error FAIL!")
+    #         #print ("Exit anyway")
+    #         #return None
+    #         #exit()
             
 
         #continue
@@ -113,7 +113,7 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                                                                             dut_skt[x[1]][1]*1000 + dut_skt[x[1]][0]
                                                                             )
     
-    logs['PC_WRCFG_FN'] = "./asic_info.csv"
+    logs['PC_WRCFG_FN'] = config_path #"./asic_info.csv"
     csvfp = logs['PC_WRCFG_FN']
     tmps = []
     with open(csvfp, 'r') as fp:
@@ -265,14 +265,17 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
     
         wibdst = "{}:/home/root/BNL_CE_WIB_SW_QC/".format(wibhost)
         command = ["scp", "-r", logs['PC_WRCFG_FN'] , wibdst]
-        result=subrun(command, timeout = None)
+
+        result=subrun(command, timeout = 60 * 5)
+        # result=subrun(command, timeout = None)
         if result != None:
             logs['CFG_wrto_WIB'] = [command, result.stdout]
     
             wibsrc = "{}:/home/root/BNL_CE_WIB_SW_QC/asic_info.csv".format(wibhost)
             pcdst = "./readback/"
             command = ["scp", "-r", wibsrc , pcdst]
-            result=subrun(command, timeout = None)
+            #result=subrun(command, timeout = None)
+            result=subrun(command, timeout = 60 * 5)
             if result != None:
                 logs['CFG_rbfrom_WIB'] = [command, result.stdout]
                 logs['PC_RBCFG_fn'] = pcdst + "asic_info.csv"
@@ -323,7 +326,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                 else: 
                     command = ["ssh", wibhost, "cd BNL_CE_WIB_SW_QC; python3 DAT_COLDATA_QC_top.py -t {}".format(testid)]
 
-            result=subrun(command, timeout = None) #rewrite with Popen later
+            # result=subrun(command, timeout = None) #rewrite with Popen later
+            result=subrun(command, timeout = 60 * 5)
             if result != None:
                 resultstr = result.stdout
                 logs["QC_TestItemID_%03d"%testid] = [command, resultstr]
@@ -366,7 +370,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
 
             fsrc = wibhost + ":" + fs
             command = ["scp", "-r",fsrc , fddir]
-            result=subrun(command, timeout = None)
+            # result=subrun(command, timeout = None)
+            result=subrun(command, timeout = 60 * 5)
             if result != None:
                 print ("data save at {}".format(fddir))
                 logs['pc_raw_dir'] = fddir #later save it into log file
@@ -394,7 +399,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     fdirdel = logs['wib_raw_dir']
                     #command = ["rm", "-rf",fdirdel] 
                     command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
-                    result=subrun(command, timeout = None)
+                    result=subrun(command, timeout = 60 * 5)
+                    # result=subrun(command, timeout = None)
                     if result != None:
                         print ("WIB folder {} is deleted!".format(fdirdel))
                     return (QCstatus, bads)
@@ -434,7 +440,8 @@ def rts_ssh(dut_skt, root = "C:/DAT_LArASIC_QC/Tested/", duttype="FE", env="RT",
                     #            pickle.dump(logs, fn)
                     #    fdirdel = logs['wib_raw_dir']
                     #    command = ["ssh", wibhost, "rm -rf {}".format(fdirdel)] 
-                    #    result=subrun(command, timeout = None)
+                    #    result=subrun(command, timeout = 60 * 5)
+                    ##   result=subrun(command, timeout = None)
                     #    if result != None:
                     #        print ("WIB folder {} is deleted!".format(fdirdel))
                     #    DAT_power_off()
